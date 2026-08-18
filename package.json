@@ -1,7 +1,7 @@
 {
-  "name": "wahlzettel",
-  "productName": "Wahlzettel",
-  "version": "0.1.2",
+  "name": "votura",
+  "productName": "Votura",
+  "version": "0.2.0",
   "description": "Offline-Verwaltung von Wahlgängen und Druck papierbasierter Stimmzettel für Mitgliederversammlungen",
   "author": "Steven Weissheimer",
   "license": "UNLICENSED",

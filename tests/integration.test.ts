@@ -560,3 +560,86 @@ describe('Wiederanlauf nach Absturz', () => {
     expect(erneut.deduplicated).toBe(true)
   })
 })
+
+describe('Mehrere Wahlgänge in Vorbereitung', () => {
+  it('lässt beliebig viele Entwürfe ohne Kennung nebeneinander zu', async () => {
+    // Entwürfe bekommen ihre Kennung erst beim Start. Ohne eindeutigen
+    // internen Platzhalter ließe die Eindeutigkeit von (Veranstaltung,
+    // Kennung) nur einen einzigen Entwurf je Veranstaltung zu.
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Vorbereitung',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV27',
+      date: '2026-10-04',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const entwuerfe = ['Erster Punkt', 'Zweiter Punkt', 'Dritter Punkt'].map((titel) =>
+      rounds.createRound({
+        eventId: veranstaltung.id,
+        title: titel,
+        purpose: 'motion',
+        procedure: 'yes_no_abstain',
+        seats: 1,
+        maxVotes: 1,
+        template: defaultTemplateFor('yes_no_abstain', { seats: 1, maxVotes: 1, entryCount: 0 }),
+        orderMode: 'manual'
+      })
+    )
+
+    expect(entwuerfe).toHaveLength(3)
+    // Nach außen ist die Kennung leer, bis der Wahlgang gestartet wird.
+    expect(entwuerfe.every((wg) => wg.roundCode === '')).toBe(true)
+    expect(entwuerfe.every((wg) => wg.status === 'draft')).toBe(true)
+
+    const gestartet = rounds.startRound(entwuerfe[1].id)
+    expect(gestartet.roundCode).toMatch(/^MV27-20261004-WG\d\d$/)
+  })
+})
+
+describe('Wahlgangkennung vor dem Druck', () => {
+  it('vergibt die Kennung spätestens mit der Freigabe des Stimmzettels', async () => {
+    // Ein Wahlgang darf nie mit leerer Kennung gedruckt werden – sie ist das
+    // einzige Merkmal, das die Stimmzettel eines Wahlgangs zuordnet.
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Freigabe ohne Start',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV28',
+      date: '2026-11-08',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Wahl des Vorsitzes',
+      purpose: 'chairperson',
+      procedure: 'single_multiple_candidates',
+      seats: 1,
+      maxVotes: 1,
+      template: defaultTemplateFor('single_multiple_candidates', { seats: 1, maxVotes: 1, entryCount: 2 }),
+      orderMode: 'manual'
+    })
+    expect(wahlgang.roundCode).toBe('')
+
+    candidates.addCandidates(wahlgang.id, [
+      { firstName: 'Anna', lastName: 'Beckmann', displayName: 'Anna Beckmann' },
+      { firstName: 'Jonas', lastName: 'Kröger', displayName: 'Jonas Kröger' }
+    ])
+
+    // Direkt aus der Vorbereitung heraus schließen und freigeben.
+    const gesperrt = rounds.lockCandidates(wahlgang.id)
+    expect(gesperrt.roundCode).toMatch(/^MV28-20261108-WG\d\d$/)
+
+    const version = ballots.approveBallot(wahlgang.id, [
+      'round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode'
+    ])
+    expect(version.version).toBe(1)
+    expect(rounds.getRound(wahlgang.id).roundCode).toBe(gesperrt.roundCode)
+  })
+})

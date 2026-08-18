@@ -2,7 +2,7 @@
 
 ## Vor der Versammlung
 
-1. **Installieren:** `Wahlzettel-<version>-x64-Setup.exe` ausführen (keine Administratorrechte
+1. **Installieren:** `Votura-<version>-x64-Setup.exe` ausführen (keine Administratorrechte
    nötig, Installation je Benutzer). Alternativ die portable Fassung vom USB-Stick starten.
 2. **Konten anlegen:** Beim ersten Start ein Administratorkonto anlegen, danach unter
    *Einstellungen → Benutzer* Konten für Wahlleitung, Wahlkommission und Protokoll ergänzen.
@@ -137,3 +137,22 @@ Zu beachten:
 | Esc | Dialog schließen |
 
 Kein Tastenkürzel löst einen Massendruck aus.
+
+## Bildschirmansichten
+
+Die folgenden Aufnahmen stammen aus einem Demo-Bestand und lassen sich mit
+`node tools/screenshots.mjs` jederzeit neu erzeugen.
+
+| Ansicht | Zweck |
+|---|---|
+| ![Übersicht](screenshots/01-uebersicht.png) | Stand der Versammlung: Wahlgänge, Zettelversionen, Druckmengen, Ergebnisse |
+| ![Tagesordnung](screenshots/02-tagesordnung.png) | Punkte vorab anlegen, sortieren, Anträge einschieben |
+| ![Beamersteuerung](screenshots/03-beamersteuerung.png) | Auswahl des Bildes, Vorschau, Netzwerkansicht, Sperre |
+| ![Kandidaten](screenshots/07-kandidaten.png) | Bewerber erfassen, sortieren, zurückziehen |
+| ![Stimmzettel](screenshots/08-wahlzettel-vorschau.png) | Druckvorschau, Prüfliste, Freigabe |
+| ![Druck](screenshots/09-druck.png) | Stückzahl, Drucker, Testdruck, Protokoll |
+| ![Ergebnis](screenshots/10-ergebnis.png) | Auszählung, Plausibilitätsprüfung, Feststellung |
+| ![Audit-Trail](screenshots/04-audit-trail.png) | Lückenlose Nachvollziehbarkeit aller Handlungen |
+| ![Systemcheck](screenshots/05-systemcheck.png) | Prüfung vor der Versammlung |
+| ![Einstellungen](screenshots/06-einstellungen.png) | Drucker, Sicherheit, Konten, Beamer-Erscheinungsbild |
+| ![Beameransicht](screenshots/11-beameransicht.png) | Öffentliche Anzeige des Ergebnisses |

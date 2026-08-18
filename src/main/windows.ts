@@ -38,7 +38,7 @@ export function createOperatorWindow(): BrowserWindow {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    title: 'Wahlzettel – Wahlgangverwaltung',
+    title: 'Votura – Wahlgangverwaltung',
     backgroundColor: '#111417',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -138,7 +138,7 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
     fullscreen: !onlyOneDisplay,
     frame: onlyOneDisplay,
     autoHideMenuBar: true,
-    title: 'Wahlzettel – Beameransicht',
+    title: 'Votura – Beameransicht',
     backgroundColor: '#000000',
     webPreferences: {
       preload: join(__dirname, '../preload/audience.js'),

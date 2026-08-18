@@ -22,7 +22,7 @@ import { appendAudit } from './audit'
 import { requirePermission } from './auth'
 import { listCandidates } from './candidates'
 import { getEvent } from './events'
-import { getRound } from './rounds'
+import { ensureRoundIdentity, getRound } from './rounds'
 import { getConfig, getPrinter, getPrinters } from './settings'
 
 interface VersionRow {
@@ -140,6 +140,9 @@ export function approveBallot(roundId: UUID, checklist: string[]): BallotVersion
   if (!round.candidatesLockedAt) {
     throw new Error('Die Kandidatenliste muss vor der Freigabe geschlossen werden.')
   }
+  // Ohne Kennung dürfen keine Stimmzettel entstehen: sie steht auf jedem Zettel
+  // und ordnet ihn dem Wahlgang zu.
+  ensureRoundIdentity(roundId)
 
   const missing = APPROVAL_CHECKLIST.filter((item) => !checklist.includes(item))
   if (missing.length > 0) {

@@ -60,13 +60,23 @@ interface RoundRow {
   cancel_reason: string | null
 }
 
+/**
+ * Präfix der internen Platzhalter-Kennung für Wahlgänge in Vorbereitung.
+ * Nach außen — Anzeige, Druck, Export — ist die Kennung dieser Wahlgänge leer.
+ */
+export const ENTWURFSKENNUNG = '#entwurf:'
+
+function sichtbareKennung(gespeichert: string): string {
+  return gespeichert.startsWith(ENTWURFSKENNUNG) ? '' : gespeichert
+}
+
 export function mapRound(row: RoundRow): ElectionRound {
   return {
     id: row.id,
     eventId: row.event_id,
     sequentialNumber: Number(row.sequential_number),
     agendaOrder: Number(row.agenda_order ?? row.sequential_number),
-    roundCode: row.round_code,
+    roundCode: sichtbareKennung(row.round_code),
     roundLabel: row.round_label,
     title: row.title,
     purpose: row.purpose as ElectionPurpose,
@@ -167,15 +177,24 @@ export function isPrepared(round: ElectionRound): boolean {
  * seine laufende Nummer und damit die endgültige Wahlgangkennung. Vorher kann
  * die Tagesordnung beliebig umsortiert werden, ohne dass Kennungen wandern.
  */
-export function startRound(roundId: UUID): ElectionRound {
-  const session = requirePermission('round.manage')
+/**
+ * Vergibt Nummer und Wahlgangkennung, falls noch keine vorhanden sind — ohne
+ * den Status anzutasten.
+ *
+ * Die Kennung steht auf jedem Stimmzettel und ist das einzige Merkmal, das die
+ * Zettel eines Wahlgangs zuordnet. Sie muss deshalb spätestens dann feststehen,
+ * wenn die Kandidatenliste geschlossen oder der Stimmzettel freigegeben wird —
+ * nicht erst beim Start, denn ein Wahlgang lässt sich auch aus der Vorbereitung
+ * heraus freigeben.
+ */
+export function ensureRoundIdentity(roundId: UUID): ElectionRound {
   const round = getRound(roundId)
-  if (round.status !== 'draft') return round
+  if (round.sequentialNumber > 0 && round.roundCode) return round
 
   const event = getEvent(round.eventId)
   const sequentialNumber = round.sequentialNumber || nextSequentialNumber(round.eventId)
-  const roundLabel = round.roundLabel || roundLabelFor(sequentialNumber)
-  const roundCode = round.roundCode || buildRoundCode(event.orgCode, event.date, roundLabel)
+  const roundLabel = (round.roundLabel || roundLabelFor(sequentialNumber)).toUpperCase()
+  const roundCode = (round.roundCode || buildRoundCode(event.orgCode, event.date, roundLabel)).toUpperCase()
 
   const duplicate = db()
     .prepare(`SELECT id FROM rounds WHERE event_id = ? AND round_code = ? AND id <> ?`)
@@ -184,11 +203,26 @@ export function startRound(roundId: UUID): ElectionRound {
 
   db()
     .prepare(
-      `UPDATE rounds SET status = 'candidate_collection', sequential_number = ?, round_label = ?,
-                         round_code = ?, row_version = row_version + 1
+      `UPDATE rounds SET sequential_number = ?, round_label = ?, round_code = ?,
+                         row_version = row_version + 1
        WHERE id = ?`
     )
-    .run(sequentialNumber, roundLabel.toUpperCase(), roundCode.toUpperCase(), roundId)
+    .run(sequentialNumber, roundLabel, roundCode, roundId)
+
+  return getRound(roundId)
+}
+
+export function startRound(roundId: UUID): ElectionRound {
+  const session = requirePermission('round.manage')
+  const round = getRound(roundId)
+  if (round.status !== 'draft') return round
+
+  ensureRoundIdentity(roundId)
+  db()
+    .prepare(
+      `UPDATE rounds SET status = 'candidate_collection', row_version = row_version + 1 WHERE id = ?`
+    )
+    .run(roundId)
 
   const after = getRound(roundId)
   appendAudit({
@@ -254,11 +288,19 @@ export function createRound(input: RoundInput): ElectionRound {
   const roundLabel = startImmediately
     ? (input.roundLabel ?? roundLabelFor(sequentialNumber)).toUpperCase()
     : ''
+  const id = randomUUID()
+  /*
+   * Wahlgänge in Vorbereitung haben noch keine Kennung. Gespeichert wird
+   * trotzdem ein eindeutiger Platzhalter: die Tabelle verlangt (Veranstaltung,
+   * Kennung) als eindeutiges Paar, sodass sich sonst nur ein einziger Entwurf
+   * je Veranstaltung anlegen ließe. Nach außen ist die Kennung leer — siehe
+   * ENTWURFSKENNUNG.
+   */
   const roundCode = startImmediately
     ? (input.roundCode ?? buildRoundCode(event.orgCode, event.date, roundLabel)).toUpperCase()
-    : ''
+    : `${ENTWURFSKENNUNG}${id}`
 
-  if (roundCode) {
+  if (startImmediately && roundCode) {
     const duplicate = db()
       .prepare(`SELECT id FROM rounds WHERE event_id = ? AND round_code = ?`)
       .get<{ id: string }>(input.eventId, roundCode)
@@ -271,7 +313,6 @@ export function createRound(input: RoundInput): ElectionRound {
     candidateIds: []
   }))
 
-  const id = randomUUID()
   db()
     .prepare(
       `INSERT INTO rounds (id, event_id, sequential_number, agenda_order, round_code, round_label, title,
@@ -425,6 +466,7 @@ export function lockCandidates(roundId: UUID): ElectionRound {
   const round = getRound(roundId)
   assertEditable(round)
   if (round.candidatesLockedAt) return round
+  ensureRoundIdentity(roundId)
 
   db()
     .prepare(`UPDATE rounds SET candidates_locked_at = ?, locked_at = ?, row_version = row_version + 1 WHERE id = ?`)

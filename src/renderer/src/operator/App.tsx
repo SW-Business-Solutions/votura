@@ -107,7 +107,7 @@ export function App(): React.JSX.Element {
     <div className="app">
       <nav className="sidebar">
         <div className="brand">
-          Wahlzettel
+          Votura
           <small>Wahlgang- und Stimmzettelverwaltung</small>
         </div>
 

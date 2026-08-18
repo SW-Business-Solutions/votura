@@ -251,7 +251,7 @@ function roundPdfHtml(eventId: UUID, roundId: UUID): string {
     ${auditHtml(auditForExport({ roundId }))}
 
     <div class="footer">
-      Erzeugt am ${formatDateTimeDe(new Date().toISOString(), timeZone())} &middot; Wahlzettel-System.
+      Erzeugt am ${formatDateTimeDe(new Date().toISOString(), timeZone())} &middot; Votura.
       Dieses Dokument dokumentiert die organisatorische Durchführung. Die Stimmabgabe erfolgte
       ausschließlich auf Papier; ausgefüllte Stimmzettel werden nicht digitalisiert.
     </div>`

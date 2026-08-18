@@ -1,5 +1,5 @@
-appId: de.wahlzettel.app
-productName: Wahlzettel
+appId: de.votura.app
+productName: Votura
 copyright: Copyright © 2026
 
 directories:
@@ -32,7 +32,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Wahlzettel
+  shortcutName: Votura
   runAfterFinish: true
   deleteAppDataOnUninstall: false
   installerLanguages:

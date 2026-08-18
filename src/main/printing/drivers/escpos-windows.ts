@@ -54,7 +54,7 @@ public static class RawPrinter {
             throw new Exception("Drucker konnte nicht geöffnet werden: " + Marshal.GetLastWin32Error());
         try {
             DOCINFOW di = new DOCINFOW();
-            di.pDocName = "Wahlzettel";
+            di.pDocName = "Votura";
             di.pDataType = "RAW";
             if (!StartDocPrinter(hPrinter, 1, ref di))
                 throw new Exception("StartDocPrinter fehlgeschlagen: " + Marshal.GetLastWin32Error());

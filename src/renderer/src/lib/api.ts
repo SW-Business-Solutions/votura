@@ -22,12 +22,12 @@ interface Bridge {
 
 declare global {
   interface Window {
-    wahlzettel?: Bridge
+    votura?: Bridge
   }
 }
 
 /** Läuft die Oberfläche auf einem zweiten Gerät im Netz? */
-export const isRemote = !window.wahlzettel
+export const isRemote = !window.votura
 
 const TOKEN_KEY = 'wz-remote-token'
 
@@ -130,7 +130,7 @@ function pollingBridge(): Bridge {
   }
 }
 
-export const bridge: Bridge = window.wahlzettel ?? pollingBridge()
+export const bridge: Bridge = window.votura ?? pollingBridge()
 
 export function api<M extends ApiMethod>(method: M, ...args: ApiParams<M>): Promise<ApiResult<M>> {
   return bridge.invoke(method, ...args)

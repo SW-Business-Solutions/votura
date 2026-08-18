@@ -51,4 +51,4 @@ const bridge = {
 
 export type OperatorBridge = typeof bridge
 
-contextBridge.exposeInMainWorld('wahlzettel', bridge)
+contextBridge.exposeInMainWorld('votura', bridge)
