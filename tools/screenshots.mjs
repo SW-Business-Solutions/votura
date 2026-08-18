@@ -173,6 +173,20 @@ function demoSkript() {
       'freigegeben'
     )
 
+    // Dieselbe Delegiertenwahl im Akzeptanzverfahren: hier wird jeder Bewerber
+    // einzeln mit Ja/Nein/Enthaltung beurteilt statt angekreuzt.
+    const akzeptanz = await anlegen(
+      {
+        title: 'Wahl der Delegierten (Akzeptanzverfahren)',
+        purpose: 'delegate',
+        procedure: 'acceptance_group',
+        seats: 5,
+        maxVotes: null
+      },
+      ['Clara Fenske', 'Paul Marquardt', 'Nina Lorenz', 'Ruben Thiele', 'Sophie Vogt', 'David Ohlsen'],
+      'freigegeben'
+    )
+
     await anlegen(
       { title: 'Satzungsänderung § 7', purpose: 'motion', procedure: 'yes_no_abstain', seats: 1, maxVotes: 1 },
       [],
@@ -197,11 +211,50 @@ function demoSkript() {
       electedCandidateIds: [bewerber[0].id]
     })
     await ruf('result.confirm', { roundId: vorsitz.id, pin: '246810' })
-    await ruf('projection.setMode', { mode: 'result', roundId: vorsitz.id, showAll: true })
+    // Ergebnis der Akzeptanzwahl: Ja/Nein/Enthaltung je Bewerber. Gewählt ist,
+    // wer mehr Ja- als Nein-Stimmen hat – hier vier von sechs.
+    await ruf('round.start', akzeptanz.id)
+    await ruf('round.setStatus', { roundId: akzeptanz.id, status: 'open' })
+    await ruf('round.setStatus', { roundId: akzeptanz.id, status: 'counting' })
+    const feld = (await ruf('round.detail', akzeptanz.id)).candidates
+    const voten = [
+      { yes: 96, no: 14, abstain: 7 },
+      { yes: 88, no: 21, abstain: 8 },
+      { yes: 81, no: 29, abstain: 7 },
+      { yes: 74, no: 33, abstain: 10 },
+      { yes: 44, no: 62, abstain: 11 },
+      { yes: 39, no: 68, abstain: 10 }
+    ]
+    await ruf('result.save', {
+      electionRoundId: akzeptanz.id,
+      countingMode: 'counted',
+      ballotsCast: 119,
+      validBallots: 117,
+      invalidBallots: 2,
+      resultData: {
+        candidates: feld.map((b, i) => ({
+          candidateId: b.id,
+          name: b.displayName,
+          yes: voten[i]?.yes ?? 0,
+          no: voten[i]?.no ?? 0,
+          abstain: voten[i]?.abstain ?? 0,
+          invalidVotes: 0
+        }))
+      },
+      determination: 'Vier Bewerber mit mehr Ja- als Nein-Stimmen; fünfter Platz bleibt unbesetzt',
+      finalDecision: 'elected',
+      electedCandidateIds: feld.slice(0, 4).map((b) => b.id)
+    })
+    await ruf('result.confirm', { roundId: akzeptanz.id, pin: '246810' })
+
+    await ruf('projection.setMode', { mode: 'result', roundId: akzeptanz.id, showAll: true })
     await ruf('projection.openAudience')
 
-    return { zusammenfassung: 'Veranstaltung, 7 Tagesordnungspunkte, 3 Wahlgänge, 1 bestätigtes Ergebnis',
-             wahlgangDelegierte: delegierte.id }
+    return {
+      zusammenfassung: 'Veranstaltung, 7 Tagesordnungspunkte, 4 Wahlgänge, 2 bestätigte Ergebnisse',
+      wahlgangDelegierte: delegierte.id,
+      wahlgangAkzeptanz: akzeptanz.id
+    }
   } catch (fehler) {
     return { fehler: String(fehler && fehler.message ? fehler.message : fehler) }
   }
@@ -284,6 +337,19 @@ try {
     }
   } else {
     console.log('  Hinweis: Kein Wahlgang bekannt – Wahlgang-Ansichten übersprungen.')
+  }
+
+  // Akzeptanzverfahren: eigener Stimmzettel (Ja/Nein/Enthaltung je Bewerber)
+  // und eigene Ergebnisdarstellung.
+  if (bericht.wahlgangAkzeptanz) {
+    for (const [reiter, datei] of [
+      ['ballot', '12-akzeptanzwahl-stimmzettel'],
+      ['result', '13-akzeptanzwahl-ergebnis']
+    ]) {
+      await sitzung.auswerten(`window.location.hash = '#/round/${bericht.wahlgangAkzeptanz}/${reiter}'`)
+      await warte(1500)
+      await sitzung.aufnehmen(datei)
+    }
   }
 
   // Beamerfenster, falls geöffnet.

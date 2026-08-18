@@ -8,7 +8,8 @@ import {
   parseCandidateLine,
   profileFor,
   sortCandidates,
-  validateRoundSetup
+  validateRoundSetup,
+  withTemplateDefaults
 } from '../src/shared/election'
 import { buildRoundCode, derivedRoundLabel, roundLabelFor, sanitizeForPrint } from '../src/shared/format'
 import type { BallotTemplateConfig, Candidate, ElectionRound } from '../src/shared/types'
@@ -243,5 +244,32 @@ describe('Wahlgang-Typ', () => {
   it('haelt die vollständige Verfahrensliste bereit', () => {
     const round: Pick<ElectionRound, 'procedure'> = { procedure: 'connected_single_election' }
     expect(profileFor(round.procedure).entryKind).toBe('positions')
+  })
+})
+
+describe('Stimmzettelvorlage je Verfahren', () => {
+  it('übernimmt beim Akzeptanzverfahren das JA aus dem Verfahren', () => {
+    // Ohne Verfahrensbezug greifen die allgemeinen Vorgaben (kein JA) — auf
+    // einem Akzeptanz-Stimmzettel ließe sich dann nur ablehnen oder enthalten.
+    expect(withTemplateDefaults({}).allowYes).toBe(false)
+    expect(withTemplateDefaults({}, 'acceptance_group').allowYes).toBe(true)
+    expect(withTemplateDefaults({}, 'connected_single_election').allowYes).toBe(true)
+    // Eine ausdrückliche Angabe hat weiterhin Vorrang.
+    expect(withTemplateDefaults({ allowYes: false }, 'acceptance_group').allowYes).toBe(false)
+  })
+
+  it('meldet einen Akzeptanz-Stimmzettel ohne JA als Fehler', () => {
+    const issues = validateRoundSetup(
+      {
+        procedure: 'acceptance_group',
+        seats: 5,
+        maxVotes: null,
+        title: 'Delegierte',
+        template: template({ allowYes: false }),
+        positions: []
+      },
+      [candidate('Clara Fenske'), candidate('Paul Marquardt')]
+    )
+    expect(issues.some((issue) => issue.field === 'template' && issue.level === 'error')).toBe(true)
   })
 })

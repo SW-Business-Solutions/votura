@@ -364,7 +364,18 @@ export function defaultTemplateFor(
  * Wahlgänge, die vor einer Erweiterung der Vorlage angelegt wurden — sie
  * dürfen dadurch nicht plotzlich ohne Layoutangaben dastehen.
  */
-export function withTemplateDefaults(template: Partial<BallotTemplateConfig> | undefined): BallotTemplateConfig {
+/**
+ * Ergänzt fehlende Angaben einer Stimmzettelvorlage.
+ *
+ * Ist das Verfahren bekannt, gelten dessen Vorgaben als Grundlage — sonst
+ * entstünde etwa bei der Akzeptanzwahl ein Zettel ohne JA-Feld, auf dem sich
+ * nur ablehnen oder enthalten ließe.
+ */
+export function withTemplateDefaults(
+  template: Partial<BallotTemplateConfig> | undefined,
+  procedure?: ElectionProcedure
+): BallotTemplateConfig {
+  const ausVerfahren = procedure ? profileFor(procedure).defaultTemplate() : undefined
   return {
     showOrganization: true,
     showEventTitle: true,
@@ -382,6 +393,7 @@ export function withTemplateDefaults(template: Partial<BallotTemplateConfig> | u
     allowAbstention: true,
     blankLines: 0,
     instructionText: '',
+    ...ausVerfahren,
     ...template
   }
 }
@@ -402,6 +414,17 @@ export function validateRoundSetup(
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const profile = profileFor(round.procedure)
+
+  // Bei Verfahren mit Votum je Bewerber muss zugestimmt werden können.
+  if (profile.perCandidateChoice && round.template && !round.template.allowYes) {
+    issues.push({
+      field: 'template',
+      level: 'error',
+      message:
+        'Bei diesem Verfahren wird jeder Bewerber einzeln beurteilt — ohne aufgedrucktes „JA" ließe sich nur ablehnen oder enthalten.'
+    })
+  }
+
   const active = candidates.filter((c) => !c.withdrawn)
 
   if (!round.title.trim()) {

@@ -40,7 +40,7 @@ Die Dateien sind nicht signiert; Windows SmartScreen meldet sich daher beim erst
 ```bash
 npm install
 npm run dev          # Anwendung mit Hot Reload starten
-npm test             # 130 Unit- und Integrationstests
+npm test             # 132 Unit- und Integrationstests
 npm run typecheck    # Typprüfung für Main-, Preload- und Renderer-Code
 npm run build        # Produktionsbundle nach out/
 npm run dist:win     # Windows-Installer und portable EXE nach release/
@@ -76,9 +76,57 @@ ausdrücklicher Bestätigung durch die Wahlleitung.
 ## Wahlverfahren
 
 Wahlzweck (`purpose`) und Wahlverfahren (`procedure`) sind strikt getrennt: Aus „Delegiertenwahl"
-folgt kein Verfahren — das beschließt die Versammlung. Unterstützt sind 16 Verfahren, darunter Einzelwahl (ein/mehrere Bewerber), Stichwahl, verbundene Einzelwahl,
-Gruppenwahl (vorgedruckt und blanko), Akzeptanzverfahren, Zwei-Stufen-Wahl (Stufe 1, Stufe 2 als
-Einzelplatz oder Block), Sachabstimmungen und die offene Abstimmung ohne Stimmzettel.
+folgt kein Verfahren — das beschließt die Versammlung. Dieselbe Delegiertenwahl kann als
+Gruppenwahl, als Akzeptanzwahl oder in zwei Stufen durchgeführt werden; der Stimmzettel sieht
+jeweils anders aus.
+
+### Personenwahlen
+
+| Verfahren | Stimmzettel | Wofür |
+|---|---|---|
+| **Einzelwahl – ein Kandidat** | ein Name, global `JA` / `NEIN` / `ENTHALTUNG` | Eine Position, ein Bewerber |
+| **Einzelwahl – mehrere Kandidaten** | alle Namen, eine Stimme, dazu `NEIN` / `ENTHALTUNG` | Eine Position, mehrere Bewerber |
+| **Stichwahl** | die verbliebenen Bewerber, eine Stimme | Zweiter Durchgang ohne erreichte Mehrheit |
+| **Verbundene Einzelwahl** | je Position ein eigener Abschnitt | Mehrere Positionen auf einem Zettel, getrennt entschieden |
+| **Gruppenwahl – vorgedruckt** | alle Namen mit Ankreuzfeld, höchstens *n* Stimmen | Mehrere gleichartige Sitze, Bewerberfeld steht fest |
+| **Gruppenwahl – Blanko** | nummerierte Schreiblinien | Mehrere Sitze, Namen werden handschriftlich eingetragen |
+| **Akzeptanzwahl – Einzelposition** | `JA` / `NEIN` / `ENTHALTUNG` **je Bewerber** | Jeder Bewerber wird einzeln beurteilt |
+| **Akzeptanzwahl – mehrere Positionen** | `JA` / `NEIN` / `ENTHALTUNG` **je Bewerber** | Gewählt ist, wer mehr Ja- als Nein-Stimmen hat |
+| **Zwei-Stufen-Wahl – Stufe 1** | alle Namen, ohne feste Höchstzahl | Vorauswahl des Bewerberfelds |
+| **Zwei-Stufen-Wahl – Stufe 2, Einzelplatz** | die Vorausgewählten, eine Stimme | Listenplatz für Listenplatz besetzen |
+| **Zwei-Stufen-Wahl – Stufe 2, Wahlblock** | die Vorausgewählten, *n* Stimmen | Mehrere Listenplätze in einem Block |
+
+### Sachabstimmungen
+
+| Verfahren | Stimmzettel | Wofür |
+|---|---|---|
+| **Ja / Nein / Enthaltung** | Beschlusstext, drei Optionen | Anträge, Satzungsänderungen |
+| **Eine von mehreren Optionen** | Optionen, eine Stimme | Auswahl zwischen Vorschlägen |
+| **Mehrere Optionen** | Optionen, mehrere Stimmen | Zustimmung zu mehreren Punkten |
+| **Variantenwahl / Alternativanträge** | Varianten, eine Stimme | Konkurrierende Anträge |
+| **Offene Abstimmung** | **kein Stimmzettel** | Handzeichen oder Stimmkarte; nur Stimmen werden gezählt |
+
+### Beispiel: dieselbe Delegiertenwahl in zwei Verfahren
+
+Der Demo-Bestand enthält beide Fassungen — links die Gruppenwahl (ankreuzen, höchstens acht
+Stimmen), rechts die Akzeptanzwahl (jeder Bewerber einzeln mit `JA` / `NEIN` / `ENTHALTUNG`).
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/08-wahlzettel-vorschau.png" alt="Stimmzettel der Gruppenwahl"><br><sub><b>Gruppenwahl</b> — ein Ankreuzfeld je Name, Nein und Enthaltung gelten für den ganzen Zettel und stehen am Ende.</sub></td>
+<td width="50%"><img src="docs/screenshots/12-akzeptanzwahl-stimmzettel.png" alt="Stimmzettel der Akzeptanzwahl"><br><sub><b>Akzeptanzwahl</b> — unter jedem Namen ein eigenes Votum; die Kopfzeile weist das Verfahren aus.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/10-ergebnis.png" alt="Ergebnis der Gruppenwahl"><br><sub><b>Ergebnis</b> — Stimmen je Bewerber, Rangfolge und Sitzgrenze.</sub></td>
+<td width="50%"><img src="docs/screenshots/13-akzeptanzwahl-ergebnis.png" alt="Ergebnis der Akzeptanzwahl"><br><sub><b>Ergebnis</b> — Ja/Nein/Enthaltung je Bewerber. Wer nicht mehr Ja- als Nein-Stimmen hat, wird gekennzeichnet; hier bleibt der fünfte Platz unbesetzt.</sub></td>
+</tr>
+</table>
+
+Zu jedem Verfahren gehören eigene Vorgaben für Höchststimmenzahl, Mindestzahl an Bewerbern, die
+Frage, ob mehrere Sitze zu besetzen sind, und der Vorschlag für die Feststellung. Was auf dem
+Zettel steht — `JA`, `NEIN`, `ENTHALTUNG`, Kandidatennummern, Kumulieren, Abstände —, bleibt je
+Wahlgang einstellbar, weil es sich nach der geltenden Wahlordnung richtet und nicht nach der
+Software.
 
 ## Sicherheitszusagen (technisch durchgesetzt)
 

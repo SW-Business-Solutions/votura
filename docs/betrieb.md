@@ -152,6 +152,8 @@ Die folgenden Aufnahmen stammen aus einem Demo-Bestand und lassen sich mit
 | ![Stimmzettel](screenshots/08-wahlzettel-vorschau.png) | Druckvorschau, Prüfliste, Freigabe |
 | ![Druck](screenshots/09-druck.png) | Stückzahl, Drucker, Testdruck, Protokoll |
 | ![Ergebnis](screenshots/10-ergebnis.png) | Auszählung, Plausibilitätsprüfung, Feststellung |
+| ![Akzeptanzwahl](screenshots/12-akzeptanzwahl-stimmzettel.png) | Akzeptanzverfahren: Ja/Nein/Enthaltung je Bewerber |
+| ![Ergebnis der Akzeptanzwahl](screenshots/13-akzeptanzwahl-ergebnis.png) | Gewählt ist, wer mehr Ja- als Nein-Stimmen hat |
 | ![Audit-Trail](screenshots/04-audit-trail.png) | Lückenlose Nachvollziehbarkeit aller Handlungen |
 | ![Systemcheck](screenshots/05-systemcheck.png) | Prüfung vor der Versammlung |
 | ![Einstellungen](screenshots/06-einstellungen.png) | Drucker, Sicherheit, Konten, Beamer-Erscheinungsbild |

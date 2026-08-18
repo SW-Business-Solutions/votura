@@ -90,7 +90,10 @@ export function mapRound(row: RoundRow): ElectionRound {
     derivedAs: (optionalString(row.derived_as) as ElectionRound['derivedAs']) ?? undefined,
     ballotVersion: Number(row.ballot_version),
     approvedVersion: optionalNumber(row.approved_version),
-    template: withTemplateDefaults(fromJson<Partial<BallotTemplateConfig>>(row.template_json, {})),
+    template: withTemplateDefaults(
+      fromJson<Partial<BallotTemplateConfig>>(row.template_json, {}),
+      row.procedure as ElectionProcedure
+    ),
     orderMode: row.order_mode as CandidateOrderMode,
     orderSeed: optionalNumber(row.order_seed),
     positions: fromJson<BallotPosition[]>(row.positions_json, []),
