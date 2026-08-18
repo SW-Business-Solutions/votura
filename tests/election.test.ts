@@ -13,6 +13,7 @@ import {
 } from '../src/shared/election'
 import { buildRoundCode, derivedRoundLabel, roundLabelFor, sanitizeForPrint } from '../src/shared/format'
 import { istNeuer } from '../src/main/services/updates'
+import { pruefsummeAus, pruefsummeAusListe } from '../src/main/services/update-install'
 import type { BallotTemplateConfig, Candidate, ElectionRound } from '../src/shared/types'
 
 function template(overrides: Partial<BallotTemplateConfig> = {}): BallotTemplateConfig {
@@ -289,5 +290,31 @@ describe('Versionsvergleich für den Aktualisierungshinweis', () => {
     expect(istNeuer('0.9.9', '1.0.0')).toBe(false)
     // Vorabfassungen zaehlen nicht als neuer als die fertige Fassung.
     expect(istNeuer('0.2.2-rc.1', '0.2.2')).toBe(false)
+  })
+})
+
+describe('Pruefsummen fuer das Einspielen', () => {
+  it('liest die Pruefsumme aus der Begleitdatei des Herstellungslaufs', () => {
+    const yml = [
+      'version: 0.4.0',
+      'files:',
+      '  - url: Votura-0.4.0-x64-Setup.exe',
+      '    sha512: AAAA==',
+      '    size: 99806951',
+      'path: Votura-0.4.0-x64-Setup.exe'
+    ].join('\n')
+    expect(pruefsummeAus(yml, 'Votura-0.4.0-x64-Setup.exe')).toBe('AAAA==')
+    expect(pruefsummeAus(yml, 'Votura-0.4.0-x64-portable.exe')).toBeUndefined()
+  })
+
+  it('liest die Pruefsumme der portablen Fassung aus der Liste', () => {
+    const liste = [
+      'BBBB==  Votura-0.4.0-x64-portable.exe',
+      'AAAA==  Votura-0.4.0-x64-Setup.exe',
+      ''
+    ].join('\n')
+    expect(pruefsummeAusListe(liste, 'Votura-0.4.0-x64-portable.exe')).toBe('BBBB==')
+    expect(pruefsummeAusListe(liste, 'Votura-0.4.0-x64-Setup.exe')).toBe('AAAA==')
+    expect(pruefsummeAusListe(liste, 'fremd.exe')).toBeUndefined()
   })
 })

@@ -142,6 +142,21 @@ export function pruefsummeAus(latestYml: string, dateiname: string): string | un
 }
 
 /**
+ * Liest eine Prüfsumme aus der Liste `pruefsummen.txt`.
+ * Format je Zeile:  <sha512 base64>  <dateiname>
+ *
+ * Sie deckt auch die portable Fassung ab, die in der `latest.yml` des
+ * Herstellungslaufs nicht enthalten ist.
+ */
+export function pruefsummeAusListe(liste: string, dateiname: string): string | undefined {
+  for (const zeile of liste.split(/\r?\n/)) {
+    const treffer = /^(\S+)\s+(.+?)\s*$/.exec(zeile)
+    if (treffer && treffer[2] === dateiname) return treffer[1]
+  }
+  return undefined
+}
+
+/**
  * Lädt das Installationsprogramm der neuesten Fassung, prüft es und startet es.
  * Die Anwendung beendet sich danach selbst — eine laufende Fassung lässt sich
  * nicht ersetzen.
@@ -194,6 +209,8 @@ export async function downloadAndInstallUpdate(
     )
   }
 
+  // Prüfsumme: zuerst aus der Begleitdatei des Herstellungslaufs, sonst aus der
+  // veröffentlichten Liste – die auch die portable Fassung abdeckt.
   let erwartet: string | undefined
   const latest = assets.find((asset) => asset.name === 'latest.yml')
   if (latest?.browser_download_url) {
@@ -205,6 +222,22 @@ export async function downloadAndInstallUpdate(
     } catch {
       erwartet = undefined
     }
+  }
+  const liste = assets.find((asset) => asset.name === 'pruefsummen.txt')
+  if (!erwartet && liste?.browser_download_url) {
+    try {
+      erwartet = pruefsummeAusListe(
+        (await laden(liste.browser_download_url)).toString('utf8'),
+        installer.name
+      )
+    } catch {
+      erwartet = undefined
+    }
+  }
+  if (!erwartet) {
+    throw new Error(
+      `Zu ${installer.name} ist keine Prüfsumme veröffentlicht. Die Datei wird nicht ausgeführt — bitte die Fassung von Hand über die Veröffentlichungsseite einspielen.`
+    )
   }
 
   onProgress?.({
@@ -222,7 +255,7 @@ export async function downloadAndInstallUpdate(
 
   onProgress?.({ phase: 'verify', message: 'Datei wird geprüft …' })
   const tatsaechlich = createHash('sha512').update(daten).digest('base64')
-  if (erwartet && erwartet !== tatsaechlich) {
+  if (erwartet !== tatsaechlich) {
     throw new Error(
       'Die geladene Datei stimmt nicht mit der veröffentlichten Prüfsumme überein und wird verworfen.'
     )
@@ -243,7 +276,7 @@ export async function downloadAndInstallUpdate(
     newValue: {
       version,
       datei: installer.name,
-      pruefung: erwartet ? 'Prüfsumme stimmt überein' : 'keine Prüfsumme veröffentlicht'
+      pruefung: 'SHA-512 stimmt mit der veröffentlichten Prüfsumme überein'
     }
   })
 
@@ -254,7 +287,7 @@ export async function downloadAndInstallUpdate(
     })
     logger.info(`Neue portable Fassung ${version} bereitgelegt: ${ziel}`)
     shell.showItemInFolder(ziel)
-    return { file: ziel, version, verified: Boolean(erwartet), mode: 'portable' }
+    return { file: ziel, version, verified: true, mode: 'portable' }
   }
 
   onProgress?.({ phase: 'ready', message: 'Die Anwendung wird beendet und die Installation gestartet.' })
@@ -265,5 +298,5 @@ export async function downloadAndInstallUpdate(
     void shell.openPath(ziel).then(() => app.quit())
   }, 1500)
 
-  return { file: ziel, version, verified: Boolean(erwartet), mode: 'installer' }
+  return { file: ziel, version, verified: true, mode: 'installer' }
 }
