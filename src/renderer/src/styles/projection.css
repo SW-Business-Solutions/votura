@@ -1,0 +1,567 @@
+/*
+ * Beamer-/Audience-Ansicht (Beamer §38–§41, §67, §69).
+ * Aus großer Entfernung lesbar, hoher Kontrast, Status nie nur über Farbe,
+ * Safe-Area gegen Overscan, keine hektischen Animationen.
+ */
+
+/*
+ * Die Beamerseite lädt ausschließlich diese Datei. Sie muss die Grundmasse
+ * daher selbst setzen — ohne Höhe wäre der Wurzelcontainer 0 px hoch und der
+ * Beamer bliebe schwarz. Die Regeln sind bewusst auf die Beamerseite begrenzt,
+ * damit die Operator-Oberfläche unberührt bleibt.
+ */
+html {
+  height: 100%;
+}
+
+.audience-body,
+.audience-body > #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.projection-root {
+  --projection-bg: #08090b;
+  --projection-surface: #12151a;
+  --projection-text: #f7fafc;
+  --projection-muted: #9fb0bf;
+  --projection-primary: #4a9eff;
+  --projection-success: #38c46a;
+  --projection-warning: #f0b429;
+  --projection-danger: #ff6b5e;
+  --safe: 5%;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--projection-bg);
+  color: var(--projection-text);
+  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  container-type: size;
+}
+
+.audience-body {
+  margin: 0;
+  background: #000;
+  cursor: none;
+}
+.audience-body * {
+  cursor: none;
+}
+
+.projection-root.preview {
+  font-size: 40%;
+}
+
+.projection-head {
+  display: flex;
+  justify-content: space-between;
+  /* Mittig zum Logo: bei Grundlinien-Ausrichtung würden die Texte an der
+     Oberkante eines hohen Logos kleben. */
+  align-items: center;
+  gap: 2vw;
+  padding: calc(var(--safe) / 2) var(--safe) 0;
+  color: var(--projection-muted);
+  font-size: calc(1.5cqw * var(--s, 1));
+  letter-spacing: 0.06em;
+  text-transform: var(--heading-transform, uppercase);
+  flex: none;
+}
+
+/* Die drei Kopfelemente teilen sich die Breite; Mitte bleibt mittig, auch
+   wenn das Logo breiter ist als das Datum. */
+.projection-head > * {
+  flex: 1 1 0;
+}
+.projection-head > *:nth-child(2) {
+  text-align: center;
+}
+.projection-head > *:last-child {
+  text-align: right;
+}
+
+.projection-body {
+  flex: 1;
+  min-height: 0;
+  padding: 1.5cqh var(--safe);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  animation: projection-fade 260ms ease-out;
+  /* Der Inhalt darf niemals über Kopf- oder Fußzeile hinauslaufen. */
+  overflow: hidden;
+}
+
+/*
+ * Messbarer Inhaltsbereich. Er ist auf die Höhe des Bildes begrenzt und
+ * beginnt oben — dadurch ist ein Überlauf über scrollHeight messbar (bei
+ * zentriertem Inhalt ragte er nach oben und unten heraus und blieb unsichtbar).
+ * useFitToBody senkt daraufhin --fit, bis alles hineinpasst.
+ */
+.projection-fit {
+  --s: calc(var(--s-base, 1) * var(--fit, 1));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: calc(1.6cqh * var(--fit, 1));
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  /* Innerhalb des Bildes bleibt der Inhalt optisch mittig. */
+  margin: auto 0;
+}
+
+@keyframes projection-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.projection-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2vw;
+  padding: 0 var(--safe) calc(var(--safe) / 2);
+  color: var(--projection-muted);
+  font-size: calc(1.3cqw * var(--s, 1));
+  flex: none;
+}
+
+.projection-status {
+  font-size: calc(7cqw * var(--s, 1));
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+/*
+ * Im Ergebnisbild steht die Feststellung zwischen Kennzahlen, Liste und
+ * Bilanz. In voller Größe (7cqw) beanspruchte sie allein ein Sechstel der
+ * Bildhöhe und drückte die übrigen Angaben übereinander.
+ */
+.projection-status.compact {
+  font-size: calc(4.4cqw * var(--s, 1));
+  flex: none;
+}
+.projection-status.primary {
+  color: var(--projection-primary);
+}
+.projection-status.warning {
+  color: var(--projection-warning);
+}
+.projection-status.success {
+  color: var(--projection-success);
+}
+.projection-status.danger {
+  color: var(--projection-danger);
+}
+
+.projection-title {
+  font-size: calc(4.2cqw * var(--s, 1));
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.projection-round-label {
+  font-size: calc(2.6cqw * var(--s, 1));
+  font-weight: 600;
+  text-align: center;
+  color: var(--projection-muted);
+  letter-spacing: 0.12em;
+}
+
+.projection-meta {
+  display: flex;
+  justify-content: center;
+  gap: 3cqw;
+  flex-wrap: wrap;
+  /* Feste Zeile: wird von langen Listen nicht verdrängt und nicht überlagert. */
+  flex: none;
+  font-size: calc(2cqw * var(--s, 1));
+  color: var(--projection-text);
+}
+.projection-meta strong {
+  font-size: calc(2.4cqw * var(--s, 1));
+}
+
+.projection-note {
+  font-size: calc(1.9cqw * var(--s, 1));
+  text-align: center;
+  color: var(--projection-muted);
+  max-width: 80%;
+  margin: 0 auto;
+  line-height: 1.35;
+}
+
+/*
+ * Kandidatenliste. Wie bei der Tagesordnung richtet sich die Schriftgröße nach
+ * der Zeilenzahl je Spalte (eine Zeile braucht rund das Doppelte ihrer
+ * Schriftgröße), damit die Liste nie über die Meta-Angaben läuft.
+ */
+.projection-candidates {
+  display: grid;
+  /* Abstände in em: sie schrumpfen mit der Schrift, wenn --fit greift. */
+  gap: 0.35em 1.6em;
+  align-content: safe center;
+  justify-content: center;
+  /*
+   * Die Liste behält ihre natürliche Höhe. Würde sie hier von selbst
+   * schrumpfen, verschwänden einzelne Zeilen unbemerkt — stattdessen soll der
+   * Überlauf messbar bleiben, damit useFitToBody das ganze Bild verkleinert.
+   */
+  flex: none;
+  overflow: hidden;
+  width: 100%;
+  max-width: 88cqw;
+  margin: 0 auto;
+  /*
+   * Neben der Liste stehen Überschrift, Titel, Meta-Zeile und Seitenangabe.
+   * Für die Liste bleiben rund 20 % der Bildhöhe je Zeile bei zehn Zeilen —
+   * eine Zeile beansprucht etwa das 1,8-fache ihrer Schriftgröße.
+   */
+  font-size: calc(min(2.4cqw, 20cqh / var(--rows, 10)) * var(--s, 1));
+}
+.projection-candidates.cols-1 {
+  grid-template-columns: 1fr;
+  /* Wächst die Schrift (--fit), darf auch die Spalte breiter werden – sonst
+     bräche schon ein normal langer Name um. */
+  max-width: min(86cqw, calc(60cqw * var(--fit, 1)));
+  font-size: calc(min(3cqw, 20cqh / var(--rows, 8)) * var(--s, 1));
+}
+.projection-candidates.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 10), auto);
+  font-size: calc(min(2.4cqw, 20cqh / var(--rows, 10)) * var(--s, 1));
+}
+.projection-candidates.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 10), auto);
+  font-size: calc(min(1.9cqw, 20cqh / var(--rows, 10)) * var(--s, 1));
+}
+
+/*
+ * Ergebnisliste: über und unter ihr stehen mehr Elemente als bei der
+ * Kandidatenvorstellung (Ja/Nein-Block, Feststellung, Stimmzettelbilanz).
+ * Deshalb bekommt sie weniger Bildhöhe je Zeile zugestanden und blättert
+ * stattdessen früher um.
+ */
+.projection-candidates.result {
+  font-size: calc(min(2.1cqw, 13cqh / var(--rows, 6)) * var(--s, 1));
+}
+.projection-candidates.result.cols-1 {
+  max-width: min(86cqw, calc(55cqw * var(--fit, 1)));
+  font-size: calc(min(2.8cqw, 13cqh / var(--rows, 6)) * var(--s, 1));
+}
+.projection-candidates.result.cols-2 {
+  max-width: min(92cqw, calc(84cqw * var(--fit, 1)));
+}
+.projection-candidates.result.cols-3 {
+  max-width: 92cqw;
+  gap: 0.25em 1.1em;
+  font-size: calc(min(1.7cqw, 13cqh / var(--rows, 6)) * var(--s, 1));
+}
+
+.projection-candidate {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8em;
+  padding: 0.25em 0.4em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.projection-candidate .number {
+  color: var(--projection-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.8em;
+}
+.projection-candidate .name {
+  flex: 1;
+}
+.projection-candidate .votes {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.projection-candidate .status {
+  font-size: 0.6em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15em 0.5em;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.projection-candidate.elected {
+  color: var(--projection-success);
+  font-weight: 700;
+}
+.projection-candidate.runoff {
+  color: var(--projection-warning);
+}
+
+/*
+ * Ja / Nein / Enthaltung stehen als Kennzahlen nebeneinander in einer Reihe.
+ * Untereinander gesetzt sahen sie aus wie weitere Einträge der Ergebnisliste.
+ */
+.projection-result-figures {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  /* Alle Maße in em, damit die Kacheln mit --fit mitschrumpfen. */
+  font-size: calc(1.6cqw * var(--s, 1));
+  gap: 0.6em 2.4em;
+  flex: none;
+}
+.projection-result-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.5em 1.6em;
+  min-width: 8em;
+  border-radius: 0.5em;
+  background: var(--projection-surface);
+}
+.projection-result-figure .label {
+  letter-spacing: 0.1em;
+  color: var(--projection-muted);
+  text-transform: uppercase;
+}
+.projection-result-figure .value {
+  font-size: 2em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+}
+.projection-result-figure.success .value {
+  color: var(--projection-success);
+}
+.projection-result-figure.danger .value {
+  color: var(--projection-danger);
+}
+
+.projection-page-indicator {
+  text-align: center;
+  font-size: calc(1.5cqw * var(--s, 1));
+  color: var(--projection-muted);
+}
+
+/* Sachabstimmung: Beschlusstext und Abstimmungsmöglichkeiten. */
+.projection-motion {
+  font-size: calc(2.6cqw * var(--s, 1));
+  line-height: 1.35;
+  text-align: center;
+  max-width: 85%;
+  margin: 0 auto;
+  padding: 1.2cqh 2cqw;
+  border-left: 0.4cqw solid var(--projection-primary);
+  border-right: 0.4cqw solid var(--projection-primary);
+  background: var(--projection-surface);
+}
+
+.projection-options {
+  display: flex;
+  justify-content: center;
+  gap: 4cqw;
+  font-size: calc(4cqw * var(--s, 1));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.projection-countdown {
+  font-size: calc(12cqw * var(--s, 1));
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--projection-primary);
+}
+
+.projection-message-title {
+  font-size: calc(5cqw * var(--s, 1));
+  font-weight: 800;
+  text-align: center;
+}
+.projection-message-body {
+  font-size: calc(2.6cqw * var(--s, 1));
+  text-align: center;
+  color: var(--projection-muted);
+  line-height: 1.35;
+}
+
+.projection-agenda {
+  display: grid;
+  gap: 1cqh;
+  font-size: calc(2.4cqw * var(--s, 1));
+  justify-items: center;
+}
+.projection-agenda .current {
+  font-size: calc(4cqw * var(--s, 1));
+  font-weight: 700;
+}
+
+.projection-logo {
+  display: block;
+  max-width: 40cqw;
+  object-fit: contain;
+  opacity: var(--projection-logo-opacity, 1);
+}
+.projection-logo.header {
+  height: var(--projection-logo-size, 12cqh);
+  max-height: 20cqh;
+  /* Das Logo sitzt links in seinem Drittel, damit die Mitte mittig bleibt. */
+  object-position: left center;
+  align-self: center;
+}
+.projection-logo.header.center {
+  object-position: center;
+}
+.projection-logo.corner {
+  position: absolute;
+  height: var(--projection-logo-size, 12cqh);
+  z-index: 2;
+}
+.projection-logo.corner.corner_top_right {
+  top: 3%;
+  right: 4%;
+}
+.projection-logo.corner.corner_top_left {
+  top: 3%;
+  left: 4%;
+}
+.projection-logo.corner.corner_bottom_right {
+  bottom: 4%;
+  right: 4%;
+}
+/* Wasserzeichen: groß, dezent, immer hinter dem Inhalt. */
+.projection-logo.watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: auto;
+  width: 60cqw;
+  max-width: 70cqw;
+  z-index: 0;
+  pointer-events: none;
+}
+.projection-head,
+.projection-body,
+.projection-foot {
+  position: relative;
+  z-index: 1;
+}
+
+.projection-root.no-transitions .projection-body {
+  animation: none;
+}
+
+/*
+ * Vollständige Tagesordnung auf dem Beamer.
+ * Die Schriftgröße richtet sich nach der Zeilenzahl je Spalte: viele Punkte
+ * werden kleiner gesetzt, statt aus dem Bild zu laufen. Reicht auch das nicht,
+ * blättert die Anzeige seitenweise um.
+ */
+.projection-agenda-list {
+  display: grid;
+  gap: 0.3em 2em;
+  /* „safe“ verhindert, dass ein zu hoher Block über den oberen Rand gedrückt
+     wird und die Überschrift überlagert. */
+  align-content: safe center;
+  justify-content: center;
+  /* Natürliche Höhe: ein Überlauf bleibt messbar und wird über --fit gelöst,
+     statt einzelne Punkte unbemerkt abzuschneiden. */
+  flex: none;
+  width: 100%;
+  max-width: 82cqw;
+  margin: 0 auto;
+  /*
+   * Eine Zeile beansprucht etwa das Doppelte ihrer Schriftgröße (Zeilenhöhe
+   * plus Innenabstand). Bei rund 58 % Bildhöhe für die Liste ergibt sich die
+   * größte Schrift, die noch vollständig hineinpasst.
+   */
+  font-size: calc(min(2.2cqw, 29cqh / var(--agenda-rows, 10)) * var(--s, 1));
+}
+.projection-agenda-list.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--agenda-rows, 10), auto);
+  font-size: calc(min(1.9cqw, 29cqh / var(--agenda-rows, 10)) * var(--s, 1));
+}
+/*
+ * Feste Spalten: Nummer, Titel, Kennzeichnung. So stehen alle Zeilen
+ * untereinander bündig, unabhängig von der Länge der Nummer.
+ */
+.projection-agenda-item {
+  display: grid;
+  grid-template-columns: 4.5em minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.7em;
+  padding: 0.3em 0.6em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 0.25em solid transparent;
+  min-width: 0;
+}
+.projection-agenda-item .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.projection-agenda-item .marker {
+  justify-self: end;
+}
+.projection-agenda-item .label {
+  min-width: 3em;
+  color: var(--projection-muted);
+  font-variant-numeric: tabular-nums;
+}
+.projection-agenda-item .title {
+  flex: 1;
+}
+.projection-agenda-item .marker {
+  font-size: 0.6em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+/* Der aktuelle Punkt wird durch Farbe, Fettdruck, Akzentbalken und die
+   Kennzeichnung „AKTUELL“ hervorgehoben — ohne Größensprung, damit das Raster
+   der Zeilen ruhig bleibt. */
+.projection-agenda-item.current {
+  color: var(--projection-primary);
+  font-weight: 700;
+  border-left-color: var(--projection-primary);
+  border-bottom-color: color-mix(in srgb, var(--projection-primary) 55%, transparent);
+  background: color-mix(in srgb, var(--projection-primary) 12%, transparent);
+}
+/* Erledigte Punkte werden zurückgenommen, aber nicht durchgestrichen —
+   der Text „erledigt“ kennzeichnet sie eindeutig. */
+.projection-agenda-item.done {
+  color: var(--projection-muted);
+  opacity: 0.75;
+}
+
+.projection-offline {
+  position: absolute;
+  top: 1%;
+  right: 1%;
+  font-size: calc(1.2cqw * var(--s, 1));
+  color: var(--projection-danger);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.2em 0.8em;
+}

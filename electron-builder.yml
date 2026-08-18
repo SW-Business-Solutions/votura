@@ -1,0 +1,40 @@
+appId: de.wahlzettel.app
+productName: Wahlzettel
+copyright: Copyright © 2026
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+# Offline-Betrieb: keine Update-Server, keine Publish-Ziele.
+publish: null
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}-Setup.${ext}
+  # icon: build/icon.ico   # optional, sobald ein Icon hinterlegt ist
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Wahlzettel
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - de_DE
+  language: '1031'
+
+portable:
+  artifactName: ${productName}-${version}-${arch}-portable.${ext}
