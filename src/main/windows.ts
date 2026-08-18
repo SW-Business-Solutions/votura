@@ -4,10 +4,25 @@
  * Die Audience bekommt einen eigenen, minimalen Preload und lädt eine eigene
  * HTML-Datei — sie kann technisch nichts schreiben (Beamer §2/§31/§32).
  */
-import { BrowserWindow, powerSaveBlocker, screen, shell } from 'electron'
+import { app, BrowserWindow, powerSaveBlocker, screen, shell } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AudienceWindowState, DisplayInfo } from '@shared/projection'
 import { logger } from './logger'
+
+/**
+ * Programmsymbol für die Fenster. Im gepackten Zustand liegt es in den
+ * Ressourcen, in der Entwicklung im Projektordner — fehlt es, bleibt es beim
+ * Standardsymbol, statt den Start zu verhindern.
+ */
+function fensterSymbol(): string | undefined {
+  const orte = [
+    join(process.resourcesPath ?? '', 'build', 'icon.png'),
+    join(app.getAppPath(), 'build', 'icon.png'),
+    join(app.getAppPath(), '..', 'build', 'icon.png')
+  ]
+  return orte.find((ort) => ort && existsSync(ort))
+}
 
 let operatorWindow: BrowserWindow | null = null
 let audienceWindow: BrowserWindow | null = null
@@ -39,6 +54,7 @@ export function createOperatorWindow(): BrowserWindow {
     show: false,
     autoHideMenuBar: true,
     title: 'Votura – Wahlgangverwaltung',
+    icon: fensterSymbol(),
     backgroundColor: '#111417',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -139,6 +155,7 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
     frame: onlyOneDisplay,
     autoHideMenuBar: true,
     title: 'Votura – Beameransicht',
+    icon: fensterSymbol(),
     backgroundColor: '#000000',
     webPreferences: {
       preload: join(__dirname, '../preload/audience.js'),

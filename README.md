@@ -1,4 +1,8 @@
-# Votura
+<p align="center">
+  <img src="docs/logo.svg#gh-light-mode-only" alt="Votura" width="360">
+  <img src="docs/logo-dunkelmodus.svg#gh-dark-mode-only" alt="Votura" width="360">
+</p>
+
 
 Offline-Desktopanwendung zur Verwaltung von Wahlgängen und zum Druck papierbasierter
 Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederversammlungen.

@@ -14,6 +14,8 @@ import { RoundWizardPage } from './pages/RoundWizardPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SetupPage } from './pages/SetupPage'
 import { RecoveryDialog } from './pages/RecoveryDialog'
+import logo from '../assets/logo.svg'
+import logoHell from '../assets/logo-dunkelmodus.svg'
 
 export type Route =
   | { name: 'dashboard' }
@@ -107,7 +109,11 @@ export function App(): React.JSX.Element {
     <div className="app">
       <nav className="sidebar">
         <div className="brand">
-          Votura
+          {/* Zwei Fassungen der Wortmarke: die dunkelblaue Vorlage wäre auf
+              dunklem Grund nicht lesbar. Welche erscheint, entscheidet das
+              Design (siehe app.css). */}
+          <img className="brand-logo hell" src={logoHell} alt="Votura" />
+          <img className="brand-logo dunkel" src={logo} alt="Votura" />
           <small>Wahlgang- und Stimmzettelverwaltung</small>
         </div>
 

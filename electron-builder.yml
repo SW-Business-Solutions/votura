@@ -11,6 +11,11 @@ files:
   - package.json
   - '!**/*.map'
 
+# Das Programmsymbol wird zur Laufzeit für die Fenster gebraucht.
+extraResources:
+  - from: build/icon.png
+    to: build/icon.png
+
 # Offline-Betrieb: keine Update-Server, keine Publish-Ziele.
 publish: null
 
@@ -24,7 +29,7 @@ win:
     - target: zip
       arch: [x64]
   artifactName: ${productName}-${version}-${arch}-Setup.${ext}
-  # icon: build/icon.ico   # optional, sobald ein Icon hinterlegt ist
+  icon: build/icon.ico
 
 nsis:
   oneClick: false

@@ -79,7 +79,9 @@ export function DashboardPage(): React.JSX.Element {
           </div>
           <div className="row">
             <span className="badge">{PROCEDURE_LABELS[current.procedure]}</span>
-            <span className="badge">Kennung {current.roundCode}</span>
+            {/* In Vorbereitung gibt es noch keine Kennung – dann bleibt der
+                Hinweis weg, statt leer dazustehen. */}
+            {current.roundCode && <span className="badge">Kennung {current.roundCode}</span>}
             <span className="badge">
               Zettelversion v{current.ballotVersion}
               {current.approvedVersion === current.ballotVersion ? ' (freigegeben)' : ' (nicht freigegeben)'}

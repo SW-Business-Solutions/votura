@@ -100,6 +100,33 @@ p {
   letter-spacing: 0.4px;
   padding: 6px 8px 14px;
 }
+/* Wortmarke: je Design die passende Fassung, damit sie auf hellem wie auf
+   dunklem Grund lesbar bleibt. */
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 168px;
+  height: auto;
+  margin-bottom: 8px;
+}
+.brand-logo.dunkel {
+  display: none;
+}
+[data-theme='light'] .brand-logo.hell {
+  display: none;
+}
+[data-theme='light'] .brand-logo.dunkel {
+  display: block;
+}
+/* Auf Anmeldung und Ersteinrichtung steht die Marke über der Karte. */
+.brand-logo.start {
+  max-width: 260px;
+  margin: 0 auto 24px;
+}
+[data-theme='light'] .brand-logo.dunkel.start {
+  display: block;
+  margin: 0 auto 24px;
+}
 .brand small {
   display: block;
   font-weight: 400;
@@ -631,6 +658,8 @@ tr.muted td {
   height: 100%;
   width: 100%;
   display: flex;
+  /* Marke über der Karte, beides mittig. */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 24px;

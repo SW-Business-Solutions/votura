@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
 import { Card, Field } from '../components/ui'
+import logo from '../../assets/logo.svg'
+import logoHell from '../../assets/logo-dunkelmodus.svg'
 
 export function SetupPage(): React.JSX.Element {
   const app = useApp()
@@ -31,6 +33,8 @@ export function SetupPage(): React.JSX.Element {
 
   return (
     <div className="center-screen">
+      <img className="brand-logo hell start" src={logoHell} alt="Votura" />
+      <img className="brand-logo dunkel start" src={logo} alt="Votura" />
       <Card title="Ersteinrichtung">
         <p>
           Die Anwendung arbeitet vollständig lokal und offline. Legen Sie zuerst ein Konto für die
