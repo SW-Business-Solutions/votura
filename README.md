@@ -40,7 +40,7 @@ Die Dateien sind nicht signiert; Windows SmartScreen meldet sich daher beim erst
 ```bash
 npm install
 npm run dev          # Anwendung mit Hot Reload starten
-npm test             # 132 Unit- und Integrationstests
+npm test             # 134 Unit- und Integrationstests
 npm run typecheck    # Typprüfung für Main-, Preload- und Renderer-Code
 npm run build        # Produktionsbundle nach out/
 npm run dist:win     # Windows-Installer und portable EXE nach release/
@@ -146,6 +146,8 @@ Software.
 - **Unveränderbarkeit:** Abgeschlossene Wahlgänge sind im normalen Betrieb gesperrt.
 - **Beamer read-only:** Die Publikumsansicht besitzt keine Schreib-API und erhält nur reduzierte
   Anzeige-DTOs — keine IDs, Hashes oder internen Notizen.
+- **Kein Selbstaktualisieren:** Die Anwendung lädt und installiert nichts von sich aus; die
+  laufende Fassung bleibt die geprüfte Fassung.
 
 ## Nachvollziehbarkeit
 
@@ -196,6 +198,26 @@ abgeschottetes Veranstaltungsnetz vorgesehen:
   Rollen und Rechte, gleiche Audit-Zuordnung. Jeder Aufruf läuft im Sitzungskontext des
   angemeldeten Benutzers; Systemdialoge des Hauptrechners sind gesperrt. Details und Grenzen:
   `docs/adr/0005-fernzugriff-im-veranstaltungsnetz.md`.
+
+## Hinweis auf neue Fassungen
+
+Votura aktualisiert sich **nicht** selbst. Es gibt lediglich eine Auskunft darüber, ob eine neuere
+Fassung veröffentlicht wurde:
+
+<img src="docs/screenshots/14-aktualisierung.png" alt="Prüfung auf neue Fassungen" width="70%">
+
+- **Standardmäßig abgeschaltet.** Ohne ausdrückliche Einstellung nimmt die Anwendung keinerlei
+  Verbindung nach außen auf.
+- Die Prüfung erfolgt auf Knopfdruck oder — wenn eingeschaltet — einmal beim Start. Abgefragt wird
+  ausschließlich die öffentliche Release-Schnittstelle von GitHub; dabei wird die Adresse des
+  Rechners übermittelt, worauf die Einstellungsseite hinweist.
+- **Kein automatisches Laden, kein automatisches Einspielen.** Angezeigt wird die verfügbare
+  Fassung samt Verweis auf die Veröffentlichungsseite; das Einspielen bleibt eine bewusste
+  Entscheidung.
+
+Der Grund für diese Zurückhaltung ist nicht technischer Natur: Geprüft, freigegeben und im
+Audit-Trail dokumentiert ist immer die Fassung, die gerade läuft. Eine Wahlanwendung, die sich
+während einer Versammlung selbst austauscht, wäre nicht mehr nachvollziehbar.
 
 ## Datenablage
 

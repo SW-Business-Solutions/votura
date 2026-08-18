@@ -339,6 +339,15 @@ try {
     console.log('  Hinweis: Kein Wahlgang bekannt – Wahlgang-Ansichten übersprungen.')
   }
 
+  // Einstellungen: Bereich für den Hinweis auf neue Fassungen.
+  await sitzung.auswerten("window.location.hash = '#/settings'")
+  await warte(1000)
+  await sitzung.auswerten(
+    "(() => { const b = Array.from(document.querySelectorAll('button')).find((x) => /Backup|Sicherung/.test(x.textContent || '')); if (b) b.click(); return true })()"
+  )
+  await warte(1200)
+  await sitzung.aufnehmen('14-aktualisierung')
+
   // Akzeptanzverfahren: eigener Stimmzettel (Ja/Nein/Enthaltung je Bewerber)
   // und eigene Ergebnisdarstellung.
   if (bericht.wahlgangAkzeptanz) {

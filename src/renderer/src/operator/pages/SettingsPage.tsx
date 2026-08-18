@@ -1,6 +1,6 @@
 /** Einstellungen: Drucker, Konfiguration, Benutzer, Backup (§12, §55, §56, §81). */
 import { useEffect, useState } from 'react'
-import type { AppConfig, PrinterConfig, Role, User } from '@shared/types'
+import type { AppConfig, PrinterConfig, Role, UpdateCheckResult, User } from '@shared/types'
 import { PRINTER_KIND_LABELS, PRINTER_KINDS, ROLE_LABELS, ROLES } from '@shared/types'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
@@ -581,6 +581,19 @@ function BackupSettings(): React.JSX.Element {
   const app = useApp()
   const [config, setConfig] = useState<AppConfig>(app.settings!.config)
   const [busy, setBusy] = useState(false)
+  const [update, setUpdate] = useState<UpdateCheckResult | null>(null)
+  const [updateBusy, setUpdateBusy] = useState(false)
+
+  /** Änderung übernehmen und sofort festschreiben. */
+  const speichern = async (next: AppConfig): Promise<void> => {
+    setConfig(next)
+    try {
+      await api('system.saveConfig', next)
+      await app.refreshSettings()
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
 
   useEffect(() => setConfig(app.settings!.config), [app.settings])
 
@@ -629,6 +642,79 @@ function BackupSettings(): React.JSX.Element {
         >
           Backup jetzt erstellen
         </button>
+      </Card>
+
+      <Card title="Neue Fassung">
+        <div className="notice">
+          Votura arbeitet offline. Die Prüfung fragt einmalig die zuletzt veröffentlichte Fassung bei
+          GitHub ab und verrät dabei die Adresse dieses Rechners. Es wird nichts geladen und nichts
+          installiert — Sie erhalten nur die Auskunft, ob es eine neuere Fassung gibt.
+        </div>
+
+        <Checkbox
+          checked={config.updates.checkOnStart}
+          onChange={(value) =>
+            void speichern({ ...config, updates: { ...config.updates, checkOnStart: value } })
+          }
+          label="Beim Start nachsehen, sofern eine Verbindung besteht"
+        />
+        <Field label="Projekt auf GitHub" hint="Form: benutzer/projekt">
+          <input
+            value={config.updates.repository}
+            onChange={(e) =>
+              setConfig({ ...config, updates: { ...config.updates, repository: e.target.value } })
+            }
+            onBlur={() => void speichern(config)}
+          />
+        </Field>
+
+        <div className="row">
+          <button
+            disabled={updateBusy}
+            onClick={async () => {
+              setUpdateBusy(true)
+              try {
+                setUpdate(await api('update.check'))
+              } catch (error) {
+                app.reportError(error)
+              } finally {
+                setUpdateBusy(false)
+              }
+            }}
+          >
+            {updateBusy ? 'Wird geprüft …' : 'Jetzt auf neue Fassung prüfen'}
+          </button>
+          <span className="hint">Installiert: Version {app.setup?.version}</span>
+        </div>
+
+        {update && (
+          <div
+            className={`notice ${update.error ? 'warn' : update.updateAvailable ? 'ok' : ''}`}
+            style={{ marginTop: 12 }}
+          >
+            {update.error ? (
+              <>Die Prüfung war nicht möglich: {update.error}</>
+            ) : update.updateAvailable ? (
+              <>
+                <strong>Version {update.latestVersion} ist verfügbar</strong> (installiert:{' '}
+                {update.installedVersion}).
+                <br />
+                Ein Wechsel während einer laufenden Versammlung ist nicht ratsam — geprüft und
+                freigegeben wurde die Fassung, die gerade läuft.
+                {update.releaseUrl && (
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <button onClick={() => void api('system.openExternal', update.releaseUrl ?? '').catch(app.reportError)}>
+                      Veröffentlichungsseite öffnen
+                    </button>
+                    <span className="mono">{update.releaseUrl}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>Version {update.installedVersion} ist die aktuelle Fassung.</>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card title="Datenbank">

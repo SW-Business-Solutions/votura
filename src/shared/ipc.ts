@@ -44,6 +44,7 @@ import type {
   Role,
   RoundSummary,
   Session,
+  UpdateCheckResult,
   User,
   UUID
 } from './types'
@@ -221,6 +222,8 @@ export interface Api {
   'system.chooseImage': (title: string) => Promise<string | undefined>
   /** Ordner oder Datei im Explorer anzeigen. */
   'system.revealPath': (path: string) => Promise<void>
+  /** Eine Adresse im Standardbrowser öffnen – nur für die Veröffentlichungsseite. */
+  'system.openExternal': (url: string) => Promise<void>
   /** Eine erzeugte Datei an einen frei gewählten Ort kopieren (z. B. USB-Stick). */
   'system.saveCopy': (input: { source: string; suggestedName?: string }) => Promise<string | undefined>
   /** Dateien eines Exports auflisten (Archivinhalt). */
@@ -358,6 +361,10 @@ export interface Api {
   'export.event': (eventId: UUID) => Promise<ExportResult>
   'export.protocol': (roundId: UUID) => Promise<ExportResult>
   'backup.create': (target?: string) => Promise<BackupResult>
+
+  /* --------------------------------------------------- Neue Fassung prüfen */
+  /** Fragt die zuletzt veröffentlichte Fassung ab. Lädt und installiert nichts. */
+  'update.check': () => Promise<UpdateCheckResult>
 
   /* --------------------------------------------------------- Projektion */
   'projection.state': () => Promise<ProjectionState>

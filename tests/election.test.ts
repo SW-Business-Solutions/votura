@@ -12,6 +12,7 @@ import {
   withTemplateDefaults
 } from '../src/shared/election'
 import { buildRoundCode, derivedRoundLabel, roundLabelFor, sanitizeForPrint } from '../src/shared/format'
+import { istNeuer } from '../src/main/services/updates'
 import type { BallotTemplateConfig, Candidate, ElectionRound } from '../src/shared/types'
 
 function template(overrides: Partial<BallotTemplateConfig> = {}): BallotTemplateConfig {
@@ -271,5 +272,22 @@ describe('Stimmzettelvorlage je Verfahren', () => {
       [candidate('Clara Fenske'), candidate('Paul Marquardt')]
     )
     expect(issues.some((issue) => issue.field === 'template' && issue.level === 'error')).toBe(true)
+  })
+})
+
+describe('Versionsvergleich für den Aktualisierungshinweis', () => {
+  it('erkennt neuere Fassungen', () => {
+    expect(istNeuer('0.3.0', '0.2.2')).toBe(true)
+    expect(istNeuer('1.0.0', '0.9.9')).toBe(true)
+    expect(istNeuer('0.2.10', '0.2.9')).toBe(true)
+    expect(istNeuer('v0.2.3', '0.2.2')).toBe(true)
+  })
+
+  it('meldet gleiche oder aeltere Fassungen nicht als Aktualisierung', () => {
+    expect(istNeuer('0.2.2', '0.2.2')).toBe(false)
+    expect(istNeuer('0.2.1', '0.2.2')).toBe(false)
+    expect(istNeuer('0.9.9', '1.0.0')).toBe(false)
+    // Vorabfassungen zaehlen nicht als neuer als die fertige Fassung.
+    expect(istNeuer('0.2.2-rc.1', '0.2.2')).toBe(false)
   })
 })

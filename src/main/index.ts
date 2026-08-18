@@ -3,6 +3,7 @@ import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
 import { initLogger, logger } from './logger'
+import { checkOnStartIfEnabled } from './services/updates'
 import {
   broadcastProjection,
   networkStatus,
@@ -113,6 +114,21 @@ async function bootstrap(): Promise<void> {
 
   Menu.setApplicationMenu(null)
   createOperatorWindow()
+
+  /*
+   * Hinweis auf eine neue Fassung — nur wenn ausdrücklich eingeschaltet, und
+   * nur als Meldung. Es wird nichts geladen und nichts installiert; ein
+   * Fehlschlag bleibt ohne Folgen, damit der Betrieb ohne Netz normal läuft.
+   */
+  void checkOnStartIfEnabled()
+    .then((ergebnis) => {
+      if (!ergebnis?.updateAvailable) return
+      sendToOperator(IPC.notice, {
+        level: 'info',
+        message: `Version ${ergebnis.latestVersion} ist verfügbar (installiert: ${ergebnis.installedVersion}). Ein Wechsel während einer laufenden Versammlung ist nicht ratsam.`
+      })
+    })
+    .catch(() => undefined)
 }
 
 app.whenReady().then(async () => {

@@ -104,6 +104,7 @@ import {
   saveProjectionTheme
 } from './services/settings'
 import { exportEventArchive, exportProtocol, exportRound } from './export'
+import { checkForUpdate } from './services/updates'
 import {
   audienceState,
   closeAudienceWindow,
@@ -198,6 +199,15 @@ const api: Api = {
     // Als Data-URL einbetten: die Anzeige lädt damit nichts aus dem Dateisystem
     // oder dem Netz nach und funktioniert auch in der Netzwerkansicht.
     return `data:${mime};base64,${data.toString('base64')}`
+  },
+
+  'system.openExternal': async (url) => {
+    // Nur Veröffentlichungsseiten des Projekts: die Anwendung soll keine
+    // beliebigen Adressen aus dem Renderer heraus öffnen können.
+    if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\//.test(url)) {
+      throw new Error('Diese Adresse darf nicht geöffnet werden.')
+    }
+    await shell.openExternal(url)
   },
 
   'system.revealPath': async (path) => {
@@ -376,6 +386,7 @@ const api: Api = {
   'export.event': async (eventId) => exportEventArchive(eventId),
   'export.protocol': async (roundId) => exportProtocol(roundId),
   'backup.create': async (target) => createBackup(target),
+  'update.check': async () => checkForUpdate(),
 
   /* ------------------------------------------------------------ Projektion */
   'projection.state': async () => getProjectionState(),

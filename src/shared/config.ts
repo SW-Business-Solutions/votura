@@ -92,6 +92,12 @@ export const DEFAULT_CONFIG: AppConfig = {
   },
   backup: {
     directory: ''
+  },
+  // Abgeschaltet, bis jemand es ausdrücklich einschaltet: die Anwendung soll
+  // ohne Zutun keine Verbindung nach außen aufnehmen.
+  updates: {
+    checkOnStart: false,
+    repository: 'stevenweissheimer/votura'
   }
 }
 

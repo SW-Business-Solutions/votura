@@ -727,6 +727,32 @@ export interface AppConfig {
     directory: string
     secondaryDirectory?: string
   }
+  /**
+   * Hinweis auf neue Fassungen. Standardmäßig abgeschaltet: die Anwendung
+   * arbeitet offline, und ein Abruf verrät dem Anbieter die Adresse des
+   * Rechners. Sie lädt und installiert nichts von selbst — sie nennt nur die
+   * verfügbare Fassung (§2.2).
+   */
+  updates: {
+    /** Beim Start nachsehen, sofern eine Verbindung besteht. */
+    checkOnStart: boolean
+    /** Öffentliches Projekt, dessen Veröffentlichungen abgefragt werden. */
+    repository: string
+  }
+}
+
+export interface UpdateCheckResult {
+  /** Zeitpunkt der Abfrage. */
+  checkedAt: IsoDateTime
+  installedVersion: string
+  /** Fehlt, wenn die Abfrage nicht möglich war. */
+  latestVersion?: string
+  updateAvailable: boolean
+  releaseUrl?: string
+  publishedAt?: IsoDateTime
+  notes?: string
+  /** Klartext, wenn die Abfrage scheiterte – etwa ohne Internetverbindung. */
+  error?: string
 }
 
 /* --------------------------------------------------------------- Preflight */

@@ -45,7 +45,8 @@ export function getConfig(): AppConfig {
       ...DEFAULT_CONFIG.backup,
       ...stored.backup,
       directory: stored.backup?.directory || paths.backups
-    }
+    },
+    updates: { ...DEFAULT_CONFIG.updates, ...stored.updates }
   }
 }
 
