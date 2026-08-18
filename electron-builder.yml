@@ -20,6 +20,9 @@ win:
       arch: [x64]
     - target: portable
       arch: [x64]
+    # Entpackbares Archiv für Rechner, auf denen keine EXE ausgeführt werden darf.
+    - target: zip
+      arch: [x64]
   artifactName: ${productName}-${version}-${arch}-Setup.${ext}
   # icon: build/icon.ico   # optional, sobald ein Icon hinterlegt ist
 
