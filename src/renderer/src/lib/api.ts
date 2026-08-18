@@ -9,7 +9,7 @@
  */
 import type { ApiMethod, ApiParams, ApiResult } from '@shared/ipc'
 import type { AudienceWindowState, ProjectionState } from '@shared/projection'
-import type { PrintProgress, Session } from '@shared/types'
+import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
 interface Bridge {
   invoke<M extends ApiMethod>(method: M, ...args: ApiParams<M>): Promise<ApiResult<M>>
@@ -18,6 +18,7 @@ interface Bridge {
   onAudienceState(listener: (state: AudienceWindowState) => void): () => void
   onSessionChanged(listener: (session: Session | null) => void): () => void
   onNotice(listener: (notice: { level: 'info' | 'warning' | 'error'; message: string }) => void): () => void
+  onUpdateProgress(listener: (progress: UpdateProgress) => void): () => void
 }
 
 declare global {
@@ -126,7 +127,9 @@ function pollingBridge(): Bridge {
     onAudienceState: (listener) =>
       poll(() => remoteInvoke('projection.audienceState', []) as Promise<AudienceWindowState>, listener, 5000),
     onSessionChanged: () => () => undefined,
-    onNotice: () => () => undefined
+    onNotice: () => () => undefined,
+    // Ein zweites Gerät spielt keine Fassung ein – das geschieht am Hauptrechner.
+    onUpdateProgress: () => () => undefined
   }
 }
 

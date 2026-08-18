@@ -211,15 +211,24 @@ Fassung veröffentlicht wurde:
 - Die Prüfung erfolgt auf Knopfdruck oder — wenn eingeschaltet — einmal beim Start. Abgefragt wird
   ausschließlich die öffentliche Release-Schnittstelle von GitHub; dabei wird die Adresse des
   Rechners übermittelt, worauf die Einstellungsseite hinweist.
-- **Kein automatisches Laden, kein automatisches Einspielen.** Angezeigt wird die verfügbare
-  Fassung samt Verweis auf die Veröffentlichungsseite; das Einspielen bleibt eine bewusste
-  Entscheidung.
+- **Einspielen auf Knopfdruck, nie von selbst.** Liegt eine neuere Fassung vor, lässt sie sich
+  direkt aus der Anwendung heraus herunterladen und installieren — nach ausdrücklicher Bestätigung,
+  mit Prüfung gegen die veröffentlichte SHA-512-Prüfsumme und mit Eintrag im Audit-Trail.
+- **Gesperrt während einer Versammlung.** Solange ein Wahlgang nicht abgeschlossen ist, verweigert
+  die Anwendung den Wechsel und nennt den Grund.
 
 Der Grund für diese Zurückhaltung ist nicht technischer Natur: Geprüft, freigegeben und im
 Audit-Trail dokumentiert ist immer die Fassung, die gerade läuft. Eine Wahlanwendung, die sich
-während einer Versammlung selbst austauscht, wäre nicht mehr nachvollziehbar.
+während einer Versammlung selbst austauscht, wäre nicht mehr nachvollziehbar. Deshalb gibt es einen
+Knopf — aber keinen Automatismus.
+
+Bei der **portablen Fassung** wird nichts überschrieben: Die neue Programmdatei wird neben die
+laufende gelegt und der Ordner geöffnet. Den Wechsel vollziehen Sie selbst; die Daten im Ordner
+`Votura-Daten` bleiben unberührt.
 
 ## Datenablage
+
+**Installierte Fassung** — im Benutzerprofil:
 
 ```
 %APPDATA%\Votura\
@@ -231,6 +240,20 @@ während einer Versammlung selbst austauscht, wäre nicht mehr nachvollziehbar.
 
 Backups (konsistente Datenbankkopie, Konfiguration, Audit-Export, Exporte) landen standardmäßig
 unter `Dokumente\Votura-Backups`; ein zweites Ziel (z. B. USB-Stick) ist konfigurierbar.
+
+**Portable Fassung** — alles neben der Programmdatei. Programm und Daten bleiben zusammen, etwa auf
+einem USB-Stick, und der benutzte Rechner behält nichts zurück:
+
+```
+<Ordner der EXE>\
+  Votura-0.4.0-x64-portable.exe
+  Votura-Daten\
+    data\wahlzettel.sqlite
+    exports\   logs\   backups\   tmp\
+```
+
+Ist der Ort nicht beschreibbar — schreibgeschützter Stick, fehlende Rechte —, weicht die Anwendung
+auf das Benutzerprofil aus, statt den Start zu verweigern.
 
 ## Rechtlicher Hinweis
 

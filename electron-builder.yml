@@ -16,8 +16,16 @@ extraResources:
   - from: build/icon.png
     to: build/icon.png
 
-# Offline-Betrieb: keine Update-Server, keine Publish-Ziele.
-publish: null
+# Kein Update-Server: die Anwendung fragt ausschließlich die öffentlichen
+# Veröffentlichungen des Projekts ab, und nur auf ausdrückliche Anforderung.
+# Die Angabe hier sorgt dafür, dass beim Bauen eine `latest.yml` mit den
+# Prüfsummen entsteht — daran erkennt die Anwendung, ob eine heruntergeladene
+# Datei unverändert ist.
+publish:
+  - provider: github
+    owner: SW-Business-Solutions
+    repo: votura
+    releaseType: release
 
 win:
   target:

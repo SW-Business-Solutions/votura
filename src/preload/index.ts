@@ -7,7 +7,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ApiMethod, ApiParams, ApiResult, IpcChannels } from '@shared/ipc'
 import type { AudienceWindowState, ProjectionState } from '@shared/projection'
-import type { PrintProgress, Session } from '@shared/types'
+import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
 // Bewusst lokal definiert (kein Import eines geteilten Moduls), damit dieses
 // Preload eine eigenständige Datei bleibt und in der Sandbox lädt.
@@ -18,7 +18,8 @@ const IPC: IpcChannels = {
   audienceState: 'wz:audience-state',
   sessionChanged: 'wz:session-changed',
   notice: 'wz:notice',
-  audienceGetState: 'wz:audience-get-state'
+  audienceGetState: 'wz:audience-get-state',
+  updateProgress: 'wz:update-progress'
 }
 
 type IpcAnswer<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -46,7 +47,9 @@ const bridge = {
   onSessionChanged: (listener: (session: Session | null) => void) =>
     subscribe<Session | null>(IPC.sessionChanged, listener),
   onNotice: (listener: (notice: { level: 'info' | 'warning' | 'error'; message: string }) => void) =>
-    subscribe<{ level: 'info' | 'warning' | 'error'; message: string }>(IPC.notice, listener)
+    subscribe<{ level: 'info' | 'warning' | 'error'; message: string }>(IPC.notice, listener),
+  onUpdateProgress: (listener: (progress: UpdateProgress) => void) =>
+    subscribe<UpdateProgress>(IPC.updateProgress, listener)
 }
 
 export type OperatorBridge = typeof bridge

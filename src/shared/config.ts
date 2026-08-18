@@ -97,7 +97,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   // ohne Zutun keine Verbindung nach außen aufnehmen.
   updates: {
     checkOnStart: false,
-    repository: 'stevenweissheimer/votura'
+    repository: 'SW-Business-Solutions/votura'
   }
 }
 

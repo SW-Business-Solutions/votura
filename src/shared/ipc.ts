@@ -45,6 +45,9 @@ import type {
   RoundSummary,
   Session,
   UpdateCheckResult,
+  UpdateInstallCheck,
+  UpdateInstallResult,
+  UpdateProgress,
   User,
   UUID
 } from './types'
@@ -56,7 +59,8 @@ export const IPC = {
   audienceState: 'wz:audience-state',
   sessionChanged: 'wz:session-changed',
   notice: 'wz:notice',
-  audienceGetState: 'wz:audience-get-state'
+  audienceGetState: 'wz:audience-get-state',
+  updateProgress: 'wz:update-progress'
 } as const
 
 /**
@@ -365,6 +369,13 @@ export interface Api {
   /* --------------------------------------------------- Neue Fassung prüfen */
   /** Fragt die zuletzt veröffentlichte Fassung ab. Lädt und installiert nichts. */
   'update.check': () => Promise<UpdateCheckResult>
+  /** Ist ein Wechsel der Fassung gerade vertretbar? (Keine laufende Wahl.) */
+  'update.canInstall': () => Promise<UpdateInstallCheck>
+  /**
+   * Lädt das Installationsprogramm, prüft es gegen die veröffentlichte
+   * Prüfsumme, startet es und beendet die Anwendung. Nur Administration.
+   */
+  'update.install': () => Promise<UpdateInstallResult>
 
   /* --------------------------------------------------------- Projektion */
   'projection.state': () => Promise<ProjectionState>
@@ -402,4 +413,5 @@ export interface OperatorEvents {
   audienceState: AudienceWindowState
   sessionChanged: Session | null
   notice: { level: 'info' | 'warning' | 'error'; message: string }
+  updateProgress: UpdateProgress
 }

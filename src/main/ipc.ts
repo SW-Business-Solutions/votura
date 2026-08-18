@@ -105,12 +105,14 @@ import {
 } from './services/settings'
 import { exportEventArchive, exportProtocol, exportRound } from './export'
 import { checkForUpdate } from './services/updates'
+import { canInstallUpdate, downloadAndInstallUpdate } from './services/update-install'
 import {
   audienceState,
   closeAudienceWindow,
   getOperatorWindow,
   listDisplays,
-  openAudienceWindow
+  openAudienceWindow,
+  sendToOperator
 } from './windows'
 
 const api: Api = {
@@ -387,6 +389,9 @@ const api: Api = {
   'export.protocol': async (roundId) => exportProtocol(roundId),
   'backup.create': async (target) => createBackup(target),
   'update.check': async () => checkForUpdate(),
+  'update.canInstall': async () => canInstallUpdate(),
+  'update.install': async () =>
+    downloadAndInstallUpdate((fortschritt) => sendToOperator(IPC.updateProgress, fortschritt)),
 
   /* ------------------------------------------------------------ Projektion */
   'projection.state': async () => getProjectionState(),

@@ -1,10 +1,18 @@
 /** Einstellungen: Drucker, Konfiguration, Benutzer, Backup (§12, §55, §56, §81). */
 import { useEffect, useState } from 'react'
-import type { AppConfig, PrinterConfig, Role, UpdateCheckResult, User } from '@shared/types'
+import type {
+  AppConfig,
+  PrinterConfig,
+  Role,
+  UpdateCheckResult,
+  UpdateInstallCheck,
+  UpdateProgress,
+  User
+} from '@shared/types'
 import { PRINTER_KIND_LABELS, PRINTER_KINDS, ROLE_LABELS, ROLES } from '@shared/types'
-import { api } from '../../lib/api'
+import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
-import { Card, Checkbox, Field, Modal, NumberInput } from '../components/ui'
+import { Card, Checkbox, ConfirmDialog, Field, Modal, NumberInput } from '../components/ui'
 import { ProjectionDesign } from './ProjectionDesign'
 
 export function SettingsPage(): React.JSX.Element {
@@ -583,6 +591,13 @@ function BackupSettings(): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [update, setUpdate] = useState<UpdateCheckResult | null>(null)
   const [updateBusy, setUpdateBusy] = useState(false)
+  const [installBusy, setInstallBusy] = useState(false)
+  const [installCheck, setInstallCheck] = useState<UpdateInstallCheck | null>(null)
+  const [showInstall, setShowInstall] = useState(false)
+  const [progress, setProgress] = useState<UpdateProgress | null>(null)
+
+  // Fortschritt des Einspielens; der Hauptprozess meldet jede Stufe.
+  useEffect(() => bridge.onUpdateProgress(setProgress), [])
 
   /** Änderung übernehmen und sofort festschreiben. */
   const speichern = async (next: AppConfig): Promise<void> => {
@@ -701,14 +716,32 @@ function BackupSettings(): React.JSX.Element {
                 <br />
                 Ein Wechsel während einer laufenden Versammlung ist nicht ratsam — geprüft und
                 freigegeben wurde die Fassung, die gerade läuft.
-                {update.releaseUrl && (
-                  <div className="row" style={{ marginTop: 8 }}>
-                    <button onClick={() => void api('system.openExternal', update.releaseUrl ?? '').catch(app.reportError)}>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <button
+                    className="primary"
+                    disabled={installBusy || !app.can('system.manage')}
+                    onClick={async () => {
+                      try {
+                        const pruefung = await api('update.canInstall')
+                        setInstallCheck(pruefung)
+                        setShowInstall(true)
+                      } catch (error) {
+                        app.reportError(error)
+                      }
+                    }}
+                  >
+                    Jetzt einspielen
+                  </button>
+                  {update.releaseUrl && (
+                    <button
+                      onClick={() =>
+                        void api('system.openExternal', update.releaseUrl ?? '').catch(app.reportError)
+                      }
+                    >
                       Veröffentlichungsseite öffnen
                     </button>
-                    <span className="mono">{update.releaseUrl}</span>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             ) : (
               <>Version {update.installedVersion} ist die aktuelle Fassung.</>
@@ -716,6 +749,80 @@ function BackupSettings(): React.JSX.Element {
           </div>
         )}
       </Card>
+
+      {progress && (
+        <Card title="Neue Fassung wird eingespielt">
+          <div className="notice">{progress.message ?? 'Bitte warten …'}</div>
+          {progress.phase === 'download' && progress.totalBytes ? (
+            <>
+              <progress
+                value={progress.receivedBytes ?? 0}
+                max={progress.totalBytes}
+                style={{ width: '100%' }}
+              />
+              <div className="hint">
+                {Math.round((progress.receivedBytes ?? 0) / 1_048_576)} von{' '}
+                {Math.round(progress.totalBytes / 1_048_576)} MB
+              </div>
+            </>
+          ) : null}
+        </Card>
+      )}
+
+      {showInstall && (
+        <ConfirmDialog
+          title="Neue Fassung einspielen?"
+          danger
+          requireReason={false}
+          confirmLabel={installCheck?.possible ? 'Herunterladen und installieren' : 'Nicht möglich'}
+          message={
+            <>
+              {installCheck && !installCheck.possible ? (
+                <div className="notice warn">
+                  <strong>Jetzt nicht:</strong>
+                  <ul>
+                    {installCheck.reasons.map((grund) => (
+                      <li key={grund}>{grund}</li>
+                    ))}
+                  </ul>
+                  Bitte erst die laufenden Wahlgänge abschließen. Während einer Versammlung darf die
+                  Fassung nicht gewechselt werden.
+                </div>
+              ) : (
+                <>
+                  <p>
+                    Version <strong>{update?.latestVersion}</strong> wird heruntergeladen, gegen die
+                    veröffentlichte Prüfsumme geprüft und anschließend installiert.{' '}
+                    <strong>Votura beendet sich dabei</strong> — eine laufende Fassung lässt sich nicht
+                    ersetzen. Ihre Daten bleiben erhalten.
+                  </p>
+                  <p className="hint">
+                    Der Vorgang wird im Audit-Trail vermerkt. Führen Sie ihn nie unmittelbar vor oder
+                    während einer Versammlung durch, sondern prüfen Sie die neue Fassung vorher in Ruhe.
+                  </p>
+                </>
+              )}
+            </>
+          }
+          onCancel={() => setShowInstall(false)}
+          onConfirm={async () => {
+            if (!installCheck?.possible) {
+              setShowInstall(false)
+              return
+            }
+            setShowInstall(false)
+            setInstallBusy(true)
+            setProgress({ phase: 'start', message: 'Vorbereitung …' })
+            try {
+              await api('update.install')
+            } catch (error) {
+              setProgress(null)
+              setInstallBusy(false)
+              app.reportError(error)
+            }
+          }}
+        />
+      )}
 
       <Card title="Datenbank">
         <p className="hint">Speicherort der Datenbank:</p>

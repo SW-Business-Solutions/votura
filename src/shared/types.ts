@@ -741,6 +741,31 @@ export interface AppConfig {
   }
 }
 
+export interface UpdateInstallCheck {
+  possible: boolean
+  /** Klartext, warum ein Wechsel gerade nicht vertretbar ist. */
+  reasons: string[]
+}
+
+export interface UpdateProgress {
+  phase: 'start' | 'download' | 'verify' | 'ready' | 'error'
+  receivedBytes?: number
+  totalBytes?: number
+  message?: string
+}
+
+export interface UpdateInstallResult {
+  file: string
+  version: string
+  /** true, wenn die Datei gegen eine veröffentlichte Prüfsumme geprüft wurde. */
+  verified: boolean
+  /**
+   * 'installer' — die Installation startet und die Anwendung beendet sich.
+   * 'portable' — die neue Programmdatei liegt bereit; der Wechsel erfolgt von Hand.
+   */
+  mode: 'installer' | 'portable'
+}
+
 export interface UpdateCheckResult {
   /** Zeitpunkt der Abfrage. */
   checkedAt: IsoDateTime
