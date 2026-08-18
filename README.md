@@ -246,7 +246,7 @@ einem USB-Stick, und der benutzte Rechner behält nichts zurück:
 
 ```
 <Ordner der EXE>\
-  Votura-0.4.0-x64-portable.exe
+  Votura-0.4.1-x64-portable.exe
   Votura-Daten\
     data\wahlzettel.sqlite
     exports\   logs\   backups\   tmp\

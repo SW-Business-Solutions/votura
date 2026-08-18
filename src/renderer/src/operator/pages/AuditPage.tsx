@@ -5,6 +5,7 @@ import type { AuditChainCheck, AuditEntry } from '@shared/types'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
 import { Card } from '../components/ui'
+import { auditActionLabel } from '@shared/audit-labels'
 
 export function AuditPage(): React.JSX.Element {
   const app = useApp()
@@ -20,6 +21,7 @@ export function AuditPage(): React.JSX.Element {
     (entry) =>
       !filter ||
       entry.action.toLowerCase().includes(filter.toLowerCase()) ||
+      auditActionLabel(entry.action).toLowerCase().includes(filter.toLowerCase()) ||
       (entry.userName ?? '').toLowerCase().includes(filter.toLowerCase())
   )
 
@@ -72,7 +74,12 @@ export function AuditPage(): React.JSX.Element {
                 <tr key={entry.id}>
                   <td className="num">{entry.seq}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{formatDateTimeDe(entry.timestamp)}</td>
-                  <td>{entry.action}</td>
+                  <td>
+                    {auditActionLabel(entry.action)}
+                    {/* Der technische Schlüssel bleibt sichtbar: Er ist die
+                        eindeutige Bezeichnung im Export und in Rückfragen. */}
+                    <div className="hint mono">{entry.action}</div>
+                  </td>
                   <td>{entry.userName ?? 'System'}</td>
                   <td>
                     {entry.reason && <div>{entry.reason}</div>}

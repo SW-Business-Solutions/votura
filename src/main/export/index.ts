@@ -25,6 +25,7 @@ import {
   type UUID
 } from '@shared/types'
 import { FINAL_DECISION_LABELS } from '@shared/projection'
+import { auditActionLabel } from '@shared/audit-labels'
 import { auditForExport } from '../services/audit'
 import { requirePermission } from '../services/auth'
 import { accountingFor } from '../services/accounting'
@@ -187,7 +188,7 @@ function auditHtml(entries: AuditEntry[]): string {
       (entry) => `<tr>
         <td>${formatDateTimeDe(entry.timestamp, timeZone())}</td>
         <td>${escapeHtml(entry.userName ?? 'System')}</td>
-        <td>${escapeHtml(entry.action)}</td>
+        <td>${escapeHtml(auditActionLabel(entry.action))}<br /><span class="mono klein">${escapeHtml(entry.action)}</span></td>
         <td>${escapeHtml(entry.reason ?? '')}</td>
       </tr>`
     )

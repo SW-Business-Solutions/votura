@@ -12,6 +12,7 @@ import {
   withTemplateDefaults
 } from '../src/shared/election'
 import { buildRoundCode, derivedRoundLabel, roundLabelFor, sanitizeForPrint } from '../src/shared/format'
+import { AUDIT_ACTION_LABELS, auditActionLabel } from '../src/shared/audit-labels'
 import { istNeuer } from '../src/main/services/updates'
 import { pruefsummeAus, pruefsummeAusListe } from '../src/main/services/update-install'
 import type { BallotTemplateConfig, Candidate, ElectionRound } from '../src/shared/types'
@@ -316,5 +317,48 @@ describe('Pruefsummen fuer das Einspielen', () => {
     expect(pruefsummeAusListe(liste, 'Votura-0.4.0-x64-portable.exe')).toBe('BBBB==')
     expect(pruefsummeAusListe(liste, 'Votura-0.4.0-x64-Setup.exe')).toBe('AAAA==')
     expect(pruefsummeAusListe(liste, 'fremd.exe')).toBeUndefined()
+  })
+})
+
+describe('Klartext im Audit-Trail', () => {
+  it('uebersetzt die bekannten Aktionen', () => {
+    expect(auditActionLabel('round.completed')).toBe('Wahlgang abgeschlossen')
+    expect(auditActionLabel('auth.login_failed')).toBe('Anmeldung fehlgeschlagen')
+    expect(auditActionLabel('result.emergency_reopened')).toBe('Notfallkorrektur: Wahlgang geöffnet')
+  })
+
+  it('macht auch unbekannte Schluessel lesbar, statt sie zu verschlucken', () => {
+    // Etwa aus einer neueren Fassung stammende Einträge.
+    expect(auditActionLabel('round.irgendwas_neues')).toBe('Irgendwas neues (round)')
+    expect(auditActionLabel('kaputt')).toBe('kaputt')
+  })
+
+  it('kennt jede Aktion, die im Programm ausgeloest wird', async () => {
+    // Schutz vor vergessenen Einträgen: Was das Programm schreibt, muss auch
+    // benannt sein.
+    const { readdirSync, readFileSync, statSync } = await import('node:fs')
+    const { join } = await import('node:path')
+
+    const dateien: string[] = []
+    const sammle = (ordner: string): void => {
+      for (const eintrag of readdirSync(ordner)) {
+        const pfad = join(ordner, eintrag)
+        if (statSync(pfad).isDirectory()) sammle(pfad)
+        else if (pfad.endsWith('.ts')) dateien.push(pfad)
+      }
+    }
+    sammle(join(process.cwd(), 'src', 'main'))
+
+    const gefunden = new Set<string>()
+    for (const datei of dateien) {
+      const inhalt = readFileSync(datei, 'utf8')
+      for (const treffer of inhalt.matchAll(/action: '([a-z_]+\.[a-z_]+)'/g)) {
+        gefunden.add(treffer[1])
+      }
+    }
+
+    const ohneKlartext = [...gefunden].filter((aktion) => !AUDIT_ACTION_LABELS[aktion])
+    expect(ohneKlartext).toEqual([])
+    expect(gefunden.size).toBeGreaterThan(40)
   })
 })

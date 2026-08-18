@@ -49,6 +49,8 @@ export function documentShell(title: string, body: string): string {
   td.num, th.num { text-align: right; white-space: nowrap; }
   .meta { color: #333; font-size: 9.5pt; }
   .mono { font-family: "Consolas", "Courier New", monospace; font-size: 9pt; white-space: pre-wrap; }
+  /* Der technische Schlüssel steht klein unter dem Klartext der Aktion. */
+  .klein { font-size: 7.5pt; color: #555; }
   .ballot { border: 1px solid #000; padding: 8pt; width: 78mm; font-family: "Consolas", "Courier New", monospace;
             font-size: 8.5pt; line-height: 1.35; white-space: pre; }
   .hint { border-left: 3px solid #000; padding: 4pt 8pt; margin: 8pt 0; background: #f4f4f4; font-size: 9.5pt; }
