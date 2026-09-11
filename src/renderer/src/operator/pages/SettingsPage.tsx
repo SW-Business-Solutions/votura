@@ -361,8 +361,9 @@ function GeneralSettings(): React.JSX.Element {
             <strong>Jeder Zettel einzeln.</strong> Der Drucker bestätigt jeden Stimmzettel
             einzeln — die übermittelte Menge ist damit auf den Zettel genau bekannt. Bei
             Netzwerkdruckern (Epson ePOS) antwortet das Gerät erst, wenn der Zettel durchgelaufen,
-            geschnitten und der Status ermittelt ist; <strong>das dauert je Zettel etwa eine
-            Sekunde</strong>. Für 150 Zettel also rund zweieinhalb Minuten.
+            geschnitten und der Status ermittelt ist; <strong>gemessen sind das rund zwei Sekunden
+            je Zettel</strong> — für 150 Zettel also etwa fünf Minuten. Gebündelt halbiert sich
+            das ungefähr.
           </div>
         ) : (
           <div className="notice warn">
@@ -440,7 +441,7 @@ function GeneralSettings(): React.JSX.Element {
           onChange={(value) =>
             setConfig({ ...config, security: { ...config.security, requirePinForMassPrint: value } })
           }
-          label="Wahlleiter-PIN für Massendruck und Ergebnisbestaetigung verlangen"
+          label="Wahlleiter-PIN für Massendruck und Ergebnisbestätigung verlangen"
         />
         <Checkbox
           checked={config.security.requireFourEyesForResult}

@@ -316,6 +316,21 @@ export function createRound(input: RoundInput): ElectionRound {
     candidateIds: []
   }))
 
+  /*
+   * Die uebergebene Vorlage wird auf die Vorgaben des Verfahrens gesetzt, statt
+   * sie unveraendert zu uebernehmen. Sonst entstuende bei einer nur teilweise
+   * gefuellten Vorlage ein Stimmzettel ohne Wahlanweisung — und bei der
+   * Akzeptanzwahl einer ohne JA-Feld.
+   */
+  const template = {
+    ...defaultTemplateFor(input.procedure, {
+      seats,
+      maxVotes: input.maxVotes,
+      entryCount: 0
+    }),
+    ...input.template
+  }
+
   db()
     .prepare(
       `INSERT INTO rounds (id, event_id, sequential_number, agenda_order, round_code, round_label, title,
@@ -341,7 +356,7 @@ export function createRound(input: RoundInput): ElectionRound {
       startImmediately ? 'candidate_collection' : 'draft',
       input.parentRoundId ?? null,
       input.derivedAs ?? null,
-      JSON.stringify(input.template),
+      JSON.stringify(template),
       JSON.stringify(positions),
       input.orderMode,
       new Date().toISOString()
@@ -506,6 +521,16 @@ export function updateRound(input: RoundPatch & { id: UUID }): ElectionRound {
       input.id,
       input.rowVersion
     )
+
+  /*
+   * Ein Haken, der nichts bewirkt, ist eine schlechte Rueckmeldung: Wer
+   * "Kandidatennummern drucken" einschaltet, erwartet Nummern auf dem Zettel.
+   * Die Nummer haengt aber am Kandidaten, nicht an der Vorlage — fehlt sie,
+   * wird sie hier in der aktuellen Druckreihenfolge nachgetragen.
+   */
+  if (template.showCandidateNumbers && !before.candidatesLockedAt) {
+    vergibFehlendeKandidatennummern(input.id)
+  }
 
   const after = getRound(input.id)
   appendAudit({
@@ -850,4 +875,36 @@ function createRoundInternal(params: {
       new Date().toISOString()
     )
   return getRound(id)
+}
+
+/**
+ * Traegt fehlende Kandidatennummern in der aktuellen Druckreihenfolge nach.
+ *
+ * Bewusst mit direktem SQL statt ueber den Kandidatendienst: der importiert
+ * seinerseits aus diesem Modul. Zurueckgezogene Bewerber bekommen keine Nummer,
+ * damit auf dem Zettel keine Luecke entsteht, die nach einem Fehler aussieht.
+ */
+function vergibFehlendeKandidatennummern(roundId: UUID): void {
+  const rows = db()
+    .prepare(
+      `SELECT id, ballot_number FROM candidates
+        WHERE round_id = ? AND withdrawn = 0
+        ORDER BY sort_order, created_at`
+    )
+    .all<{ id: string; ballot_number: number | null }>(roundId)
+  if (!rows.length) return
+  if (rows.every((row) => row.ballot_number !== null)) return
+
+  db().transaction(() => {
+    rows.forEach((row, index) => {
+      db()
+        .prepare(`UPDATE candidates SET ballot_number = ? WHERE id = ?`)
+        .run(index + 1, row.id)
+    })
+  })
+  appendAudit({
+    action: 'candidate.numbers_assigned',
+    electionRoundId: roundId,
+    newValue: { anzahl: rows.length, ausloeser: 'Kandidatennummern drucken aktiviert' }
+  })
 }

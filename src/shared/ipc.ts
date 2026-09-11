@@ -91,7 +91,11 @@ export interface RoundInput {
   seatEnd?: number
   roundLabel?: string
   roundCode?: string
-  template: BallotTemplateConfig
+  /**
+   * Abweichungen von der Standardvorlage des Verfahrens. Fehlende Angaben
+   * ergaenzt der Dienst aus den Vorgaben des gewaehlten Wahlverfahrens.
+   */
+  template: Partial<BallotTemplateConfig>
   orderMode: CandidateOrderMode
   parentRoundId?: UUID
   derivedAs?: ElectionRound['derivedAs']
@@ -189,6 +193,8 @@ export interface BackupResult {
 export interface ExportResult {
   path: string
   files: string[]
+  /** Der Speichern-unter-Dialog wurde abgebrochen; es wurde nichts geschrieben. */
+  canceled?: boolean
 }
 
 export interface RoundDetail {
@@ -355,6 +361,8 @@ export interface Api {
     kind: 'lot_decision' | 'result'
     text: string
   }) => Promise<PrintStartResult>
+  /** Ergebnisbeleg auf dem Bondrucker – zum Weitergeben an die Versammlungsleitung. */
+  'print.resultSlip': (input: { roundId: UUID; printerId: string }) => Promise<PrintStartResult>
 
   /* ------------------------------------------------------------- Bilanz */
   'accounting.get': (roundId: UUID) => Promise<BallotAccounting>
@@ -373,9 +381,18 @@ export interface Api {
   'audit.verify': () => Promise<AuditChainCheck>
 
   /* ------------------------------------------------------------- Export */
-  'export.round': (input: { roundId: UUID; formats: ('pdf' | 'csv' | 'json')[] }) => Promise<ExportResult>
-  'export.event': (eventId: UUID) => Promise<ExportResult>
-  'export.protocol': (roundId: UUID) => Promise<ExportResult>
+  /*
+   * Exporte fragen vor dem Schreiben nach dem Ziel. `askTarget: false` schreibt
+   * ohne Rueckfrage in den Ablageordner der Anwendung – noetig fuer alles, was
+   * ohne Bedienung laeuft (Tests, Archivierung im Hintergrund).
+   */
+  'export.round': (input: {
+    roundId: UUID
+    formats: ('pdf' | 'csv' | 'json')[]
+    askTarget?: boolean
+  }) => Promise<ExportResult>
+  'export.event': (input: { eventId: UUID; askTarget?: boolean }) => Promise<ExportResult>
+  'export.protocol': (input: { roundId: UUID; askTarget?: boolean }) => Promise<ExportResult>
   'backup.create': (target?: string) => Promise<BackupResult>
 
   /* --------------------------------------------------- Neue Fassung prüfen */

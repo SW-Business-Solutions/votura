@@ -6,7 +6,7 @@
  * digitalisiert.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { checkAccounting } from '@shared/accounting'
 import { formatDateDe, formatDateTimeDe } from '@shared/format'
 import type { ExportResult } from '@shared/ipc'
@@ -370,18 +370,30 @@ function roundJson(roundId: UUID): unknown {
 
 /* --------------------------------------------------------------- Exporte */
 
-function exportDirectory(name: string): string {
-  return ensureDirectory(join(appPaths().exports, name))
+/**
+ * Zielordner eines Exports.
+ *
+ * Ohne Angabe landet der Export im Ablageordner der Anwendung. Wählt die
+ * Bedienung dagegen selbst ein Ziel, wird genau dieses genommen — Exporte
+ * sollen dort liegen, wo man sie wiederfindet, und nicht in einem Pfad, den
+ * man erst suchen muss.
+ */
+function exportDirectory(name: string, chosen?: string): string {
+  return ensureDirectory(chosen ? chosen : join(appPaths().exports, name))
 }
 
 function safeName(value: string): string {
   return value.replace(/[^A-Za-z0-9_.-]/g, '_')
 }
 
-export async function exportRound(roundId: UUID, formats: ('pdf' | 'csv' | 'json')[]): Promise<ExportResult> {
+export async function exportRound(
+  roundId: UUID,
+  formats: ('pdf' | 'csv' | 'json')[],
+  targetDirectory?: string
+): Promise<ExportResult> {
   requirePermission('export.read')
   const round = getRound(roundId)
-  const directory = exportDirectory(safeName(round.roundCode))
+  const directory = exportDirectory(safeName(round.roundCode), targetDirectory)
   const files: string[] = []
 
   if (formats.includes('pdf')) {
@@ -405,23 +417,46 @@ export async function exportRound(roundId: UUID, formats: ('pdf' | 'csv' | 'json
   return { path: directory, files }
 }
 
-export async function exportProtocol(roundId: UUID): Promise<ExportResult> {
+/**
+ * Wahlprotokoll als PDF. `targetFile` ist der vollständige Pfad einer Datei —
+ * so kann die Bedienung über „Speichern unter" selbst bestimmen, wohin.
+ */
+export async function exportProtocol(roundId: UUID, targetFile?: string): Promise<ExportResult> {
   requirePermission('export.read')
   const round = getRound(roundId)
-  const directory = exportDirectory(safeName(round.roundCode))
-  const file = join(directory, `${safeName(round.roundCode)}-protokoll.pdf`)
+  const file = targetFile
+    ? targetFile
+    : join(exportDirectory(safeName(round.roundCode)), `${safeName(round.roundCode)}-protokoll.pdf`)
+  if (targetFile) ensureDirectory(dirname(targetFile))
   await htmlToPdf(protocolHtml(roundId), file)
-  return { path: directory, files: [file] }
+  return { path: dirname(file), files: [file] }
+}
+
+/** Vorgeschlagener Dateiname für den Speichern-unter-Dialog. */
+export function protocolFileName(roundId: UUID): string {
+  const round = getRound(roundId)
+  return `${safeName(round.roundCode)}-protokoll.pdf`
+}
+
+/** Vorgeschlagener Ordnername für den vollständigen Export eines Wahlgangs. */
+export function roundExportFolderName(roundId: UUID): string {
+  return safeName(getRound(roundId).roundCode)
+}
+
+/** Vorgeschlagener Ordnername für das Archiv einer Veranstaltung. */
+export function eventArchiveFolderName(eventId: UUID): string {
+  const event = getEvent(eventId)
+  return `${safeName(event.organization)}-${event.date}`
 }
 
 /** Archivpaket der gesamten Veranstaltung (§32) inklusive ZIP. */
-export async function exportEventArchive(eventId: UUID): Promise<ExportResult> {
+export async function exportEventArchive(eventId: UUID, targetDirectory?: string): Promise<ExportResult> {
   requirePermission('export.read')
   const event = getEvent(eventId)
   const rounds = listRounds(eventId)
   const stamp = event.date
   const baseName = `${safeName(event.organization)}-${stamp}`
-  const directory = exportDirectory(baseName)
+  const directory = exportDirectory(baseName, targetDirectory)
   const zip = new ZipWriter()
   const files: string[] = []
 

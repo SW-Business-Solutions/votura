@@ -341,6 +341,7 @@ export function defaultTemplateFor(
     showLocation: false,
     showRoundNumber: true,
     showRoundCode: true,
+    showProcedure: true,
     showCandidateNumbers: context.entryCount >= 10,
     compactMode: base.compactMode,
     // Lesbarkeit geht vor Papierersparnis: große Namen, große Ankreuzfelder
@@ -383,6 +384,14 @@ export function withTemplateDefaults(
     showLocation: false,
     showRoundNumber: true,
     showRoundCode: true,
+    /*
+     * Bewusst aus: Wahlgänge aus einer älteren Fassung kennen das Feld nicht.
+     * Würde hier `true` stehen, bekäme ein bereits freigegebener Stimmzettel
+     * beim nächsten Druck eine zusätzliche Zeile — und damit einen anderen
+     * Ballot-Hash, ohne dass jemand etwas geändert hätte. Neue Wahlgänge
+     * erhalten die Angabe über defaultTemplateFor().
+     */
+    showProcedure: false,
     showCandidateNumbers: false,
     compactMode: false,
     largeCandidates: true,

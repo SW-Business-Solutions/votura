@@ -8,14 +8,20 @@
  *   ein zusammenhängender Druckauftrag mit abschliessendem Schnitt).
  * - Testdrucke sind oben UND unten unübersehbar als ungültig markiert.
  */
-import { formatDateDe } from '@shared/format'
-import type {
-  AppConfig,
-  BallotDocument,
-  BallotPreviewRow,
-  BallotSection,
-  BallotTemplateConfig,
-  PrinterConfig
+import { formatDateDe, formatDateTimeDe } from '@shared/format'
+import { FINAL_DECISION_LABELS } from '@shared/projection'
+import { rankCandidates, resultInputKind } from '@shared/result'
+import {
+  PROCEDURE_LABELS,
+  type AppConfig,
+  type BallotDocument,
+  type BallotPreviewRow,
+  type BallotSection,
+  type BallotTemplateConfig,
+  type ElectionResult,
+  type ElectionRound,
+  type IsoDateTime,
+  type PrinterConfig
 } from '@shared/types'
 import { centerText, cut, feed, ruler, spacing, text, wrapText, type PrintOp } from './ops'
 
@@ -92,7 +98,12 @@ export function buildBallotOps(
       ops.push(text(line, { align: 'center', bold: true }))
     }
   }
-  if (template.showRoundNumber) {
+  /*
+   * Ein Wahlgang in Vorbereitung hat noch keine Nummer (§7). Ohne die Prüfung
+   * auf den Wert stünde in der Vorschau ein blankes "WAHLGANG " — das sieht
+   * nach einem Fehler aus, wo nur die Vergabe noch aussteht.
+   */
+  if (template.showRoundNumber && document.round.label) {
     ops.push(text(`WAHLGANG ${document.round.label}`, { align: 'center', bold: true, doubleHeight: true }))
   }
 
@@ -107,6 +118,17 @@ export function buildBallotOps(
         bold: true
       })
     )
+  }
+
+  /*
+   * Nach welchem Verfahren gewählt wird, entscheidet darüber, wie der Zettel
+   * auszufüllen ist. Es gehört deshalb auf das Papier und nicht nur in die
+   * Bedienoberfläche — auf dem Zettel in der Hand ist keine Rückfrage möglich.
+   */
+  if (template.showProcedure) {
+    for (const line of wrapText(`Verfahren: ${PROCEDURE_LABELS[document.round.procedure]}`, width)) {
+      ops.push(text(line, { align: 'center' }))
+    }
   }
 
   ops.push(feed(1))
@@ -385,6 +407,167 @@ export function buildProtocolSlipOps(
   ops.push(text('_'.repeat(width)))
   ops.push(feed(1))
   ops.push(text(`WG: ${input.roundCode}`, { align: 'center' }))
+  ops.push(feed(1))
+  if (printer.cutEveryBallot) ops.push(cut())
+  else ops.push(feed(printer.feedLinesBeforeCut))
+  return ops
+}
+
+/* ------------------------------------------------------------- Ergebnisbon */
+
+export interface ResultSlipInput {
+  organization: string
+  eventTitle: string
+  date: string
+  round: Pick<ElectionRound, 'roundLabel' | 'roundCode' | 'title' | 'procedure' | 'seats' | 'maxVotes'>
+  result: ElectionResult
+  /** Namen der als gewählt festgestellten Bewerber, in Ergebnisreihenfolge. */
+  electedNames: string[]
+  operatorName: string
+  printedAt: IsoDateTime
+}
+
+/** Zeile mit linksbündigem Text und rechtsbündiger Zahl; kürzt bei Bedarf links. */
+function zweiSpalten(links: string, rechts: string, width: number): string {
+  const platz = Math.max(1, width - rechts.length - 1)
+  const gekuerzt = links.length > platz ? `${links.slice(0, Math.max(1, platz - 1))}.` : links
+  return `${gekuerzt.padEnd(platz, ' ')} ${rechts}`
+}
+
+/**
+ * Ergebnisbeleg zum Weitergeben an die Versammlungsleitung.
+ *
+ * Ausdrücklich KEIN Stimmzettel und auch kein Ersatz für das Wahlprotokoll:
+ * der Bon hält fest, was festgestellt wurde, damit das Ergebnis sofort nach
+ * vorne gegeben werden kann. Verbindlich bleibt das unterschriebene Protokoll —
+ * deshalb steht die Unterschriftszeile mit darauf.
+ */
+export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfig): PrintOp[] {
+  const width = printer.charsPerLine
+  const ops: PrintOp[] = []
+  const { result, round } = input
+  const art = resultInputKind(round)
+
+  ops.push(text(ruler(width, '='), { align: 'center' }))
+  ops.push(text('KEIN STIMMZETTEL', { align: 'center', bold: true, invert: true }))
+  ops.push(text(ruler(width, '='), { align: 'center' }))
+  ops.push(feed(1))
+
+  for (const line of wrapText(input.organization, width)) ops.push(text(line, { align: 'center', bold: true }))
+  for (const line of wrapText(input.eventTitle, width)) ops.push(text(line, { align: 'center' }))
+  ops.push(text(formatDateDe(input.date), { align: 'center' }))
+  ops.push(feed(1))
+
+  ops.push(text('ERGEBNIS', { align: 'center', bold: true, doubleHeight: true }))
+  if (round.roundLabel) ops.push(text(`WAHLGANG ${round.roundLabel}`, { align: 'center', bold: true }))
+  for (const line of wrapText(round.title.toUpperCase(), width)) {
+    ops.push(text(line, { align: 'center', bold: true }))
+  }
+  for (const line of wrapText(`Verfahren: ${PROCEDURE_LABELS[round.procedure]}`, width)) {
+    ops.push(text(line, { align: 'center' }))
+  }
+  if (round.seats > 1) ops.push(text(`${round.seats} Positionen zu besetzen.`, { align: 'center' }))
+  ops.push(feed(1))
+
+  /* ------------------------------------------------------------- Beteiligung */
+  if (result.countingMode === 'counted') {
+    ops.push(text(ruler(width), { align: 'center' }))
+    if (result.eligibleVoters !== undefined) {
+      ops.push(text(zweiSpalten('Stimmberechtigt', String(result.eligibleVoters), width)))
+    }
+    ops.push(text(zweiSpalten('Abgegebene Stimmzettel', String(result.ballotsCast), width)))
+    ops.push(text(zweiSpalten('Gültig', String(result.validBallots), width)))
+    ops.push(text(zweiSpalten('Ungültig', String(result.invalidBallots), width)))
+    if (result.abstentions !== undefined) {
+      ops.push(text(zweiSpalten('Enthaltungen', String(result.abstentions), width)))
+    }
+    ops.push(text(ruler(width), { align: 'center' }))
+    ops.push(feed(1))
+  } else {
+    ops.push(text('Ohne Auszählung festgestellt:', { align: 'center' }))
+    for (const line of wrapText(result.declaration ?? '—', width)) {
+      ops.push(text(line, { align: 'center', bold: true }))
+    }
+    ops.push(feed(1))
+  }
+
+  /* ----------------------------------------------------------------- Zahlen */
+  if (result.countingMode === 'counted') {
+    if (art === 'votes') {
+      const rangfolge = rankCandidates(result.resultData.candidates, round.seats)
+      for (const eintrag of rangfolge) {
+        const gewaehlt = input.electedNames.includes(eintrag.name)
+        const name = `${gewaehlt ? '*' : ' '}${String(eintrag.rank).padStart(2, '0')} ${eintrag.name}`
+        ops.push(text(zweiSpalten(name, String(eintrag.votes ?? 0), width), { bold: gewaehlt }))
+      }
+    } else if (art === 'yes_no_abstain') {
+      for (const eintrag of result.resultData.candidates) {
+        const gewaehlt = input.electedNames.includes(eintrag.name)
+        for (const line of wrapText(`${gewaehlt ? '*' : ' '}${eintrag.name}`, width)) {
+          ops.push(text(line, { bold: gewaehlt }))
+        }
+        /*
+         * Feste Spaltenbreiten statt rechtsbuendig: so stehen die Zahlen
+         * untereinander und lassen sich beim Vorlesen Zeile für Zeile
+         * abgleichen.
+         */
+        const spalte = (label: string, wert: number): string => `${label} ${String(wert).padStart(4, ' ')}`
+        ops.push(
+          text(
+            `    ${spalte('Ja  ', eintrag.yes ?? 0)}  ${spalte('Nein', eintrag.no ?? 0)}  ${spalte('Enth', eintrag.abstain ?? 0)}`
+          )
+        )
+      }
+    }
+
+    const global = result.resultData
+    if (global.yes !== undefined || global.no !== undefined || global.abstentions !== undefined) {
+      ops.push(feed(1))
+      if (global.yes !== undefined) ops.push(text(zweiSpalten('Ja', String(global.yes), width)))
+      if (global.no !== undefined) ops.push(text(zweiSpalten('Nein', String(global.no), width)))
+      if (global.abstentions !== undefined) {
+        ops.push(text(zweiSpalten('Enthaltung', String(global.abstentions), width)))
+      }
+    }
+    ops.push(feed(1))
+  }
+
+  /* ----------------------------------------------------------- Feststellung */
+  ops.push(text(ruler(width), { align: 'center' }))
+  if (result.finalDecision) {
+    for (const line of wrapText(FINAL_DECISION_LABELS[result.finalDecision], width)) {
+      ops.push(text(line, { align: 'center', bold: true, doubleHeight: true }))
+    }
+  }
+  if (result.determination) {
+    for (const line of wrapText(result.determination, width)) ops.push(text(line, { align: 'center' }))
+  }
+  if (input.electedNames.length) {
+    ops.push(feed(1))
+    ops.push(text('Gewählt:', { bold: true }))
+    for (const name of input.electedNames) {
+      for (const line of wrapText(`- ${name}`, width, 2)) ops.push(text(line))
+    }
+  }
+  if (result.lotDecision) {
+    ops.push(feed(1))
+    for (const line of wrapText(`Losentscheid: ${result.lotDecision}`, width)) ops.push(text(line))
+  }
+  ops.push(text(ruler(width), { align: 'center' }))
+
+  /* ------------------------------------------------------------------ Fuss */
+  ops.push(feed(1))
+  ops.push(text('Vorläufiger Beleg. Verbindlich ist das', { align: 'center' }))
+  ops.push(text('unterschriebene Wahlprotokoll.', { align: 'center' }))
+  ops.push(feed(2))
+  ops.push(text('Wahlleitung:'))
+  ops.push(text('_'.repeat(width)))
+  ops.push(feed(1))
+  ops.push(text(`WG: ${round.roundCode}`, { align: 'center' }))
+  ops.push(text(`Gedruckt ${formatDateTimeDe(input.printedAt)}`, { align: 'center' }))
+  for (const line of wrapText(`durch ${input.operatorName}`, width)) {
+    ops.push(text(line, { align: 'center' }))
+  }
   ops.push(feed(1))
   if (printer.cutEveryBallot) ops.push(cut())
   else ops.push(feed(printer.feedLinesBeforeCut))
