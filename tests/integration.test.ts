@@ -643,3 +643,112 @@ describe('Wahlgangkennung vor dem Druck', () => {
     expect(rounds.getRound(wahlgang.id).roundCode).toBe(gesperrt.roundCode)
   })
 })
+
+describe('Wahlgang in Vorbereitung nachträglich ändern', () => {
+  it('wechselt das Verfahren und richtet Vorlage und Stimmenzahl neu aus', async () => {
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Nachträgliche Änderung',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV29',
+      date: '2026-12-05',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    // Als Platzhalter angelegt: Gruppenwahl mit acht Sitzen.
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Wahl der Delegierten',
+      purpose: 'delegate',
+      procedure: 'group_preprinted',
+      seats: 8,
+      maxVotes: 8,
+      template: defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 0 }),
+      orderMode: 'manual'
+    })
+    expect(wahlgang.template.allowYes).toBe(false)
+
+    // Die Versammlung beschließt stattdessen das Akzeptanzverfahren.
+    const geaendert = rounds.updateRound({
+      id: wahlgang.id,
+      rowVersion: wahlgang.rowVersion,
+      procedure: 'acceptance_group'
+    })
+
+    expect(geaendert.procedure).toBe('acceptance_group')
+    // Die Vorlage folgt dem neuen Verfahren: Ja ist Pflicht, sonst ließe sich
+    // nur ablehnen oder enthalten.
+    expect(geaendert.template.allowYes).toBe(true)
+    // Das Akzeptanzverfahren kennt keine feste Höchststimmenzahl.
+    expect(geaendert.maxVotes).toBeNull()
+  })
+
+  it('vergibt eine vorab gesetzte Nummer und behält sie beim Start', async () => {
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Nummer vorab',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV30',
+      date: '2026-12-06',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Satzungsänderung',
+      purpose: 'motion',
+      procedure: 'yes_no_abstain',
+      seats: 1,
+      maxVotes: 1,
+      template: defaultTemplateFor('yes_no_abstain', { seats: 1, maxVotes: 1, entryCount: 0 }),
+      orderMode: 'manual'
+    })
+    expect(wahlgang.roundLabel).toBe('')
+
+    const benannt = rounds.updateRound({
+      id: wahlgang.id,
+      rowVersion: wahlgang.rowVersion,
+      roundLabel: '07'
+    })
+    expect(benannt.roundLabel).toBe('07')
+
+    const gestartet = rounds.startRound(wahlgang.id)
+    expect(gestartet.roundLabel).toBe('07')
+    expect(gestartet.roundCode).toBe('MV30-20261206-WG07')
+  })
+
+  it('sperrt den Verfahrenswechsel, sobald Stimmzettel gedruckt sind', async () => {
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Gesperrt nach Druck',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV31',
+      date: '2026-12-07',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Wahl des Vorsitzes',
+      purpose: 'chairperson',
+      procedure: 'single_multiple_candidates',
+      seats: 1,
+      maxVotes: 1,
+      template: defaultTemplateFor('single_multiple_candidates', { seats: 1, maxVotes: 1, entryCount: 2 }),
+      orderMode: 'manual'
+    })
+
+    const { verfahrenAenderbar } = rounds
+    expect(verfahrenAenderbar(wahlgang, 0).moeglich).toBe(true)
+    // Nach dem Druck ist der Wechsel gesperrt – die Zettel wären sonst wertlos.
+    const gesperrt = verfahrenAenderbar(wahlgang, 150)
+    expect(gesperrt.moeglich).toBe(false)
+    expect(gesperrt.grund).toContain('150')
+  })
+})

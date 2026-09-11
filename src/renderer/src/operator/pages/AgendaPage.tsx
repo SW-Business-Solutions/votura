@@ -20,6 +20,10 @@ export function AgendaPage(): React.JSX.Element {
   const [label, setLabel] = useState('')
   const [insertAt, setInsertAt] = useState<number | undefined>(undefined)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  /* Welcher Punkt wird gerade bearbeitet — und mit welchen Werten? */
+  const [bearbeitet, setBearbeitet] = useState<{ id: string; label: string; title: string; note: string } | null>(
+    null
+  )
 
   const load = useCallback(async () => {
     if (!event) return
@@ -81,6 +85,34 @@ export function AgendaPage(): React.JSX.Element {
     }
   }
 
+  const beginneBearbeitung = (item: AgendaItem): void =>
+    setBearbeitet({
+      id: item.id,
+      label: item.label ?? '',
+      title: item.title,
+      note: item.note ?? ''
+    })
+
+  const speichereBearbeitung = async (): Promise<void> => {
+    if (!bearbeitet) return
+    if (!bearbeitet.title.trim()) {
+      app.notify('error', 'Der Tagesordnungspunkt braucht eine Bezeichnung.')
+      return
+    }
+    try {
+      await api('agenda.update', {
+        id: bearbeitet.id,
+        title: bearbeitet.title,
+        label: bearbeitet.label,
+        note: bearbeitet.note
+      })
+      setBearbeitet(null)
+      await load()
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
   const toggleDone = async (item: AgendaItem): Promise<void> => {
     try {
       await api('agenda.update', { id: item.id, done: !item.done })
@@ -139,48 +171,115 @@ export function AgendaPage(): React.JSX.Element {
                       setDragIndex(null)
                     }}
                   >
-                    <span className="grip">⋮⋮</span>
-                    <input
-                      type="checkbox"
-                      checked={item.done}
-                      title="Als erledigt markieren"
-                      onChange={() => void toggleDone(item)}
-                      style={{ width: 18, height: 18, flex: 'none' }}
-                    />
-                    <span style={{ flex: 1, opacity: item.done ? 0.55 : 1 }}>
-                      <strong>
-                        {item.label ? `${item.label} · ` : ''}
-                        {item.title}
-                      </strong>
-                      {round && (
-                        <div className="hint">
-                          {round.sequentialNumber > 0 ? `Wahlgang ${round.roundLabel} · ` : 'In Vorbereitung · '}
-                          {PROCEDURE_LABELS[round.procedure]} · {ROUND_STATUS_LABELS[round.status]}
+                    {bearbeitet?.id === item.id ? (
+                      /* Bearbeitung direkt in der Zeile — im Saal muss das schnell
+                         gehen, ohne Dialog und ohne Sprung an eine andere Stelle. */
+                      <div style={{ flex: 1, display: 'grid', gap: 8 }}>
+                        <div className="row">
+                          <div style={{ width: 120 }}>
+                            <Field label="Nummer">
+                              <input
+                                value={bearbeitet.label}
+                                placeholder="z. B. 4"
+                                onChange={(e) => setBearbeitet({ ...bearbeitet, label: e.target.value })}
+                              />
+                            </Field>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <Field label="Bezeichnung">
+                              <input
+                                autoFocus
+                                value={bearbeitet.title}
+                                onChange={(e) => setBearbeitet({ ...bearbeitet, title: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') void speichereBearbeitung()
+                                  if (e.key === 'Escape') setBearbeitet(null)
+                                }}
+                              />
+                            </Field>
+                          </div>
                         </div>
-                      )}
-                      {item.note && <div className="hint">{item.note}</div>}
-                    </span>
-                    <button className="ghost" onClick={() => void move(index, index - 1)} title="Nach oben">
-                      ↑
-                    </button>
-                    <button className="ghost" onClick={() => void move(index, index + 1)} title="Nach unten">
-                      ↓
-                    </button>
-                    {round ? (
-                      <button onClick={() => navigate(`round/${round.id}`)}>Öffnen</button>
+                        <Field label="Notiz (nur intern sichtbar)">
+                          <input
+                            value={bearbeitet.note}
+                            onChange={(e) => setBearbeitet({ ...bearbeitet, note: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void speichereBearbeitung()
+                              if (e.key === 'Escape') setBearbeitet(null)
+                            }}
+                          />
+                        </Field>
+                        {round && (
+                          <div className="hint">
+                            Dieser Punkt gehört zu einem Wahlgang. Die Bezeichnung hier ist die
+                            Überschrift in der Tagesordnung — den Wahlgang selbst benennen Sie in
+                            seinen Einstellungen um.
+                          </div>
+                        )}
+                        <div className="row">
+                          <button className="primary" onClick={() => void speichereBearbeitung()}>
+                            Übernehmen
+                          </button>
+                          <button className="ghost" onClick={() => setBearbeitet(null)}>
+                            Abbrechen
+                          </button>
+                        </div>
+                      </div>
                     ) : (
-                      <button
-                        className="ghost"
-                        onClick={async () => {
-                          try {
-                            setItems(await api('agenda.remove', item.id))
-                          } catch (error) {
-                            app.reportError(error)
-                          }
-                        }}
-                      >
-                        Entfernen
-                      </button>
+                      <>
+                        <span className="grip">⋮⋮</span>
+                        <input
+                          type="checkbox"
+                          checked={item.done}
+                          title="Als erledigt markieren"
+                          onChange={() => void toggleDone(item)}
+                          style={{ width: 18, height: 18, flex: 'none' }}
+                        />
+                        <span style={{ flex: 1, opacity: item.done ? 0.55 : 1 }}>
+                          <strong>
+                            {item.label ? `${item.label} · ` : ''}
+                            {item.title}
+                          </strong>
+                          {round && (
+                            <div className="hint">
+                              {round.sequentialNumber > 0
+                                ? `Wahlgang ${round.roundLabel} · `
+                                : 'In Vorbereitung · '}
+                              {PROCEDURE_LABELS[round.procedure]} · {ROUND_STATUS_LABELS[round.status]}
+                            </div>
+                          )}
+                          {item.note && <div className="hint">{item.note}</div>}
+                        </span>
+                        <button className="ghost" onClick={() => void move(index, index - 1)} title="Nach oben">
+                          ↑
+                        </button>
+                        <button className="ghost" onClick={() => void move(index, index + 1)} title="Nach unten">
+                          ↓
+                        </button>
+                        <button
+                          className="ghost"
+                          onClick={() => beginneBearbeitung(item)}
+                          title="Nummer, Bezeichnung und Notiz ändern"
+                        >
+                          Bearbeiten
+                        </button>
+                        {round ? (
+                          <button onClick={() => navigate(`round/${round.id}`)}>Öffnen</button>
+                        ) : (
+                          <button
+                            className="ghost"
+                            onClick={async () => {
+                              try {
+                                setItems(await api('agenda.remove', item.id))
+                              } catch (error) {
+                                app.reportError(error)
+                              }
+                            }}
+                          >
+                            Entfernen
+                          </button>
+                        )}
+                      </>
                     )}
                   </li>
                 )

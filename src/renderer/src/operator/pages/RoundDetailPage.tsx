@@ -7,6 +7,7 @@ import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, ConfirmDialog, StatusBadge } from '../components/ui'
+import { SetupTab } from './round/SetupTab'
 import { CandidatesTab } from './round/CandidatesTab'
 import { MotionTab } from './round/MotionTab'
 import { BallotTab } from './round/BallotTab'
@@ -24,6 +25,7 @@ function tabsFor(round: ElectionRound): { key: string; label: string }[] {
   const isMotion = round.purpose === 'motion' || profile.entryKind === 'options' || round.procedure === 'yes_no_abstain'
 
   const tabs: { key: string; label: string }[] = [
+    { key: 'setup', label: 'Grunddaten' },
     isMotion
       ? { key: 'candidates', label: 'Antrag' }
       : { key: 'candidates', label: profile.entryKind === 'options' ? 'Optionen' : 'Kandidaten' }
@@ -148,6 +150,7 @@ export function RoundDetailPage({ roundId, tab }: { roundId: string; tab?: strin
         ) : (
           <CandidatesTab detail={detail} reload={reload} />
         ))}
+      {active === 'setup' && <SetupTab detail={detail} reload={reload} />}
       {active === 'ballot' && <BallotTab detail={detail} reload={reload} />}
       {active === 'print' && <PrintTab detail={detail} reload={reload} />}
       {active === 'accounting' && <AccountingTab detail={detail} reload={reload} />}

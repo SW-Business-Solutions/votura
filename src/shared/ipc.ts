@@ -100,6 +100,13 @@ export interface RoundInput {
 
 export interface RoundPatch {
   title?: string
+  /**
+   * Wahlzweck und Verfahren lassen sich nur ändern, solange der Wahlgang noch
+   * in Vorbereitung ist und nichts gedruckt wurde. Ein Verfahrenswechsel
+   * verändert den Stimmzettel grundlegend.
+   */
+  purpose?: ElectionPurpose
+  procedure?: ElectionProcedure
   seats?: number
   maxVotes?: number | null
   seatStart?: number
@@ -108,6 +115,11 @@ export interface RoundPatch {
   orderMode?: CandidateOrderMode
   orderSeed?: number
   roundCode?: string
+  /**
+   * Nummer vorab vergeben (z. B. „04"). Ohne Angabe entsteht sie erst beim
+   * Start des Wahlgangs.
+   */
+  roundLabel?: string
   positions?: { id?: UUID; title: string }[]
   /** Optimistic Locking (§59). */
   rowVersion: number

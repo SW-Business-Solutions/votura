@@ -371,8 +371,32 @@ export function createRound(input: RoundInput): ElectionRound {
 }
 
 /** Änderungen, die den gedruckten Stimmzettel betreffen. */
+/**
+ * Darf an diesem Wahlgang noch das Verfahren geändert werden?
+ *
+ * Ein Verfahrenswechsel stellt den Stimmzettel auf den Kopf: aus angekreuzten
+ * Namen wird ein Votum je Bewerber, aus Bewerbern werden Optionen. Das ist
+ * vertretbar, solange der Wahlgang vorbereitet wird — sobald die Stimmabgabe
+ * begonnen hat oder Zettel gedruckt sind, nicht mehr.
+ */
+export function verfahrenAenderbar(round: ElectionRound, gedruckt: number): { moeglich: boolean; grund?: string } {
+  if (round.status !== 'draft' && round.status !== 'candidate_collection') {
+    return { moeglich: false, grund: `Der Wahlgang ist im Status „${round.status}" — das Verfahren steht damit fest.` }
+  }
+  if (gedruckt > 0) {
+    return {
+      moeglich: false,
+      grund: `Es wurden bereits ${gedruckt} Stimmzettel gedruckt. Ein Verfahrenswechsel würde sie unbrauchbar machen.`
+    }
+  }
+  return { moeglich: true }
+}
+
 function isBallotRelevant(before: ElectionRound, patch: RoundPatch): boolean {
   if (patch.title !== undefined && patch.title !== before.title) return true
+  if (patch.purpose !== undefined && patch.purpose !== before.purpose) return true
+  if (patch.procedure !== undefined && patch.procedure !== before.procedure) return true
+  if (patch.roundLabel !== undefined && patch.roundLabel !== before.roundLabel) return true
   if (patch.seats !== undefined && patch.seats !== before.seats) return true
   if (patch.maxVotes !== undefined && patch.maxVotes !== before.maxVotes) return true
   if (patch.seatStart !== undefined && patch.seatStart !== before.seatStart) return true
@@ -399,7 +423,50 @@ export function updateRound(input: RoundPatch & { id: UUID }): ElectionRound {
     throw new Error('Der Wahlgang wurde zwischenzeitlich geändert. Bitte neu laden.')
   }
 
-  const ballotRelevant = isBallotRelevant(before, input)
+  /*
+   * Zweck und Verfahren ändern sich nur in der Vorbereitung. Das Verfahren
+   * bestimmt den Stimmzettel; ein Wechsel nach dem Druck würde ausgegebene
+   * Zettel entwerten.
+   */
+  const wechseltVerfahren = input.procedure !== undefined && input.procedure !== before.procedure
+  if (wechseltVerfahren || (input.purpose !== undefined && input.purpose !== before.purpose)) {
+    const erlaubt = verfahrenAenderbar(before, accountingFor(input.id).printed)
+    if (!erlaubt.moeglich) throw new Error(erlaubt.grund)
+  }
+
+  const procedure = input.procedure ?? before.procedure
+  const profile = profileFor(procedure)
+
+  /*
+   * Beim Verfahrenswechsel richten sich Sitzzahl, Höchststimmenzahl und die
+   * Stimmzettelvorlage nach dem neuen Verfahren — sonst bliebe etwa bei der
+   * Akzeptanzwahl das JA-Feld abgeschaltet, weil die alte Vorlage es nicht
+   * kannte.
+   */
+  const seats = input.seats ?? (wechseltVerfahren && !profile.multiSeat ? 1 : before.seats)
+  const maxVotes =
+    input.maxVotes !== undefined
+      ? input.maxVotes
+      : wechseltVerfahren
+        ? profile.defaultMaxVotes(seats)
+        : before.maxVotes
+  const template = input.template
+    ? withTemplateDefaults(input.template, procedure)
+    : wechseltVerfahren
+      ? defaultTemplateFor(procedure, {
+          seats,
+          maxVotes,
+          // Direkt gezählt statt über den Kandidatendienst — der importiert
+          // seinerseits aus diesem Modul.
+          entryCount: Number(
+            db()
+              .prepare(`SELECT COUNT(*) AS n FROM candidates WHERE round_id = ? AND withdrawn = 0`)
+              .get<{ n: number }>(input.id)?.n ?? 0
+          )
+        })
+      : before.template
+
+  const ballotRelevant = isBallotRelevant(before, input) || wechseltVerfahren
   const wasApproved = before.approvedVersion === before.ballotVersion
   const newVersion = ballotRelevant && wasApproved ? before.ballotVersion + 1 : before.ballotVersion
 
@@ -409,24 +476,32 @@ export function updateRound(input: RoundPatch & { id: UUID }): ElectionRound {
     candidateIds: before.positions.find((existing) => existing.id === position.id)?.candidateIds ?? []
   }))
 
+  // Vorab vergebene Nummer: Sie wird beim Start übernommen, statt neu gezogen.
+  const roundLabel =
+    input.roundLabel === undefined ? before.roundLabel : input.roundLabel.trim().toUpperCase()
+
   db()
     .prepare(
-      `UPDATE rounds SET title = ?, seats = ?, max_votes = ?, seat_start = ?, seat_end = ?,
-                         template_json = ?, positions_json = ?, order_mode = ?, order_seed = ?,
-                         round_code = ?, ballot_version = ?, row_version = row_version + 1
+      `UPDATE rounds SET title = ?, purpose = ?, procedure = ?, seats = ?, max_votes = ?,
+                         seat_start = ?, seat_end = ?, template_json = ?, positions_json = ?,
+                         order_mode = ?, order_seed = ?, round_code = ?, round_label = ?,
+                         ballot_version = ?, row_version = row_version + 1
        WHERE id = ? AND row_version = ?`
     )
     .run(
       input.title?.trim() ?? before.title,
-      input.seats ?? before.seats,
-      input.maxVotes === undefined ? before.maxVotes : input.maxVotes,
+      input.purpose ?? before.purpose,
+      procedure,
+      seats,
+      maxVotes,
       input.seatStart ?? before.seatStart ?? null,
       input.seatEnd ?? before.seatEnd ?? null,
-      JSON.stringify(input.template ?? before.template),
+      JSON.stringify(template),
       JSON.stringify(positions ?? before.positions),
       input.orderMode ?? before.orderMode,
       input.orderSeed ?? before.orderSeed ?? null,
       (input.roundCode ?? before.roundCode).toUpperCase(),
+      roundLabel,
       newVersion,
       input.id,
       input.rowVersion
