@@ -6,7 +6,7 @@
  * geht es mit jeder anderen Schaltfläche auf dieser Seite.
  */
 import { useEffect, useState, type JSX } from 'react'
-import type { PresentationInfo, PrompterWindowState } from '@shared/presentation'
+import { presentationKind, type PresentationInfo, type PrompterWindowState } from '@shared/presentation'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
 import { Card } from './ui'
@@ -110,7 +110,7 @@ export function PresentationLibrary(): JSX.Element {
     <Card title="Präsentationen">
       <div className="row" style={{ gap: 8, marginBottom: 12 }}>
         <button onClick={() => void einspeisen()} disabled={laeuft}>
-          {laeuft ? 'Wird eingespeist …' : 'HTML-Präsentation einspeisen'}
+          {laeuft ? 'Wird eingespeist …' : 'Präsentation einspeisen (HTML oder PDF)'}
         </button>
         <button onClick={() => void prompterUmschalten()}>
           {prompter.open ? 'Vortragssteuerung schließen' : 'Vortragssteuerung öffnen'}
@@ -128,6 +128,7 @@ export function PresentationLibrary(): JSX.Element {
           <thead>
             <tr>
               <th>Präsentation</th>
+              <th>Art</th>
               <th>Folien</th>
               <th>Größe</th>
               <th />
@@ -143,6 +144,7 @@ export function PresentationLibrary(): JSX.Element {
                     {laufend && <span className="badge accent" style={{ marginLeft: 8 }}>auf dem Beamer</span>}
                     <div className="muted small">{eintrag.fileName}</div>
                   </td>
+                  <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
                   <td>{eintrag.slideCount ?? '–'}</td>
                   <td>{groesse(eintrag.size)}</td>
                   <td className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
@@ -164,9 +166,15 @@ export function PresentationLibrary(): JSX.Element {
       )}
 
       <p className="muted small" style={{ marginTop: 10 }}>
-        Die Präsentation läuft in einem abgeschotteten Rahmen: Sie sieht weder Wahldaten noch die
-        Oberfläche und kann nichts nachladen. Auf dem Beamer und in der Netzwerkansicht erscheint
-        dieselbe Folie.
+        Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder
+        Wahldaten noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet
+        Votura selbst — ohne Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der
+        Netzwerkansicht erscheint in beiden Fällen dieselbe Folie.
+      </p>
+      <p className="hint">
+        <strong>PowerPoint:</strong> dort über <em>Datei → Exportieren → PDF/XPS erstellen</em>
+        speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu;
+        Animationen und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
       </p>
     </Card>
   )

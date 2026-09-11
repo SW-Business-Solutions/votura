@@ -129,6 +129,24 @@ Ausgeliefert wird ausschließlich die Datei, die **gerade projiziert wird** — 
 Bibliothek. Sonst könnte jedes Gerät im Netz eine noch ungezeigte Präsentation abrufen, indem es
 Kennungen durchprobiert.
 
+**PDF als zweite Art.** Ein Eintrag trägt `kind: 'html' | 'pdf'`; fehlt das Feld, gilt HTML — so
+bleiben Einträge aus älteren Fassungen gültig. Nach außen verhalten sich beide gleich, nämlich als
+durchnummerierte Folien: derselbe Zustand, dieselbe Vortragssteuerung, dieselbe Netzwerkansicht.
+
+Ein PDF wird nicht eingebettet, sondern mit pdf.js auf eine Leinwand **gezeichnet**. Ein
+eingebetteter Betrachter brächte Werkzeug- und Blätterleiste mit, die der Saal nicht sehen soll,
+und keinen verlässlichen Weg, die Seite von außen zu setzen. Drei Eigenheiten gehören dazu:
+
+- pdf.js läuft **ohne Arbeiterprozess**. Die Anwendung wird aus `file://` geladen; ein Worker von
+  dort hat eine undurchsichtige Herkunft und wird abgewiesen. Der Arbeiter-Bau bringt seinen
+  Nachrichtenbehandler auch als gewöhnliches Modul mit — liegt er unter `globalThis.pdfjsWorker`,
+  rechnet pdf.js im Hauptstrang.
+- Das Schema ist `corsEnabled`, und die Antwort trägt `Access-Control-Allow-Origin`. pdf.js holt
+  das Dokument per XHR, und ein eigenes Schema gilt vom `file://`-Ursprung aus als fremde Herkunft.
+- Gemessen wird mit `clientWidth`, nicht mit `getBoundingClientRect()`. In der Vortragssteuerung
+  sitzt der Rahmen in einem Kasten, der per `transform` verkleinert wird; das Rechteck lieferte
+  die bereits geschrumpften Maße.
+
 ## Video
 
 Ein Film zwischen zwei Wahlgängen läuft auf Beamer **und** Netzwerkansicht gleichzeitig und mit

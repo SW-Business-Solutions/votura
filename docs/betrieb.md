@@ -94,8 +94,11 @@ Wahlansicht. Zurück zum Wahlgang geht es mit jeder Schaltfläche unter *Anzeige
 
 **Präsentation (HTML)**
 
-- *HTML-Präsentation einspeisen* → Datei wählen. Sie wird kopiert, nicht verknüpft: Der Stick darf
-  danach wieder in die Tasche.
+- *Präsentation einspeisen* → HTML-Foliensatz **oder PDF** wählen. Die Datei wird kopiert, nicht
+  verknüpft: Der Stick darf danach wieder in die Tasche.
+- **Aus PowerPoint:** dort über *Datei → Exportieren → PDF/XPS erstellen* speichern und die
+  PDF-Datei einspeisen. Layout und Schriften bleiben originalgetreu; Animationen und
+  Folienübergänge gehen verloren.
 - *Auf den Beamer* startet sie; die **Vortragssteuerung** öffnet sich mit. Dieses Fenster lässt
   sich auf den Laptop der vortragenden Person schieben — es zeigt die laufende Folie, die nächste,
   die Position und die Zeit seit Beginn. Wahlgänge lassen sich von dort nicht bedienen.
@@ -103,7 +106,8 @@ Wahlansicht. Zurück zum Wahlgang geht es mit jeder Schaltfläche unter *Anzeige
 - Wie eine solche Datei aufgebaut sein muss, steht in `docs/praesentationen.md`; eine lauffähige
   Vorlage liegt als `docs/beispiel-praesentation.html` bei.
 - **Vorher prüfen:** Steht in der Vortragssteuerung `1 / n` und nicht `1 / ?`? Nur dann kennt
-  Votura die Folienzahl und weiß, wann der Vortrag zu Ende ist.
+  Votura die Folienzahl und weiß, wann der Vortrag zu Ende ist. Bei einem PDF steht sie sofort
+  fest; bei HTML nur, wenn der Foliensatz sie meldet.
 
 **Video**
 

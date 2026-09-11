@@ -9,7 +9,7 @@
  */
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { presentationPath, presentationUrl } from '@shared/presentation'
+import { presentationKind, presentationPath, presentationUrl } from '@shared/presentation'
 import { videoPath, videoUrl } from '@shared/video'
 import { EMPTY_PROJECTION_STATE, type ProjectionState } from '@shared/projection'
 import { ProjectionScreen } from './projection/ProjectionScreen'
@@ -112,8 +112,8 @@ function AudienceApp(): React.JSX.Element {
   const imFenster = Boolean(window.projection)
   const presentationSrc = state.presentation
     ? imFenster
-      ? presentationUrl(state.presentation.id)
-      : presentationPath(state.presentation.id)
+      ? presentationUrl(state.presentation.id, presentationKind(state.presentation))
+      : presentationPath(state.presentation.id, presentationKind(state.presentation))
     : undefined
 
   const videoSrc = state.video

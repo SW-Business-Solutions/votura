@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, Menu, protocol, session } from 'electron'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { readFile } from 'node:fs/promises'
-import { PRESENTATION_SCHEME } from '@shared/presentation'
+import { PRESENTATION_SCHEME, presentationKind } from '@shared/presentation'
 import { VIDEO_SCHEME } from '@shared/video'
 import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
@@ -17,7 +17,7 @@ import {
   stopNetworkProjection
 } from './network-projection'
 import { appPaths } from './paths'
-import { presentationFile } from './services/presentations'
+import { getPresentation, presentationFileFor } from './services/presentations'
 import { getVideo, videoFileFor } from './services/videos'
 import { getProjectionState } from './services/projection'
 import { onSessionChanged } from './services/auth'
@@ -62,7 +62,16 @@ app.on('second-instance', () => {
  * Webseite behandelt — sonst verweigert er Skripte darin.
  */
 protocol.registerSchemesAsPrivileged([
-  { scheme: PRESENTATION_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: false } },
+  /*
+   * `corsEnabled` und `supportFetchAPI` sind für das PDF nötig: pdf.js holt das
+   * Dokument per XHR, und ein eigenes Schema gilt vom `file://`-Ursprung aus
+   * sonst als fremde Herkunft — Chromium bricht mit CORS ab. Für den
+   * HTML-Foliensatz spielt beides keine Rolle, der wird als Rahmen geladen.
+   */
+  {
+    scheme: PRESENTATION_SCHEME,
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+  },
   /*
    * `stream: true` ist hier das Entscheidende: Ohne dieses Recht behandelt
    * Chromium die Antwort als ein Stück und spielt das Video erst ab, wenn es
@@ -75,10 +84,23 @@ function registerPresentationProtocol(): void {
   protocol.handle(PRESENTATION_SCHEME, async () => {
     const laufend = getProjectionState().presentation
     if (!laufend) return new Response('Gerade läuft keine Präsentation.', { status: 404 })
-    const datei = presentationFile(laufend.id)
+    const eintrag = getPresentation(laufend.id)
+    if (!eintrag) return new Response('Die Datei fehlt.', { status: 404 })
+    const datei = presentationFileFor(eintrag)
     if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
+    /* Ein PDF muss als PDF ausgeliefert werden — sonst versucht der Rahmen,
+       Binärdaten als HTML zu lesen. */
+    const typ =
+      presentationKind(eintrag) === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8'
     return new Response(await readFile(datei), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+      headers: {
+        'Content-Type': typ,
+        'Cache-Control': 'no-store',
+        /* Der Abruf kommt aus demselben Fenster; die Herkunft `file://` gilt
+           Chromium aber als fremd. Ausgeliefert wird ohnehin nur die gerade
+           projizierte Datei — mehr gibt dieses Schema nicht her. */
+        'Access-Control-Allow-Origin': '*'
+      }
     })
   })
 }
@@ -176,12 +198,16 @@ function hardenSecurity(): void {
     }
 
     const policy = isDev
-      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:*; img-src 'self' data:; frame-src " +
+      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:* " +
+        PRESENTATION_SCHEME +
+        ":; img-src 'self' data: blob:; frame-src " +
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +
         ": blob:"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " +
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' " +
+        PRESENTATION_SCHEME +
+        ": ; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " +
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +

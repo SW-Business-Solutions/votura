@@ -13,6 +13,7 @@ import { AUDIT_ACTION_LABELS } from '../src/shared/audit-labels'
 import {
   PRESENTATION_CHANNEL,
   PRESENTATION_SCHEME,
+  presentationKind,
   presentationUrl,
   isPresentationReport
 } from '../src/shared/presentation'
@@ -75,6 +76,52 @@ describe('Vertrag mit dem Dokument', () => {
      Tastendruck neu. */
   it('haelt die Adresse über alle Folien hinweg stabil', () => {
     expect(presentationUrl('aaa')).toBe(presentationUrl('aaa'))
+  })
+})
+
+describe('PDF als Foliensatz', () => {
+  /*
+   * PowerPoint kommt über seinen eigenen PDF-Export herein. Eine .pptx direkt
+   * zu zerlegen hieße, Schriften, Diagramme und SmartArt nachzubauen — mit der
+   * Treue von "meistens ungefähr". Dieselbe Begründung wie bei MKV und MOV.
+   */
+  it('unterscheidet HTML und PDF an der Art', () => {
+    expect(presentationKind({ kind: 'pdf', fileName: 'egal.html' })).toBe('pdf')
+    expect(presentationKind({ kind: 'html', fileName: 'egal.pdf' })).toBe('html')
+  })
+
+  /* Einträge aus einer älteren Fassung kennen das Feld nicht — sie sind
+     ausnahmslos HTML. */
+  it('hält fehlende Angaben für HTML', () => {
+    expect(presentationKind({ fileName: 'folien.html' })).toBe('html')
+    expect(presentationKind({})).toBe('html')
+  })
+
+  /* Für Dateien, die vor dem Feld eingespeist wurden, rettet die Endung. */
+  it('erkennt ein PDF notfalls an der Endung', () => {
+    expect(presentationKind({ fileName: 'Bericht.PDF' })).toBe('pdf')
+  })
+
+  it('zeichnet das PDF selbst, statt es einzubetten', () => {
+    /* Kommentare heraus: Sie sprechen über den Rahmen, den es hier gerade
+       nicht geben soll. */
+    const rahmen = lies('src/renderer/src/projection/PdfFrame.tsx')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+    /* Ein eingebetteter Betrachter brächte Werkzeug- und Blätterleiste mit,
+       die der Saal nicht sehen soll — und keinen verlässlichen Weg, die Seite
+       von außen zu setzen. */
+    expect(rahmen).not.toMatch(/<iframe[\s/>]/)
+    expect(rahmen).toContain('<canvas')
+    expect(rahmen).toContain('getDocument')
+  })
+
+  it('nimmt PDF-Dateien im Dateidialog an', () => {
+    expect(lies('src/main/ipc.ts')).toContain("extensions: ['html', 'htm', 'pdf']")
+  })
+
+  it('liefert ein PDF mit dem richtigen Inhaltstyp aus', () => {
+    expect(lies('src/main/index.ts')).toContain("'application/pdf'")
   })
 })
 

@@ -7,6 +7,8 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { formatDateDe } from '@shared/format'
+import { presentationKind } from '@shared/presentation'
+import { PdfFrame } from './PdfFrame'
 import { PresentationFrame } from './PresentationFrame'
 import { VideoFrame } from './VideoFrame'
 import {
@@ -248,11 +250,21 @@ export function ProjectionScreen({
       >
         {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
         {state.presentation && presentationSrc ? (
-          <PresentationFrame
-            presentation={state.presentation}
-            src={presentationSrc}
-            onReport={onPresentationReport}
-          />
+          presentationKind(state.presentation) === 'pdf' ? (
+            /* Ein PDF steuert sich nicht selbst — Votura zeichnet die Seite. */
+            <PdfFrame
+              key={state.presentation.id}
+              src={presentationSrc}
+              slide={state.presentation.slide}
+              onReport={onPresentationReport}
+            />
+          ) : (
+            <PresentationFrame
+              presentation={state.presentation}
+              src={presentationSrc}
+              onReport={onPresentationReport}
+            />
+          )
         ) : (
           <div className="projection-presentation-empty">
             <div className="projection-status">PRÄSENTATION</div>

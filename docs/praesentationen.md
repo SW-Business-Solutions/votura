@@ -12,9 +12,45 @@ Sie lässt sich herunterladen, im Browser öffnen und als Ausgangspunkt nehmen.
 
 ---
 
+## PowerPoint und andere Programme: der Weg über PDF
+
+Neben HTML-Foliensätzen nimmt Votura **PDF-Dokumente** an. Das ist der Weg für alles, was in
+PowerPoint, Impress, Keynote oder Canva entsteht:
+
+> **Datei → Exportieren → PDF/XPS-Dokument erstellen** (PowerPoint)
+> **Datei → Exportieren als → Direktes Exportieren als PDF** (LibreOffice Impress)
+
+Die PDF-Datei wird dann wie ein Foliensatz eingespeist. Votura zeichnet die Seiten selbst —
+ohne Werkzeugleiste, ohne Blätterleiste, nur die Folie. Seitenzahl, Vortragssteuerung,
+Netzwerkansicht und Beamer verhalten sich genau wie bei HTML.
+
+**Was dabei erhalten bleibt:** Layout, Schriften, Bilder, Diagramme, Farben — PowerPoints
+PDF-Export bettet alles ein. Das Ergebnis sieht auf jedem Rechner gleich aus, auch ohne
+installiertes Office.
+
+**Was verloren geht:** Animationen, Folienübergänge, eingebettete Videos und automatische
+Abläufe. Die überstehen keine Umwandlung, gleich welche. Wer sie braucht, baut den Foliensatz
+als HTML (siehe unten) — dort ist jede Animation möglich, die ein Browser kann.
+
+**Warum nicht `.pptx` direkt?** Eine PowerPoint-Datei ist ein Archiv voller XML mit Verweisen auf
+Schriften, Layouts, Diagramme und SmartArt. Es gibt Bibliotheken, die das im Browser nachbauen —
+mit der Treue von „meistens ungefähr". Genau die Begründung, mit der auch MKV und MOV bei den
+Videos ausgeschlossen sind: *läuft manchmal* ist im Saal wertlos. Der PDF-Export von PowerPoint
+ist dagegen originalgetreu, weil ihn PowerPoint selbst macht.
+
+**Format der Seiten:** Am besten im Seitenverhältnis des Beamers anlegen, meist 16:9. Ein
+4:3-Dokument bekommt links und rechts schwarze Balken — es wird nie beschnitten, denn am Rand
+einer Folie steht im Zweifel etwas Wichtiges.
+
+Der Rest dieses Dokuments beschreibt den **HTML-Weg** — für alle, die einen Foliensatz selbst
+bauen oder aus einer Vorlage erzeugen.
+
+---
+
 ## Die kurze Fassung
 
 1. **Eine einzige HTML-Datei.** Schriften, Bilder und Skript stecken darin. Höchstens 50 MB.
+   (Oder ein PDF — dann entfallen die Punkte 2 und 3, siehe oben.)
 2. **Auf Nachrichten hören:** `{ votura: 'votura', type: 'goto', slide }` → diese Folie zeigen.
 3. **Zurückmelden:** `{ votura: 'votura', type: 'state', slide, slideCount }` an `parent`.
 
