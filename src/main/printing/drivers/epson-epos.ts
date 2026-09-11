@@ -101,7 +101,14 @@ function describeStatus(status: number): { paperOut: boolean; coverOpen: boolean
 
 async function post(printer: PrinterConfig, xml: string, timeoutMs = 15000): Promise<EposResponse> {
   const deviceId = printer.deviceId || 'local_printer'
-  const path = `/cgi-bin/epos/service.cgi?devid=${encodeURIComponent(deviceId)}&timeout=10000`
+  /*
+   * Der Parameter `timeout` sagt dem Druckdienst, wie lange er auf den
+   * Abschluss warten darf, bevor er mit einem Fehler antwortet. Er muss zur
+   * eigenen Wartezeit passen — sonst bricht entweder der Drucker zu früh ab
+   * oder wir warten auf eine Antwort, die längst als Fehler gilt.
+   */
+  const geraeteTimeout = Math.max(5_000, timeoutMs - 5_000)
+  const path = `/cgi-bin/epos/service.cgi?devid=${encodeURIComponent(deviceId)}&timeout=${geraeteTimeout}`
   const payload = Buffer.from(soapEnvelope(xml), 'utf8')
 
   return new Promise((resolve, reject) => {
@@ -177,7 +184,16 @@ export class EpsonEposPrinter implements PrinterDriver {
   }
 
   async submit(ops: PrintOp[], meta: { label: string }): Promise<void> {
-    const response = await post(this.config, opsToEposXml(ops, this.config))
+    /*
+     * Der ePOS-Dienst antwortet erst, wenn der Auftrag durchgelaufen ist. Bei
+     * gebündeltem Druck enthält ein Auftrag mehrere Zettel — die Wartezeit muss
+     * entsprechend mitwachsen, sonst bricht ausgerechnet der schnelle Weg mit
+     * einer Zeitüberschreitung ab. Gezählt wird über die Schnitte: ein Schnitt
+     * je Zettel.
+     */
+    const zettel = Math.max(1, ops.filter((op) => op.type === 'cut').length)
+    const wartezeit = 15_000 + (zettel - 1) * 4_000
+    const response = await post(this.config, opsToEposXml(ops, this.config), wartezeit)
     if (!response.success) {
       const status = describeStatus(response.status)
       logger.printer.error(`ePOS-Fehler (${meta.label}): code=${response.code} status=${status.text}`)

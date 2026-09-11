@@ -702,6 +702,18 @@ export interface AppConfig {
     reserveCopies: number
     /** Verzoegerung zwischen Exemplaren in ms (Druckerpuffer schonen). */
     copyDelayMs: number
+    /**
+     * Wie viele Stimmzettel in einem Auftrag an den Drucker gehen.
+     *
+     * 1 = jeder Zettel einzeln. Der Drucker quittiert jeden Zettel, die
+     * übermittelte Menge ist dadurch auf den einzelnen Zettel genau bekannt —
+     * bei Netzwerkdruckern kostet jede Quittung aber spürbar Zeit.
+     *
+     * Größere Werte fassen mehrere Zettel zu einem Auftrag zusammen: deutlich
+     * schneller, dafür ist bei einem Abbruch nur noch bekannt, dass irgendwo
+     * innerhalb des laufenden Bündels abgebrochen wurde.
+     */
+    copiesPerRequest: number
   }
   ballots: {
     printRoundCode: boolean

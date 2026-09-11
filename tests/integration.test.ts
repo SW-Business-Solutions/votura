@@ -752,3 +752,175 @@ describe('Wahlgang in Vorbereitung nachträglich ändern', () => {
     expect(gesperrt.grund).toContain('150')
   })
 })
+
+describe('Gebündelte Übermittlung an den Drucker', () => {
+  it('zählt bei Bündelung dieselbe Menge wie beim Einzeldruck', async () => {
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Druckbündel',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV32',
+      date: '2026-12-08',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Wahl des Vorsitzes',
+      purpose: 'chairperson',
+      procedure: 'single_multiple_candidates',
+      seats: 1,
+      maxVotes: 1,
+      template: defaultTemplateFor('single_multiple_candidates', { seats: 1, maxVotes: 1, entryCount: 2 }),
+      orderMode: 'manual'
+    })
+    candidates.addCandidates(wahlgang.id, [
+      { firstName: 'Anna', lastName: 'Beckmann', displayName: 'Anna Beckmann' },
+      { firstName: 'Jonas', lastName: 'Kröger', displayName: 'Jonas Kröger' }
+    ])
+    rounds.lockCandidates(wahlgang.id)
+    ballots.approveBallot(wahlgang.id, ['round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode'])
+
+    // Bündelgröße 10: 25 Zettel ergeben zwei volle Bündel und einen Rest von 5.
+    const konfiguration = settings.getConfig()
+    settings.saveConfig({
+      ...konfiguration,
+      printing: { ...konfiguration.printing, copiesPerRequest: 10 }
+    })
+
+    const ergebnis = await printing.startPrint({
+      electionRoundId: wahlgang.id,
+      printerId: 'file-preview',
+      copies: 25,
+      ballotVersion: 1,
+      kind: 'initial',
+      idempotencyKey: 'buendel-1'
+    })
+
+    // Entscheidend: Die Menge stimmt, auch wenn das letzte Bündel kleiner ist.
+    expect(ergebnis.submittedCopies).toBe(25)
+    expect(ergebnis.failedCopies).toBe(0)
+    expect(printing.getBatch(ergebnis.batchId).status).toBe('completed')
+    expect(accounting.accountingFor(wahlgang.id).printed).toBe(25)
+
+    settings.saveConfig(konfiguration)
+  })
+
+  it('behandelt eine Bündelgröße über der Auftragsmenge wie einen einzigen Auftrag', async () => {
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const veranstaltung = events.createEvent({
+      title: 'Kleiner Auftrag',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV33',
+      date: '2026-12-09',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Satzungsänderung',
+      purpose: 'motion',
+      procedure: 'yes_no_abstain',
+      seats: 1,
+      maxVotes: 1,
+      template: defaultTemplateFor('yes_no_abstain', { seats: 1, maxVotes: 1, entryCount: 0 }),
+      orderMode: 'manual'
+    })
+    rounds.lockCandidates(wahlgang.id)
+    ballots.approveBallot(wahlgang.id, ['round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode'])
+
+    const konfiguration = settings.getConfig()
+    settings.saveConfig({
+      ...konfiguration,
+      printing: { ...konfiguration.printing, copiesPerRequest: 50 }
+    })
+
+    const ergebnis = await printing.startPrint({
+      electionRoundId: wahlgang.id,
+      printerId: 'file-preview',
+      copies: 3,
+      ballotVersion: 1,
+      kind: 'initial',
+      idempotencyKey: 'buendel-2'
+    })
+    expect(ergebnis.submittedCopies).toBe(3)
+    expect(printing.getBatch(ergebnis.batchId).status).toBe('completed')
+
+    settings.saveConfig(konfiguration)
+  })
+})
+
+describe('Bündelung erzeugt tatsächlich jeden Zettel', () => {
+  it('schreibt bei Bündelgröße 10 genauso viele Schnitte wie beim Einzeldruck', async () => {
+    /*
+     * Die reine Zählung in der Datenbank genügt als Nachweis nicht: Würde die
+     * Vorlage nicht vervielfacht, stünde dort 25, während nur 3 Zettel aus dem
+     * Drucker kämen. Deshalb wird hier die erzeugte Ausgabe ausgewertet: Die
+     * Wahlgangkennung steht genau einmal je Stimmzettel.
+     */
+    const { readFileSync, readdirSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { defaultTemplateFor } = await import('../src/shared/election')
+    const { appPaths } = await import('../src/main/paths')
+
+    const veranstaltung = events.createEvent({
+      title: 'Schnittzählung',
+      organization: 'Musterverband Beispielstadt',
+      orgCode: 'MV34',
+      date: '2026-12-10',
+      location: 'Saal',
+      ruleSet: { name: 'Wahlordnung', version: '2024', snapshotDate: '2026-08-17' }
+    })
+    events.activateEvent(veranstaltung.id)
+
+    const wahlgang = rounds.createRound({
+      eventId: veranstaltung.id,
+      title: 'Probe',
+      purpose: 'motion',
+      procedure: 'yes_no_abstain',
+      seats: 1,
+      maxVotes: 1,
+      template: defaultTemplateFor('yes_no_abstain', { seats: 1, maxVotes: 1, entryCount: 0 }),
+      orderMode: 'manual'
+    })
+    rounds.lockCandidates(wahlgang.id)
+    ballots.approveBallot(wahlgang.id, ['round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode'])
+
+    const ordner = join(appPaths().exports, 'druckausgabe')
+    const vorher = new Set(readdirSync(ordner).filter((name) => name.endsWith('.txt')))
+
+    const konfiguration = settings.getConfig()
+    settings.saveConfig({ ...konfiguration, printing: { ...konfiguration.printing, copiesPerRequest: 10 } })
+
+    await printing.startPrint({
+      electionRoundId: wahlgang.id,
+      printerId: 'file-preview',
+      copies: 25,
+      ballotVersion: 1,
+      kind: 'initial',
+      idempotencyKey: 'schnitte-1'
+    })
+
+    const neu = readdirSync(ordner)
+      .filter((name) => name.endsWith('.txt') && !vorher.has(name))
+      .map((name) => readFileSync(join(ordner, name), 'utf8'))
+
+    // Drei Aufträge: 10 + 10 + 5.
+    expect(neu).toHaveLength(3)
+
+    /* Jeder Stimmzettel trägt die Wahlgangkennung genau einmal — ihre Anzahl
+       ist damit die Zahl der tatsächlich erzeugten Zettel. */
+    const kennung = rounds.getRound(wahlgang.id).roundCode
+    const zettel = neu.reduce(
+      (summe, inhalt) => summe + inhalt.split(`WG: ${kennung}`).length - 1,
+      0
+    )
+    expect(zettel).toBe(25)
+
+    settings.saveConfig(konfiguration)
+  })
+})

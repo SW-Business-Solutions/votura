@@ -78,7 +78,11 @@ export const DEFAULT_CONFIG: AppConfig = {
   printing: {
     defaultPrinterId: 'thermal-main',
     reserveCopies: 5,
-    copyDelayMs: 60
+    copyDelayMs: 60,
+    // Voreinstellung: jeder Zettel einzeln. Die genaue Zählung wiegt im
+    // Regelfall schwerer als die Geschwindigkeit; wer viele Zettel braucht,
+    // stellt die Bündelung in den Einstellungen höher.
+    copiesPerRequest: 1
   },
   ballots: {
     printRoundCode: true,

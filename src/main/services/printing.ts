@@ -173,15 +173,40 @@ function updateBatch(id: UUID, fields: Partial<Record<string, string | number | 
     .run(...entries.map(([, value]) => value ?? null), id)
 }
 
-async function runBatch(batchId: UUID, ops: PrintOp[], label: string, copyDelayMs: number): Promise<PrintBatch> {
+async function runBatch(
+  batchId: UUID,
+  ops: PrintOp[],
+  label: string,
+  copyDelayMs: number,
+  copiesPerRequest = 1
+): Promise<PrintBatch> {
   let batch = getBatch(batchId)
   const printer = getPrinter(batch.printerId)
   if (!printer) throw new Error(`Der Drucker "${batch.printerId}" ist nicht konfiguriert.`)
   const driver = createDriver(printer)
 
+  /*
+   * Bündelgröße: Wie viele Zettel gehen in einem Auftrag an den Drucker?
+   *
+   * Bei 1 quittiert der Drucker jeden Zettel einzeln — die übermittelte Menge
+   * ist damit auf den Zettel genau bekannt. Netzwerkdrucker (Epson ePOS)
+   * antworten allerdings erst, wenn der Zettel durchgelaufen, geschnitten und
+   * der Gerätestatus ermittelt ist; das kostet je Zettel rund eine Sekunde.
+   *
+   * Größere Bündel ersparen diese Wartezeit, verschieben aber die Genauigkeit:
+   * Bricht ein Auftrag ab, ist nur noch bekannt, dass es innerhalb des
+   * laufenden Bündels geschah.
+   */
+  const buendel = Math.max(1, Math.min(Math.floor(copiesPerRequest) || 1, batch.requestedCopies))
+  logger.printer.info(
+    `Batch ${batchId}: ${batch.requestedCopies} Exemplare, ${buendel} je Auftrag an ${printer.name}.`
+  )
+
   emitProgress(batch)
 
-  for (let copy = 1; copy <= batch.requestedCopies; copy++) {
+  for (let copy = 1; copy <= batch.requestedCopies; copy += buendel) {
+    /* Das letzte Bündel ist womöglich kleiner als die eingestellte Größe. */
+    const imBuendel = Math.min(buendel, batch.requestedCopies - copy + 1)
     if (abortedBatches.has(batchId)) {
       updateBatch(batchId, {
         status: 'aborted',
@@ -197,20 +222,38 @@ async function runBatch(batchId: UUID, ops: PrintOp[], label: string, copyDelayM
     }
 
     try {
-      await driver.submit(ops, { label: `${label}-${copy}` })
+      const beginn = Date.now()
+      /* Ein Bündel entsteht, indem die Vorlage mehrfach hintereinander steht —
+         jeder Durchlauf endet mit dem Schnitt, also fallen n einzelne Zettel an. */
+      const auftrag = imBuendel === 1 ? ops : Array.from({ length: imBuendel }, () => ops).flat()
+      await driver.submit(auftrag, {
+        label: imBuendel === 1 ? `${label}-${copy}` : `${label}-${copy}..${copy + imBuendel - 1}`
+      })
+      const dauer = Date.now() - beginn
+      logger.printer.info(
+        `Batch ${batchId}: Exemplar ${copy}${imBuendel > 1 ? `–${copy + imBuendel - 1}` : ''} übermittelt in ${dauer} ms.`
+      )
       db()
-        .prepare(`UPDATE print_batches SET submitted_copies = submitted_copies + 1 WHERE id = ?`)
-        .run(batchId)
+        .prepare(`UPDATE print_batches SET submitted_copies = submitted_copies + ? WHERE id = ?`)
+        .run(imBuendel, batchId)
       batch = getBatch(batchId)
       emitProgress(batch)
     } catch (error) {
       const message = error instanceof PrinterError ? error.message : String(error)
-      // Keine Wiederholung: der Zustand des laufenden Exemplars ist unbekannt (§35).
+      /*
+       * Keine Wiederholung: Der Zustand des laufenden Auftrags ist unbekannt
+       * (§35). Bei gebündeltem Druck betrifft die Unsicherheit das ganze
+       * Bündel — das muss in der Meldung stehen, sonst zählt jemand falsch.
+       */
+      const unklar =
+        imBuendel === 1
+          ? 'Der Status der restlichen Exemplare ist unbekannt'
+          : `Der abgebrochene Auftrag umfasste ${imBuendel} Zettel (Nummern ${copy} bis ${copy + imBuendel - 1}); wie viele davon herauskamen, ist unbekannt`
       updateBatch(batchId, {
         status: 'unknown',
-        failed_copies: 1,
+        failed_copies: imBuendel,
         completed_at: new Date().toISOString(),
-        error_message: `${message} Angefordert: ${batch.requestedCopies}, bestätigt übermittelt: ${batch.submittedCopies}. Der Status der restlichen Exemplare ist unbekannt – bitte physisch prüfen und die Anzahl dokumentieren.`
+        error_message: `${message} Angefordert: ${batch.requestedCopies}, bestätigt übermittelt: ${batch.submittedCopies}. ${unklar} – bitte physisch prüfen und die Anzahl dokumentieren.`
       })
       batch = getBatch(batchId)
       emitProgress(batch)
@@ -369,7 +412,13 @@ export async function startPrint(request: PrintRequest): Promise<PrintStartResul
     db().prepare(`UPDATE rounds SET status = 'printing', row_version = row_version + 1 WHERE id = ?`).run(round.id)
   }
 
-  const batch = await runBatch(batchId, ops, `${round.roundCode}-v${approved.version}`, config.printing.copyDelayMs)
+  const batch = await runBatch(
+    batchId,
+    ops,
+    `${round.roundCode}-v${approved.version}`,
+    config.printing.copyDelayMs,
+    config.printing.copiesPerRequest
+  )
 
   if (request.kind !== 'test' && previousStatus === 'ready') {
     db().prepare(`UPDATE rounds SET status = 'ready', row_version = row_version + 1 WHERE id = ?`).run(round.id)

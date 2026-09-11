@@ -327,6 +327,70 @@ function GeneralSettings(): React.JSX.Element {
             </Field>
           </div>
         </div>
+        {/* Geschwindigkeit gegen Zählgenauigkeit — die Abwägung gehört offen
+            hingeschrieben, nicht in eine Zahl versteckt. */}
+        <Field label="Übermittlung an den Drucker">
+          <div className="segmented">
+            <button
+              className={config.printing.copiesPerRequest <= 1 ? 'active' : ''}
+              onClick={() =>
+                setConfig({ ...config, printing: { ...config.printing, copiesPerRequest: 1 } })
+              }
+            >
+              Jeder Zettel einzeln
+            </button>
+            <button
+              className={config.printing.copiesPerRequest > 1 ? 'active' : ''}
+              onClick={() =>
+                setConfig({
+                  ...config,
+                  printing: {
+                    ...config.printing,
+                    copiesPerRequest: config.printing.copiesPerRequest > 1 ? config.printing.copiesPerRequest : 10
+                  }
+                })
+              }
+            >
+              Gebündelt
+            </button>
+          </div>
+        </Field>
+
+        {config.printing.copiesPerRequest <= 1 ? (
+          <div className="notice">
+            <strong>Jeder Zettel einzeln.</strong> Der Drucker bestätigt jeden Stimmzettel
+            einzeln — die übermittelte Menge ist damit auf den Zettel genau bekannt. Bei
+            Netzwerkdruckern (Epson ePOS) antwortet das Gerät erst, wenn der Zettel durchgelaufen,
+            geschnitten und der Status ermittelt ist; <strong>das dauert je Zettel etwa eine
+            Sekunde</strong>. Für 150 Zettel also rund zweieinhalb Minuten.
+          </div>
+        ) : (
+          <div className="notice warn">
+            <strong>Gebündelt.</strong> Mehrere Zettel gehen in einem Auftrag an den Drucker und
+            laufen ohne Pause durch — <strong>deutlich schneller</strong>. Dafür ist bei einem
+            Abbruch (Papierende, Netzwerkstörung) nur bekannt, dass es innerhalb des laufenden
+            Bündels geschah: Bis zu {config.printing.copiesPerRequest} Zettel müssen dann von Hand
+            nachgezählt werden statt einem.
+          </div>
+        )}
+
+        {config.printing.copiesPerRequest > 1 && (
+          <Field
+            label="Zettel je Auftrag"
+            hint="Größere Bündel sind schneller, vergrößern aber die Menge, die bei einem Abbruch nachzuzählen ist."
+          >
+            <NumberInput
+              value={config.printing.copiesPerRequest}
+              onChange={(value) =>
+                setConfig({
+                  ...config,
+                  printing: { ...config.printing, copiesPerRequest: Math.max(2, Math.min(50, value)) }
+                })
+              }
+            />
+          </Field>
+        )}
+
         <Checkbox
           checked={config.ballots.printRoundCode}
           onChange={(value) => setConfig({ ...config, ballots: { ...config.ballots, printRoundCode: value } })}
