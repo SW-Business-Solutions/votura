@@ -9,6 +9,7 @@
  */
 import type { ApiMethod, ApiParams, ApiResult } from '@shared/ipc'
 import type { AudienceWindowState, ProjectionState } from '@shared/projection'
+import type { PrompterWindowState } from '@shared/presentation'
 import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
 interface Bridge {
@@ -19,6 +20,14 @@ interface Bridge {
   onSessionChanged(listener: (session: Session | null) => void): () => void
   onNotice(listener: (notice: { level: 'info' | 'warning' | 'error'; message: string }) => void): () => void
   onUpdateProgress(listener: (progress: UpdateProgress) => void): () => void
+  /**
+   * Ob das Fenster der Vortragssteuerung offen ist.
+   *
+   * Nötig, weil es auch über sein eigenes Kreuz geschlossen werden kann. Ohne
+   * diese Meldung behielte die Bedienung ihren alten Stand und böte
+   * „Vortragssteuerung schließen" für ein Fenster an, das längst zu ist.
+   */
+  onPrompterState(listener: (state: PrompterWindowState) => void): () => void
 }
 
 declare global {
@@ -129,7 +138,11 @@ function pollingBridge(): Bridge {
     onSessionChanged: () => () => undefined,
     onNotice: () => () => undefined,
     // Ein zweites Gerät spielt keine Fassung ein – das geschieht am Hauptrechner.
-    onUpdateProgress: () => () => undefined
+    onUpdateProgress: () => () => undefined,
+    /* Die Vortragssteuerung ist ein Fenster am Hauptrechner; ein Gerät im Netz
+       kann es weder öffnen noch sehen. */
+    onPrompterState: (listener) =>
+      poll(() => remoteInvoke('presentation.prompterState', []) as Promise<PrompterWindowState>, listener, 5000)
   }
 }
 

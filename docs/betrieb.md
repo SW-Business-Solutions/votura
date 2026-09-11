@@ -69,6 +69,8 @@ lässt sich die Reihenfolge gefahrlos ändern, ohne dass Kennungen wandern.
 ## Beamer bedienen
 
 - *Beamer* (Strg+B) → Bildschirm auswählen → *Beamerfenster öffnen*.
+- Die Seite ist gegliedert: Die Vorschau steht links fest, rechts liegen **Inhalte**,
+  **Präsentation & Video**, **Ausgabe & Netz** und **Verlauf** hinter Reitern.
 - **Erscheinungsbild:** unter *Einstellungen → Beamer-Design* Farben wählen und ein Logo hinterlegen
   (wird in die Konfiguration eingebettet, kein Nachladen aus dem Netz).
 - **Pause mit Countdown:** Dauer in Minuten eintragen und *Pause anzeigen*. Für die Stimmabgabe gibt
@@ -84,6 +86,36 @@ lässt sich die Reihenfolge gefahrlos ändern, ohne dass Kennungen wandern.
 - Bei nur einem Bildschirm öffnet das Fenster bewusst im Fenstermodus.
 - **Netzwerkansicht** (optional): aktivieren, Port und Token vergeben, angezeigte Adresse am
   Zweitgerät im Browser öffnen. Rein lesend; nur in einem abgeschotteten Veranstaltungsnetz nutzen.
+
+## Vortrag und Film zwischen den Wahlgängen
+
+Beides liegt unter *Beamer → Präsentation & Video* und läuft im selben Beamerfenster wie die
+Wahlansicht. Zurück zum Wahlgang geht es mit jeder Schaltfläche unter *Anzeige steuern*.
+
+**Präsentation (HTML)**
+
+- *HTML-Präsentation einspeisen* → Datei wählen. Sie wird kopiert, nicht verknüpft: Der Stick darf
+  danach wieder in die Tasche.
+- *Auf den Beamer* startet sie; die **Vortragssteuerung** öffnet sich mit. Dieses Fenster lässt
+  sich auf den Laptop der vortragenden Person schieben — es zeigt die laufende Folie, die nächste,
+  die Position und die Zeit seit Beginn. Wahlgänge lassen sich von dort nicht bedienen.
+- Geblättert wird mit ← →, Leertaste, Bild auf/ab, Pos1/Ende.
+- Wie eine solche Datei aufgebaut sein muss, steht in `docs/praesentationen.md`; eine lauffähige
+  Vorlage liegt als `docs/beispiel-praesentation.html` bei.
+- **Vorher prüfen:** Steht in der Vortragssteuerung `1 / n` und nicht `1 / ?`? Nur dann kennt
+  Votura die Folienzahl und weiß, wann der Vortrag zu Ende ist.
+
+**Video**
+
+- *Video einspeisen* → MP4 (H.264/AAC) oder WebM. Große Dateien brauchen beim Kopieren einen
+  Moment; das ist gewollt, damit im Saal nichts von einem gezogenen Stick abhängt.
+- *Auf den Beamer*, dann Abspielen, Anhalten, ±10 Sekunden oder Zeitleiste. Beamer und alle Geräte
+  im Netz richten sich nach derselben Zeit — auch eines, das erst mitten im Film dazukommt.
+- **Den Ton gibt nur der Beamer aus.** Geräte im Netz laufen stumm mit; sonst entstünde ein Echo
+  im Saal.
+- Nach dem Einspeisen einmal kurz anspielen: Erst dann steht die Laufzeit fest, und der Beamer
+  hat vorgepuffert.
+- Am Ende bleibt der Film stehen statt zurückzuspringen.
 
 ## Zweites Gerät im Veranstaltungsnetz
 
