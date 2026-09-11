@@ -485,20 +485,20 @@ html {
      statt einzelne Punkte unbemerkt abzuschneiden. */
   flex: none;
   width: 100%;
-  max-width: 82cqw;
+  max-width: 92cqw;
   margin: 0 auto;
   /*
    * Eine Zeile beansprucht etwa das Doppelte ihrer Schriftgröße (Zeilenhöhe
    * plus Innenabstand). Bei rund 58 % Bildhöhe für die Liste ergibt sich die
    * größte Schrift, die noch vollständig hineinpasst.
    */
-  font-size: calc(min(2.2cqw, 29cqh / var(--agenda-rows, 10)) * var(--s, 1));
+  font-size: calc(min(2.2cqw, 26cqh / var(--agenda-rows, 10)) * var(--s, 1));
 }
 .projection-agenda-list.cols-2 {
   grid-template-columns: repeat(2, 1fr);
   grid-auto-flow: column;
   grid-template-rows: repeat(var(--agenda-rows, 10), auto);
-  font-size: calc(min(1.9cqw, 29cqh / var(--agenda-rows, 10)) * var(--s, 1));
+  font-size: calc(min(1.9cqw, 26cqh / var(--agenda-rows, 10)) * var(--s, 1));
 }
 /*
  * Feste Spalten: Nummer, Titel, Kennzeichnung. So stehen alle Zeilen
@@ -506,18 +506,30 @@ html {
  */
 .projection-agenda-item {
   display: grid;
-  grid-template-columns: 4.5em minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 0.7em;
+  /* Die Nummernspalte nur so breit wie nötig – jeder Millimeter gehört dem
+     Titel, denn der muss im Saal gelesen werden. */
+  grid-template-columns: 3.6em minmax(0, 1fr) auto;
+  /* „start“ statt „baseline“: bei mehrzeiligen Titeln bleibt die Nummer oben. */
+  align-items: start;
+  gap: 0.6em;
   padding: 0.3em 0.6em;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   border-left: 0.25em solid transparent;
   min-width: 0;
 }
+/*
+ * Titel umbrechen statt abschneiden.
+ *
+ * Vorher stand hier white-space: nowrap mit Auslassungspunkten — aus „Wahl des
+ * Versammlungsleiters“ wurde „Wahl des Versam…“. Für eine Anzeige, an der der
+ * Saal abliest, worüber gleich abgestimmt wird, ist das unbrauchbar. Wird die
+ * Liste dadurch zu hoch, verkleinert useFitToBody das ganze Bild.
+ */
 .projection-agenda-item .title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  line-height: 1.25;
 }
 .projection-agenda-item .marker {
   justify-self: end;
@@ -526,9 +538,6 @@ html {
   min-width: 3em;
   color: var(--projection-muted);
   font-variant-numeric: tabular-nums;
-}
-.projection-agenda-item .title {
-  flex: 1;
 }
 .projection-agenda-item .marker {
   font-size: 0.6em;

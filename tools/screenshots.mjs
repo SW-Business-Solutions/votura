@@ -131,13 +131,17 @@ function demoSkript() {
     await ruf('event.activate', veranstaltung.id)
 
     for (const [nummer, titel] of [
-      ['1', 'Begrüßung und Feststellung der Beschlussfähigkeit'],
-      ['2', 'Wahl der Versammlungsleitung'],
-      ['3', 'Bericht des Vorstands'],
-      ['4', 'Wahl des Vorsitzes'],
-      ['5', 'Wahl der Delegierten'],
-      ['6', 'Satzungsänderung § 7'],
-      ['7', 'Verschiedenes']
+      ['TOP 1', 'Begrüßung und Eröffnung der Versammlung'],
+      ['TOP 2', 'Feststellung der ordnungsgemäßen Einladung und der Beschlussfähigkeit'],
+      ['TOP 3', 'Wahl der Versammlungsleitung'],
+      ['TOP 4', 'Wahl eines Schriftführers'],
+      ['TOP 5', 'Beratung und Beschlussfassung über die Tagesordnung'],
+      ['TOP 6', 'Wahl der Mandatsprüfungskommission'],
+      ['TOP 7', 'Wahl eines Wahlleiters'],
+      ['TOP 8', 'Wahl der Zählkommission'],
+      ['TOP 9', 'Bericht des Vorstands'],
+      ['TOP 10', 'Vorstellung der Bewerberinnen und Bewerber'],
+      ['TOP 11', 'Wahl der Delegierten für den Landesparteitag']
     ]) {
       await ruf('agenda.add', { eventId: veranstaltung.id, label: nummer, title: titel })
     }
@@ -337,6 +341,23 @@ try {
     }
   } else {
     console.log('  Hinweis: Kein Wahlgang bekannt – Wahlgang-Ansichten übersprungen.')
+  }
+
+  // Beamer-Tagesordnung: lange Titel dürfen nicht abgeschnitten werden.
+  await sitzung.auswerten(
+    "window.votura.invoke('projection.setMode', { mode: 'agenda', agendaView: 'full' })"
+  )
+  await warte(1500)
+  const beamerTafel = (await ziele()).find((z) => z.url.includes('audience'))
+  if (beamerTafel) {
+    const tafel = await Sitzung.verbinde(beamerTafel.webSocketDebuggerUrl)
+    await tafel.sende('Page.enable')
+    await tafel.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1280, height: 720, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(1500)
+    await tafel.aufnehmen('15-beamer-tagesordnung')
+    tafel.schliessen()
   }
 
   // Einstellungen: Bereich für den Hinweis auf neue Fassungen.
