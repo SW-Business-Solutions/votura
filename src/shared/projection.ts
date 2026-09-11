@@ -7,6 +7,7 @@
  * Schreib-API.
  */
 import type { ProjectionPresentation } from './presentation'
+import type { ProjectionVideo } from './video'
 import type { ElectionProcedure, IsoDate, IsoDateTime, UUID } from './types'
 
 export const PROJECTION_MODES = [
@@ -23,6 +24,7 @@ export const PROJECTION_MODES = [
   'break',
   'custom_message',
   'presentation',
+  'video',
   'session_finished'
 ] as const
 export type ProjectionMode = (typeof PROJECTION_MODES)[number]
@@ -41,6 +43,7 @@ export const PROJECTION_MODE_LABELS: Record<ProjectionMode, string> = {
   break: 'Pause',
   custom_message: 'Freie Mitteilung',
   presentation: 'Präsentation',
+  video: 'Video',
   session_finished: 'Versammlung beendet'
 }
 
@@ -272,6 +275,16 @@ export interface ProjectionState {
    * Megabyte täte das nicht. Die Ansicht holt sie als eigene Ressource.
    */
   presentation?: ProjectionPresentation
+  /**
+   * Das laufende Video — Kennung, Titel und eine Uhr.
+   *
+   * Auch hier steht die Datei **nicht** im Zustand. Statt eines Befehls
+   * („jetzt abspielen") trägt er die Position zu einem genannten Zeitpunkt:
+   * Jedes Gerät rechnet sich daraus seinen Sollstand aus, Nachzügler
+   * eingeschlossen. Ein Befehl hätte die, die ihn verpasst haben, nie
+   * erreicht.
+   */
+  video?: ProjectionVideo
   updatedAt: IsoDateTime
 }
 

@@ -17,6 +17,7 @@ import type { ProjectionState } from '@shared/projection'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
 import { presentationFile } from './services/presentations'
+import { getVideo, videoFileFor } from './services/videos'
 import { getProjectionState } from './services/projection'
 
 const MIME: Record<string, string> = {
@@ -72,6 +73,52 @@ function serveFile(response: ServerResponse, filePath: string): void {
     'X-Content-Type-Options': 'nosniff'
   })
   createReadStream(filePath).pipe(response)
+}
+
+/**
+ * Video mit Bereichsanfragen ausliefern.
+ *
+ * Ohne `Range` müsste jedes Gerät die ganze Datei von vorn laden, bevor es
+ * irgendetwas zeigt — bei 300 MB im WLAN eines Saals ist das keine Option.
+ * Mit Bereichsanfragen puffert der Browser von selbst voraus und kann
+ * springen, ohne neu zu beginnen. Genau darauf beruht der Gleichlauf: Ein
+ * Nachzügler holt sich den Abschnitt, der gerade läuft, statt den Anfang.
+ */
+function serveVideo(request: IncomingMessage, response: ServerResponse, filePath: string, mimeType: string): void {
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    deny(response, 404, 'Nicht gefunden.')
+    return
+  }
+  const groesse = statSync(filePath).size
+  const kopf = {
+    'Content-Type': mimeType,
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff'
+  }
+
+  const bereich = /^bytes=(\d*)-(\d*)$/.exec(request.headers.range ?? '')
+  if (!bereich) {
+    response.writeHead(200, { ...kopf, 'Content-Length': groesse })
+    createReadStream(filePath).pipe(response)
+    return
+  }
+
+  /* Ein offenes Ende ("bytes=500-") bedeutet: ab hier bis zum Schluss. */
+  const von = bereich[1] === '' ? 0 : Number(bereich[1])
+  const bis = bereich[2] === '' ? groesse - 1 : Math.min(Number(bereich[2]), groesse - 1)
+  if (!Number.isFinite(von) || !Number.isFinite(bis) || von > bis || von >= groesse) {
+    response.writeHead(416, { ...kopf, 'Content-Range': `bytes */${groesse}` })
+    response.end()
+    return
+  }
+
+  response.writeHead(206, {
+    ...kopf,
+    'Content-Range': `bytes ${von}-${bis}/${groesse}`,
+    'Content-Length': bis - von + 1
+  })
+  createReadStream(filePath, { start: von, end: bis }).pipe(response)
 }
 
 async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -147,6 +194,27 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
    * eine noch unveröffentlichte Präsentation abrufen, indem es Kennungen
    * durchprobiert.
    */
+  /*
+   * Das laufende Video. Wie bei der Präsentation wird ausschließlich die
+   * Datei ausgeliefert, die **gerade projiziert wird** — sonst könnte jedes
+   * Gerät im Netz jeden Film aus der Bibliothek abrufen, indem es Kennungen
+   * durchprobiert.
+   */
+  if (url.pathname === '/video') {
+    const laufend = getProjectionState().video
+    if (!laufend) {
+      deny(response, 404, 'Gerade läuft kein Video.')
+      return
+    }
+    const eintrag = getVideo(laufend.id)
+    if (!eintrag) {
+      deny(response, 404, 'Die Datei fehlt.')
+      return
+    }
+    serveVideo(request, response, videoFileFor(eintrag), eintrag.mimeType)
+    return
+  }
+
   if (url.pathname === '/presentation.html') {
     const laufend = getProjectionState().presentation
     if (!laufend) {

@@ -10,6 +10,7 @@
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { presentationPath, presentationUrl } from '@shared/presentation'
+import { videoPath, videoUrl } from '@shared/video'
 import { EMPTY_PROJECTION_STATE, type ProjectionState } from '@shared/projection'
 import { ProjectionScreen } from './projection/ProjectionScreen'
 import './styles/projection.css'
@@ -17,6 +18,14 @@ import './styles/projection.css'
 interface AudienceBridge {
   getInitialState(): Promise<ProjectionState>
   onStateChange(callback: (state: ProjectionState) => void): () => void
+  /**
+   * Die einzige Nachricht, die aus diesem Fenster hinausgeht.
+   *
+   * Sie sagt etwas über das Fenster aus — Laufzeit, Pufferstand, Ende
+   * erreicht —, nicht über die Wahl. In der Netzwerkansicht fehlt die Brücke
+   * ganz, deshalb optional.
+   */
+  reportVideo?(meldung: { durationSeconds?: number; ready?: boolean; ended?: boolean }): void
 }
 
 declare global {
@@ -107,11 +116,34 @@ function AudienceApp(): React.JSX.Element {
       : presentationPath(state.presentation.id)
     : undefined
 
+  const videoSrc = state.video
+    ? imFenster
+      ? videoUrl(state.video.id)
+      : videoPath(state.video.id)
+    : undefined
+
+  /*
+   * Den Ton hat nur das Beamerfenster.
+   *
+   * Ein Saal, in dem zehn Tablets denselben Film im Chor tönen, ist
+   * unerträglich — und schon Millisekunden Versatz klingen wie ein Echo. Die
+   * Netzwerkansicht läuft deshalb stumm mit, unabhängig davon, was in der
+   * Bedienung eingestellt ist.
+   */
+  const melde = (meldung: { durationSeconds?: number; ready?: boolean; ended?: boolean }): void => {
+    window.projection?.reportVideo?.(meldung)
+  }
+
   return (
     <ProjectionScreen
       state={{ ...state, candidatePage: page }}
       disconnected={disconnected}
       presentationSrc={presentationSrc}
+      videoSrc={videoSrc}
+      videoAudio={imFenster}
+      onVideoDuration={(sekunden) => melde({ durationSeconds: sekunden })}
+      onVideoReady={() => melde({ ready: true })}
+      onVideoEnded={() => melde({ ended: true })}
     />
   )
 }

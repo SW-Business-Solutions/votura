@@ -1,7 +1,9 @@
 import { app, BrowserWindow, dialog, Menu, protocol, session } from 'electron'
-import { existsSync } from 'node:fs'
+import { createReadStream, existsSync, statSync } from 'node:fs'
+import { Readable } from 'node:stream'
 import { readFile } from 'node:fs/promises'
 import { PRESENTATION_SCHEME } from '@shared/presentation'
+import { VIDEO_SCHEME } from '@shared/video'
 import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
@@ -16,6 +18,7 @@ import {
 } from './network-projection'
 import { appPaths } from './paths'
 import { presentationFile } from './services/presentations'
+import { getVideo, videoFileFor } from './services/videos'
 import { getProjectionState } from './services/projection'
 import { onSessionChanged } from './services/auth'
 import { markInterruptedBatches, onPrintProgress } from './services/printing'
@@ -59,7 +62,13 @@ app.on('second-instance', () => {
  * Webseite behandelt — sonst verweigert er Skripte darin.
  */
 protocol.registerSchemesAsPrivileged([
-  { scheme: PRESENTATION_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: false } }
+  { scheme: PRESENTATION_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: false } },
+  /*
+   * `stream: true` ist hier das Entscheidende: Ohne dieses Recht behandelt
+   * Chromium die Antwort als ein Stück und spielt das Video erst ab, wenn es
+   * vollständig da ist. Ein Film von 300 MB stünde dann minutenlang schwarz.
+   */
+  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }
 ])
 
 function registerPresentationProtocol(): void {
@@ -70,6 +79,57 @@ function registerPresentationProtocol(): void {
     if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
     return new Response(await readFile(datei), {
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+    })
+  })
+}
+
+/**
+ * Das laufende Video im Beamerfenster.
+ *
+ * Mit Bereichsanfragen, damit der Browser vorauspuffert und springen kann,
+ * ohne von vorn zu beginnen. Ausgeliefert wird ausschließlich die Datei, die
+ * gerade projiziert wird — `file://` bleibt zu, der Rest des Dateisystems
+ * unerreichbar.
+ */
+function registerVideoProtocol(): void {
+  protocol.handle(VIDEO_SCHEME, async (request) => {
+    const laufend = getProjectionState().video
+    if (!laufend) return new Response('Gerade läuft kein Video.', { status: 404 })
+    const eintrag = getVideo(laufend.id)
+    if (!eintrag) return new Response('Die Datei fehlt.', { status: 404 })
+    const datei = videoFileFor(eintrag)
+    if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
+
+    const groesse = statSync(datei).size
+    const kopf: Record<string, string> = {
+      'Content-Type': eintrag.mimeType,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'no-store'
+    }
+
+    const bereich = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') ?? '')
+    if (!bereich) {
+      return new Response(Readable.toWeb(createReadStream(datei)) as ReadableStream, {
+        headers: { ...kopf, 'Content-Length': String(groesse) }
+      })
+    }
+
+    const von = bereich[1] === '' ? 0 : Number(bereich[1])
+    const bis = bereich[2] === '' ? groesse - 1 : Math.min(Number(bereich[2]), groesse - 1)
+    if (!Number.isFinite(von) || !Number.isFinite(bis) || von > bis || von >= groesse) {
+      return new Response(null, {
+        status: 416,
+        headers: { ...kopf, 'Content-Range': `bytes */${groesse}` }
+      })
+    }
+
+    return new Response(Readable.toWeb(createReadStream(datei, { start: von, end: bis })) as ReadableStream, {
+      status: 206,
+      headers: {
+        ...kopf,
+        'Content-Range': `bytes ${von}-${bis}/${groesse}`,
+        'Content-Length': String(bis - von + 1)
+      }
     })
   })
 }
@@ -116,8 +176,16 @@ function hardenSecurity(): void {
     }
 
     const policy = isDev
-      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:*; img-src 'self' data:; frame-src " + PRESENTATION_SCHEME + ":"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " + PRESENTATION_SCHEME + ":"
+      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:*; img-src 'self' data:; frame-src " +
+        PRESENTATION_SCHEME +
+        ": ; media-src 'self' " +
+        VIDEO_SCHEME +
+        ": blob:"
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " +
+        PRESENTATION_SCHEME +
+        ": ; media-src 'self' " +
+        VIDEO_SCHEME +
+        ": blob:"
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -149,6 +217,7 @@ async function bootstrap(): Promise<void> {
 
   restoreProjection()
   registerPresentationProtocol()
+  registerVideoProtocol()
   registerIpc()
   // Der Fernzugriff nutzt dieselbe API wie das Hauptfenster.
   setRemoteDispatcher((method, args) => callApi(method, args))

@@ -14,7 +14,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as warte } from 'node:timers/promises'
 
-const PORT = 9333
+/*
+ * Der Debug-Port lässt sich setzen — und muss es, wenn nebenher schon eine
+ * Votura-Instanz läuft.
+ *
+ * Sonst geschieht etwas Tückisches: Der Port ist belegt, die eigene Instanz
+ * öffnet ihn nicht, und das Werkzeug verbindet sich mit der **fremden**
+ * Anwendung. Es baut dann seinen Demo-Bestand in einem echten Profil auf und
+ * fotografiert fremde Daten.
+ */
+const PORT = Number(process.env.VOTURA_SCREENSHOT_PORT || 9333)
 const ZIEL = 'docs/screenshots'
 /* Eigenes Benutzerprofil: die Aufnahmen entstehen an einem sauberen Demo-Bestand
    und rühren die Daten einer echten Versammlung nicht an. */
@@ -265,10 +274,43 @@ function demoSkript() {
 })()`
 }
 
+/**
+ * Einen Reiter der Beamerseite öffnen.
+ *
+ * Seit die Seite gegliedert ist, liegen Präsentationen und Videos hinter einem
+ * Reiter — ohne Klick fotografierte das Werkzeug den falschen Bereich.
+ */
+async function reiterOeffnen(sitzung, beschriftung) {
+  const ergebnis = await sitzung.auswerten(`(() => {
+    const b = Array.from(document.querySelectorAll('.tabs .tab')).find((x) =>
+      (x.textContent || '').includes(${JSON.stringify(beschriftung)})
+    )
+    if (!b) return 'nicht gefunden'
+    b.click()
+    return 'ok'
+  })()`)
+  if (ergebnis !== 'ok') console.log(`  Hinweis: Reiter "${beschriftung}" nicht gefunden.`)
+}
+
 mkdirSync(ZIEL, { recursive: true })
 
 const umgebung = { ...process.env }
 delete umgebung.ELECTRON_RUN_AS_NODE
+
+/* Belegter Port: lieber abbrechen als fremde Daten fotografieren. */
+try {
+  const antwort = await fetch(`http://127.0.0.1:${PORT}/json/version`)
+  if (antwort.ok) {
+    throw new Error(
+      `Auf Port ${PORT} antwortet bereits eine Anwendung. Bitte sie beenden oder ` +
+        'VOTURA_SCREENSHOT_PORT auf einen freien Port setzen — sonst würde dieses ' +
+        'Werkzeug die fremde Instanz fernsteuern und deren Daten fotografieren.'
+    )
+  }
+} catch (fehler) {
+  if (fehler instanceof Error && fehler.message.startsWith('Auf Port')) throw fehler
+  /* Keine Antwort heißt: frei. Genau so soll es sein. */
+}
 
 console.log('Anwendung starten …')
 try {
@@ -298,6 +340,31 @@ writeFileSync(
         title: 'Rechenschaftsbericht des Vorstands',
         fileName: 'beispiel-praesentation.html',
         size: statSync(beispielQuelle).size,
+        importedAt: new Date().toISOString()
+      }
+    ],
+    null,
+    2
+  ),
+  'utf8'
+)
+
+/* Denselben Weg für das Beispielvideo. */
+const VIDEO_ID = '22222222-3333-4444-5555-666666666666'
+const videoQuelle = 'docs/beispiel-video.mp4'
+const videos = join(PROFIL, 'videos')
+mkdirSync(videos, { recursive: true })
+copyFileSync(videoQuelle, join(videos, `${VIDEO_ID}.mp4`))
+writeFileSync(
+  join(videos, 'index.json'),
+  JSON.stringify(
+    [
+      {
+        id: VIDEO_ID,
+        title: 'Rückblick auf das Jahr 2026',
+        fileName: 'beispiel-video.mp4',
+        size: statSync(videoQuelle).size,
+        mimeType: 'video/mp4',
         importedAt: new Date().toISOString()
       }
     ],
@@ -471,11 +538,44 @@ try {
   /* Die Bibliothek in der Bedienoberfläche. */
   await sitzung.auswerten("window.location.hash = '#/beamer'")
   await warte(1500)
+  await reiterOeffnen(sitzung, 'Präsentation & Video')
+  await warte(1200)
+  await sitzung.aufnehmen('18-praesentationen')
+
+  /* ------------------------------------------------------------- Video */
+  console.log('Video …')
+  await sitzung.auswerten(`(async () => {
+    const ruf = (m, ...a) => window.votura.invoke(m, ...a)
+    await ruf('projection.setMode', { mode: 'video', videoId: '${VIDEO_ID}' })
+    await new Promise((f) => setTimeout(f, 2500))
+    await ruf('video.setPlaying', true)
+    await new Promise((f) => setTimeout(f, 2500))
+    await ruf('video.setPlaying', false)
+    return true
+  })()`)
+  await warte(1500)
+
+  const beamerVideo = (await ziele()).find((z) => z.url.includes('audience'))
+  if (beamerVideo) {
+    const wand = await Sitzung.verbinde(beamerVideo.webSocketDebuggerUrl)
+    await wand.sende('Page.enable')
+    await wand.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1600, height: 900, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(1500)
+    await wand.aufnehmen('19-beamer-video')
+    wand.schliessen()
+  }
+
+  await sitzung.auswerten("window.location.hash = '#/beamer'")
+  await warte(1500)
+  await reiterOeffnen(sitzung, 'Präsentation & Video')
+  await warte(1200)
   await sitzung.auswerten(
-    "(() => { const k = Array.from(document.querySelectorAll('h2, h3')).find((x) => x.textContent.includes('Präsentationen')); if (k) k.scrollIntoView({ block: 'start' }); return true })()"
+    "(() => { const k = Array.from(document.querySelectorAll('h2, h3')).find((x) => (x.textContent || '').trim() === 'Videos'); if (k) k.scrollIntoView({ block: 'start' }); return true })()"
   )
   await warte(900)
-  await sitzung.aufnehmen('18-praesentationen')
+  await sitzung.aufnehmen('20-videosteuerung')
 
   sitzung.schliessen()
   console.log('Fertig.')

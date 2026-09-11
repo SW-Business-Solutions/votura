@@ -74,6 +74,12 @@ import {
   setLocked,
   setProjection,
   setPresentationSlide,
+  setVideoMuted,
+  setVideoPlaying,
+  seekVideo,
+  reportVideoDuration,
+  reportVideoReady,
+  videoEnded,
   reportPresentationState,
   projectDomainEvent
 } from './services/projection'
@@ -83,6 +89,7 @@ import {
   listPresentations,
   renamePresentation
 } from './services/presentations'
+import { deleteVideo, importVideo, listVideos, renameVideo } from './services/videos'
 import {
   cancelRound,
   completeRound,
@@ -495,6 +502,39 @@ const api: Api = {
    */
   'presentation.setSlide': async (slide) => setPresentationSlide(slide),
   'presentation.report': async ({ slide, slideCount }) => reportPresentationState(slide, slideCount),
+  /* -------------------------------------------------------------- Videos */
+  'video.list': async () => listVideos(),
+  'video.import': async () => {
+    requirePermission('round.manage')
+    const auswahl = await dialog.showOpenDialog({
+      title: 'Video einspeisen',
+      buttonLabel: 'Einspeisen',
+      properties: ['openFile'],
+      filters: [{ name: 'Video', extensions: ['mp4', 'm4v', 'webm'] }]
+    })
+    const pfad = auswahl.canceled ? undefined : auswahl.filePaths[0]
+    return pfad ? importVideo(pfad) : null
+  },
+  'video.rename': async ({ id, title }) => {
+    requirePermission('round.manage')
+    return renameVideo(id, title)
+  },
+  'video.delete': async (id) => {
+    requirePermission('round.manage')
+    deleteVideo(id)
+  },
+  /*
+   * Start, Pause und Sprung brauchen **kein** 'round.manage' — wie beim
+   * Blättern: Wer den Film zeigt, ist nicht zwangsläufig die Person, die
+   * Wahlgänge führt.
+   */
+  'video.setPlaying': async (playing) => setVideoPlaying(playing),
+  'video.seek': async (seconds) => seekVideo(seconds),
+  'video.setMuted': async (muted) => setVideoMuted(muted),
+  'video.reportDuration': async (seconds) => reportVideoDuration(seconds),
+  'video.reportReady': async () => reportVideoReady(),
+  'video.reportEnded': async () => videoEnded(),
+
   'presentation.prompterState': async () => prompterState(),
   'presentation.openPrompter': async () => {
     requirePermission('round.manage')
@@ -585,6 +625,23 @@ export function registerIpc(): void {
    * Rueckweg (Beamer §31). Ohne diese Zeile bliebe die Gesamtzahl unbekannt —
    * die Steuerung zaehlte dann ueber das Ende des Vortrags hinaus weiter.
    */
+  /*
+   * Was die Beameransicht über das laufende Video weiß.
+   *
+   * Das Fenster bleibt damit „rein lesend" im Sinne von §31: Es verändert
+   * keine Wahldaten, sondern sagt etwas über sich selbst aus. Die Laufzeit
+   * steckt im Containerformat und lässt sich nur dort ablesen, wo die Datei
+   * geladen wurde.
+   */
+  ipcMain.on(
+    IPC.audienceVideoReport,
+    (_event, input: { durationSeconds?: number; ready?: boolean; ended?: boolean }) => {
+      if (typeof input?.durationSeconds === 'number') reportVideoDuration(input.durationSeconds)
+      if (input?.ready === true) reportVideoReady()
+      if (input?.ended === true) videoEnded()
+    }
+  )
+
   ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number }) => {
     if (typeof input?.slide !== 'number' || typeof input?.slideCount !== 'number') return
     reportPresentationState(input.slide, input.slideCount)

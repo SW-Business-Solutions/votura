@@ -14,6 +14,7 @@ import type {
   ProjectionTheme
 } from './projection'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
+import type { VideoInfo } from './video'
 import type {
   AgendaItem,
   AgendaItemInput,
@@ -81,7 +82,18 @@ export const IPC = {
    * Ein Foliensatz richtet sich nach seinem Fenster. Rechnete die Vorschau mit
    * einer anderen Größe, zeigte sie ein anderes Layout als die Wand.
    */
-  beamerSize: 'wz:beamer-size'
+  beamerSize: 'wz:beamer-size',
+  /**
+   * Die Beameransicht meldet, was sie über das laufende Video weiß.
+   *
+   * Das ist die **einzige** Nachricht, die aus diesem Fenster hinausgeht, und
+   * sie durchbricht die Regel „rein lesend" (Beamer §31) nicht: Sie verändert
+   * keine Wahldaten, sondern sagt etwas über das Fenster selbst aus — wie
+   * lang die Datei ist, ob genug gepuffert wurde, ob sie durchgelaufen ist.
+   * Ohne diesen Weg wüsste niemand, wann der Film zu Ende ist, denn die
+   * Laufzeit steckt im Containerformat und nirgends sonst.
+   */
+  audienceVideoReport: 'wz:audience-video-report'
 } as const
 
 /**
@@ -438,6 +450,7 @@ export interface Api {
     showAll?: boolean
     breakMinutes?: number
     presentationId?: UUID
+    videoId?: UUID
   }) => Promise<ProjectionState>
   'projection.setCandidatePage': (page: number) => Promise<ProjectionState>
   'projection.setLocked': (locked: boolean) => Promise<ProjectionState>
@@ -464,6 +477,30 @@ export interface Api {
   'presentation.setSlide': (slide: number) => Promise<ProjectionState>
   /** Was das Dokument über sich meldet — Folie und Gesamtzahl. */
   'presentation.report': (input: { slide: number; slideCount: number }) => Promise<ProjectionState>
+  /* -------------------------------------------------------------- Videos */
+  /**
+   * Eingespeiste Videos. Die Datei selbst geht **nie** über diese
+   * Schnittstelle — sie käme als ein Stück im Arbeitsspeicher an. Ausgeliefert
+   * wird sie mit Bereichsanfragen über ein eigenes Schema bzw. den
+   * Projektionsserver.
+   */
+  'video.list': () => Promise<VideoInfo[]>
+  /** Öffnet den Dateidialog und übernimmt die gewählte Videodatei. */
+  'video.import': () => Promise<VideoInfo | null>
+  'video.rename': (input: { id: UUID; title: string }) => Promise<VideoInfo>
+  'video.delete': (id: UUID) => Promise<void>
+  /** Start und Pause; die Uhr im Zustand wird dabei neu gesetzt. */
+  'video.setPlaying': (playing: boolean) => Promise<ProjectionState>
+  /** Springt an diese Stelle (Sekunden). */
+  'video.seek': (seconds: number) => Promise<ProjectionState>
+  'video.setMuted': (muted: boolean) => Promise<ProjectionState>
+  /** Was das Gerät aus der Datei gelesen hat. */
+  'video.reportDuration': (seconds: number) => Promise<ProjectionState>
+  /** Dieses Gerät hat genug gepuffert. */
+  'video.reportReady': () => Promise<ProjectionState>
+  /** Das Video ist durchgelaufen. */
+  'video.reportEnded': () => Promise<ProjectionState>
+
   'presentation.prompterState': () => Promise<PrompterWindowState>
   'presentation.openPrompter': () => Promise<PrompterWindowState>
   'presentation.closePrompter': () => Promise<PrompterWindowState>
