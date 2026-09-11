@@ -23,6 +23,7 @@ Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederv
 | Druck | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe |
 | Beamer | Zweites, rein lesendes Fenster + optionale Netzwerkansicht im Browser |
 | Präsentationen | Eingespeiste HTML-Foliensätze auf dem Beamer, Vortragssteuerung in eigenem Fenster |
+| Video | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
 | Installation | Windows-Installer (NSIS) und portable Fassung |
 
@@ -223,6 +224,37 @@ Herunterladen. Kurz gefasst: eine einzelne HTML-Datei, die auf
 `{ votura: 'votura', type: 'goto', slide }` hört und ihren Stand mit
 `{ votura: 'votura', type: 'state', slide, slideCount }` zurückmeldet.
 
+## Video
+
+Läuft zwischen zwei Wahlgängen ein Film — Grußwort, Rückblick, Vorstellung —, zeigen ihn Beamer
+und Netzwerkansicht **gleichzeitig und mit demselben Stand**. Ein Bild, das drei Sekunden
+hinterherhinkt, während vorne schon geklatscht wird, ist schlimmer als gar kein zweiter
+Bildschirm.
+
+- **Eine Uhr statt Befehlen** — der Zustand nennt nicht „jetzt abspielen", sondern die Position zu
+  einem Zeitpunkt. Jedes Gerät rechnet sich daraus seinen Stand aus, auch eines, das erst mitten
+  im Film dazukommt. Ein Befehl hätte die, die ihn verpasst haben, nie erreicht.
+- **Nachführen statt springen** — kleine Abweichungen werden über die Abspielgeschwindigkeit
+  ausgeglichen (höchstens zwei Prozent, das hört und sieht niemand). Erst ab einer Dreiviertelsekunde
+  wird gesprungen, denn ein Sprung ruckelt sichtbar.
+- **Bereichsanfragen** — die Datei wird mit `Accept-Ranges` ausgeliefert. Der Browser puffert
+  voraus und kann springen, ohne von vorn zu laden; sonst stünde ein Film von 300 MB im WLAN eines
+  Saals minutenlang schwarz.
+- **Ton nur an einer Stelle** — den gibt der Beamer aus. Zehn Tablets, die denselben Film im Chor
+  tönen, sind unerträglich, und schon Millisekunden Versatz klingen wie ein Echo.
+
+Angenommen werden **MP4 (H.264/AAC)** und **WebM** — was jedes Chromium ohne Zusatzpaket abspielt.
+MKV und MOV fehlen nicht aus Nachlässigkeit: Sie laufen je nach Inhalt oder eben nicht, und „läuft
+manchmal" ist im Saal wertlos. Eine kleine Probedatei liegt bei:
+[docs/beispiel-video.mp4](docs/beispiel-video.mp4).
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/19-beamer-video.png" alt="Video auf dem Beamer"><br><sub><b>Auf dem Beamer</b> — der Film füllt die Fläche; das Seitenverhältnis bleibt erhalten, lieber Balken als angeschnittener Inhalt.</sub></td>
+<td width="50%"><img src="docs/screenshots/20-videosteuerung.png" alt="Videosteuerung in der Bedienung"><br><sub><b>Steuerung</b> — Abspielen, Anhalten, Springen und Ton; die Zeitanzeige nennt den Sollstand, nach dem sich alle Bildschirme richten.</sub></td>
+</tr>
+</table>
+
 ## Netzwerkbetrieb
 
 Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und nur für ein
@@ -309,4 +341,5 @@ Wer den Code nutzen möchte, wendet sich bitte an den Autor.
 - `docs/betrieb.md` — Betriebshandbuch für die Versammlung
 - `docs/praesentationen.md` — wie eine HTML-Präsentation aufgebaut sein muss
 - `docs/beispiel-praesentation.html` — lauffähige Vorlage dazu
+- `docs/beispiel-video.mp4` — kleine Probedatei für die Videowiedergabe
 - `docs/adr/` — Architekturentscheidungen mit Begründung

@@ -597,6 +597,31 @@ tr.muted td {
   border-bottom-color: var(--accent);
 }
 
+/*
+ * Die Beamerseite: Vorschau links bleibt stehen, rechts wird geblättert.
+ *
+ * Was auf der Wand steht, ist während einer Versammlung die wichtigste Angabe
+ * der Seite. Sie darf beim Scrollen durch Einstellungen nicht aus dem Bild
+ * laufen — sonst stellt man etwas um, ohne zu sehen, was es bewirkt.
+ */
+.beamer-spalte-fest {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  /* Auf schmalen Fenstern legen sich die Spalten untereinander; dort wäre ein
+     klebender Block nur im Weg. */
+  max-height: 100vh;
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .beamer-spalte-fest {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
 .list-reset {
   list-style: none;
   margin: 0;

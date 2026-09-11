@@ -11,6 +11,7 @@ import { ProjectionScreen } from '../../projection/ProjectionScreen'
 import { useApp } from '../state'
 import { Card, Checkbox, Field, NumberInput } from '../components/ui'
 import { PresentationLibrary } from '../components/PresentationLibrary'
+import { VideoLibrary } from '../components/VideoLibrary'
 
 const MODE_BUTTONS: { mode: ProjectionMode; label: string; needsRound?: boolean }[] = [
   { mode: 'welcome', label: 'Willkommen' },
@@ -26,6 +27,22 @@ const MODE_BUTTONS: { mode: ProjectionMode; label: string; needsRound?: boolean 
   { mode: 'break', label: 'Pause' },
   { mode: 'session_finished', label: 'Versammlung beendet' }
 ]
+
+/**
+ * Die Bereiche der rechten Spalte.
+ *
+ * Sie standen früher untereinander; mit Präsentationen und Videos wurde die
+ * Seite so lang, dass die Vorschau — das Wichtigste — beim Scrollen aus dem
+ * Bild lief. Was man während einer Versammlung selten braucht, liegt jetzt
+ * hinter einem Reiter, statt den Weg zu verstellen.
+ */
+const BEREICHE = [
+  { id: 'inhalte', label: 'Inhalte' },
+  { id: 'medien', label: 'Präsentation & Video' },
+  { id: 'ausgabe', label: 'Ausgabe & Netz' },
+  { id: 'verlauf', label: 'Verlauf' }
+] as const
+type Bereich = (typeof BEREICHE)[number]['id']
 
 export function BeamerPage(): React.JSX.Element {
   const app = useApp()
@@ -66,6 +83,8 @@ export function BeamerPage(): React.JSX.Element {
     }
   }
 
+  const [bereich, setBereich] = useState<Bereich>('inhalte')
+
   return (
     <>
       <div className="page-header">
@@ -84,7 +103,7 @@ export function BeamerPage(): React.JSX.Element {
       </div>
 
       <div className="grid cols-2">
-        <div>
+        <div className="beamer-spalte-fest">
           <Card title="Aktuelle Anzeige">
             <div className="preview-frame">
               <ProjectionScreen state={projection} preview />
@@ -171,6 +190,19 @@ export function BeamerPage(): React.JSX.Element {
         </div>
 
         <div>
+          <div className="tabs">
+            {BEREICHE.map((eintrag) => (
+              <button
+                key={eintrag.id}
+                className={`tab${bereich === eintrag.id ? ' active' : ''}`}
+                onClick={() => setBereich(eintrag.id)}
+              >
+                {eintrag.label}
+              </button>
+            ))}
+          </div>
+
+          {bereich === 'ausgabe' && (
           <Card title="Ausgabegerät">
             {audience?.singleDisplay && (
               <div className="notice warn">
@@ -206,7 +238,10 @@ export function BeamerPage(): React.JSX.Element {
               </button>
             </div>
           </Card>
+          )}
 
+          {bereich === 'inhalte' && (
+          <>
           <Card title="Freie Mitteilung">
             <Field label="Titel">
               <input value={messageTitle} onChange={(e) => setMessageTitle(e.target.value)} />
@@ -288,8 +323,17 @@ export function BeamerPage(): React.JSX.Element {
             <button onClick={() => void setMode('agenda', { agenda })}>Tagesordnung anzeigen</button>
           </Card>
 
-          <PresentationLibrary />
+          </>
+          )}
 
+          {bereich === 'medien' && (
+          <>
+            <PresentationLibrary />
+            <VideoLibrary />
+          </>
+          )}
+
+          {bereich === 'ausgabe' && (
           <Card title="Beamer im Netzwerk">
             {network ? (
               <NetworkSection status={network} onChange={setNetwork} />
@@ -297,7 +341,9 @@ export function BeamerPage(): React.JSX.Element {
               <p className="hint">Wird geladen …</p>
             )}
           </Card>
+          )}
 
+          {bereich === 'verlauf' && (
           <Card title="Verlauf">
             <div className="scroll-box" style={{ maxHeight: 220 }}>
               <table>
@@ -313,6 +359,7 @@ export function BeamerPage(): React.JSX.Element {
               </table>
             </div>
           </Card>
+          )}
         </div>
       </div>
     </>

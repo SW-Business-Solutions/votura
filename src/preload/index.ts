@@ -24,6 +24,7 @@ const IPC: IpcChannels = {
   prompterCommand: 'wz:prompter-command',
   prompterReport: 'wz:prompter-report',
   beamerSize: 'wz:beamer-size',
+  audienceVideoReport: 'wz:audience-video-report',
   prompterState: 'wz:prompter-state'
 }
 

@@ -23,6 +23,7 @@ import {
   type ProjectionState
 } from '@shared/projection'
 import type { ProjectionPresentation } from '@shared/presentation'
+import type { ProjectionVideo } from '@shared/video'
 import { rankCandidates } from '@shared/result'
 import { profileFor } from '@shared/election'
 import type { ElectionRound, UUID } from '@shared/types'
@@ -30,6 +31,7 @@ import { db } from '../db'
 import { fromJson } from '../db/driver'
 import { appendAudit } from './audit'
 import { getPresentation, rememberSlideCount } from './presentations'
+import { getVideo, rememberDuration } from './videos'
 import { getSession } from './auth'
 import { approvedDocument } from './ballots'
 import { listCandidates } from './candidates'
@@ -301,6 +303,8 @@ export interface SetModeInput {
   breakMinutes?: number
   /** Welche Präsentation gezeigt wird (nur im Modus 'presentation'). */
   presentationId?: UUID
+  /** Welches Video gezeigt wird (nur im Modus 'video'). */
+  videoId?: UUID
 }
 
 export function setProjection(input: SetModeInput, options: { audit?: boolean } = {}): ProjectionState {
@@ -395,6 +399,13 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
      */
     presentation:
       input.mode === 'presentation' ? praesentationFuer(input.presentationId) : undefined,
+    /*
+     * Dasselbe gilt für das Video: Wer zurück auf den Wahlgang schaltet, will
+     * den Wahlgang sehen. Es beginnt bei jedem Aufruf angehalten bei Sekunde
+     * null — ein Film, der von selbst losläuft, sobald er auf den Beamer
+     * kommt, überrumpelt den Saal.
+     */
+    video: input.mode === 'video' ? videoFuer(input.videoId) : undefined,
     updatedAt: new Date().toISOString()
   }
 
@@ -460,6 +471,126 @@ function praesentationFuer(id?: UUID): ProjectionPresentation | undefined {
   const gefunden = getPresentation(id)
   if (!gefunden) return undefined
   return { id: gefunden.id, title: gefunden.title, slide: 1, slideCount: gefunden.slideCount }
+}
+
+function videoFuer(id?: UUID): ProjectionVideo | undefined {
+  if (!id) return undefined
+  const gefunden = getVideo(id)
+  if (!gefunden) return undefined
+  return {
+    id: gefunden.id,
+    title: gefunden.title,
+    playing: false,
+    position: 0,
+    anchoredAt: Date.now(),
+    durationSeconds: gefunden.durationSeconds,
+    /* Der Beamer hat den Ton. Ob Nebenbildschirme ihn bekommen, entscheidet
+       jedes Gerät für sich — ein Saal mit zehn Tablets im Chor wäre
+       unerträglich. */
+    muted: false,
+    readyCount: 0
+  }
+}
+
+/**
+ * Setzt die Uhr des laufenden Videos neu.
+ *
+ * Jede Änderung — Start, Pause, Sprung — schreibt Position **und** Zeitpunkt.
+ * Nur beides zusammen ergibt eine Aussage: „Sekunde 42, gemessen um 17:03:11".
+ * Daraus rechnet jedes Gerät seinen Sollstand aus, auch eines, das erst danach
+ * dazukommt.
+ */
+function setzeVideo(aenderung: Partial<ProjectionVideo>): ProjectionState {
+  if (state.mode !== 'video' || !state.video) return state
+  state = {
+    ...state,
+    video: { ...state.video, ...aenderung, anchoredAt: aenderung.anchoredAt ?? Date.now() },
+    updatedAt: new Date().toISOString()
+  }
+  broadcast()
+  return state
+}
+
+/** Aktuelle Sollposition — bei laufendem Video aus der Uhr fortgeschrieben. */
+function sollPosition(video: ProjectionVideo): number {
+  const gelaufen = video.playing ? Math.max(0, (Date.now() - video.anchoredAt) / 1000) : 0
+  const roh = video.position + gelaufen
+  return video.durationSeconds !== undefined ? Math.min(roh, video.durationSeconds) : roh
+}
+
+/**
+ * Start und Pause des Videos.
+ *
+ * **Ohne Prüfeintrag** wie beim Blättern: Dass ein Film gezeigt wurde, steht
+ * bereits als Moduswechsel im Protokoll. Wie oft dabei pausiert wurde, gehört
+ * nicht zu den Wahlhandlungen.
+ */
+export function setVideoPlaying(playing: boolean): ProjectionState {
+  if (state.mode !== 'video' || !state.video) return state
+  if (state.video.playing === playing) return state
+  /* Beim Anhalten wird der erreichte Stand festgeschrieben — sonst liefe die
+     Uhr im Zustand weiter, während das Bild steht. */
+  return setzeVideo({ playing, position: sollPosition(state.video) })
+}
+
+export function seekVideo(seconds: number): ProjectionState {
+  if (state.mode !== 'video' || !state.video) return state
+  if (!Number.isFinite(seconds)) return state
+  const grenze = state.video.durationSeconds
+  const ziel = Math.max(0, grenze !== undefined ? Math.min(seconds, grenze) : seconds)
+  /* Ein Sprung setzt die Bereitmeldungen zurück: Was die Geräte gepuffert
+     hatten, liegt jetzt an der falschen Stelle. */
+  return setzeVideo({ position: ziel, readyCount: 0 })
+}
+
+export function setVideoMuted(muted: boolean): ProjectionState {
+  if (state.mode !== 'video' || !state.video) return state
+  if (state.video.muted === muted) return state
+  return setzeVideo({ muted, position: sollPosition(state.video) })
+}
+
+/**
+ * Ein Gerät meldet, dass es genug gepuffert hat.
+ *
+ * Gezählt wird nur, wie viele es sind — welches Gerät, ist für die Anzeige
+ * gleichgültig und wäre eine Angabe über Anwesende, die niemand braucht.
+ */
+export function reportVideoReady(): ProjectionState {
+  if (state.mode !== 'video' || !state.video) return state
+  return setzeVideo({
+    readyCount: state.video.readyCount + 1,
+    position: sollPosition(state.video)
+  })
+}
+
+/**
+ * Übernimmt die Laufzeit, die das Gerät aus der Datei gelesen hat.
+ *
+ * Sie steckt im Containerformat; ihn hier zu zerlegen hieße, einen
+ * Videodecoder nachzubauen.
+ */
+export function reportVideoDuration(seconds: number): ProjectionState {
+  if (state.mode !== 'video' || !state.video) return state
+  if (!Number.isFinite(seconds) || seconds <= 0) return state
+  const gerundet = Math.round(seconds * 100) / 100
+  rememberDuration(state.video.id, gerundet)
+  if (state.video.durationSeconds === gerundet) return state
+  return setzeVideo({ durationSeconds: gerundet, position: sollPosition(state.video) })
+}
+
+/**
+ * Das Video ist durchgelaufen.
+ *
+ * Es bleibt am Ende stehen statt zurückzuspringen: Ein Film, der von vorn
+ * beginnt, während die Versammlungsleitung schon spricht, zieht die
+ * Aufmerksamkeit zurück auf die Wand.
+ */
+export function videoEnded(): ProjectionState {
+  if (state.mode !== 'video' || !state.video || !state.video.playing) return state
+  return setzeVideo({
+    playing: false,
+    position: state.video.durationSeconds ?? sollPosition(state.video)
+  })
 }
 
 /**

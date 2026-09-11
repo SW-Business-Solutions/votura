@@ -8,6 +8,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { formatDateDe } from '@shared/format'
 import { PresentationFrame } from './PresentationFrame'
+import { VideoFrame } from './VideoFrame'
 import {
   DEFAULT_PROJECTION_THEME,
   FINAL_DECISION_LABELS,
@@ -40,6 +41,13 @@ export interface ProjectionScreenProps {
    * Foliensatz nur verwirrte.
    */
   presentationSrc?: string
+  /** Woher das laufende Video kommt. */
+  videoSrc?: string
+  /** Darf dieses Gerät den Ton wiedergeben? Nur der Beamer bekommt ihn. */
+  videoAudio?: boolean
+  onVideoDuration?: (seconds: number) => void
+  onVideoReady?: () => void
+  onVideoEnded?: () => void
   /** Was das Dokument über sich meldet (nur im Beamerfenster genutzt). */
   onPresentationReport?: (slide: number, slideCount: number) => void
 }
@@ -149,7 +157,12 @@ export function ProjectionScreen({
   preview,
   disconnected,
   presentationSrc,
-  onPresentationReport
+  onPresentationReport,
+  videoSrc,
+  videoAudio,
+  onVideoDuration,
+  onVideoReady,
+  onVideoEnded
 }: ProjectionScreenProps): JSX.Element {
   const theme = state.theme ?? DEFAULT_PROJECTION_THEME
   // Jede Inhaltsänderung stößt eine neue Messung an.
@@ -196,6 +209,37 @@ export function ProjectionScreen({
    * und verdeckten dessen Rand. Der Hinweis auf eine abgerissene Verbindung
    * bleibt, denn er betrifft die Steuerung, nicht den Inhalt.
    */
+  /*
+   * Das Video bekommt die ganze Fläche, aus demselben Grund wie die
+   * Präsentation: Kopfzeile und Logo gehören zur Wahlansicht, über einem Film
+   * wären sie ein Rahmen zu viel.
+   */
+  if (state.mode === 'video') {
+    return (
+      <div className={`projection-root video-mode${preview ? ' preview' : ''}`} style={style}>
+        {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.video && videoSrc ? (
+          <VideoFrame
+            key={state.video.id}
+            video={state.video}
+            src={videoSrc}
+            audio={videoAudio}
+            onDuration={onVideoDuration}
+            onReady={onVideoReady}
+            onEnded={onVideoEnded}
+          />
+        ) : (
+          <div className="projection-presentation-empty">
+            <div className="projection-status">VIDEO</div>
+            <div className="projection-note">
+              {state.video ? state.video.title : 'Es ist kein Video ausgewählt.'}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (state.mode === 'presentation') {
     return (
       <div

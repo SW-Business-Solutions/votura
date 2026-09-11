@@ -71,6 +71,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'print.resume_not_needed': 'Fortsetzung nicht nötig',
   'print.protocol_slip': 'Protokollbon gedruckt',
   'print.result_slip': 'Ergebnisbon gedruckt',
+  'video.imported': 'Video eingespeist',
+  'video.renamed': 'Video umbenannt',
+  'video.deleted': 'Video entfernt',
   'printer.status_checked': 'Druckerstatus geprüft',
 
   /* ------------------------------------------------------------- Ergebnis */

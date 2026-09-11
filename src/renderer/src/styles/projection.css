@@ -599,6 +599,25 @@ html {
   background: #000;
 }
 
+/*
+ * Das Video füllt die Fläche, ohne beschnitten zu werden.
+ *
+ * `contain` statt `cover`: Ein Film im 4:3-Format auf einem 16:9-Beamer
+ * bekommt lieber Balken, als dass ihm links und rechts der Inhalt abgeschnitten
+ * wird — auf einer Versammlung steht im Zweifel jemand am Bildrand.
+ */
+.projection-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.video-mode {
+  background: #000;
+}
+
 .projection-presentation-empty {
   display: flex;
   flex-direction: column;
