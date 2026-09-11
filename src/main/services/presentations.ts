@@ -23,7 +23,7 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import type { PresentationInfo } from '@shared/presentation'
+import { presentationKind, type PresentationInfo, type PresentationKind } from '@shared/presentation'
 import type { UUID } from '@shared/types'
 import { appPaths } from '../paths'
 import { logger } from '../logger'
@@ -66,15 +66,26 @@ function schreibe(liste: PresentationInfo[]): void {
   writeFileSync(verzeichnisDatei(), JSON.stringify(liste, null, 2), 'utf8')
 }
 
-/** Pfad der abgelegten Datei. Bewusst kein Aufruferpfad — nur die Kennung zählt. */
-export function presentationFile(id: UUID): string {
-  return join(ordner(), `${id}.html`)
+/**
+ * Pfad der abgelegten Datei. Bewusst kein Aufruferpfad — nur die Kennung zählt.
+ *
+ * Die Endung bleibt erhalten, damit ein PDF als PDF erkennbar bleibt. Ohne
+ * Angabe gilt `.html`: So liegen Dateien aus einer älteren Fassung weiterhin
+ * dort, wo sie immer lagen.
+ */
+export function presentationFile(id: UUID, endung = '.html'): string {
+  return join(ordner(), `${id}${endung}`)
+}
+
+/** Pfad zu einem Eintrag der Bibliothek. */
+export function presentationFileFor(eintrag: PresentationInfo): string {
+  return presentationFile(eintrag.id, presentationKind(eintrag) === 'pdf' ? '.pdf' : '.html')
 }
 
 export function listPresentations(): PresentationInfo[] {
   /* Was im Verzeichnis steht, aber nicht mehr auf der Platte liegt, wird
      stillschweigend ausgesortiert — etwa nach einem Griff ins Dateisystem. */
-  const vorhanden = lies().filter((p) => existsSync(presentationFile(p.id)))
+  const vorhanden = lies().filter((p) => existsSync(presentationFileFor(p)))
   return [...vorhanden].sort((a, b) => b.importedAt.localeCompare(a.importedAt))
 }
 
@@ -100,9 +111,11 @@ export function importPresentation(sourcePath: string): PresentationInfo {
   if (!existsSync(sourcePath)) {
     throw new Error('Die Datei gibt es nicht mehr.')
   }
-  if (!/^\.html?$/i.test(extname(sourcePath))) {
-    throw new Error('Nur einzelne HTML-Dateien lassen sich einspeisen.')
+  const endung = extname(sourcePath).toLowerCase()
+  if (!/^\.(html?|pdf)$/i.test(endung)) {
+    throw new Error('Eingespeist werden einzelne HTML-Dateien und PDF-Dokumente.')
   }
+  const art: PresentationKind = endung === '.pdf' ? 'pdf' : 'html'
   const groesse = statSync(sourcePath).size
   if (groesse > MAX_BYTES) {
     throw new Error(
@@ -111,19 +124,21 @@ export function importPresentation(sourcePath: string): PresentationInfo {
   }
 
   const id = randomUUID()
-  const ziel = presentationFile(id)
+  const ziel = presentationFile(id, art === 'pdf' ? '.pdf' : '.html')
   copyFileSync(sourcePath, ziel)
 
   const dateiname = basename(sourcePath)
   const eintrag: PresentationInfo = {
     id,
-    title: titelAusDatei(ziel, dateiname.replace(/\.html?$/i, '')),
+    kind: art,
+    /* Der <title> steht nur in HTML; bei einem PDF bleibt der Dateiname. */
+    title: art === 'html' ? titelAusDatei(ziel, dateiname.replace(/\.html?$/i, '')) : dateiname.replace(/\.pdf$/i, ''),
     fileName: dateiname,
     size: groesse,
     importedAt: new Date().toISOString()
   }
 
-  schreibe([...lies().filter((p) => existsSync(presentationFile(p.id))), eintrag])
+  schreibe([...lies().filter((p) => existsSync(presentationFileFor(p))), eintrag])
 
   const session = getSession()
   appendAudit({
@@ -162,7 +177,7 @@ export function renamePresentation(id: UUID, title: string): PresentationInfo {
 export function deletePresentation(id: UUID): void {
   const liste = lies()
   const eintrag = liste.find((p) => p.id === id)
-  rmSync(presentationFile(id), { force: true })
+  if (eintrag) rmSync(presentationFileFor(eintrag), { force: true })
   schreibe(liste.filter((p) => p.id !== id))
 
   const session = getSession()
@@ -193,5 +208,5 @@ export function rememberSlideCount(id: UUID, slideCount: number): void {
 }
 
 export function getPresentation(id: UUID): PresentationInfo | undefined {
-  return lies().find((p) => p.id === id && existsSync(presentationFile(p.id)))
+  return lies().find((p) => p.id === id && existsSync(presentationFileFor(p)))
 }

@@ -479,7 +479,11 @@ const api: Api = {
       title: 'Präsentation einspeisen',
       buttonLabel: 'Einspeisen',
       properties: ['openFile'],
-      filters: [{ name: 'HTML-Präsentation', extensions: ['html', 'htm'] }]
+      filters: [
+        { name: 'Präsentation', extensions: ['html', 'htm', 'pdf'] },
+        { name: 'HTML-Foliensatz', extensions: ['html', 'htm'] },
+        { name: 'PDF (z. B. aus PowerPoint)', extensions: ['pdf'] }
+      ]
     })
     const pfad = auswahl.canceled ? undefined : auswahl.filePaths[0]
     return pfad ? importPresentation(pfad) : null

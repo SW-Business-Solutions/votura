@@ -22,7 +22,7 @@ Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederv
 | Datenhaltung | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil |
 | Druck | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe |
 | Beamer | Zweites, rein lesendes Fenster + optionale Netzwerkansicht im Browser |
-| Präsentationen | Eingespeiste HTML-Foliensätze auf dem Beamer, Vortragssteuerung in eigenem Fenster |
+| Präsentationen | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster |
 | Video | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
 | Installation | Windows-Installer (NSIS) und portable Fassung |
@@ -201,6 +201,9 @@ derselben Netzwerkansicht wie die Wahlansicht; eine Schaltfläche bringt den Wah
   Position, Uhrzeit und Stoppuhr. Pfeiltasten, Leertaste, Bild auf/ab, Pos1/Ende.
 - **Abgeschottet** — der Foliensatz läuft in einem Rahmen ohne Zugriff auf Wahldaten, Oberfläche
   oder Netz. Er kann nichts nachladen und nichts melden.
+- **PowerPoint über PDF** — was in PowerPoint, Impress oder Keynote entsteht, kommt über deren
+  eigenen PDF-Export herein. Votura zeichnet die Seiten selbst, ohne Werkzeug- und Blätterleiste.
+  Layout und Schriften bleiben originalgetreu; Animationen gehen verloren.
 
 Erwartet wird eine Datei, die alles mitbringt: Schriften, Bilder und Steuerung darin. Sie läuft
 damit ohne Netz und ohne zweites Programm — und ohne Schriftarten, die auf dem Saalrechner fehlen

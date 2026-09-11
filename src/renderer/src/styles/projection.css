@@ -618,6 +618,20 @@ html {
   background: #000;
 }
 
+/* Das PDF wird auf eine Leinwand gezeichnet und mittig eingepasst. */
+.projection-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.projection-pdf canvas {
+  display: block;
+}
+
 .projection-presentation-empty {
   display: flex;
   flex-direction: column;

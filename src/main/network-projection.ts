@@ -16,7 +16,7 @@ import type { NetworkProjectionConfig } from '@shared/config'
 import type { ProjectionState } from '@shared/projection'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
-import { presentationFile } from './services/presentations'
+import { getPresentation, presentationFileFor } from './services/presentations'
 import { getVideo, videoFileFor } from './services/videos'
 import { getProjectionState } from './services/projection'
 
@@ -221,7 +221,12 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       deny(response, 404, 'Gerade läuft keine Präsentation.')
       return
     }
-    serveFile(response, presentationFile(laufend.id))
+    const eintrag = getPresentation(laufend.id)
+    if (!eintrag) {
+      deny(response, 404, 'Die Datei fehlt.')
+      return
+    }
+    serveFile(response, presentationFileFor(eintrag))
     return
   }
 

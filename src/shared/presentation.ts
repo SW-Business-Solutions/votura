@@ -31,9 +31,30 @@
  */
 import type { IsoDateTime, UUID } from './types'
 
+/**
+ * Woraus die Präsentation besteht.
+ *
+ * `html` ist ein Foliensatz, der sich selbst steuert — er bekommt die
+ * Foliennummer und blättert eigenständig. `pdf` ist eine Folge fester Seiten,
+ * die Votura selbst zeichnet; so kommen PowerPoint-Folien herein, denn
+ * PowerPoint exportiert originalgetreu nach PDF.
+ *
+ * Der Unterschied betrifft nur die Darstellung: Nach außen — Beamer,
+ * Netzwerkansicht, Vortragssteuerung, Projektionszustand — verhalten sich
+ * beide gleich, nämlich als durchnummerierte Folien.
+ */
+export type PresentationKind = 'html' | 'pdf'
+
 /** Eine eingespeiste Präsentation in der Bibliothek. */
 export interface PresentationInfo {
   id: UUID
+  /**
+   * Art des Dokuments.
+   *
+   * Optional, weil Einträge aus einer älteren Fassung das Feld nicht kennen —
+   * sie sind ausnahmslos HTML, und genau das gilt, wenn es fehlt.
+   */
+  kind?: PresentationKind
   /** Anzeigename; beim Import aus dem <title> der Datei oder dem Dateinamen. */
   title: string
   /** Ursprünglicher Dateiname, zur Wiedererkennung beim erneuten Import. */
@@ -55,6 +76,8 @@ export interface PresentationInfo {
 export interface ProjectionPresentation {
   id: UUID
   title: string
+  /** Wie die Ansicht sie darstellen muss. Fehlt sie, gilt HTML. */
+  kind?: PresentationKind
   /** Aktuelle Folie, **1-basiert** wie in der Anzeige. */
   slide: number
   /** Gesamtzahl, sofern schon gemeldet. */
@@ -80,6 +103,12 @@ export const PRESENTATION_CHANNEL = 'votura' as const
  */
 export const PRESENTATION_SCHEME = 'votura-presentation' as const
 
+/** Art einer Präsentation, mit Vorgabe für Einträge ohne Angabe. */
+export function presentationKind(eintrag: { kind?: PresentationKind; fileName?: string }): PresentationKind {
+  if (eintrag.kind) return eintrag.kind
+  return /[.]pdf$/i.test(eintrag.fileName ?? '') ? 'pdf' : 'html'
+}
+
 /**
  * Adresse der laufenden Präsentation.
  *
@@ -92,13 +121,16 @@ export const PRESENTATION_SCHEME = 'votura-presentation' as const
  * Die Foliennummer gehört dagegen ausdrücklich **nicht** hinein: Sie ändert
  * sich bei jedem Tastendruck, und das Dokument lüde jedes Mal neu.
  */
-export function presentationUrl(id: UUID): string {
-  return `${PRESENTATION_SCHEME}://laufend/${id}.html`
+export function presentationUrl(id: UUID, art: PresentationKind = 'html'): string {
+  /* Die Endung ist für den Server bedeutungslos — er liefert ohnehin nur die
+     laufende Datei aus. Sie steht für den Leser in der Fehlermeldung und für
+     pdf.js, das aus der Adresse auf den Inhalt schließt. */
+  return `${PRESENTATION_SCHEME}://laufend/${id}.${art === 'pdf' ? 'pdf' : 'html'}`
 }
 
 /** Dieselbe Datei über den Projektionsserver, für Geräte im Netz. */
-export function presentationPath(id: UUID): string {
-  return `/presentation.html?p=${encodeURIComponent(id)}`
+export function presentationPath(id: UUID, art: PresentationKind = 'html'): string {
+  return `/presentation.html?p=${encodeURIComponent(id)}&art=${art}`
 }
 
 /** Votura → Dokument: zeige diese Folie (1-basiert). */

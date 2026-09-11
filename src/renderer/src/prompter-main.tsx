@@ -25,9 +25,12 @@ import { createRoot } from 'react-dom/client'
 import {
   PRESENTATION_CHANNEL,
   isPresentationReport,
+  presentationKind,
   presentationUrl,
-  type PresentationCommand
+  type PresentationCommand,
+  type PresentationKind
 } from '@shared/presentation'
+import { PdfFrame } from './projection/PdfFrame'
 import { EMPTY_PROJECTION_STATE, type ProjectionState } from '@shared/projection'
 import './styles/prompter.css'
 
@@ -63,12 +66,14 @@ declare global {
  */
 function Vorschau({
   presentationId,
+  art,
   slide,
   beamer,
   gross,
   onReport
 }: {
   presentationId: string
+  art: PresentationKind
   slide: number
   beamer: { width: number; height: number }
   gross?: boolean
@@ -138,19 +143,43 @@ function Vorschau({
           height: `${beamer.height * massstab}px`
         }}
       >
-        <iframe
-          ref={rahmen}
-          src={presentationUrl(presentationId)}
-          sandbox="allow-scripts"
-          title={gross ? 'Aktuelle Folie' : 'Nächste Folie'}
-          tabIndex={-1}
-          onLoad={() => setBereit(true)}
-          style={{
-            width: `${beamer.width}px`,
-            height: `${beamer.height}px`,
-            transform: `scale(${massstab})`
-          }}
-        />
+        {art === 'pdf' ? (
+          /* Ein PDF steuert sich nicht selbst; die Vorschau zeichnet die Seite
+             mit denselben Mitteln wie der Beamer. */
+          <div
+            style={{
+              width: `${beamer.width}px`,
+              height: `${beamer.height}px`,
+              transform: `scale(${massstab})`,
+              transformOrigin: 'top left',
+              position: 'absolute',
+              top: 0,
+              left: 0
+            }}
+          >
+            <PdfFrame
+              src={presentationUrl(presentationId, 'pdf')}
+              slide={slide}
+              /* Nur die große Vorschau meldet: Die kleine steht eine Seite
+                 weiter und würde den Stand vorspulen. */
+              onReport={onReport}
+            />
+          </div>
+        ) : (
+          <iframe
+            ref={rahmen}
+            src={presentationUrl(presentationId, 'html')}
+            sandbox="allow-scripts"
+            title={gross ? 'Aktuelle Folie' : 'Nächste Folie'}
+            tabIndex={-1}
+            onLoad={() => setBereit(true)}
+            style={{
+              width: `${beamer.width}px`,
+              height: `${beamer.height}px`,
+              transform: `scale(${massstab})`
+            }}
+          />
+        )}
         {/*
           Eine durchsichtige Fläche über dem Rahmen.
 
@@ -300,6 +329,7 @@ function PrompterApp(): JSX.Element {
           <h2>Auf dem Beamer</h2>
           <Vorschau
             presentationId={praesentation!.id}
+            art={presentationKind(praesentation!)}
             slide={folie}
             beamer={beamer}
             onReport={melde}
@@ -311,7 +341,12 @@ function PrompterApp(): JSX.Element {
           {letzte ? (
             <div className="prompter-ende">Letzte Folie</div>
           ) : (
-            <Vorschau presentationId={praesentation!.id} slide={folie + 1} beamer={beamer} />
+            <Vorschau
+              presentationId={praesentation!.id}
+              art={presentationKind(praesentation!)}
+              slide={folie + 1}
+              beamer={beamer}
+            />
           )}
         </section>
       </div>

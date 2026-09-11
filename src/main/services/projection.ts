@@ -30,6 +30,7 @@ import type { ElectionRound, UUID } from '@shared/types'
 import { db } from '../db'
 import { fromJson } from '../db/driver'
 import { appendAudit } from './audit'
+import { presentationKind } from '@shared/presentation'
 import { getPresentation, rememberSlideCount } from './presentations'
 import { getVideo, rememberDuration } from './videos'
 import { getSession } from './auth'
@@ -470,7 +471,13 @@ function praesentationFuer(id?: UUID): ProjectionPresentation | undefined {
   if (!id) return undefined
   const gefunden = getPresentation(id)
   if (!gefunden) return undefined
-  return { id: gefunden.id, title: gefunden.title, slide: 1, slideCount: gefunden.slideCount }
+  return {
+    id: gefunden.id,
+    title: gefunden.title,
+    kind: presentationKind(gefunden),
+    slide: 1,
+    slideCount: gefunden.slideCount
+  }
 }
 
 function videoFuer(id?: UUID): ProjectionVideo | undefined {
