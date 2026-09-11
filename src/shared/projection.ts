@@ -6,6 +6,7 @@
  * Nutzer, keine Notizen, keine Hashes, keine Batch-IDs. Und sie hat keine
  * Schreib-API.
  */
+import type { ProjectionPresentation } from './presentation'
 import type { ElectionProcedure, IsoDate, IsoDateTime, UUID } from './types'
 
 export const PROJECTION_MODES = [
@@ -21,6 +22,7 @@ export const PROJECTION_MODES = [
   'runoff_announced',
   'break',
   'custom_message',
+  'presentation',
   'session_finished'
 ] as const
 export type ProjectionMode = (typeof PROJECTION_MODES)[number]
@@ -38,6 +40,7 @@ export const PROJECTION_MODE_LABELS: Record<ProjectionMode, string> = {
   runoff_announced: 'Stichwahl angekündigt',
   break: 'Pause',
   custom_message: 'Freie Mitteilung',
+  presentation: 'Präsentation',
   session_finished: 'Versammlung beendet'
 }
 
@@ -261,6 +264,14 @@ export interface ProjectionState {
   candidatePageIntervalSeconds: number
   /** Beamer-Sperre während laufender Wahl (§79). */
   locked: boolean
+  /**
+   * Die laufende Präsentation — nur Kennung, Titel und Folienstand.
+   *
+   * Das Dokument selbst steht **nicht** hier: Der Zustand geht mehrmals je
+   * Sekunde durch die SSE-Leitungen, eine eingebettete HTML-Datei von zwei
+   * Megabyte täte das nicht. Die Ansicht holt sie als eigene Ressource.
+   */
+  presentation?: ProjectionPresentation
   updatedAt: IsoDateTime
 }
 

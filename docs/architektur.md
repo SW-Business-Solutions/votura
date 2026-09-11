@@ -18,12 +18,17 @@ Electron Main (Node 24)
 ├── Projektionsdienst  ──► Netzwerkserver (SSE, optional, read-only)
 │
 ├── Operator-Fenster  (preload/index.ts)    interaktiv, vollständige Bedienung
-└── Audience-Fenster  (preload/audience.ts) read-only, Vollbild auf dem Beamer
+├── Audience-Fenster  (preload/audience.ts) read-only, Vollbild auf dem Beamer
+└── Prompter-Fenster  (preload/prompter.ts) Vortragssteuerung, kennt nur „blättern"
 ```
 
-Beide Renderer laufen mit `contextIsolation: true`, `nodeIntegration: false` und `sandbox: true`.
-Der Renderer erreicht das Main ausschließlich über eine Whitelist typisierter Methoden
-(`src/shared/ipc.ts`); die Audience-Brücke kennt nur zwei lesende Operationen.
+Alle drei Renderer laufen mit `contextIsolation: true`, `nodeIntegration: false` und
+`sandbox: true`. Der Renderer erreicht das Main ausschließlich über eine Whitelist typisierter
+Methoden (`src/shared/ipc.ts`); die Audience-Brücke kennt nur zwei lesende Operationen, die
+Prompter-Brücke zusätzlich genau eine schreibende: die Foliennummer.
+
+Der Prompter ist ein eigenes Fenster und keine Seite im Operator-Fenster, weil er von den
+Pfeiltasten lebt — dort sind sie für Listen vergeben.
 
 ## Schichten
 
@@ -92,6 +97,37 @@ Der Projektionsdienst erzeugt aus Domänendaten reduzierte DTOs. Sobald eine Sti
 freigegeben ist, stammen die angezeigten Kandidaten aus deren Snapshot — Beamer und Papier zeigen
 zwingend dieselbe Liste. Ergebnisse werden erst nach Bestätigung projiziert; nach einem Neustart
 startet der Beamer neutral, statt ungefragt ein Ergebnis erneut zu zeigen.
+
+## Präsentationen
+
+Zwischen den Wahlgängen wird geredet. Eine eingespeiste **HTML-Präsentation** läuft im selben
+Beamerfenster und derselben Netzwerkansicht; ein Tastendruck bringt den Wahlgang zurück.
+
+```
+Import (Dateidialog) ──► Kopie in <Datenordner>/presentations/<id>.html
+                         Verzeichnis daneben als index.json
+
+Beamerfenster ──► votura-presentation://…  (Protokoll-Handler, nur die laufende Datei)
+Netzwerkansicht ──► /presentation.html     (derselbe Server, nur die laufende Datei)
+Prompter ──► IPC „blättern" ──► ProjectionState.presentation.slide ──► beide Ansichten
+```
+
+Drei Festlegungen tragen das:
+
+- **Die Datei geht nie durch den Zustand.** `ProjectionState` trägt nur Kennung, Titel und
+  Folienstand; er wandert bei jedem Folienwechsel durch alle SSE-Leitungen. Das Dokument wird
+  einmal geladen, danach bewegt sich nur eine Zahl.
+- **Fremder Code bleibt eingesperrt.** Der `<iframe>` bekommt `sandbox="allow-scripts"` **ohne**
+  `allow-same-origin` — undurchsichtige Herkunft, kein `window.parent`, keine Preload-Brücke,
+  kein Zugriff auf Wahldaten. Die einzige Verbindung ist `postMessage` mit einer Foliennummer.
+- **Eigene, engere CSP.** Die Anwendungsregel verbietet Inline-Skripte; eine Präsentation als
+  Einzeldatei besteht daraus. Sie bekommt deshalb eine eigene Richtlinie — mit
+  `script-src 'unsafe-inline'`, aber ohne `connect-src`: Sie kann nichts nachladen und nichts
+  melden (§2.2).
+
+Ausgeliefert wird ausschließlich die Datei, die **gerade projiziert wird** — nicht jede aus der
+Bibliothek. Sonst könnte jedes Gerät im Netz eine noch ungezeigte Präsentation abrufen, indem es
+Kennungen durchprobiert.
 
 ## Sicherheit
 

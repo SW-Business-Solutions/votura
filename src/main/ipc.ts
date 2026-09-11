@@ -73,8 +73,16 @@ import {
   setDemoMode,
   setLocked,
   setProjection,
+  setPresentationSlide,
+  reportPresentationState,
   projectDomainEvent
 } from './services/projection'
+import {
+  deletePresentation,
+  importPresentation,
+  listPresentations,
+  renamePresentation
+} from './services/presentations'
 import {
   cancelRound,
   completeRound,
@@ -117,9 +125,12 @@ import { canInstallUpdate, downloadAndInstallUpdate } from './services/update-in
 import {
   audienceState,
   closeAudienceWindow,
+  closePrompterWindow,
   getOperatorWindow,
   listDisplays,
   openAudienceWindow,
+  openPrompterWindow,
+  prompterState,
   sendToOperator
 } from './windows'
 
@@ -452,6 +463,44 @@ const api: Api = {
     return setProjection(input)
   },
   'projection.setCandidatePage': async (page) => setCandidatePage(page),
+
+  /* --------------------------------------------------------- Präsentationen */
+  'presentation.list': async () => listPresentations(),
+  'presentation.import': async () => {
+    requirePermission('round.manage')
+    const auswahl = await dialog.showOpenDialog({
+      title: 'Präsentation einspeisen',
+      buttonLabel: 'Einspeisen',
+      properties: ['openFile'],
+      filters: [{ name: 'HTML-Präsentation', extensions: ['html', 'htm'] }]
+    })
+    const pfad = auswahl.canceled ? undefined : auswahl.filePaths[0]
+    return pfad ? importPresentation(pfad) : null
+  },
+  'presentation.rename': async ({ id, title }) => {
+    requirePermission('round.manage')
+    return renamePresentation(id, title)
+  },
+  'presentation.delete': async (id) => {
+    requirePermission('round.manage')
+    deletePresentation(id)
+  },
+  /*
+   * Blättern braucht **kein** 'round.manage'.
+   *
+   * Wer vorträgt, ist nicht zwangsläufig die Person, die Wahlgänge führt —
+   * und ein Vortrag, der mitten im Satz stehen bleibt, weil die Rechte
+   * fehlen, hilft niemandem. Geändert wird dabei nichts, was zählt: eine
+   * Foliennummer im Projektionszustand.
+   */
+  'presentation.setSlide': async (slide) => setPresentationSlide(slide),
+  'presentation.report': async ({ slide, slideCount }) => reportPresentationState(slide, slideCount),
+  'presentation.prompterState': async () => prompterState(),
+  'presentation.openPrompter': async () => {
+    requirePermission('round.manage')
+    return openPrompterWindow()
+  },
+  'presentation.closePrompter': async () => closePrompterWindow(),
   'projection.setLocked': async (locked) => setLocked(locked),
   'projection.history': async () => projectionHistory(),
   'projection.displays': async () => listDisplays(),
@@ -516,4 +565,28 @@ export function registerIpc(): void {
 
   // Rein lesender Kanal für die Beameransicht (§31: keine Schreib-API).
   ipcMain.handle(IPC.audienceGetState, async () => getProjectionState() ?? EMPTY_PROJECTION_STATE)
+
+  /*
+   * Der Prompter blättert über `send`, nicht über `invoke`.
+   *
+   * Er will keine Antwort: Was aus dem Tastendruck wird, erfährt er wie alle
+   * anderen über den Projektionszustand. Ein Rückgabewert wäre eine zweite
+   * Quelle für dieselbe Wahrheit — und zwei Quellen laufen irgendwann
+   * auseinander.
+   */
+  ipcMain.on(IPC.prompterCommand, (_event, input: { slide?: number }) => {
+    if (typeof input?.slide === 'number') setPresentationSlide(input.slide)
+  })
+
+  /*
+   * Was der Foliensatz über sich meldet, kommt über den Prompter herein.
+   *
+   * Die Beameransicht koennte es nicht: Sie ist rein lesend und hat keinen
+   * Rueckweg (Beamer §31). Ohne diese Zeile bliebe die Gesamtzahl unbekannt —
+   * die Steuerung zaehlte dann ueber das Ende des Vortrags hinaus weiter.
+   */
+  ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number }) => {
+    if (typeof input?.slide !== 'number' || typeof input?.slideCount !== 'number') return
+    reportPresentationState(input.slide, input.slideCount)
+  })
 }

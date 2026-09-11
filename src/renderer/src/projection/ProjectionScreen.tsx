@@ -7,6 +7,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { formatDateDe } from '@shared/format'
+import { PresentationFrame } from './PresentationFrame'
 import {
   DEFAULT_PROJECTION_THEME,
   FINAL_DECISION_LABELS,
@@ -30,6 +31,17 @@ export interface ProjectionScreenProps {
   preview?: boolean
   /** Warnhinweis, wenn die Verbindung zur Quelle abgerissen ist. */
   disconnected?: boolean
+  /**
+   * Woher die laufende Präsentation kommt.
+   *
+   * Im Beamerfenster ein eigenes Schema, in der Netzwerkansicht ein Pfad auf
+   * demselben Server. Fehlt die Angabe, wird keine Präsentation eingebunden —
+   * etwa in der Vorschau der Bedienoberfläche, wo ein zweiter laufender
+   * Foliensatz nur verwirrte.
+   */
+  presentationSrc?: string
+  /** Was das Dokument über sich meldet (nur im Beamerfenster genutzt). */
+  onPresentationReport?: (slide: number, slideCount: number) => void
 }
 
 /** Grenzen der automatischen Anpassung: nie unter die Hälfte, nie über das Anderthalbfache. */
@@ -132,7 +144,13 @@ function useFitToBody(trigger: unknown): React.RefObject<HTMLDivElement | null> 
   return ref
 }
 
-export function ProjectionScreen({ state, preview, disconnected }: ProjectionScreenProps): JSX.Element {
+export function ProjectionScreen({
+  state,
+  preview,
+  disconnected,
+  presentationSrc,
+  onPresentationReport
+}: ProjectionScreenProps): JSX.Element {
   const theme = state.theme ?? DEFAULT_PROJECTION_THEME
   // Jede Inhaltsänderung stößt eine neue Messung an.
   const fitRef = useFitToBody(
@@ -169,6 +187,41 @@ export function ProjectionScreen({ state, preview, disconnected }: ProjectionScr
     state.mode === 'custom_message' || state.mode === 'break' || state.mode === 'welcome'
       ? Boolean(state.message?.showRoundContext)
       : true
+
+  /*
+   * Die Präsentation bekommt die **ganze Fläche**.
+   *
+   * Kopfzeile, Fußzeile und Logo gehören zur Wahlansicht; über einem fremden
+   * Foliensatz wären sie ein zweiter Rahmen um einen, der schon einen hat —
+   * und verdeckten dessen Rand. Der Hinweis auf eine abgerissene Verbindung
+   * bleibt, denn er betrifft die Steuerung, nicht den Inhalt.
+   */
+  if (state.mode === 'presentation') {
+    return (
+      <div
+        className={`projection-root presentation-mode${preview ? ' preview' : ''}`}
+        style={style}
+      >
+        {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.presentation && presentationSrc ? (
+          <PresentationFrame
+            presentation={state.presentation}
+            src={presentationSrc}
+            onReport={onPresentationReport}
+          />
+        ) : (
+          <div className="projection-presentation-empty">
+            <div className="projection-status">PRÄSENTATION</div>
+            <div className="projection-note">
+              {state.presentation
+                ? state.presentation.title
+                : 'Es ist keine Präsentation ausgewählt.'}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div

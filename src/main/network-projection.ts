@@ -16,6 +16,7 @@ import type { NetworkProjectionConfig } from '@shared/config'
 import type { ProjectionState } from '@shared/projection'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
+import { presentationFile } from './services/presentations'
 import { getProjectionState } from './services/projection'
 
 const MIME: Record<string, string> = {
@@ -130,6 +131,29 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       clearInterval(keepAlive)
       clients.delete(response)
     })
+    return
+  }
+
+  /*
+   * Die laufende Präsentation als eigene Ressource.
+   *
+   * Sie geht **nicht** durch den Projektionszustand: Der wandert bei jedem
+   * Folienwechsel durch alle SSE-Leitungen, eine HTML-Datei von zwei Megabyte
+   * täte das mit. Hier wird sie einmal geladen, danach bewegt sich nur noch
+   * die Foliennummer.
+   *
+   * Ausgeliefert wird ausschließlich die Datei, die **gerade projiziert
+   * wird** — nicht jede aus der Bibliothek. Sonst könnte jedes Gerät im Netz
+   * eine noch unveröffentlichte Präsentation abrufen, indem es Kennungen
+   * durchprobiert.
+   */
+  if (url.pathname === '/presentation.html') {
+    const laufend = getProjectionState().presentation
+    if (!laufend) {
+      deny(response, 404, 'Gerade läuft keine Präsentation.')
+      return
+    }
+    serveFile(response, presentationFile(laufend.id))
     return
   }
 

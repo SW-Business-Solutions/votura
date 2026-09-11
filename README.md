@@ -22,6 +22,7 @@ Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederv
 | Datenhaltung | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil |
 | Druck | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe |
 | Beamer | Zweites, rein lesendes Fenster + optionale Netzwerkansicht im Browser |
+| Präsentationen | Eingespeiste HTML-Foliensätze auf dem Beamer, Vortragssteuerung in eigenem Fenster |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
 | Installation | Windows-Installer (NSIS) und portable Fassung |
 
@@ -187,6 +188,41 @@ jedem Wechsel nach, ob alles ins Bild passt.
 </tr>
 </table>
 
+## Präsentationen
+
+Zwischen zwei Wahlgängen wird geredet — Rechenschaftsbericht, Kandidatenvorstellung, Ausblick.
+Eine **einzelne HTML-Datei** lässt sich einspeisen und läuft dann im selben Beamerfenster und
+derselben Netzwerkansicht wie die Wahlansicht; eine Schaltfläche bringt den Wahlgang zurück.
+
+- **Bibliothek** — mehrere Foliensätze einspeisen, benennen, wechseln. Die Datei wird kopiert,
+  nicht verknüpft: Der Stick, von dem sie kam, ist im Saal längst wieder in der Tasche.
+- **Vortragssteuerung** — eigenes Fenster mit der laufenden Folie, der nächsten daneben,
+  Position, Uhrzeit und Stoppuhr. Pfeiltasten, Leertaste, Bild auf/ab, Pos1/Ende.
+- **Abgeschottet** — der Foliensatz läuft in einem Rahmen ohne Zugriff auf Wahldaten, Oberfläche
+  oder Netz. Er kann nichts nachladen und nichts melden.
+
+Erwartet wird eine Datei, die alles mitbringt: Schriften, Bilder und Steuerung darin. Sie läuft
+damit ohne Netz und ohne zweites Programm — und ohne Schriftarten, die auf dem Saalrechner fehlen
+könnten.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/16-beamer-praesentation.png" alt="Präsentation auf dem Beamer"><br><sub><b>Auf dem Beamer</b> — der Foliensatz füllt dieselbe Fläche wie die Wahlansicht; ein Klick schaltet zurück.</sub></td>
+<td width="50%"><img src="docs/screenshots/18-praesentationen.png" alt="Bibliothek der Präsentationen"><br><sub><b>Bibliothek</b> — eingespeiste Foliensätze mit Folienzahl und Größe; einer davon liegt auf dem Beamer.</sub></td>
+</tr>
+</table>
+
+![Vortragssteuerung mit laufender und nächster Folie](docs/screenshots/17-vortragssteuerung.png)
+
+<sub><b>Vortragssteuerung</b> — links die Folie an der Wand, rechts die nächste, darunter Position, Uhrzeit und die Zeit seit Beginn. Beide Vorschauen rechnen mit der Fläche des Beamers und unterscheiden sich nur im Maßstab: Was hier steht, steht gleich auch dort.</sub>
+
+**Wie so eine Datei aufgebaut sein muss**, steht in
+**[docs/praesentationen.md](docs/praesentationen.md)** — mit der vollständigen, lauffähigen
+Vorlage **[docs/beispiel-praesentation.html](docs/beispiel-praesentation.html)** zum
+Herunterladen. Kurz gefasst: eine einzelne HTML-Datei, die auf
+`{ votura: 'votura', type: 'goto', slide }` hört und ihren Stand mit
+`{ votura: 'votura', type: 'state', slide, slideCount }` zurückmeldet.
+
 ## Netzwerkbetrieb
 
 Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und nur für ein
@@ -271,4 +307,6 @@ Wer den Code nutzen möchte, wendet sich bitte an den Autor.
 
 - `docs/architektur.md` — Aufbau, Schichten, Datenmodell
 - `docs/betrieb.md` — Betriebshandbuch für die Versammlung
+- `docs/praesentationen.md` — wie eine HTML-Präsentation aufgebaut sein muss
+- `docs/beispiel-praesentation.html` — lauffähige Vorlage dazu
 - `docs/adr/` — Architekturentscheidungen mit Begründung

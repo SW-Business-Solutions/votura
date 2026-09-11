@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rechenschaftsbericht des Vorstands</title>
+    <style>
+      /*
+       * Alles liegt in dieser einen Datei: Farben, Schrift, Steuerung. Nichts
+       * wird nachgeladen — im Saal ist oft kein Netz, und Schriftarten, die
+       * auf dem Vorführrechner fehlen, verschieben das ganze Bild.
+       */
+      :root {
+        --grund: #0d1117;
+        --flaeche: #161b22;
+        --rahmen: #30363d;
+        --text: #e6edf3;
+        --gedaempft: #8b949e;
+        --akzent: #2f81f7;
+        --tuerkis: #2ea3c4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--grund);
+        color: var(--text);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      }
+
+      /* Der Beamer ist 16:9. Die Folie rechnet in Prozent der Bildhöhe, damit
+         sie auf jeder Auflösung gleich aussieht. */
+      .folie {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        padding: 8vh 10vw;
+        gap: 3vh;
+      }
+
+      .folie[data-aktiv] {
+        display: flex;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 7vh;
+        line-height: 1.1;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 5vh;
+        line-height: 1.15;
+        color: var(--text);
+      }
+
+      .oberzeile {
+        font-size: 2.4vh;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--tuerkis);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 1.2em;
+        font-size: 3.4vh;
+        line-height: 1.7;
+        color: var(--text);
+      }
+
+      li::marker {
+        color: var(--tuerkis);
+      }
+
+      .zahlen {
+        display: flex;
+        gap: 4vw;
+        flex-wrap: wrap;
+      }
+
+      .zahl {
+        background: var(--flaeche);
+        border: 1px solid var(--rahmen);
+        border-radius: 1.2vh;
+        padding: 3vh 4vh;
+        min-width: 20vh;
+      }
+
+      .zahl b {
+        display: block;
+        font-size: 7vh;
+        line-height: 1;
+        color: var(--akzent);
+      }
+
+      .zahl span {
+        display: block;
+        margin-top: 1vh;
+        font-size: 2.4vh;
+        color: var(--gedaempft);
+      }
+
+      .fuss {
+        position: absolute;
+        left: 10vw;
+        right: 10vw;
+        bottom: 4vh;
+        display: flex;
+        justify-content: space-between;
+        font-size: 2.2vh;
+        color: var(--gedaempft);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="folie" data-titel="Rechenschaftsbericht">
+      <div class="oberzeile">Mitgliederversammlung 2026</div>
+      <h1>Rechenschaftsbericht<br />des Vorstands</h1>
+      <div class="oberzeile" style="color: var(--gedaempft)">Musterverband Beispielstadt</div>
+    </section>
+
+    <section class="folie" data-titel="Das Jahr in Zahlen">
+      <div class="oberzeile">Tagesordnungspunkt 9</div>
+      <h2>Das Jahr in Zahlen</h2>
+      <div class="zahlen">
+        <div class="zahl"><b>121</b><span>Mitglieder</span></div>
+        <div class="zahl"><b>14</b><span>Veranstaltungen</span></div>
+        <div class="zahl"><b>4</b><span>Arbeitsgruppen</span></div>
+      </div>
+    </section>
+
+    <section class="folie" data-titel="Schwerpunkte">
+      <div class="oberzeile">Tagesordnungspunkt 9</div>
+      <h2>Schwerpunkte des Jahres</h2>
+      <ul>
+        <li>Neuaufbau der Jugendarbeit</li>
+        <li>Sanierung des Vereinsheims abgeschlossen</li>
+        <li>Kooperation mit den Nachbarverbänden</li>
+        <li>Umstellung der Mitgliederverwaltung</li>
+      </ul>
+    </section>
+
+    <section class="folie" data-titel="Ausblick">
+      <div class="oberzeile">Tagesordnungspunkt 9</div>
+      <h2>Ausblick auf 2027</h2>
+      <ul>
+        <li>Haushalt bleibt ausgeglichen</li>
+        <li>Zwei zusätzliche Übungsabende</li>
+        <li>Wahl der Delegierten heute unter TOP 11</li>
+      </ul>
+    </section>
+
+    <section class="folie" data-titel="Dank">
+      <div class="oberzeile">Zum Schluss</div>
+      <h1>Vielen Dank<br />für Ihre Aufmerksamkeit</h1>
+    </section>
+
+    <div class="fuss">
+      <span>Musterverband Beispielstadt</span>
+      <span><span id="nummer">1</span> / <span id="gesamt">5</span></span>
+    </div>
+
+    <script>
+      /*
+       * Der Vertrag mit Votura besteht aus zwei Nachrichten:
+       *
+       *   Votura  -> Folie:  { votura: 'votura', type: 'goto',  slide }
+       *   Folie   -> Votura: { votura: 'votura', type: 'state', slide, slideCount, slideTitle }
+       *
+       * Die Kennung `votura` ist nötig, weil in einem Fenster auch andere
+       * Quellen Nachrichten schicken können. Ohne sie würde jede fremde
+       * Nachricht als Folienwechsel gelesen.
+       *
+       * Die Datei läuft in einem Rahmen ohne gemeinsame Herkunft: Sie sieht
+       * weder die Wahldaten noch die Oberfläche und kann nichts nachladen.
+       * Deshalb ist `postMessage` der einzige Weg nach draußen.
+       */
+      ;(function () {
+        var folien = Array.prototype.slice.call(document.querySelectorAll('.folie'))
+        var aktuell = 1
+
+        function melde() {
+          var folie = folien[aktuell - 1]
+          parent.postMessage(
+            {
+              votura: 'votura',
+              type: 'state',
+              slide: aktuell,
+              slideCount: folien.length,
+              slideTitle: folie ? folie.getAttribute('data-titel') || '' : ''
+            },
+            '*'
+          )
+        }
+
+        function zeige(nummer) {
+          aktuell = Math.min(Math.max(1, nummer), folien.length)
+          folien.forEach(function (folie, index) {
+            if (index === aktuell - 1) folie.setAttribute('data-aktiv', '')
+            else folie.removeAttribute('data-aktiv')
+          })
+          document.getElementById('nummer').textContent = String(aktuell)
+          document.getElementById('gesamt').textContent = String(folien.length)
+          melde()
+        }
+
+        window.addEventListener('message', function (ereignis) {
+          var nachricht = ereignis.data
+          if (!nachricht || nachricht.votura !== 'votura' || nachricht.type !== 'goto') return
+          if (typeof nachricht.slide !== 'number') return
+          zeige(nachricht.slide)
+        })
+
+        /*
+         * Eigene Tastensteuerung, damit sich die Datei auch ohne Votura im
+         * Browser durchblättern lässt — zum Vorbereiten am Schreibtisch.
+         * Innerhalb von Votura blättert die Vortragssteuerung.
+         */
+        window.addEventListener('keydown', function (ereignis) {
+          if (ereignis.key === 'ArrowRight' || ereignis.key === 'PageDown' || ereignis.key === ' ') {
+            zeige(aktuell + 1)
+          } else if (ereignis.key === 'ArrowLeft' || ereignis.key === 'PageUp') {
+            zeige(aktuell - 1)
+          } else if (ereignis.key === 'Home') {
+            zeige(1)
+          } else if (ereignis.key === 'End') {
+            zeige(folien.length)
+          }
+        })
+
+        zeige(1)
+      })()
+    </script>
+  </body>
+</html>

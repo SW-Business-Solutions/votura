@@ -13,6 +13,7 @@ import type {
   ProjectionState,
   ProjectionTheme
 } from './projection'
+import type { PresentationInfo, PrompterWindowState } from './presentation'
 import type {
   AgendaItem,
   AgendaItemInput,
@@ -60,7 +61,27 @@ export const IPC = {
   sessionChanged: 'wz:session-changed',
   notice: 'wz:notice',
   audienceGetState: 'wz:audience-get-state',
-  updateProgress: 'wz:update-progress'
+  updateProgress: 'wz:update-progress',
+  /** Der Prompter meldet einen Folienwechsel an den Hauptprozess. */
+  prompterCommand: 'wz:prompter-command',
+  /** Der Hauptprozess meldet dem Prompter den aktuellen Stand. */
+  prompterState: 'wz:prompter-state',
+  /**
+   * Der Prompter reicht weiter, was der Foliensatz über sich meldet.
+   *
+   * Warum von dort und nicht aus der Beameransicht: Die ist ausdrücklich rein
+   * lesend (Beamer §31) und hat gar keinen Rückweg. Der Prompter hat einen —
+   * er blättert ohnehin — und laedt denselben Foliensatz, bekommt dessen
+   * Meldung also gleichermaßen.
+   */
+  prompterReport: 'wz:prompter-report',
+  /**
+   * Größe des Beamerfensters, damit die Vorschau im selben Format rechnet.
+   *
+   * Ein Foliensatz richtet sich nach seinem Fenster. Rechnete die Vorschau mit
+   * einer anderen Größe, zeigte sie ein anderes Layout als die Wand.
+   */
+  beamerSize: 'wz:beamer-size'
 } as const
 
 /**
@@ -416,6 +437,7 @@ export interface Api {
     agendaView?: 'full' | 'focus'
     showAll?: boolean
     breakMinutes?: number
+    presentationId?: UUID
   }) => Promise<ProjectionState>
   'projection.setCandidatePage': (page: number) => Promise<ProjectionState>
   'projection.setLocked': (locked: boolean) => Promise<ProjectionState>
@@ -427,6 +449,25 @@ export interface Api {
   'projection.network': () => Promise<NetworkProjectionStatus>
   'projection.setNetwork': (config: NetworkProjectionConfig) => Promise<NetworkProjectionStatus>
   'projection.demo': (enabled: boolean) => Promise<ProjectionState>
+  /* ------------------------------------------------------- Präsentationen */
+  /**
+   * Eingespeiste Präsentationen. Die Datei selbst geht **nie** über diese
+   * Schnittstelle — nur Kennung und Kennzahlen. Das Dokument liefert der
+   * Projektionsserver als eigene Ressource aus.
+   */
+  'presentation.list': () => Promise<PresentationInfo[]>
+  /** Öffnet den Dateidialog und übernimmt die gewählte HTML-Datei. */
+  'presentation.import': () => Promise<PresentationInfo | null>
+  'presentation.rename': (input: { id: UUID; title: string }) => Promise<PresentationInfo>
+  'presentation.delete': (id: UUID) => Promise<void>
+  /** Blättert in der laufenden Präsentation (1-basiert). */
+  'presentation.setSlide': (slide: number) => Promise<ProjectionState>
+  /** Was das Dokument über sich meldet — Folie und Gesamtzahl. */
+  'presentation.report': (input: { slide: number; slideCount: number }) => Promise<ProjectionState>
+  'presentation.prompterState': () => Promise<PrompterWindowState>
+  'presentation.openPrompter': () => Promise<PrompterWindowState>
+  'presentation.closePrompter': () => Promise<PrompterWindowState>
+
   'projection.theme': () => Promise<ProjectionTheme>
   'projection.setTheme': (theme: ProjectionTheme) => Promise<ProjectionTheme>
 }

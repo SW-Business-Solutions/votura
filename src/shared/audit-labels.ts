@@ -55,6 +55,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'agenda.item_removed': 'Tagesordnungspunkt entfernt',
   'agenda.reordered': 'Tagesordnung umsortiert',
 
+  'presentation.imported': 'Präsentation eingespeist',
+  'presentation.renamed': 'Präsentation umbenannt',
+  'presentation.deleted': 'Präsentation entfernt',
+
   /* ----------------------------------------------------------- Stimmzettel */
   'ballot.approved': 'Stimmzettel freigegeben',
 

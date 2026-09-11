@@ -9,6 +9,7 @@
  */
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { presentationPath, presentationUrl } from '@shared/presentation'
 import { EMPTY_PROJECTION_STATE, type ProjectionState } from '@shared/projection'
 import { ProjectionScreen } from './projection/ProjectionScreen'
 import './styles/projection.css'
@@ -91,7 +92,28 @@ function AudienceApp(): React.JSX.Element {
     return () => window.clearInterval(timer)
   }, [state.candidatePageCount, state.candidatePageIntervalSeconds])
 
-  return <ProjectionScreen state={{ ...state, candidatePage: page }} disconnected={disconnected} />
+  /*
+   * Zwei Wege zur selben Datei.
+   *
+   * Im Fenster gibt es keinen Server, also liefert ein eigenes Schema sie
+   * aus; im Browser eines anderen Geräts derselbe Server, der auch diese
+   * Seite ausgeliefert hat. Erkennbar ist der Weg an der Preload-Brücke: Wo
+   * sie fehlt, läuft die Ansicht im Netz.
+   */
+  const imFenster = Boolean(window.projection)
+  const presentationSrc = state.presentation
+    ? imFenster
+      ? presentationUrl(state.presentation.id)
+      : presentationPath(state.presentation.id)
+    : undefined
+
+  return (
+    <ProjectionScreen
+      state={{ ...state, candidatePage: page }}
+      disconnected={disconnected}
+      presentationSrc={presentationSrc}
+    />
+  )
 }
 
 createRoot(document.getElementById('root') as HTMLElement).render(

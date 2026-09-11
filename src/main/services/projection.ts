@@ -22,12 +22,14 @@ import {
   type ProjectionRound,
   type ProjectionState
 } from '@shared/projection'
+import type { ProjectionPresentation } from '@shared/presentation'
 import { rankCandidates } from '@shared/result'
 import { profileFor } from '@shared/election'
 import type { ElectionRound, UUID } from '@shared/types'
 import { db } from '../db'
 import { fromJson } from '../db/driver'
 import { appendAudit } from './audit'
+import { getPresentation, rememberSlideCount } from './presentations'
 import { getSession } from './auth'
 import { approvedDocument } from './ballots'
 import { listCandidates } from './candidates'
@@ -297,6 +299,8 @@ export interface SetModeInput {
   showAll?: boolean
   /** Dauer einer Pause in Minuten; erzeugt den Countdown auf dem Beamer. */
   breakMinutes?: number
+  /** Welche Präsentation gezeigt wird (nur im Modus 'presentation'). */
+  presentationId?: UUID
 }
 
 export function setProjection(input: SetModeInput, options: { audit?: boolean } = {}): ProjectionState {
@@ -381,6 +385,16 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
           : projectionPageCount(candidateCount),
     candidatePageIntervalSeconds: state.candidatePageIntervalSeconds,
     locked: state.locked,
+    /*
+     * Die Präsentation überlebt einen Moduswechsel nicht.
+     *
+     * Wer vom Vortrag zurück auf den Wahlgang schaltet, will den Wahlgang
+     * sehen — bliebe die Folie im Zustand stehen, zeigte die Netzwerkansicht
+     * beim nächsten Wechsel wieder den alten Stand. Der Folienzähler beginnt
+     * deshalb bei jedem Aufruf der Präsentation von vorn.
+     */
+    presentation:
+      input.mode === 'presentation' ? praesentationFuer(input.presentationId) : undefined,
     updatedAt: new Date().toISOString()
   }
 
@@ -432,6 +446,64 @@ export function projectDomainEvent(
   // Beamer-Sperre: während laufender Wahl nicht ungefragt umschalten (§79).
   if (state.locked && state.round && state.round.id !== roundId) return
   setProjection({ mode, roundId }, { audit: false })
+}
+
+/**
+ * Baut den Präsentationsbezug für den Zustand.
+ *
+ * Ist die Datei verschwunden — von Hand gelöscht, Stick gewechselt —, bleibt
+ * das Feld leer, und die Beameransicht zeigt ihren Hinweis statt eines
+ * leeren Rahmens.
+ */
+function praesentationFuer(id?: UUID): ProjectionPresentation | undefined {
+  if (!id) return undefined
+  const gefunden = getPresentation(id)
+  if (!gefunden) return undefined
+  return { id: gefunden.id, title: gefunden.title, slide: 1, slideCount: gefunden.slideCount }
+}
+
+/**
+ * Blättert in der laufenden Präsentation.
+ *
+ * **Ohne Prüfeintrag**: Auf einer Versammlung wird ein Vortrag fünfzig Mal
+ * weitergeklickt; das Protokoll soll Wahlhandlungen festhalten, nicht
+ * Tastendrücke. Dass eine Präsentation gezeigt wurde, steht bereits als
+ * Moduswechsel darin.
+ */
+export function setPresentationSlide(slide: number): ProjectionState {
+  if (state.mode !== 'presentation' || !state.presentation) return state
+  const gesamt = state.presentation.slideCount
+  const sicher = Math.max(1, gesamt ? Math.min(Math.round(slide), gesamt) : Math.round(slide))
+  if (sicher === state.presentation.slide) return state
+  state = {
+    ...state,
+    presentation: { ...state.presentation, slide: sicher },
+    updatedAt: new Date().toISOString()
+  }
+  broadcast()
+  return state
+}
+
+/**
+ * Übernimmt, was die Präsentation über sich meldet.
+ *
+ * Die Folienzahl kennt nur das Dokument selbst — sie steht nirgends im
+ * Dateikopf, sondern ergibt sich, wenn dessen Skript gelaufen ist.
+ */
+export function reportPresentationState(slide: number, slideCount: number): ProjectionState {
+  if (state.mode !== 'presentation' || !state.presentation) return state
+  if (!Number.isFinite(slideCount) || slideCount < 1) return state
+  const gerundet = Math.round(slideCount)
+  rememberSlideCount(state.presentation.id, gerundet)
+  const sicher = Math.max(1, Math.min(Math.round(slide), gerundet))
+  if (state.presentation.slideCount === gerundet && state.presentation.slide === sicher) return state
+  state = {
+    ...state,
+    presentation: { ...state.presentation, slide: sicher, slideCount: gerundet },
+    updatedAt: new Date().toISOString()
+  }
+  broadcast()
+  return state
 }
 
 export function setCandidatePage(page: number): ProjectionState {
