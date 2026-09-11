@@ -129,6 +129,46 @@ Ausgeliefert wird ausschließlich die Datei, die **gerade projiziert wird** — 
 Bibliothek. Sonst könnte jedes Gerät im Netz eine noch ungezeigte Präsentation abrufen, indem es
 Kennungen durchprobiert.
 
+## Video
+
+Ein Film zwischen zwei Wahlgängen läuft auf Beamer **und** Netzwerkansicht gleichzeitig und mit
+demselben Stand.
+
+```
+Import (Dateidialog) ──► Kopie in <Datenordner>/videos/<id>.<endung>
+                         Verzeichnis daneben als index.json
+
+Beamerfenster   ──► votura-video://…   (Protokoll-Handler, Bereichsanfragen)
+Netzwerkansicht ──► /video?v=<id>      (derselbe Server, Bereichsanfragen)
+Bedienung ──► IPC „abspielen/springen" ──► ProjectionState.video ──► alle Ansichten
+Beameransicht ──► IPC „Laufzeit/bereit/Ende" ──► ProjectionState.video
+```
+
+Vier Festlegungen tragen das:
+
+- **Eine Uhr statt Befehlen.** `ProjectionState.video` trägt `position` **und** `anchoredAt` — die
+  Position zu einem genannten Zeitpunkt. Jedes Gerät rechnet daraus seinen Sollstand aus; ein
+  Nachzügler braucht keinen Sonderweg und hat keine Nachricht verpasst. Ein Befehl („jetzt
+  abspielen") hätte genau die nicht erreicht, die ihn verpasst haben.
+- **Nachführen statt springen.** `berechneGleichlauf()` in `src/shared/video.ts` entscheidet:
+  unter 0,08 s in Ruhe lassen, bis 0,75 s über die Abspielgeschwindigkeit ausgleichen (höchstens
+  ±2 %), darüber springen. Die Rechnung ist eine reine Funktion — prüfbar ohne Browser und an
+  jeder Stelle gleich.
+- **Bereichsanfragen.** Beide Wege liefern mit `Accept-Ranges: bytes` aus und beantworten `Range`
+  mit `206` samt `Content-Range`. Ohne das müsste jedes Gerät die ganze Datei laden, bevor es
+  etwas zeigt. Das eigene Schema braucht dafür `stream: true`; sonst behandelt Chromium die
+  Antwort als ein Stück.
+- **Ton nur im Beamerfenster.** Die Netzwerkansicht läuft stumm. Zehn Geräte im Chor sind
+  unerträglich, und schon Millisekunden Versatz klingen wie ein Echo.
+
+Die Beameransicht ist rein lesend (§31) und hat genau **eine** Nachricht nach außen: Laufzeit,
+Pufferstand, Ende erreicht. Das durchbricht die Regel nicht — sie sagt etwas über sich selbst aus,
+nicht über die Wahl. Ohne diesen Weg bliebe die Laufzeit unbekannt, denn sie steckt im
+Containerformat und lässt sich nur dort ablesen, wo die Datei geladen wurde.
+
+Angenommen werden MP4 (H.264/AAC) und WebM — was jedes Chromium ohne Zusatzpaket abspielt. Wie bei
+der Präsentation wird ausschließlich die Datei ausgeliefert, die **gerade projiziert wird**.
+
 ## Sicherheit
 
 - Passwörter und PINs: scrypt (RFC 7914) mit zufälligem Salt, Vergleich in konstanter Zeit

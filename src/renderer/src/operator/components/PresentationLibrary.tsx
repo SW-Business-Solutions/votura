@@ -7,7 +7,7 @@
  */
 import { useEffect, useState, type JSX } from 'react'
 import type { PresentationInfo, PrompterWindowState } from '@shared/presentation'
-import { api } from '../../lib/api'
+import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
 import { Card } from './ui'
 
@@ -30,6 +30,14 @@ export function PresentationLibrary(): JSX.Element {
   }
 
   useEffect(laden, [])
+
+  /*
+   * Das Fenster der Vortragssteuerung lässt sich auch über sein eigenes Kreuz
+   * schließen. Ohne dieses Abonnement behielte die Bedienung ihren alten Stand
+   * und böte „schließen" für ein Fenster an, das längst zu ist — man musste
+   * erst schließen, um wieder öffnen zu können.
+   */
+  useEffect(() => bridge.onPrompterState(setPrompter), [])
   /* Nach jedem Folienwechsel steht die Folienzahl fest — die Liste zeigt sie. */
   useEffect(() => {
     if (projection.mode === 'presentation') laden()
