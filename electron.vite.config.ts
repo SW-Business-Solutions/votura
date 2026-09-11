@@ -20,7 +20,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),
-          audience: resolve(__dirname, 'src/preload/audience.ts')
+          audience: resolve(__dirname, 'src/preload/audience.ts'),
+          prompter: resolve(__dirname, 'src/preload/prompter.ts')
         },
         output: { format: 'cjs', entryFileNames: '[name].js' }
       }
@@ -35,7 +36,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
-          audience: resolve(__dirname, 'src/renderer/audience.html')
+          audience: resolve(__dirname, 'src/renderer/audience.html'),
+          prompter: resolve(__dirname, 'src/renderer/prompter.html')
         }
       }
     },

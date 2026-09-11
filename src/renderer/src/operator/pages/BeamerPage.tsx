@@ -10,6 +10,7 @@ import { api } from '../../lib/api'
 import { ProjectionScreen } from '../../projection/ProjectionScreen'
 import { useApp } from '../state'
 import { Card, Checkbox, Field, NumberInput } from '../components/ui'
+import { PresentationLibrary } from '../components/PresentationLibrary'
 
 const MODE_BUTTONS: { mode: ProjectionMode; label: string; needsRound?: boolean }[] = [
   { mode: 'welcome', label: 'Willkommen' },
@@ -286,6 +287,8 @@ export function BeamerPage(): React.JSX.Element {
             </div>
             <button onClick={() => void setMode('agenda', { agenda })}>Tagesordnung anzeigen</button>
           </Card>
+
+          <PresentationLibrary />
 
           <Card title="Beamer im Netzwerk">
             {network ? (

@@ -1,12 +1,20 @@
 /**
- * Fensterverwaltung: Operator (interaktiv) und Audience (Beamer, read-only).
+ * Fensterverwaltung: Operator (interaktiv), Audience (Beamer, read-only) und
+ * Prompter (Vortragssteuerung).
  *
  * Die Audience bekommt einen eigenen, minimalen Preload und lädt eine eigene
  * HTML-Datei — sie kann technisch nichts schreiben (Beamer §2/§31/§32).
+ *
+ * Der **Prompter** ist ein drittes Fenster und bewusst keine Seite im
+ * Operatorfenster: Er lebt von den Pfeiltasten, und die sind dort längst
+ * vergeben. Ein eigenes Fenster nimmt die Tastatur, sobald es vorn liegt —
+ * und steht nicht im Weg, wenn die Wahlleitung daneben weiterarbeitet.
  */
 import { app, BrowserWindow, powerSaveBlocker, screen, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { IPC } from '@shared/ipc'
+import type { PrompterWindowState } from '@shared/presentation'
 import type { AudienceWindowState, DisplayInfo } from '@shared/projection'
 import { logger } from './logger'
 
@@ -26,20 +34,24 @@ function fensterSymbol(): string | undefined {
 
 let operatorWindow: BrowserWindow | null = null
 let audienceWindow: BrowserWindow | null = null
+let prompterWindow: BrowserWindow | null = null
+let prompterStateListener: ((state: PrompterWindowState) => void) | null = null
 let audienceDisplayId: number | undefined
 let powerSaveId: number | null = null
 let audienceStateListener: ((state: AudienceWindowState) => void) | null = null
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
-function rendererUrl(page: 'index' | 'audience'): { url?: string; file?: string } {
+type Seite = 'index' | 'audience' | 'prompter'
+
+function rendererUrl(page: Seite): { url?: string; file?: string } {
   if (process.env.ELECTRON_RENDERER_URL) {
-    return { url: `${process.env.ELECTRON_RENDERER_URL}/${page === 'index' ? '' : 'audience.html'}` }
+    return { url: `${process.env.ELECTRON_RENDERER_URL}/${page === 'index' ? '' : `${page}.html`}` }
   }
   return { file: join(__dirname, `../renderer/${page}.html`) }
 }
 
-function load(window: BrowserWindow, page: 'index' | 'audience'): void {
+function load(window: BrowserWindow, page: Seite): void {
   const target = rendererUrl(page)
   if (target.url) void window.loadURL(target.url)
   else if (target.file) void window.loadFile(target.file)
@@ -172,7 +184,14 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
   audienceWindow.on('closed', () => {
     audienceWindow = null
     emitAudienceState()
+    emitBeamerSize()
   })
+  /* Wird das Fenster gezogen oder auf einen anderen Bildschirm geschoben,
+     aendert sich die Flaeche — die Vorschau muss mitziehen. */
+  audienceWindow.on('resize', emitBeamerSize)
+  audienceWindow.on('enter-full-screen', emitBeamerSize)
+  audienceWindow.on('leave-full-screen', emitBeamerSize)
+  audienceWindow.webContents.on('did-finish-load', emitBeamerSize)
   audienceWindow.webContents.on('render-process-gone', (_event, details) => {
     logger.error(`Beamerfenster abgestuerzt: ${details.reason}`)
     emitAudienceState()
@@ -204,6 +223,105 @@ export function closeAudienceWindow(): AudienceWindowState {
   }
   emitAudienceState()
   return audienceState()
+}
+
+/* ------------------------------------------------------------- Prompter */
+
+export function prompterState(): PrompterWindowState {
+  return { open: !!prompterWindow && !prompterWindow.isDestroyed() }
+}
+
+export function onPrompterStateChanged(listener: (state: PrompterWindowState) => void): void {
+  prompterStateListener = listener
+}
+
+function emitPrompterState(): void {
+  prompterStateListener?.(prompterState())
+}
+
+/**
+ * Öffnet die Vortragssteuerung.
+ *
+ * Bewusst **nicht** auf dem Beamer-Bildschirm: Dort läuft die Präsentation.
+ * Der Prompter gehört auf den Rechner der vortragenden Person — er zeigt die
+ * nächste Folie, und die soll das Publikum gerade nicht sehen.
+ */
+export function openPrompterWindow(): PrompterWindowState {
+  if (prompterWindow && !prompterWindow.isDestroyed()) {
+    prompterWindow.focus()
+    return prompterState()
+  }
+
+  prompterWindow = new BrowserWindow({
+    width: 1180,
+    height: 700,
+    minWidth: 760,
+    minHeight: 420,
+    show: false,
+    autoHideMenuBar: true,
+    title: 'Votura – Vortragssteuerung',
+    icon: fensterSymbol(),
+    backgroundColor: '#111417',
+    webPreferences: {
+      preload: join(__dirname, '../preload/prompter.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false
+    }
+  })
+
+  prompterWindow.setMenuBarVisibility(false)
+  prompterWindow.once('ready-to-show', () => prompterWindow?.show())
+  /* Die Vorschau braucht das Beamerformat, sobald sie da ist. */
+  prompterWindow.webContents.on('did-finish-load', emitBeamerSize)
+  prompterWindow.on('closed', () => {
+    prompterWindow = null
+    emitPrompterState()
+  })
+  prompterWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error(`Prompterfenster abgestuerzt: ${details.reason}`)
+    emitPrompterState()
+  })
+
+  load(prompterWindow, 'prompter')
+  emitPrompterState()
+  return prompterState()
+}
+
+export function closePrompterWindow(): PrompterWindowState {
+  if (prompterWindow && !prompterWindow.isDestroyed()) prompterWindow.destroy()
+  prompterWindow = null
+  emitPrompterState()
+  return prompterState()
+}
+
+/**
+ * Größe der Beamerfläche in Bildpunkten.
+ *
+ * Ein Foliensatz richtet sich nach seinem Fenster: Er bricht um, verteilt neu,
+ * blendet aus. Die Vorschau in der Vortragssteuerung muss deshalb mit genau
+ * dieser Größe rechnen und darf nur im Maßstab abweichen — sonst zeigt sie ein
+ * anderes Layout als die Wand.
+ *
+ * Ist gerade kein Beamerfenster offen, gilt das gängige Beamerformat.
+ */
+export function beamerContentSize(): { width: number; height: number } {
+  if (audienceWindow && !audienceWindow.isDestroyed()) {
+    const [width, height] = audienceWindow.getContentSize()
+    if (width > 0 && height > 0) return { width, height }
+  }
+  return { width: 1920, height: 1080 }
+}
+
+function emitBeamerSize(): void {
+  sendToPrompter(IPC.beamerSize, beamerContentSize())
+}
+
+export function sendToPrompter(channel: string, payload: unknown): void {
+  if (prompterWindow && !prompterWindow.isDestroyed()) {
+    prompterWindow.webContents.send(channel, payload)
+  }
 }
 
 export function sendToOperator(channel: string, payload: unknown): void {

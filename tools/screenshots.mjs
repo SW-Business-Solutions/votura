@@ -9,7 +9,7 @@
  * Aufruf:  node tools/screenshots.mjs
  */
 import { spawn } from 'node:child_process'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as warte } from 'node:timers/promises'
@@ -18,7 +18,7 @@ const PORT = 9333
 const ZIEL = 'docs/screenshots'
 /* Eigenes Benutzerprofil: die Aufnahmen entstehen an einem sauberen Demo-Bestand
    und rühren die Daten einer echten Versammlung nicht an. */
-const PROFIL = join(tmpdir(), 'votura-screenshots')
+const PROFIL = process.env.VOTURA_SCREENSHOT_PROFIL || join(tmpdir(), 'votura-screenshots')
 const KONTO = { username: 'wahlleitung', displayName: 'Wahlleitung', password: 'Demo-Versammlung-2026' }
 const BREITE = 1600
 const HOEHE = 1000
@@ -277,6 +277,36 @@ try {
   // Ein noch geöffnetes Profil aus einem früheren Lauf blockiert das Löschen –
   // dann wird darauf aufgebaut statt abzubrechen.
 }
+/*
+ * Die Beispiel-Präsentation vorab in die Ablage legen.
+ *
+ * Das Einspeisen läuft sonst über einen Dateidialog des Betriebssystems, der
+ * sich nicht fernsteuern lässt. Die Ablage ist ein Ordner mit Verzeichnisdatei
+ * — hier wird genau das geschrieben, was der Import auch schriebe.
+ */
+const BEISPIEL_ID = '11111111-2222-3333-4444-555555555555'
+const beispielQuelle = 'docs/beispiel-praesentation.html'
+const praesentationen = join(PROFIL, 'presentations')
+mkdirSync(praesentationen, { recursive: true })
+copyFileSync(beispielQuelle, join(praesentationen, `${BEISPIEL_ID}.html`))
+writeFileSync(
+  join(praesentationen, 'index.json'),
+  JSON.stringify(
+    [
+      {
+        id: BEISPIEL_ID,
+        title: 'Rechenschaftsbericht des Vorstands',
+        fileName: 'beispiel-praesentation.html',
+        size: statSync(beispielQuelle).size,
+        importedAt: new Date().toISOString()
+      }
+    ],
+    null,
+    2
+  ),
+  'utf8'
+)
+
 const app = spawn(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
   ['electron', '.', `--remote-debugging-port=${PORT}`, `--user-data-dir=${PROFIL}`],
@@ -399,6 +429,53 @@ try {
   } else {
     console.log('  Hinweis: Beamerfenster nicht geöffnet – Ansicht übersprungen.')
   }
+
+  /* ------------------------------------------------------ Präsentation */
+  console.log('Präsentation …')
+  await sitzung.auswerten(`(async () => {
+    const ruf = (m, ...a) => window.votura.invoke(m, ...a)
+    await ruf('projection.setMode', { mode: 'presentation', presentationId: '${BEISPIEL_ID}' })
+    await new Promise((f) => setTimeout(f, 2000))
+    await ruf('presentation.setSlide', 2)
+    await ruf('presentation.openPrompter')
+    return true
+  })()`)
+  await warte(3500)
+
+  const beamerPraesentation = (await ziele()).find((z) => z.url.includes('audience'))
+  if (beamerPraesentation) {
+    const wand = await Sitzung.verbinde(beamerPraesentation.webSocketDebuggerUrl)
+    await wand.sende('Page.enable')
+    await wand.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1600, height: 900, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(1500)
+    await wand.aufnehmen('16-beamer-praesentation')
+    wand.schliessen()
+  }
+
+  const steuerung = (await ziele()).find((z) => z.url.includes('prompter'))
+  if (steuerung) {
+    const vortrag = await Sitzung.verbinde(steuerung.webSocketDebuggerUrl)
+    await vortrag.sende('Page.enable')
+    await vortrag.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 810, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(2000)
+    await vortrag.aufnehmen('17-vortragssteuerung')
+    vortrag.schliessen()
+  } else {
+    console.log('  Hinweis: Vortragssteuerung nicht geöffnet – Ansicht übersprungen.')
+  }
+
+  /* Die Bibliothek in der Bedienoberfläche. */
+  await sitzung.auswerten("window.location.hash = '#/beamer'")
+  await warte(1500)
+  await sitzung.auswerten(
+    "(() => { const k = Array.from(document.querySelectorAll('h2, h3')).find((x) => x.textContent.includes('Präsentationen')); if (k) k.scrollIntoView({ block: 'start' }); return true })()"
+  )
+  await warte(900)
+  await sitzung.aufnehmen('18-praesentationen')
 
   sitzung.schliessen()
   console.log('Fertig.')

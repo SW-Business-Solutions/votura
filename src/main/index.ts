@@ -1,4 +1,7 @@
-import { app, BrowserWindow, dialog, Menu, session } from 'electron'
+import { app, BrowserWindow, dialog, Menu, protocol, session } from 'electron'
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { PRESENTATION_SCHEME } from '@shared/presentation'
 import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
@@ -12,6 +15,8 @@ import {
   stopNetworkProjection
 } from './network-projection'
 import { appPaths } from './paths'
+import { presentationFile } from './services/presentations'
+import { getProjectionState } from './services/projection'
 import { onSessionChanged } from './services/auth'
 import { markInterruptedBatches, onPrintProgress } from './services/printing'
 import { onProjectionChanged, restoreProjection } from './services/projection'
@@ -20,8 +25,10 @@ import {
   createOperatorWindow,
   getOperatorWindow,
   onAudienceStateChanged,
+  onPrompterStateChanged,
   sendToAudience,
   sendToOperator,
+  sendToPrompter,
   watchDisplays
 } from './windows'
 
@@ -39,6 +46,34 @@ app.on('second-instance', () => {
   }
 })
 
+/**
+ * Eigenes Schema für die laufende Präsentation.
+ *
+ * Im Beamerfenster gibt es keinen Server — die Oberfläche kommt aus dem
+ * Paket. Die eingespeiste Datei liegt aber im Datenordner, also außerhalb.
+ * Ein Protokoll-Handler schlägt die Brücke, ohne `file://` zu öffnen: Er
+ * liefert **nur** die Datei aus, die gerade projiziert wird, und nichts
+ * sonst aus dem Dateisystem.
+ *
+ * `standard` und `secure`, damit Chromium den Rahmen wie eine gewöhnliche
+ * Webseite behandelt — sonst verweigert er Skripte darin.
+ */
+protocol.registerSchemesAsPrivileged([
+  { scheme: PRESENTATION_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: false } }
+])
+
+function registerPresentationProtocol(): void {
+  protocol.handle(PRESENTATION_SCHEME, async () => {
+    const laufend = getProjectionState().presentation
+    if (!laufend) return new Response('Gerade läuft keine Präsentation.', { status: 404 })
+    const datei = presentationFile(laufend.id)
+    if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
+    return new Response(await readFile(datei), {
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+    })
+  })
+}
+
 function hardenSecurity(): void {
   // Keine Navigation aus der Anwendung heraus, kein Fernladen von Inhalten (§2.2).
   app.on('web-contents-created', (_event, contents) => {
@@ -54,9 +89,35 @@ function hardenSecurity(): void {
   // Strenge CSP: alles aus dem Paket, nichts aus dem Netz.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const isDev = Boolean(process.env.ELECTRON_RENDERER_URL)
+    /*
+     * Die eingespeiste Präsentation bekommt ihre **eigene** Richtlinie.
+     *
+     * Die strenge Regel der Anwendung verbietet Inline-Skripte — und genau
+     * daraus besteht eine Präsentation als Einzeldatei: Schrift, Bild und
+     * Steuerung stecken als `data:` und `<script>` darin. Mit der
+     * Anwendungsregel bliebe sie auf Folie eins stehen.
+     *
+     * Erlaubt wird deshalb, was sie mitbringt, und sonst nichts. Vor allem
+     * fehlt `connect-src` — sie kann nichts nachladen und nichts melden. Das
+     * ist strenger als jeder Browser und passt zu §2.2: vollständig offline.
+     */
+    if (details.url.startsWith(`${PRESENTATION_SCHEME}:`)) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; " +
+              "style-src 'unsafe-inline'; img-src data: blob:; font-src data:; " +
+              "media-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'"
+          ]
+        }
+      })
+      return
+    }
+
     const policy = isDev
-      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:*; img-src 'self' data:"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:*; img-src 'self' data:; frame-src " + PRESENTATION_SCHEME + ":"
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " + PRESENTATION_SCHEME + ":"
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -87,6 +148,7 @@ async function bootstrap(): Promise<void> {
   }
 
   restoreProjection()
+  registerPresentationProtocol()
   registerIpc()
   // Der Fernzugriff nutzt dieselbe API wie das Hauptfenster.
   setRemoteDispatcher((method, args) => callApi(method, args))
@@ -96,9 +158,11 @@ async function bootstrap(): Promise<void> {
   onProjectionChanged((state) => {
     sendToOperator(IPC.projectionState, state)
     sendToAudience(IPC.projectionState, state)
+    sendToPrompter(IPC.projectionState, state)
     broadcastProjection(state)
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))
+  onPrompterStateChanged((state) => sendToOperator(IPC.prompterState, state))
   onSessionChanged((currentSession) => sendToOperator(IPC.sessionChanged, currentSession))
 
   const network = getNetworkProjection()
