@@ -2,10 +2,17 @@
 import { describe, expect, it } from 'vitest'
 import { buildBallotDocument } from '../src/shared/ballot'
 import { DEFAULT_CONFIG } from '../src/shared/config'
-import { defaultTemplateFor } from '../src/shared/election'
-import type { AppConfig, Candidate, ElectionEvent, ElectionRound, PrinterConfig } from '../src/shared/types'
+import { defaultTemplateFor, withTemplateDefaults } from '../src/shared/election'
+import type {
+  AppConfig,
+  Candidate,
+  ElectionEvent,
+  ElectionResult,
+  ElectionRound,
+  PrinterConfig
+} from '../src/shared/types'
 import { encodeDocument, encodeText } from '../src/main/printing/escpos'
-import { buildBallotOps, renderPreviewLines } from '../src/main/printing/layout'
+import { buildBallotOps, buildResultSlipOps, renderPreviewLines } from '../src/main/printing/layout'
 import { countLines, wrapText } from '../src/main/printing/ops'
 import { opsToEposXml } from '../src/main/printing/drivers/epson-epos'
 
@@ -260,3 +267,122 @@ describe('Epson ePOS-XML', () => {
   })
 })
 
+
+describe('Wahlverfahren auf dem Stimmzettel', () => {
+  it('nennt das Verfahren im Kopf, wenn die Vorlage es vorsieht', () => {
+    const document = buildBallotDocument(event, round(), candidates)
+    const lines = renderPreviewLines(buildBallotOps(document, printer, config), printer.charsPerLine)
+    // Die Zeile bricht auf 42 Zeichen um; geprueft wird Anfang und Ende.
+    expect(lines.join('\n')).toContain('Verfahren: Gruppenwahl')
+    expect(lines.join('\n')).toContain('vorgedruckt')
+  })
+
+  it('laesst die Zeile weg, wenn sie abgeschaltet ist', () => {
+    const basis = round()
+    const document = buildBallotDocument(
+      event,
+      { ...basis, template: { ...basis.template, showProcedure: false } },
+      candidates
+    )
+    const lines = renderPreviewLines(buildBallotOps(document, printer, config), printer.charsPerLine)
+    expect(lines.join('\n')).not.toContain('Verfahren:')
+  })
+
+  /*
+   * Wahlgaenge aus einer aelteren Fassung kennen das Feld nicht. Bekaemen sie
+   * die Zeile beim Ergaenzen der Vorgaben, aenderte sich ihr Ballot-Hash, ohne
+   * dass jemand etwas geaendert haette.
+   */
+  it('ergaenzt die Angabe nicht nachtraeglich bei Wahlgaengen ohne das Feld', () => {
+    expect(withTemplateDefaults({}, 'group_preprinted').showProcedure).toBe(false)
+    expect(defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 3 }).showProcedure).toBe(
+      true
+    )
+  })
+})
+
+describe('Wahlgangnummer in der Vorschau', () => {
+  it('laesst die Zeile weg, solange keine Nummer vergeben ist', () => {
+    const entwurf = round({ roundLabel: '', sequentialNumber: 0 })
+    const document = buildBallotDocument(event, entwurf, candidates)
+    const lines = renderPreviewLines(buildBallotOps(document, printer, config), printer.charsPerLine)
+    expect(lines.join('\n')).not.toContain('WAHLGANG')
+  })
+
+  it('druckt sie, sobald die Nummer feststeht', () => {
+    const document = buildBallotDocument(event, round(), candidates)
+    const lines = renderPreviewLines(buildBallotOps(document, printer, config), printer.charsPerLine)
+    expect(lines.join('\n')).toContain('WAHLGANG 07')
+  })
+})
+
+describe('Ergebnisbon', () => {
+  const ergebnis: ElectionResult = {
+    id: 'res1',
+    electionRoundId: 'r1',
+    countingMode: 'counted',
+    eligibleVoters: 121,
+    ballotsCast: 119,
+    validBallots: 117,
+    invalidBallots: 2,
+    resultData: {
+      candidates: [
+        { candidateId: 'c0', name: 'Max Mustermann', votes: 64 },
+        { candidateId: 'c1', name: 'Erika Musterfrau', votes: 41 },
+        { candidateId: 'c2', name: 'Peter Beispiel', votes: 12 }
+      ]
+    },
+    enteredBy: 'u1',
+    enteredByName: 'Wahlleitung',
+    determination: 'Erforderliche Mehrheit erreicht',
+    finalDecision: 'elected',
+    electedCandidateIds: ['c0'],
+    createdAt: '2026-09-12T18:00:00.000Z'
+  }
+
+  function bon(overrides: Partial<ElectionResult> = {}): string {
+    const ops = buildResultSlipOps(
+      {
+        organization: event.organization,
+        eventTitle: event.title,
+        date: event.date,
+        round: round({ seats: 1, maxVotes: 1 }),
+        result: { ...ergebnis, ...overrides },
+        electedNames: ['Max Mustermann'],
+        operatorName: 'Wahlleitung',
+        printedAt: '2026-09-12T18:05:00.000Z'
+      },
+      printer
+    )
+    return renderPreviewLines(ops, printer.charsPerLine).join('\n')
+  }
+
+  it('ist unuebersehbar als Nicht-Stimmzettel gekennzeichnet', () => {
+    expect(bon()).toContain('KEIN STIMMZETTEL')
+  })
+
+  it('weist Beteiligung, Stimmen und Feststellung aus', () => {
+    const text = bon()
+    expect(text).toContain('Abgegebene Stimmzettel')
+    expect(text).toContain('119')
+    expect(text).toContain('Max Mustermann')
+    expect(text).toContain('64')
+    expect(text).toContain('Erforderliche Mehrheit erreicht')
+    expect(text).toContain('Gewaehlt:'.replace('ae', 'ä'))
+  })
+
+  it('nennt die Wahlgangkennung, damit der Beleg zuzuordnen ist', () => {
+    expect(bon()).toContain('WG: MV26-20260912-WG07')
+  })
+
+  /* Der Bon ersetzt das Protokoll nicht — das muss auf dem Papier stehen. */
+  it('weist auf das verbindliche Wahlprotokoll hin', () => {
+    expect(bon()).toContain('Wahlprotokoll')
+  })
+
+  it('gibt bei einer Feststellung ohne Auszaehlung den Wortlaut wieder', () => {
+    const text = bon({ countingMode: 'declared', declaration: 'Einstimmig angenommen' })
+    expect(text).toContain('Einstimmig angenommen')
+    expect(text).not.toContain('Abgegebene Stimmzettel')
+  })
+})

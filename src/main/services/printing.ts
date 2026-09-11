@@ -21,12 +21,13 @@ import { db } from '../db'
 import { optionalNumber, optionalString } from '../db/driver'
 import { logger } from '../logger'
 import { createDriver, PrinterError } from '../printing/drivers'
-import { buildBallotOps, buildProtocolSlipOps } from '../printing/layout'
+import { buildBallotOps, buildProtocolSlipOps, buildResultSlipOps } from '../printing/layout'
 import { countLines, type PrintOp } from '../printing/ops'
 import { appendAudit } from './audit'
 import { requirePermission, requirePinIfConfigured } from './auth'
 import { approvedDocument } from './ballots'
 import { getEvent } from './events'
+import { getResult } from './results'
 import { getRound } from './rounds'
 import { getConfig, getPrinter } from './settings'
 
@@ -494,6 +495,77 @@ export async function printProtocolSlip(input: {
     eventId: round.eventId,
     electionRoundId: round.id,
     newValue: { kind: input.kind, status: batch.status }
+  })
+
+  return {
+    batchId: batch.id,
+    requestedCopies: batch.requestedCopies,
+    submittedCopies: batch.submittedCopies,
+    failedCopies: batch.failedCopies,
+    deduplicated: false
+  }
+}
+
+/**
+ * Ergebnisbeleg auf dem Bondrucker — zum Weitergeben an die Versammlungsleitung.
+ *
+ * Bewusst ohne Wahlleiter-PIN: der Beleg gibt nur wieder, was ohnehin schon
+ * festgestellt und auf dem Beamer zu sehen ist. Er verbraucht keine
+ * Stimmzettelnummern und zählt nicht in die Stimmzettelbilanz.
+ */
+export async function printResultSlip(input: {
+  roundId: UUID
+  printerId: string
+}): Promise<PrintStartResult> {
+  const session = requirePermission('print.execute')
+  const round = getRound(input.roundId)
+  const event = getEvent(round.eventId)
+  const printer = getPrinter(input.printerId)
+  if (!printer) throw new Error(`Der Drucker "${input.printerId}" ist nicht konfiguriert.`)
+
+  const result = getResult(round.id)
+  if (!result) throw new Error('Für diesen Wahlgang ist noch kein Ergebnis erfasst.')
+
+  const gewaehlt = new Set(result.electedCandidateIds ?? [])
+  const electedNames = result.resultData.candidates
+    .filter((candidate) => gewaehlt.has(candidate.candidateId))
+    .map((candidate) => candidate.name)
+
+  const ops = buildResultSlipOps(
+    {
+      organization: event.organization,
+      eventTitle: event.title,
+      date: event.date,
+      round,
+      result,
+      electedNames,
+      operatorName: session.user.displayName,
+      printedAt: new Date().toISOString()
+    },
+    printer
+  )
+
+  const batchId = createBatchRow({
+    roundId: round.id,
+    ballotVersion: round.ballotVersion,
+    kind: 'protocol',
+    printerId: printer.id,
+    printerName: printer.name,
+    copies: 1,
+    idempotencyKey: `result-slip-${randomUUID()}`,
+    operatorId: session.user.id,
+    operatorName: session.user.displayName,
+    reason: 'result_slip'
+  })
+
+  const batch = await runBatch(batchId, ops, `${round.roundCode}-ergebnis`, 0)
+  appendAudit({
+    action: 'print.result_slip',
+    userId: session.user.id,
+    userName: session.user.displayName,
+    eventId: round.eventId,
+    electionRoundId: round.id,
+    newValue: { status: batch.status, bestaetigt: Boolean(result.confirmedAt) }
   })
 
   return {

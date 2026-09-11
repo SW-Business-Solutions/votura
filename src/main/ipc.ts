@@ -59,6 +59,7 @@ import {
   acknowledgeBatch,
   listBatches,
   printProtocolSlip,
+  printResultSlip,
   resumePrint,
   startPrint,
   testPrinter
@@ -103,7 +104,14 @@ import {
   savePrinters,
   saveProjectionTheme
 } from './services/settings'
-import { exportEventArchive, exportProtocol, exportRound } from './export'
+import {
+  eventArchiveFolderName,
+  exportEventArchive,
+  exportProtocol,
+  exportRound,
+  protocolFileName,
+  roundExportFolderName
+} from './export'
 import { checkForUpdate } from './services/updates'
 import { canInstallUpdate, downloadAndInstallUpdate } from './services/update-install'
 import {
@@ -114,6 +122,34 @@ import {
   openAudienceWindow,
   sendToOperator
 } from './windows'
+
+/*
+ * Exporte sollen dort landen, wo die Bedienung sie sucht — nicht in einem
+ * Anwendungsordner, den man erst finden muss. Deshalb fragt jeder Export nach
+ * dem Ziel; die Vorschlaege unten nennen Wahlgang bzw. Veranstaltung, damit
+ * sich die Dateien spaeter zuordnen lassen.
+ */
+async function ordnerWaehlen(title: string, vorschlag: string): Promise<string | undefined> {
+  const window = getOperatorWindow()
+  const options = {
+    title,
+    defaultPath: join(appPaths().exports, vorschlag),
+    properties: ['openDirectory', 'createDirectory'] as const
+  }
+  const result = window
+    ? await dialog.showOpenDialog(window, { ...options, properties: [...options.properties] })
+    : await dialog.showOpenDialog({ ...options, properties: [...options.properties] })
+  return result.canceled ? undefined : result.filePaths[0]
+}
+
+async function dateiZielWaehlen(title: string, vorschlag: string): Promise<string | undefined> {
+  const window = getOperatorWindow()
+  const options = { title, defaultPath: join(appPaths().exports, vorschlag) }
+  const result = window
+    ? await dialog.showSaveDialog(window, options)
+    : await dialog.showSaveDialog(options)
+  return result.canceled || !result.filePath ? undefined : result.filePath
+}
 
 const api: Api = {
   /* --------------------------------------------------------------- System */
@@ -363,6 +399,7 @@ const api: Api = {
   'print.batches': async (roundId) => listBatches(roundId),
   'print.testPrinter': async (printerId) => testPrinter(printerId),
   'print.protocolSlip': async (input) => printProtocolSlip(input),
+  'print.resultSlip': async (input) => printResultSlip(input),
 
   /* ---------------------------------------------------------------- Bilanz */
   'accounting.get': async (roundId) => accountingFor(roundId),
@@ -384,9 +421,24 @@ const api: Api = {
   'audit.verify': async () => verifyAuditChain(),
 
   /* ---------------------------------------------------------------- Export */
-  'export.round': async (input) => exportRound(input.roundId, input.formats),
-  'export.event': async (eventId) => exportEventArchive(eventId),
-  'export.protocol': async (roundId) => exportProtocol(roundId),
+  'export.round': async (input) => {
+    if (input.askTarget === false) return exportRound(input.roundId, input.formats)
+    const ordner = await ordnerWaehlen('Vollstaendigen Export speichern unter', roundExportFolderName(input.roundId))
+    if (!ordner) return { path: '', files: [], canceled: true }
+    return exportRound(input.roundId, input.formats, ordner)
+  },
+  'export.event': async (input) => {
+    if (input.askTarget === false) return exportEventArchive(input.eventId)
+    const ordner = await ordnerWaehlen('Archiv der Veranstaltung speichern unter', eventArchiveFolderName(input.eventId))
+    if (!ordner) return { path: '', files: [], canceled: true }
+    return exportEventArchive(input.eventId, ordner)
+  },
+  'export.protocol': async (input) => {
+    if (input.askTarget === false) return exportProtocol(input.roundId)
+    const datei = await dateiZielWaehlen('Wahlprotokoll speichern unter', protocolFileName(input.roundId))
+    if (!datei) return { path: '', files: [], canceled: true }
+    return exportProtocol(input.roundId, datei)
+  },
   'backup.create': async (target) => createBackup(target),
   'update.check': async () => checkForUpdate(),
   'update.canInstall': async () => canInstallUpdate(),

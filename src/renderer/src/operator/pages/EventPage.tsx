@@ -333,7 +333,9 @@ function ArchiveFilesDialog({
     void (async () => {
       try {
         // Das Archiv wird beim Archivieren erzeugt; erneutes Aufrufen liefert den Pfad.
-        const result = await api('export.event', event.id)
+        // Ohne Rueckfrage nach dem Ziel: der Aufruf laeuft beim Oeffnen des
+        // Fensters, da waere ein Speichern-unter-Dialog eine Zumutung.
+        const result = await api('export.event', { eventId: event.id, askTarget: false })
         setDirectory(result.path)
         setFiles(await api('system.listFiles', result.path))
       } catch (error) {

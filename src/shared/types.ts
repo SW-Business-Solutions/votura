@@ -281,6 +281,12 @@ export interface BallotTemplateConfig {
   showLocation: boolean
   showRoundNumber: boolean
   showRoundCode: boolean
+  /**
+   * Benennt das Wahlverfahren auf dem Stimmzettel (z. B. „Gruppenwahl –
+   * Kandidaten vorgedruckt"). Wer den Zettel in der Hand hält, soll ohne
+   * Rückfrage erkennen, nach welchem Verfahren gewählt wird.
+   */
+  showProcedure: boolean
   showCandidateNumbers: boolean
   /** Kompakte Darstellung (z. B. "JA [ ] NEIN [ ] ENTH [ ]" in einer Zeile). */
   compactMode: boolean

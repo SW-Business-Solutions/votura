@@ -52,11 +52,22 @@ function LayoutCard({
         label="Große Namen und Ankreuzfelder (doppelte Zeilenhoehe)"
       />
       <Checkbox
+        checked={template.showProcedure}
+        disabled={locked}
+        onChange={(value) => setTemplate({ ...template, showProcedure: value })}
+        label="Wahlverfahren auf dem Stimmzettel nennen"
+      />
+      <Checkbox
         checked={template.showCandidateNumbers}
         disabled={locked}
         onChange={(value) => setTemplate({ ...template, showCandidateNumbers: value })}
         label="Kandidatennummern drucken"
       />
+      {template.showCandidateNumbers && !round.candidatesLockedAt && (
+        <div className="hint" style={{ marginTop: -4, marginBottom: 8 }}>
+          Beim Speichern erhalten alle Bewerber ohne Nummer eine — in der aktuellen Druckreihenfolge.
+        </div>
+      )}
       <Checkbox
         checked={template.compactMode}
         disabled={locked}

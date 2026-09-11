@@ -66,6 +66,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'print.batch_acknowledged': 'Druckmenge bestätigt',
   'print.resume_not_needed': 'Fortsetzung nicht nötig',
   'print.protocol_slip': 'Protokollbon gedruckt',
+  'print.result_slip': 'Ergebnisbon gedruckt',
   'printer.status_checked': 'Druckerstatus geprüft',
 
   /* ------------------------------------------------------------- Ergebnis */

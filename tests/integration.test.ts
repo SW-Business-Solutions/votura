@@ -441,6 +441,59 @@ describe('Kandidatennummern', () => {
   })
 })
 
+describe('Kandidatennummern beim Anhaken', () => {
+  /*
+   * Ein Haken, der nichts bewirkt, ist eine schlechte Rueckmeldung: Wer
+   * "Kandidatennummern drucken" einschaltet, erwartet Nummern auf dem Zettel.
+   */
+  it('vergibt fehlende Nummern, sobald die Vorlage sie verlangt', () => {
+    const wahlgang = rounds.createRound({
+      eventId,
+      title: 'Kassenpruefung',
+      purpose: 'auditor',
+      procedure: 'group_preprinted',
+      seats: 2,
+      maxVotes: 2,
+      template: { showCandidateNumbers: false },
+      orderMode: 'manual'
+    })
+    candidates.addCandidates(wahlgang.id, [
+      { firstName: 'Ida', lastName: 'Eins', displayName: 'Ida Eins' },
+      { firstName: 'Jens', lastName: 'Zwei', displayName: 'Jens Zwei' }
+    ])
+    expect(candidates.listCandidates(wahlgang.id).map((c) => c.ballotNumber)).toEqual([
+      undefined,
+      undefined
+    ])
+
+    const aktuell = rounds.getRound(wahlgang.id)
+    rounds.updateRound({
+      id: wahlgang.id,
+      template: { ...aktuell.template, showCandidateNumbers: true },
+      rowVersion: aktuell.rowVersion
+    })
+
+    expect(candidates.listCandidates(wahlgang.id).map((c) => c.ballotNumber)).toEqual([1, 2])
+  })
+
+  it('leitet Wahlanweisung und Verfahrensangabe aus dem Verfahren ab', () => {
+    const wahlgang = rounds.createRound({
+      eventId,
+      title: 'Schriftfuehrung',
+      purpose: 'secretary',
+      procedure: 'group_preprinted',
+      seats: 4,
+      maxVotes: 4,
+      // Bewusst leere Vorlage: der Dienst muss die Vorgaben ergaenzen.
+      template: {},
+      orderMode: 'manual'
+    })
+    const vorlage = rounds.getRound(wahlgang.id).template
+    expect(vorlage.instructionText).toContain('4')
+    expect(vorlage.showProcedure).toBe(true)
+  })
+})
+
 describe('Abstimmung ohne Auszählung', () => {
   let offenerRoundId = ''
 

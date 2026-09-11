@@ -58,6 +58,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   const [showReopen, setShowReopen] = useState(false)
   const [showEmergency, setShowEmergency] = useState(false)
   const [showFollowUp, setShowFollowUp] = useState(false)
+  const [bonLaeuft, setBonLaeuft] = useState(false)
 
   useEffect(() => {
     setRows(initialRows(detail.result, activeCandidates, kind))
@@ -73,6 +74,54 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     setElected(detail.result?.electedCandidateIds ?? [])
     setLotDecision(detail.result?.lotDecision ?? '')
   }, [detail.result, detail.candidates, kind])
+
+  /**
+   * Ergebnisbeleg auf dem Bondrucker. Gedruckt wird der gespeicherte Stand —
+   * ungesicherte Eingaben stuenden sonst auf Papier, ohne irgendwo zu stehen.
+   */
+  const ergebnisDrucken = async (): Promise<void> => {
+    const printerId = app.settings?.config.printing.defaultPrinterId
+    if (!printerId) {
+      app.notify('warning', 'Es ist kein Standarddrucker eingestellt (Einstellungen → Allgemein).')
+      return
+    }
+    setBonLaeuft(true)
+    try {
+      const start = await api('print.resultSlip', { roundId: round.id, printerId })
+      if (start.failedCopies > 0) {
+        app.notify('warning', 'Der Ergebnisbon konnte nicht gedruckt werden. Bitte Drucker prüfen.')
+      } else {
+        app.notify('ok', 'Ergebnisbon gedruckt.')
+      }
+    } catch (error) {
+      app.reportError(error)
+    } finally {
+      setBonLaeuft(false)
+    }
+  }
+
+  const protokollSpeichern = async (): Promise<void> => {
+    try {
+      const ergebnis = await api('export.protocol', { roundId: round.id })
+      if (ergebnis.canceled) return
+      app.notify('ok', `Wahlprotokoll gespeichert: ${ergebnis.files[0]}`)
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
+  const exportSpeichern = async (): Promise<void> => {
+    try {
+      const ergebnis = await api('export.round', {
+        roundId: round.id,
+        formats: ['pdf', 'csv', 'json']
+      })
+      if (ergebnis.canceled) return
+      app.notify('ok', `Export gespeichert: ${ergebnis.path}`)
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
 
   /*
    * Bei einer offenen Abstimmung (Handzeichen, Stimmkarte) gibt es keine
@@ -634,34 +683,24 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
         </Card>
 
         <Card title="Weiteres Vorgehen">
+          {/* Der Ergebnisbon steht zuerst: nach der Auszaehlung wird er am
+              haeufigsten gebraucht — die Versammlungsleitung wartet vorne. */}
           <div className="row">
-            <button onClick={() => setShowFollowUp(true)}>Folgewahlgang erzeugen</button>
-            <button
-              onClick={async () => {
-                try {
-                  const result = await api('export.protocol', round.id)
-                  app.notify('ok', `Protokoll erstellt: ${result.files[0]}`)
-                } catch (error) {
-                  app.reportError(error)
-                }
-              }}
-            >
-              Wahlprotokoll (PDF)
+            <button className="primary" disabled={!existing || bonLaeuft} onClick={ergebnisDrucken}>
+              {bonLaeuft ? 'Bon wird gedruckt …' : 'Ergebnis auf Bon drucken'}
             </button>
-            <button
-              onClick={async () => {
-                try {
-                  const result = await api('export.round', {
-                    roundId: round.id,
-                    formats: ['pdf', 'csv', 'json']
-                  })
-                  app.notify('ok', `Export erstellt: ${result.path}`)
-                } catch (error) {
-                  app.reportError(error)
-                }
-              }}
-            >
-              Vollstaendiger Export
+            <button onClick={() => setShowFollowUp(true)}>Folgewahlgang erzeugen</button>
+          </div>
+          <div className="hint" style={{ marginTop: 4, marginBottom: 12 }}>
+            Kurzbeleg zum Weitergeben nach vorne — kein Stimmzettel und kein Ersatz für das
+            unterschriebene Wahlprotokoll.
+          </div>
+          <div className="row">
+            <button onClick={protokollSpeichern}>
+              Wahlprotokoll (PDF) …
+            </button>
+            <button onClick={exportSpeichern}>
+              Vollständiger Export …
             </button>
           </div>
         </Card>
