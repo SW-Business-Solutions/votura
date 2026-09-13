@@ -214,7 +214,10 @@ ziel="$hier/$AUSGABE/votura-saal-$version-arm64.img"
 mv "$abbild" "$ziel" 2>/dev/null || cp "$abbild" "$ziel"
 verwerfen
 xz -T0 -9 -f "$ziel"
-sha256sum "$ziel.xz" | awk '{print $1}' > "$ziel.xz.sha256"
+# Im Format, das `sha256sum -c` lesen kann: Summe, zwei Leerzeichen, Dateiname.
+# Nur die Summe allein wäre zwar kürzer, aber wer sie prüfen will, müsste die
+# Zeile von Hand zusammenbauen.
+( cd "$(dirname "$ziel")" && sha256sum "$(basename "$ziel").xz" ) > "$ziel.xz.sha256"
 
 groesse="$(du -h "$ziel.xz" | cut -f1)"
 if [[ -n "$wartung" ]]; then
@@ -225,7 +228,7 @@ fi
 cat <<ENDE
 
   Fertig: $ziel.xz ($groesse)
-  Prüfsumme: $(cat "$ziel.xz.sha256")
+  Prüfsumme: $(awk '{print $1}' "$ziel.xz.sha256")
 $zugang
 
   Auf eine Karte schreiben:
