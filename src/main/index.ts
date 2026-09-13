@@ -230,6 +230,16 @@ async function bootstrap(): Promise<void> {
     initDatabase(paths.database)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    /*
+     * Erst ins Protokoll, dann in den Dialog.
+     *
+     * Ein Fehler, den nur ein Meldungsfenster kennt, ist verloren, sobald
+     * niemand davorsitzt — beim Start über eine Verknüpfung, aus einem Skript
+     * oder auf einem Rechner, der gerade gesperrt ist. Genau dann braucht man
+     * ihn aber.
+     */
+    logger.error(`Datenbank konnte nicht geöffnet werden (${paths.database}): ${message}`)
+    if (error instanceof Error && error.stack) logger.error(error.stack)
     dialog.showErrorBox('Datenbank konnte nicht geöffnet werden', message)
     app.exit(1)
     return
