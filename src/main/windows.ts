@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { PrompterWindowState } from '@shared/presentation'
+import { HAUPTBUEHNE } from '@shared/projection'
 import type { AudienceWindowState, DisplayInfo } from '@shared/projection'
 import { logger } from './logger'
 
@@ -33,10 +34,16 @@ function fensterSymbol(): string | undefined {
 }
 
 let operatorWindow: BrowserWindow | null = null
-let audienceWindow: BrowserWindow | null = null
+/**
+ * Ein Beamerfenster je Bühne.
+ *
+ * Bis 0.13 gab es genau eines. Mehrere Anzeigeflächen brauchen mehrere
+ * Fenster — jedes auf seinem Bildschirm, jedes mit dem Zustand seiner Bühne.
+ */
+const audienceWindows = new Map<number, BrowserWindow>()
+const audienceDisplays = new Map<number, number>()
 let prompterWindow: BrowserWindow | null = null
 let prompterStateListener: ((state: PrompterWindowState) => void) | null = null
-let audienceDisplayId: number | undefined
 let powerSaveId: number | null = null
 let audienceStateListener: ((state: AudienceWindowState) => void) | null = null
 
@@ -51,10 +58,15 @@ function rendererUrl(page: Seite): { url?: string; file?: string } {
   return { file: join(__dirname, `../renderer/${page}.html`) }
 }
 
-function load(window: BrowserWindow, page: Seite): void {
+/**
+ * Laedt eine Seite. `query` reist als Suchteil der Adresse mit — die
+ * Beameransicht erfaehrt so, welche Buehne sie zeigt, ohne auf eine Antwort
+ * aus dem Hauptprozess warten zu muessen.
+ */
+function load(window: BrowserWindow, page: Seite, query?: string): void {
   const target = rendererUrl(page)
-  if (target.url) void window.loadURL(target.url)
-  else if (target.file) void window.loadFile(target.file)
+  if (target.url) void window.loadURL(query ? `${target.url}?${query}` : target.url)
+  else if (target.file) void window.loadFile(target.file, query ? { search: query } : undefined)
 }
 
 export function createOperatorWindow(): BrowserWindow {
@@ -100,11 +112,12 @@ export function getOperatorWindow(): BrowserWindow | null {
   return operatorWindow
 }
 
-export function getAudienceWindow(): BrowserWindow | null {
-  return audienceWindow
+export function getAudienceWindow(buehne = HAUPTBUEHNE): BrowserWindow | null {
+  const fenster = audienceWindows.get(buehne)
+  return fenster && !fenster.isDestroyed() ? fenster : null
 }
 
-export function listDisplays(): DisplayInfo[] {
+export function listDisplays(buehne = HAUPTBUEHNE): DisplayInfo[] {
   const displays = screen.getAllDisplays()
   const primary = screen.getPrimaryDisplay()
   return displays.map((display, index) => ({
@@ -115,15 +128,16 @@ export function listDisplays(): DisplayInfo[] {
         : `Bildschirm ${index + 1} (${display.size.width}x${display.size.height})`,
     bounds: display.bounds,
     primary: display.id === primary.id,
-    current: display.id === audienceDisplayId
+    current: display.id === audienceDisplays.get(buehne)
   }))
 }
 
-export function audienceState(): AudienceWindowState {
-  const displays = listDisplays()
+export function audienceState(buehne = HAUPTBUEHNE): AudienceWindowState {
+  const displays = listDisplays(buehne)
   return {
-    open: Boolean(audienceWindow && !audienceWindow.isDestroyed()),
-    displayId: audienceDisplayId,
+    buehne,
+    open: Boolean(getAudienceWindow(buehne)),
+    displayId: audienceDisplays.get(buehne),
     displays,
     singleDisplay: displays.length <= 1
   }
@@ -133,17 +147,18 @@ export function onAudienceStateChanged(listener: (state: AudienceWindowState) =>
   audienceStateListener = listener
 }
 
-function emitAudienceState(): void {
-  audienceStateListener?.(audienceState())
+function emitAudienceState(buehne: number): void {
+  audienceStateListener?.(audienceState(buehne))
 }
 
-export function openAudienceWindow(displayId?: number): AudienceWindowState {
-  if (audienceWindow && !audienceWindow.isDestroyed()) {
-    if (displayId !== undefined && displayId !== audienceDisplayId) {
-      closeAudienceWindow()
+export function openAudienceWindow(displayId?: number, buehne = HAUPTBUEHNE): AudienceWindowState {
+  const vorhanden = getAudienceWindow(buehne)
+  if (vorhanden) {
+    if (displayId !== undefined && displayId !== audienceDisplays.get(buehne)) {
+      closeAudienceWindow(buehne)
     } else {
-      audienceWindow.focus()
-      return audienceState()
+      vorhanden.focus()
+      return audienceState(buehne)
     }
   }
 
@@ -153,10 +168,10 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
     displays.find((display) => display.id === displayId) ??
     displays.find((display) => display.id !== primary.id) ??
     primary
-  audienceDisplayId = target.id
+  audienceDisplays.set(buehne, target.id)
 
   const onlyOneDisplay = displays.length <= 1
-  audienceWindow = new BrowserWindow({
+  const fenster = new BrowserWindow({
     x: target.bounds.x + (onlyOneDisplay ? 40 : 0),
     y: target.bounds.y + (onlyOneDisplay ? 40 : 0),
     width: onlyOneDisplay ? Math.min(1280, target.bounds.width - 80) : target.bounds.width,
@@ -166,7 +181,7 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
     fullscreen: !onlyOneDisplay,
     frame: onlyOneDisplay,
     autoHideMenuBar: true,
-    title: 'Votura – Beameransicht',
+    title: buehne === HAUPTBUEHNE ? 'Votura – Beameransicht' : `Votura – Beameransicht ${buehne}`,
     icon: fensterSymbol(),
     backgroundColor: '#000000',
     webPreferences: {
@@ -178,27 +193,28 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
     }
   })
 
-  audienceWindow.setMenuBarVisibility(false)
-  if (!onlyOneDisplay) audienceWindow.setAlwaysOnTop(true, 'screen-saver')
+  audienceWindows.set(buehne, fenster)
+  fenster.setMenuBarVisibility(false)
+  if (!onlyOneDisplay) fenster.setAlwaysOnTop(true, 'screen-saver')
 
-  audienceWindow.on('closed', () => {
-    audienceWindow = null
-    emitAudienceState()
+  fenster.on('closed', () => {
+    audienceWindows.delete(buehne)
+    emitAudienceState(buehne)
     emitBeamerSize()
   })
   /* Wird das Fenster gezogen oder auf einen anderen Bildschirm geschoben,
      aendert sich die Flaeche — die Vorschau muss mitziehen. */
-  audienceWindow.on('resize', emitBeamerSize)
-  audienceWindow.on('enter-full-screen', emitBeamerSize)
-  audienceWindow.on('leave-full-screen', emitBeamerSize)
-  audienceWindow.webContents.on('did-finish-load', emitBeamerSize)
-  audienceWindow.webContents.on('render-process-gone', (_event, details) => {
-    logger.error(`Beamerfenster abgestuerzt: ${details.reason}`)
-    emitAudienceState()
+  fenster.on('resize', emitBeamerSize)
+  fenster.on('enter-full-screen', emitBeamerSize)
+  fenster.on('leave-full-screen', emitBeamerSize)
+  fenster.webContents.on('did-finish-load', emitBeamerSize)
+  fenster.webContents.on('render-process-gone', (_event, details) => {
+    logger.error(`Beamerfenster ${buehne} abgestuerzt: ${details.reason}`)
+    emitAudienceState(buehne)
   })
-  audienceWindow.webContents.on('unresponsive', () => {
-    logger.warn('Beamerfenster reagiert nicht.')
-    emitAudienceState()
+  fenster.webContents.on('unresponsive', () => {
+    logger.warn(`Beamerfenster ${buehne} reagiert nicht.`)
+    emitAudienceState(buehne)
   })
 
   // Bildschirm während der Versammlung wach halten (Beamer §65).
@@ -206,23 +222,30 @@ export function openAudienceWindow(displayId?: number): AudienceWindowState {
     powerSaveId = powerSaveBlocker.start('prevent-display-sleep')
   }
 
-  load(audienceWindow, 'audience')
-  if (isDev) audienceWindow.webContents.once('did-finish-load', () => emitAudienceState())
-  emitAudienceState()
-  return audienceState()
+  /* Die Bühne reist in der Adresse mit — die Ansicht muss wissen, wessen
+     Zustand sie zeigt. */
+  load(fenster, 'audience', `buehne=${buehne}`)
+  if (isDev) fenster.webContents.once('did-finish-load', () => emitAudienceState(buehne))
+  emitAudienceState(buehne)
+  return audienceState(buehne)
 }
 
-export function closeAudienceWindow(): AudienceWindowState {
-  if (audienceWindow && !audienceWindow.isDestroyed()) {
-    audienceWindow.destroy()
-  }
-  audienceWindow = null
-  if (powerSaveId !== null) {
+export function closeAudienceWindow(buehne = HAUPTBUEHNE): AudienceWindowState {
+  const fenster = getAudienceWindow(buehne)
+  if (fenster) fenster.destroy()
+  audienceWindows.delete(buehne)
+  /* Der Bildschirmschoner darf erst zurueck, wenn die letzte Buehne zu ist. */
+  if (powerSaveId !== null && audienceWindows.size === 0) {
     powerSaveBlocker.stop(powerSaveId)
     powerSaveId = null
   }
-  emitAudienceState()
-  return audienceState()
+  emitAudienceState(buehne)
+  return audienceState(buehne)
+}
+
+/** Schliesst alle Beamerfenster — etwa beim Beenden oder Bühnenumbau. */
+export function closeAllAudienceWindows(): void {
+  for (const buehne of [...audienceWindows.keys()]) closeAudienceWindow(buehne)
 }
 
 /* ------------------------------------------------------------- Prompter */
@@ -306,9 +329,10 @@ export function closePrompterWindow(): PrompterWindowState {
  *
  * Ist gerade kein Beamerfenster offen, gilt das gängige Beamerformat.
  */
-export function beamerContentSize(): { width: number; height: number } {
-  if (audienceWindow && !audienceWindow.isDestroyed()) {
-    const [width, height] = audienceWindow.getContentSize()
+export function beamerContentSize(buehne = prompterBuehne): { width: number; height: number } {
+  const fenster = getAudienceWindow(buehne)
+  if (fenster) {
+    const [width, height] = fenster.getContentSize()
     if (width > 0 && height > 0) return { width, height }
   }
   return { width: 1920, height: 1080 }
@@ -316,6 +340,24 @@ export function beamerContentSize(): { width: number; height: number } {
 
 function emitBeamerSize(): void {
   sendToPrompter(IPC.beamerSize, beamerContentSize())
+}
+
+/**
+ * Die Bühne, die die Vortragssteuerung gerade bedient.
+ *
+ * Ein Foliensatz kann auf jeder Bühne laufen; der Prompter zeigt und steuert
+ * genau eine davon. Welche, entscheidet die vortragende Person im Fenster.
+ */
+let prompterBuehne = HAUPTBUEHNE
+
+export function getPrompterBuehne(): number {
+  return prompterBuehne
+}
+
+export function setPrompterBuehne(buehne: number): number {
+  prompterBuehne = buehne
+  emitBeamerSize()
+  return prompterBuehne
 }
 
 export function sendToPrompter(channel: string, payload: unknown): void {
@@ -330,14 +372,24 @@ export function sendToOperator(channel: string, payload: unknown): void {
   }
 }
 
-export function sendToAudience(channel: string, payload: unknown): void {
-  if (audienceWindow && !audienceWindow.isDestroyed()) {
-    audienceWindow.webContents.send(channel, payload)
+export function sendToAudience(buehne: number, channel: string, payload: unknown): void {
+  getAudienceWindow(buehne)?.webContents.send(channel, payload)
+}
+
+/** Nachricht an alle offenen Beamerfenster — etwa Thema oder Uhrzeit. */
+export function sendToAllAudiences(channel: string, payload: unknown): void {
+  for (const fenster of audienceWindows.values()) {
+    if (!fenster.isDestroyed()) fenster.webContents.send(channel, payload)
   }
 }
 
 export function watchDisplays(): void {
-  screen.on('display-added', emitAudienceState)
-  screen.on('display-removed', emitAudienceState)
-  screen.on('display-metrics-changed', emitAudienceState)
+  const gemeldet = (): void => {
+    /* Ein Bildschirm kam oder ging: jede Buehne bekommt die neue Liste. */
+    const buehnen = audienceWindows.size > 0 ? [...audienceWindows.keys()] : [HAUPTBUEHNE]
+    for (const buehne of buehnen) emitAudienceState(buehne)
+  }
+  screen.on('display-added', gemeldet)
+  screen.on('display-removed', gemeldet)
+  screen.on('display-metrics-changed', gemeldet)
 }

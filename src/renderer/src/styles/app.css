@@ -778,3 +778,86 @@ button.mini {
   font-size: 13px;
   line-height: 1.3;
 }
+
+/* ------------------------------------------------- Beamer: Blättern */
+
+/* Seitenzahl, Pfeile und Takt in einer Zeile auf einer Fluchtlinie. Bricht
+   erst um, wenn die Spalte wirklich zu schmal wird. */
+.beamer-blaettern {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.beamer-blaettern-marke {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Kleinere Ausführung des Segmentschalters — er steht hier neben Text, nicht
+   als Hauptbedienelement. */
+.segmented.klein button {
+  min-height: 0;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+/*
+ * Die Bühnenreiter über der Beamersteuerung.
+ *
+ * Sie stehen bewusst zwischen Kopfzeile und Inhalt: Alles darunter gehört zu
+ * der Bühne, die hier gewählt ist. Bei einer einzigen Bühne bleibt nur der
+ * Knopf zum Anlegen — die Leiste verschwindet nicht, sonst fände niemand die
+ * zweite Anzeigefläche.
+ */
+.buehnen-leiste {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+/* Zeigt an, dass auf dieser Bühne ein Fenster offen steht. */
+.buehnen-punkt {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.5;
+  vertical-align: middle;
+}
+
+.buehnen-punkt.an {
+  background: var(--ok, #3fb950);
+  opacity: 1;
+}
+
+/*
+ * Die Gesamtvorschau des Masters.
+ *
+ * Jede Wand einmal klein statt einer großen, die für alle stehen soll — wer
+ * alle zugleich schaltet, will vorher sehen, was auf jeder steht.
+ */
+.buehnen-vorschauen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.buehnen-vorschau-marke {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.buehnen-vorschau-marke .hint {
+  margin: 0;
+}

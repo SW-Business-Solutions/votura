@@ -129,8 +129,12 @@ export function presentationUrl(id: UUID, art: PresentationKind = 'html'): strin
 }
 
 /** Dieselbe Datei über den Projektionsserver, für Geräte im Netz. */
-export function presentationPath(id: UUID, art: PresentationKind = 'html'): string {
-  return `/presentation.html?p=${encodeURIComponent(id)}&art=${art}`
+export function presentationPath(
+  id: UUID,
+  art: PresentationKind = 'html',
+  buehne = 1
+): string {
+  return `/presentation.html?p=${encodeURIComponent(id)}&art=${art}&buehne=${buehne}`
 }
 
 /** Votura → Dokument: zeige diese Folie (1-basiert). */

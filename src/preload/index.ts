@@ -24,6 +24,7 @@ const IPC: IpcChannels = {
   prompterCommand: 'wz:prompter-command',
   prompterReport: 'wz:prompter-report',
   beamerSize: 'wz:beamer-size',
+  stagesSnapshot: 'wz:stages-snapshot',
   audienceVideoReport: 'wz:audience-video-report',
   prompterState: 'wz:prompter-state'
 }
@@ -46,8 +47,8 @@ const bridge = {
   invoke,
   onPrintProgress: (listener: (progress: PrintProgress) => void) =>
     subscribe<PrintProgress>(IPC.printProgress, listener),
-  onProjectionState: (listener: (state: ProjectionState) => void) =>
-    subscribe<ProjectionState>(IPC.projectionState, listener),
+  onProjectionState: (listener: (nachricht: { buehne: number; state: ProjectionState }) => void) =>
+    subscribe<{ buehne: number; state: ProjectionState }>(IPC.projectionState, listener),
   onAudienceState: (listener: (state: AudienceWindowState) => void) =>
     subscribe<AudienceWindowState>(IPC.audienceState, listener),
   onSessionChanged: (listener: (session: Session | null) => void) =>

@@ -98,6 +98,39 @@ freigegeben ist, stammen die angezeigten Kandidaten aus deren Snapshot — Beame
 zwingend dieselbe Liste. Ergebnisse werden erst nach Bestätigung projiziert; nach einem Neustart
 startet der Beamer neutral, statt ungefragt ein Ergebnis erneut zu zeigen.
 
+### Bühnen
+
+Der Dienst hält nicht einen Zustand, sondern einen **je Bühne** (`Map<number, ProjectionState>`).
+Jede Funktion nimmt die Bühne als ersten Parameter; Bühne 1 ist die Hauptbühne und lässt sich nicht
+abbauen.
+
+```
+Bedienoberfläche ──► IPC (…, stage) ──► projection.ts   Map<buehne, ProjectionState>
+                                             │
+                     ┌───────────────────────┼───────────────────────┐
+                     ▼                       ▼                       ▼
+              Beamerfenster 1         Beamerfenster 2          SSE  /b/2
+              audience.html?buehne=1  ?buehne=2                (nur diese Bühne)
+```
+
+- **Wer folgt dem Wahlgang:** `projectDomainEvent()` schaltet nur Bühnen mit `followsRound`. Ohne
+  diese Unterscheidung zeigten alle Flächen zwangsläufig dasselbe — und mehrere hätten keinen Zweck.
+- **Der Master** ist die Bühnennummer `0` (`ALLE_BUEHNEN`). Er hat keinen Zustand, kein Fenster und
+  keine Adresse: `aufBuehnen()` in `src/main/ipc.ts` führt die Aktion auf jeder Bühne aus und gibt
+  die Antwort der Hauptbühne zurück. Die Fallunterscheidung liegt damit an genau einer Stelle,
+  nicht in jedem Aufruf der Oberfläche.
+- **Wahl der Bühne:** lokale Fenster über die Bildschirmwahl, Geräte im Netz über die Adresse
+  (`/b/2` leitet auf `/?buehne=2` weiter, damit alle Dateipfade relativ bleiben). In beiden Fällen
+  liest die Ansicht ihre Bühne aus der Suchzeile — es gibt nur eine Stelle dafür.
+- **Ablage:** `projection_state` enthält seit 0.14 `{ buehnen, zustaende, currentRoundId }`. Die
+  ältere Form mit einem einzelnen `state` wird beim Lesen weiterhin erkannt.
+
+> **Preloads bleiben importfrei.** Audience- und Prompter-Preload laufen in der Sandbox und dürfen
+> keinen zweiten Baustein nachladen. Ein **Wert** aus einem gemeinsamen Modul wird beim Bauen zu
+> `require('./chunks/…')`, das Preload lädt dann gar nicht, und die Beameransicht meldet dauerhaft
+> „Verbindung unterbrochen". Reine Typimporte sind erlaubt; ein Test in `tests/buehnen.test.ts`
+> wacht darüber.
+
 ## Ergebnis, Rangfolge und Gleichstand
 
 Die Rangfolge entsteht in `rankCandidates()` (`src/shared/result.ts`) — als reine Funktion, damit

@@ -93,6 +93,29 @@ lässt sich die Reihenfolge gefahrlos ändern, ohne dass Kennungen wandern.
 - **Netzwerkansicht** (optional): aktivieren, Port und Token vergeben, angezeigte Adresse am
   Zweitgerät im Browser öffnen. Rein lesend; nur in einem abgeschotteten Veranstaltungsnetz nutzen.
 
+## Mehrere Bühnen
+
+Bis zu vier Anzeigeflächen, jede mit eigenem Inhalt. Die Reiter stehen über der Steuerung; alles
+darunter gilt für die dort gewählte Bühne.
+
+- **Anlegen:** *+ Bühne* rechts neben den Reitern. Die neue Bühne bekommt die nächste freie Nummer —
+  sie steht später in der Netzadresse.
+- **Benennen und Verhalten:** Reiter *Ausgabe & Netz*, Karte **Bühne „…"**. Dort auch
+  *Folgt automatisch dem Wahlgang*: Ohne Haken bleibt die Bühne stehen, bis sie von Hand
+  umgeschaltet wird — für eine Rednerliste oder ein Standbild neben dem Wahlgeschehen.
+- **Fenster öffnen:** wie bei der Hauptbühne über *Ausgabe & Netz* → Bildschirm wählen. Jede Bühne
+  hat ihr eigenes Fenster; bei nur einem Bildschirm öffnen sie im Fenstermodus übereinander.
+- **Im Netz:** `/b/2`, `/b/3` … Die vollständigen Adressen samt Token listet die Karte
+  *Beamer im Netzwerk* auf. Am besten neben dem jeweiligen Beamer notieren.
+- **Alle zugleich:** der Reiter **Alle** ganz links. Jede Schaltung trifft dann jede Bühne — für
+  „Pause", „Versammlung beendet" oder das Sperren aller Wände auf einmal. Die Vorschau zeigt dabei
+  jede Bühne einzeln; steht auf den Wänden Verschiedenes, ist kein Knopf hervorgehoben und die
+  Kopfzeile sagt es.
+- **Abbauen:** *Bühne abbauen* in derselben Karte. Das Fenster schließt sich mit; die Hauptbühne
+  lässt sich nicht abbauen.
+- **Die Vortragssteuerung** folgt der Bühne, auf der ein Foliensatz läuft. Laufen zwei, wählt die
+  Liste im Fuß des Fensters.
+
 ## Rangliste bei mehreren Plätzen
 
 Im Reiter *Ergebnis* steht unter der Feststellung die **Rangliste**: erst die Gewählten in ihrer

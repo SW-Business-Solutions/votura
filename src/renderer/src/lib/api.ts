@@ -8,14 +8,14 @@
  * Der übrige Renderer merkt davon nichts; er ruft immer `api(...)` auf.
  */
 import type { ApiMethod, ApiParams, ApiResult } from '@shared/ipc'
-import type { AudienceWindowState, ProjectionState } from '@shared/projection'
+import type { AudienceWindowState, Buehne, ProjectionState } from '@shared/projection'
 import type { PrompterWindowState } from '@shared/presentation'
 import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
 interface Bridge {
   invoke<M extends ApiMethod>(method: M, ...args: ApiParams<M>): Promise<ApiResult<M>>
   onPrintProgress(listener: (progress: PrintProgress) => void): () => void
-  onProjectionState(listener: (state: ProjectionState) => void): () => void
+  onProjectionState(listener: (nachricht: { buehne: number; state: ProjectionState }) => void): () => void
   onAudienceState(listener: (state: AudienceWindowState) => void): () => void
   onSessionChanged(listener: (session: Session | null) => void): () => void
   onNotice(listener: (notice: { level: 'info' | 'warning' | 'error'; message: string }) => void): () => void
@@ -131,10 +131,38 @@ function pollingBridge(): Bridge {
   return {
     invoke: ((method: string, ...args: unknown[]) => remoteInvoke(method, args)) as Bridge['invoke'],
     onPrintProgress: () => () => undefined,
+    /*
+      * Im Netzbetrieb wird jede Bühne einzeln abgefragt. Es sind wenige, und
+      * die Antwort ist klein — das wiegt leichter als ein zweiter Kanal.
+      */
     onProjectionState: (listener) =>
-      poll(() => remoteInvoke('projection.state', []) as Promise<ProjectionState>, listener, 2000),
+      poll(
+        async () => {
+          const stages = (await remoteInvoke('projection.buehnen', [])) as Buehne[]
+          return Promise.all(
+            stages.map(async (stage) => ({
+              buehne: stage.id,
+              state: (await remoteInvoke('projection.state', [stage.id])) as ProjectionState
+            }))
+          )
+        },
+        (alle) => alle.forEach(listener),
+        2000
+      ),
     onAudienceState: (listener) =>
-      poll(() => remoteInvoke('projection.audienceState', []) as Promise<AudienceWindowState>, listener, 5000),
+      poll(
+        async () => {
+          const stages = (await remoteInvoke('projection.buehnen', [])) as Buehne[]
+          return Promise.all(
+            stages.map(
+              async (stage) =>
+                (await remoteInvoke('projection.audienceState', [stage.id])) as AudienceWindowState
+            )
+          )
+        },
+        (alle) => alle.forEach(listener),
+        5000
+      ),
     onSessionChanged: () => () => undefined,
     onNotice: () => () => undefined,
     // Ein zweites Gerät spielt keine Fassung ein – das geschieht am Hauptrechner.

@@ -260,11 +260,18 @@ async function bootstrap(): Promise<void> {
   watchDisplays()
 
   onPrintProgress((progress) => sendToOperator(IPC.printProgress, progress))
-  onProjectionChanged((state) => {
-    sendToOperator(IPC.projectionState, state)
-    sendToAudience(IPC.projectionState, state)
-    sendToPrompter(IPC.projectionState, state)
-    broadcastProjection(state)
+  onProjectionChanged((buehne, state) => {
+    /*
+     * Die Bühne reist mit.
+     *
+     * Die Bedienoberfläche hält alle Bühnen und ordnet den Zustand selbst zu;
+     * Beamerfenster und Netzansichten bekommen nur, was ihre eigene Bühne
+     * betrifft. Der Prompter hängt an der Bühne, die er steuert.
+     */
+    sendToOperator(IPC.projectionState, { buehne, state })
+    sendToAudience(buehne, IPC.projectionState, { buehne, state })
+    sendToPrompter(IPC.projectionState, { buehne, state })
+    broadcastProjection(buehne, state)
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))
   onPrompterStateChanged((state) => sendToOperator(IPC.prompterState, state))

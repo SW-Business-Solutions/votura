@@ -136,14 +136,18 @@ export function AgendaPage(): React.JSX.Element {
           <button onClick={() => navigate('round/new')}>+ Wahlgang vorbereiten</button>
           <button
             onClick={() =>
-              void api('projection.setMode', {
-                mode: 'agenda',
-                agenda: {
-                  top: items.find((item) => !item.done)?.label,
-                  current: items.find((item) => !item.done)?.title,
-                  next: items.filter((item) => !item.done)[1]?.title
-                }
-              }).catch(app.reportError)
+              void api(
+                'projection.setMode',
+                {
+                  mode: 'agenda',
+                  agenda: {
+                    top: items.find((item) => !item.done)?.label,
+                    current: items.find((item) => !item.done)?.title,
+                    next: items.filter((item) => !item.done)[1]?.title
+                  }
+                },
+                app.buehne
+              ).catch(app.reportError)
             }
           >
             Auf Beamer zeigen

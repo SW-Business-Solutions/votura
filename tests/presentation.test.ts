@@ -167,7 +167,7 @@ describe('Netzwerkansicht', () => {
     /* Würde jede Datei der Bibliothek über ihre Kennung erreichbar, könnte
        jedes Gerät im Saal eine noch ungezeigte Präsentation abrufen. */
     expect(server).toContain('/presentation.html')
-    expect(server).toContain('getProjectionState().presentation')
+    expect(server).toContain('getProjectionState(buehneAus(url)).presentation')
   })
 
   it('bleibt rein lesend (§51)', () => {

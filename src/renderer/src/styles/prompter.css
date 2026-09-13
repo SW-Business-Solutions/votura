@@ -226,3 +226,14 @@
   max-width: 52ch;
   color: var(--prompter-leise);
 }
+
+/* Welche Bühne die Steuerung bedient — nur sichtbar, wenn es mehrere gibt. */
+.prompter-buehnenwahl {
+  margin-left: 10px;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+}
