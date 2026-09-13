@@ -38,7 +38,10 @@ mount "/dev/mapper/$(basename "$schleife")p2" "$arbeit/wurzel"
 
 fehler=0
 pruefe() {
-  if [[ -e "$arbeit/wurzel/$1" ]]; then
+  # Auch `-L`: Ein eingeschalteter Dienst ist ein Symlink auf einen absoluten
+  # Pfad im Abbild. Von außen betrachtet zeigt der ins Leere — `-e` folgt ihm
+  # und meldete den Dienst als fehlend, obwohl er eingeschaltet war.
+  if [[ -e "$arbeit/wurzel/$1" || -L "$arbeit/wurzel/$1" ]]; then
     printf '  \033[32m✓\033[0m %s\n' "$2"
   else
     printf '  \033[31m✗\033[0m %s (fehlt: %s)\n' "$2" "$1"

@@ -3,6 +3,9 @@ out/
 release/
 # Die Begleitanwendung entsteht in einem eigenen Lauf und eigenem Ordner.
 release-saal/
+# Das Pi-Abbild ebenso — samt Zwischenlager für das geladene Raspberry Pi OS.
+# Knapp ein Gigabyte, das nicht versehentlich in einen Commit geraten darf.
+release-pi/
 dist/
 *.log
 .DS_Store

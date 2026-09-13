@@ -205,7 +205,14 @@ melde 'Netzwerkname setzen'
 
 # Damit sich der Pi aus der Ferne finden lässt, ohne seine Adresse zu kennen.
 if [[ "$(hostname)" != 'votura-saal' ]]; then
-  hostnamectl set-hostname votura-saal
+  # Beim Abbildbau läuft dieses Skript im chroot. Dort gibt es kein systemd,
+  # `hostnamectl` findet seinen Bus nicht und riss bisher den ganzen Lauf mit.
+  # Die Datei genügt: Gelesen wird sie ohnehin erst beim Start auf dem Pi.
+  if [[ -d /run/systemd/system ]]; then
+    hostnamectl set-hostname votura-saal
+  else
+    echo 'votura-saal' > /etc/hostname
+  fi
   sed -i "s/127.0.1.1.*/127.0.1.1\tvotura-saal/" /etc/hosts
 fi
 systemctl enable avahi-daemon >/dev/null 2>&1 || true

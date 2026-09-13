@@ -49,6 +49,9 @@ version="$(grep -oP '"version":\s*"\K[^"]+' "$hier/package.json" | head -1)"
 mkdir -p "$hier/$AUSGABE"
 arbeit="$(mktemp -d)"
 
+# Aushängen und Wegwerfen sind getrennt: Das fertige Abbild liegt im
+# Arbeitsverzeichnis und muss ausgehängt, aber noch nicht gelöscht sein, wenn
+# es gepackt wird. Beides in einem Schritt hat das Ergebnis mitgenommen.
 aufraeumen() {
   set +e
   if mountpoint -q "$arbeit/wurzel/boot/firmware" 2>/dev/null; then umount "$arbeit/wurzel/boot/firmware"; fi
@@ -57,10 +60,10 @@ aufraeumen() {
   done
   if mountpoint -q "$arbeit/wurzel" 2>/dev/null; then umount "$arbeit/wurzel"; fi
   if [[ -n "${schleife:-}" ]]; then kpartx -d "$schleife" >/dev/null 2>&1; losetup -d "$schleife" >/dev/null 2>&1; fi
-  [[ $behalten -eq 1 ]] || rm -rf "$arbeit"
   set -e
 }
-trap aufraeumen EXIT
+verwerfen() { [[ $behalten -eq 1 ]] || rm -rf "$arbeit"; }
+trap 'aufraeumen; verwerfen' EXIT
 
 # ------------------------------------------------------- Grundabbild holen
 
@@ -155,6 +158,7 @@ trap - EXIT
 melde 'Packen'
 ziel="$hier/$AUSGABE/votura-saal-$version-arm64.img"
 mv "$abbild" "$ziel" 2>/dev/null || cp "$abbild" "$ziel"
+verwerfen
 xz -T0 -9 -f "$ziel"
 sha256sum "$ziel.xz" | awk '{print $1}' > "$ziel.xz.sha256"
 
