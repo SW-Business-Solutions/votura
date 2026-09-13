@@ -14,6 +14,7 @@ import {
   PROJECTION_MODE_LABELS,
   paginateCandidates,
   pausenende,
+  redezeitRest,
   projectionPageCount,
   projectionResultPageCount,
   type ProjectionCandidate,
@@ -21,6 +22,7 @@ import {
   type ProjectionMode,
   type ProjectionResult,
   type ProjectionRound,
+  type ProjectionSpeaker,
   type ProjectionState
 } from '@shared/projection'
 import type { ProjectionPresentation } from '@shared/presentation'
@@ -222,7 +224,10 @@ function buildResult(roundId: UUID, showAll: boolean): ProjectionResult | undefi
     perCandidateChoice
       ? result.resultData.candidates.map(({ votes: _votes, ...rest }) => rest)
       : result.resultData.candidates,
-    round.seats
+    round.seats,
+    /* Was die Versammlung bei Gleichstand entschieden hat, gilt auch auf dem
+       Beamer — sonst stünde dort eine andere Reihenfolge als auf dem Beleg. */
+    { decidedOrder: result.rankOrder }
   )
   const candidates: ProjectionCandidate[] = ranked.map((candidate) => ({
     id: candidate.candidateId,
@@ -317,6 +322,8 @@ export interface SetModeInput {
   presentationId?: UUID
   /** Welches Video gezeigt wird (nur im Modus 'video'). */
   videoId?: UUID
+  /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
+  speaker?: { name: string; note?: string; seconds?: number }
 }
 
 export function setProjection(input: SetModeInput, options: { audit?: boolean } = {}): ProjectionState {
@@ -420,6 +427,13 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
      * kommt, überrumpelt den Saal.
      */
     video: input.mode === 'video' ? videoFuer(input.videoId) : undefined,
+    /*
+     * Wie bei Präsentation und Video überlebt auch die Vorstellung keinen
+     * Moduswechsel: Wer zurück auf den Wahlgang schaltet, will den Wahlgang
+     * sehen — und beim nächsten Aufruf soll die Uhr von vorn laufen, nicht
+     * beim Rest des vorigen Redners.
+     */
+    speaker: input.mode === 'speaker' ? rednerFuer(input.speaker) : undefined,
     updatedAt: new Date().toISOString()
   }
 
@@ -491,6 +505,99 @@ function praesentationFuer(id?: UUID): ProjectionPresentation | undefined {
     slide: 1,
     slideCount: gefunden.slideCount
   }
+}
+
+function rednerFuer(
+  eingabe?: { name: string; note?: string; seconds?: number }
+): ProjectionSpeaker | undefined {
+  const name = eingabe?.name?.trim()
+  if (!name) return undefined
+  const sekunden = eingabe?.seconds && eingabe.seconds > 0 ? Math.round(eingabe.seconds) : undefined
+  return {
+    name,
+    note: eingabe?.note?.trim() || undefined,
+    /* Ohne Zeitangabe wird nur der Name gezeigt — nicht jede Vorstellung ist
+       begrenzt. */
+    until: sekunden ? new Date(Date.now() + sekunden * 1000).toISOString() : undefined,
+    totalSeconds: sekunden
+  }
+}
+
+/**
+ * Hält die Redezeit an oder lässt sie weiterlaufen.
+ *
+ * Eine Zwischenfrage soll die Vorstellung nicht beenden — und die Uhr nicht
+ * währenddessen weiterlaufen lassen. **Ohne Prüfeintrag**: eine Anzeige, keine
+ * Wahlhandlung.
+ */
+export function setSpeakerPaused(paused: boolean): ProjectionState {
+  if (state.mode !== 'speaker' || !state.speaker) return state
+  const redner = state.speaker
+  if (paused === (redner.pausedSecondsLeft !== undefined)) return state
+
+  if (paused) {
+    const rest = redezeitRest(redner)
+    if (rest === undefined) return state
+    state = {
+      ...state,
+      speaker: { ...redner, pausedSecondsLeft: rest },
+      updatedAt: new Date().toISOString()
+    }
+  } else {
+    const rest = redner.pausedSecondsLeft ?? 0
+    const { pausedSecondsLeft: _weg, ...ohnePause } = redner
+    state = {
+      ...state,
+      speaker: { ...ohnePause, until: new Date(Date.now() + rest * 1000).toISOString() },
+      updatedAt: new Date().toISOString()
+    }
+  }
+  broadcast()
+  return state
+}
+
+/**
+ * Verlängert oder kürzt die laufende Redezeit.
+ *
+ * „Noch eine Minute" ist auf einer Versammlung ein üblicher Zuruf; ihn über
+ * einen Neustart der Vorstellung abzubilden hieße, die Uhr zurückzusetzen.
+ */
+export function addSpeakerSeconds(seconds: number): ProjectionState {
+  if (state.mode !== 'speaker' || !state.speaker) return state
+  if (!Number.isFinite(seconds) || seconds === 0) return state
+  const redner = state.speaker
+  const zusatz = Math.round(seconds)
+
+  if (redner.pausedSecondsLeft !== undefined) {
+    state = {
+      ...state,
+      speaker: { ...redner, pausedSecondsLeft: redner.pausedSecondsLeft + zusatz },
+      updatedAt: new Date().toISOString()
+    }
+  } else if (redner.until) {
+    state = {
+      ...state,
+      speaker: {
+        ...redner,
+        until: new Date(new Date(redner.until).getTime() + zusatz * 1000).toISOString()
+      },
+      updatedAt: new Date().toISOString()
+    }
+  } else {
+    /* Bisher ohne Uhr: Der Zuschlag startet sie. */
+    if (zusatz <= 0) return state
+    state = {
+      ...state,
+      speaker: {
+        ...redner,
+        until: new Date(Date.now() + zusatz * 1000).toISOString(),
+        totalSeconds: zusatz
+      },
+      updatedAt: new Date().toISOString()
+    }
+  }
+  broadcast()
+  return state
 }
 
 function videoFuer(id?: UUID): ProjectionVideo | undefined {

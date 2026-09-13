@@ -108,13 +108,44 @@ Sortiert wird nach den Regeln des Verfahrens:
   steht hinter der Trennlinie — auch dann, wenn ein Platz frei bliebe.
 
 **Bleibt ein Rang offen**, weil zwei Bewerber in beiden Zahlen gleichauf liegen, sagt die
-Anwendung das und sortiert **nicht** heimlich nach dem Namen. Die Versammlung muss dann
-entscheiden: Verzicht auf den höheren Platz, Stichwahl oder Losentscheid. Ein Losentscheid lässt
-sich im selben Reiter dokumentieren.
+Anwendung das und sortiert **nicht** heimlich nach dem Namen. Die betroffenen Zeilen tragen den
+Hinweis *Rang offen* und zwei Pfeile.
+
+So sehen es die meisten Wahlordnungen vor — und so unterstützt Votura es:
+
+1. **Stichwahl** zwischen den Gleichstehenden. Unter *Weiteres Vorgehen → Folgewahlgang erzeugen*;
+   die Gleichstehenden sind dort schon ausgewählt.
+2. **Losentscheid**, wenn auch die Stichwahl gleich ausgeht. So steht es unter anderem im
+   Bundeswahlgesetz (§ 6: „entscheidet das Los").
+3. **Verzicht** auf den höheren Platz — der formlose Weg, der in der Praxis am häufigsten
+   vorkommt.
+
+Für Verzicht und Losentscheid tragen Sie die Entscheidung mit den Pfeilen **↑ ↓** ein; der
+Hinweis *Rang offen* verschwindet dann. Halten Sie im Feld *Losentscheid dokumentieren* fest, wie
+es dazu kam — das gehört ins Protokoll. Die eingetragene Reihenfolge hebt niemanden über die
+Zahlen hinweg: Sie zählt nur dort, wo sonst nichts mehr trennt.
 
 Die Rangliste lässt sich über *Rangliste auf Bon drucken* sofort ausgeben — derselbe Beleg wie
 *Ergebnis auf Bon drucken*, mit Trennlinie zwischen Gewählten und Nichtgewählten und einem
 Hinweis, falls ein Rang offen ist.
+
+## Vorstellung mit Redezeit
+
+Unter *Beamer → Inhalte → Vorstellung mit Redezeit*: Name eintragen (Bewerber des Bezugswahlgangs
+werden vorgeschlagen), optional einen Zusatz wie „Bewerbung um den Vorsitz", Redezeit in Minuten,
+*Vorstellung anzeigen*.
+
+Der Saal sieht den Namen groß, darunter den Zusatz und die verbleibende Zeit mit Balken. Die
+letzten dreißig Sekunden werden gelb, danach zählt die Anzeige **ins Minus weiter** und wird rot —
+wer überzieht, soll es sehen, und die Versammlungsleitung auch.
+
+Während der Vorstellung stehen drei Schaltflächen bereit:
+
+- **Anhalten / Weiter** — für eine Zwischenfrage, ohne die Vorstellung zu beenden.
+- **+1 Min.** — der übliche Zuruf „noch eine Minute", ohne die Uhr zurückzusetzen.
+- **−1 Min.** — falls zu großzügig gerechnet wurde.
+
+Redezeit 0 zeigt nur den Namen, ohne Uhr — nicht jede Vorstellung ist begrenzt.
 
 ## Vortrag und Film zwischen den Wahlgängen
 

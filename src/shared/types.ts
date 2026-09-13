@@ -669,6 +669,18 @@ export interface ElectionResult {
   electedCandidateIds?: UUID[]
   /** Dokumentierter Losentscheid (Wahlformen §32). */
   lotDecision?: string
+  /**
+   * Von der Versammlung festgelegte Reihenfolge, als Kandidatenkennungen.
+   *
+   * Nötig, wo die Zahlen nicht mehr trennen: Bei gleicher Ja- und Nein-Zahl
+   * steht der Rang offen, und wer Delegierter und wer Ersatz wird, entscheidet
+   * die Versammlung — durch Verzicht auf den höheren Platz, Stichwahl oder
+   * Losentscheid. Die Zahlen bleiben davon unberührt; festgehalten wird nur,
+   * wie der Gleichstand aufgelöst wurde.
+   *
+   * Wer hier fehlt, wird weiter nach den Zahlen einsortiert.
+   */
+  rankOrder?: UUID[]
   createdAt: IsoDateTime
   confirmedAt?: IsoDateTime
 }

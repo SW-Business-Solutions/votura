@@ -20,6 +20,8 @@ import {
   projectionResultColumns,
   projectionResultPageCount,
   projectionResultPageSize,
+  redezeitRest,
+  redezeitText,
   type ProjectionCandidate,
   type ProjectionState
 } from '@shared/projection'
@@ -496,6 +498,18 @@ function renderMode(state: ProjectionState): JSX.Element {
         </>
       )
 
+    case 'speaker':
+      return state.speaker ? (
+        <>
+          <div className="projection-status">VORSTELLUNG</div>
+          <div className="projection-title">{state.speaker.name}</div>
+          {state.speaker.note && <div className="projection-note">{state.speaker.note}</div>}
+          <Redezeit speaker={state.speaker} />
+        </>
+      ) : (
+        <div className="projection-status">VORSTELLUNG</div>
+      )
+
     case 'break':
       return (
         <>
@@ -608,6 +622,55 @@ function BreakCountdown({ until }: { until: string }): JSX.Element {
   return (
     <div className="projection-countdown">
       {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+    </div>
+  )
+}
+
+/**
+ * Die verbleibende Redezeit.
+ *
+ * Läuft die Zeit ab, springt die Anzeige **nicht** auf null, sondern zählt ins
+ * Minus weiter: Wer überzieht, soll es sehen — und die Versammlungsleitung
+ * auch. Der Balken darunter zeigt den Anteil der schon verbrauchten Zeit.
+ */
+function Redezeit({ speaker }: { speaker: NonNullable<ProjectionState['speaker']> }): JSX.Element | null {
+  const [, tick] = useState(0)
+
+  useEffect(() => {
+    /* Angehalten braucht es keinen Takt — der Rest steht fest. */
+    if (speaker.pausedSecondsLeft !== undefined) return
+    const timer = window.setInterval(() => tick((n) => n + 1), 500)
+    return () => window.clearInterval(timer)
+  }, [speaker.pausedSecondsLeft, speaker.until])
+
+  const rest = redezeitRest(speaker)
+  if (rest === undefined) return null
+
+  const knapp = rest <= 30 && rest > 0
+  const vorbei = rest <= 0
+  const anteil =
+    speaker.totalSeconds && speaker.totalSeconds > 0
+      ? Math.min(1, Math.max(0, 1 - rest / speaker.totalSeconds))
+      : undefined
+
+  return (
+    <div className="projection-redezeit">
+      <div
+        className={`projection-countdown${vorbei ? ' vorbei' : knapp ? ' knapp' : ''}`}
+        /* Angehalten wird gedimmt statt beschriftet: Der Saal muss die Zahl
+           lesen, nicht den Zustand der Steuerung. */
+        style={speaker.pausedSecondsLeft !== undefined ? { opacity: 0.55 } : undefined}
+      >
+        {redezeitText(rest)}
+      </div>
+      {anteil !== undefined && (
+        <div className="projection-redezeit-balken">
+          <div
+            className={vorbei ? 'vorbei' : knapp ? 'knapp' : ''}
+            style={{ width: `${Math.round(anteil * 100)}%` }}
+          />
+        </div>
+      )}
     </div>
   )
 }

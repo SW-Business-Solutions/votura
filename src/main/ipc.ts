@@ -69,8 +69,10 @@ import {
   history as projectionHistory,
   refreshEventInfo,
   refreshTheme,
+  addSpeakerSeconds,
   setCandidatePage,
   setCandidatePageInterval,
+  setSpeakerPaused,
   setDemoMode,
   setLocked,
   setProjection,
@@ -472,6 +474,8 @@ const api: Api = {
   },
   'projection.setCandidatePage': async (page) => setCandidatePage(page),
   'projection.setCandidatePageInterval': async (seconds) => setCandidatePageInterval(seconds),
+  'projection.setSpeakerPaused': async (paused) => setSpeakerPaused(paused),
+  'projection.addSpeakerSeconds': async (seconds) => addSpeakerSeconds(seconds),
 
   /* --------------------------------------------------------- Präsentationen */
   'presentation.list': async () => listPresentations(),

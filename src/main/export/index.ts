@@ -154,7 +154,7 @@ function resultHtml(round: ElectionRound, result: ElectionResult | null): string
           : ' &middot; noch nicht bestätigt'
       }</div>`
   }
-  const ranked = rankCandidates(result.resultData.candidates, round.seats)
+  const ranked = rankCandidates(result.resultData.candidates, round.seats, { decidedOrder: result.rankOrder })
   const decision = result.finalDecision ? FINAL_DECISION_LABELS[result.finalDecision] : ''
 
   return `<table>

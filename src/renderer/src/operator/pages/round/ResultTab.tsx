@@ -50,6 +50,8 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   const [decision, setDecision] = useState<FinalDecision | ''>(existing?.finalDecision ?? '')
   const [elected, setElected] = useState<string[]>(existing?.electedCandidateIds ?? [])
   const [lotDecision, setLotDecision] = useState(existing?.lotDecision ?? '')
+  /* Die von der Versammlung beschlossene Reihenfolge bei Gleichstand. */
+  const [rankOrder, setRankOrder] = useState<string[]>(existing?.rankOrder ?? [])
   const [note, setNote] = useState(existing?.note ?? '')
   const [countingMode, setCountingMode] = useState<CountingMode>(existing?.countingMode ?? 'counted')
   const [declaration, setDeclaration] = useState(existing?.declaration ?? '')
@@ -73,6 +75,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     setDecision(detail.result?.finalDecision ?? '')
     setElected(detail.result?.electedCandidateIds ?? [])
     setLotDecision(detail.result?.lotDecision ?? '')
+    setRankOrder(detail.result?.rankOrder ?? [])
   }, [detail.result, detail.candidates, kind])
 
   /**
@@ -161,7 +164,10 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     () => suggestDecision(round, resultData, { validBallots }),
     [round, resultData, validBallots]
   )
-  const ranked = useMemo(() => rankCandidates(rows, round.seats), [rows, round.seats])
+  const ranked = useMemo(
+    () => rankCandidates(rows, round.seats, { decidedOrder: rankOrder }),
+    [rows, round.seats, rankOrder]
+  )
   const electedWithoutVotes = ranked.filter(
     (candidate) => elected.includes(candidate.candidateId) && (candidate.votes ?? candidate.yes ?? 0) === 0
   )
@@ -201,6 +207,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
       (existing.finalDecision ?? '') !== decision ||
       (existing.determination ?? '') !== determination ||
       (existing.lotDecision ?? '') !== lotDecision ||
+      JSON.stringify(existing.rankOrder ?? []) !== JSON.stringify(rankOrder) ||
       (existing.note ?? '') !== note ||
       (existing.declaration ?? '') !== declaration ||
       (existing.countingMode ?? 'counted') !== countingMode ||
@@ -214,6 +221,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     decision,
     determination,
     lotDecision,
+    rankOrder,
     note,
     declaration,
     countingMode,
@@ -221,6 +229,22 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     effectiveInvalid,
     resultData
   ])
+
+  /**
+   * Reiht einen Bewerber innerhalb seiner Gleichstandsgruppe um.
+   *
+   * Geschrieben wird die vollständige Reihenfolge, nicht nur das verschobene
+   * Paar: Sie ist für sich lesbar und bleibt gültig, auch wenn sich die Zahlen
+   * durch eine Korrektur noch verschieben. Über die Zahlen hinweg hebt sie
+   * niemanden — beim Sortieren zählt sie erst, wenn sonst nichts mehr trennt.
+   */
+  const verschiebe = (index: number, richtung: -1 | 1): void => {
+    const ziel = index + richtung
+    if (ziel < 0 || ziel >= ranked.length) return
+    const neu = ranked.map((eintrag) => eintrag.candidateId)
+    ;[neu[index], neu[ziel]] = [neu[ziel], neu[index]]
+    setRankOrder(neu)
+  }
 
   const save = async (): Promise<boolean> => {
     try {
@@ -237,7 +261,8 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
         determination,
         finalDecision: decision || undefined,
         electedCandidateIds: elected,
-        lotDecision: lotDecision || undefined
+        lotDecision: lotDecision || undefined,
+        rankOrder: rankOrder.length > 0 ? rankOrder : undefined
       })
       app.notify('ok', 'Ergebnis gespeichert. Es ist noch nicht öffentlich.')
       await reload()
@@ -625,7 +650,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             </>
           )}
 
-          <Field label="Losentscheid dokumentieren (optional)" hint="Ein Losentscheid ist kein Wahlgang mit Stimmzettel.">
+          <Field label="Losentscheid dokumentieren (optional)" hint="Ein Losentscheid ist kein Wahlgang mit Stimmzettel. Hier gehört auch hinein, wenn ein Gleichstand anders aufgelöst wurde — etwa durch Verzicht auf den höheren Platz.">
             <input value={lotDecision} disabled={confirmed} onChange={(e) => setLotDecision(e.target.value)} />
           </Field>
 
@@ -717,9 +742,31 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                         <td>
                           {candidate.name}
                           {candidate.tied && (
-                            <span className="badge warn" style={{ marginLeft: 8 }}>
-                              Rang offen
-                            </span>
+                            <>
+                              <span className="badge warn" style={{ marginLeft: 8 }}>
+                                Rang offen
+                              </span>
+                              {/* Die Versammlung hat entschieden — hier wird
+                                  eingereiht. Die Zahlen bleiben unberührt;
+                                  festgehalten wird nur die Reihenfolge. */}
+                              <button
+                                className="mini"
+                                style={{ marginLeft: 8 }}
+                                disabled={confirmed || index === 0}
+                                title="Einen Platz nach oben"
+                                onClick={() => verschiebe(index, -1)}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                className="mini"
+                                disabled={confirmed || index === ranked.length - 1}
+                                title="Einen Platz nach unten"
+                                onClick={() => verschiebe(index, 1)}
+                              >
+                                ↓
+                              </button>
+                            </>
                           )}
                         </td>
                         <td className="mono" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -739,12 +786,28 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                 : 'Sortiert nach Stimmen.'}{' '}
               Die Reihenfolge ist ein Vorschlag — festgestellt wird sie von der Wahlleitung.
             </div>
-            {ranked.some((candidate) => candidate.tied) && (
+            {ranked.some((candidate) => candidate.tied) ? (
               <div className="notice warn" style={{ marginTop: 8 }}>
-                Bei mindestens zwei Bewerbern trennt kein Kriterium mehr. Die Versammlung muss die
-                Reihenfolge klären — durch Verzicht auf den höheren Platz, Stichwahl oder
-                Losentscheid. Ein Losentscheid lässt sich unten dokumentieren.
+                Bei mindestens zwei Bewerbern trennt kein Kriterium mehr. Die Versammlung muss
+                entscheiden. Üblich sind — und so steht es in den meisten Wahlordnungen — zuerst
+                eine <strong>Stichwahl</strong> zwischen den Gleichstehenden und, wenn auch die
+                gleich ausgeht, der <strong>Losentscheid</strong>; daneben kommt ein{' '}
+                <strong>Verzicht</strong> auf den höheren Platz in Betracht.
+                <br />
+                Für die Stichwahl steht unten <em>Folgewahlgang erzeugen</em> bereit — die
+                Gleichstehenden sind dort schon ausgewählt. Verzicht und Losentscheid tragen Sie
+                mit den Pfeilen ↑ ↓ ein und halten darunter fest, wie es dazu kam.
               </div>
+            ) : (
+              rankOrder.length > 0 && (
+                <div className="notice" style={{ marginTop: 8 }}>
+                  Ein Gleichstand wurde von der Versammlung aufgelöst. Die Reihenfolge steht damit
+                  fest.{' '}
+                  <button className="mini" disabled={confirmed} onClick={() => setRankOrder([])}>
+                    Zurücknehmen
+                  </button>
+                </div>
+              )
             )}
             <div className="row" style={{ marginTop: 12 }}>
               <button disabled={!existing || bonLaeuft} onClick={ergebnisDrucken}>
@@ -935,11 +998,26 @@ function FollowUpDialog({ detail, onClose }: { detail: TabProps['detail']; onClo
   const app = useApp()
   const round = detail.round
   const result = detail.result
-  const ranked = rankCandidates(result?.resultData.candidates ?? [], round.seats)
+  const ranked = rankCandidates(result?.resultData.candidates ?? [], round.seats, {
+    decidedOrder: result?.rankOrder
+  })
+
+  /*
+   * Bei Stimmengleichheit sind die Gleichstehenden gemeint, nicht die
+   * Erstplatzierten.
+   *
+   * Eine Stichwahl entscheidet genau die offene Frage — und die steht selten
+   * an der Spitze: Beim vierten von vier Delegiertenplätzen sind die Ränge 4
+   * und 5 strittig, nicht 1 und 2. Die Vorauswahl folgt deshalb dem
+   * Gleichstand, wo es einen gibt.
+   */
+  const gleichstehende = ranked.filter((candidate) => candidate.tied)
 
   const [kind, setKind] = useState<'runoff' | 'repeat' | 'byelection' | 'second_round'>('runoff')
   const [selected, setSelected] = useState<string[]>(
-    ranked.slice(0, 2).map((candidate) => candidate.candidateId)
+    (gleichstehende.length >= 2 ? gleichstehende : ranked.slice(0, 2)).map(
+      (candidate) => candidate.candidateId
+    )
   )
   const [seats, setSeats] = useState(1)
   const [title, setTitle] = useState('')

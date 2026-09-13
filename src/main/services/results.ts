@@ -36,6 +36,7 @@ interface ResultRow {
   final_decision: string | null
   elected_ids_json: string | null
   lot_decision: string | null
+  rank_order_json: string | null
   created_at: string
   confirmed_at: string | null
 }
@@ -61,6 +62,8 @@ function mapResult(row: ResultRow): ElectionResult {
     finalDecision: (optionalString(row.final_decision) as ElectionResult['finalDecision']) ?? undefined,
     electedCandidateIds: fromJson<UUID[]>(row.elected_ids_json, []),
     lotDecision: optionalString(row.lot_decision),
+    /* Leer, solange kein Gleichstand aufzulösen war. */
+    rankOrder: fromJson<UUID[]>(row.rank_order_json, []),
     createdAt: row.created_at,
     confirmedAt: optionalString(row.confirmed_at)
   }
@@ -116,7 +119,7 @@ export function saveResult(input: ResultInput): ElectionResult {
         `UPDATE results SET counting_mode = ?, declaration = ?, eligible_voters = ?, ballots_cast = ?,
                             valid_ballots = ?, invalid_ballots = ?, abstentions = ?, result_json = ?,
                             note = ?, determination = ?, final_decision = ?, elected_ids_json = ?,
-                            lot_decision = ?
+                            lot_decision = ?, rank_order_json = ?
          WHERE id = ?`
       )
       .run(
@@ -133,6 +136,7 @@ export function saveResult(input: ResultInput): ElectionResult {
         input.finalDecision ?? null,
         JSON.stringify(input.electedCandidateIds ?? []),
         input.lotDecision ?? null,
+        JSON.stringify(input.rankOrder ?? []),
         id
       )
   } else {
@@ -141,8 +145,8 @@ export function saveResult(input: ResultInput): ElectionResult {
         `INSERT INTO results (id, round_id, counting_mode, declaration, eligible_voters, ballots_cast,
                               valid_ballots, invalid_ballots, abstentions, result_json, entered_by,
                               entered_by_name, note, determination, final_decision, elected_ids_json,
-                              lot_decision, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                              lot_decision, rank_order_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         id,
@@ -162,6 +166,7 @@ export function saveResult(input: ResultInput): ElectionResult {
         input.finalDecision ?? null,
         JSON.stringify(input.electedCandidateIds ?? []),
         input.lotDecision ?? null,
+        JSON.stringify(input.rankOrder ?? []),
         now
       )
   }

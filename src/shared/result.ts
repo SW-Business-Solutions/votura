@@ -166,6 +166,9 @@ export interface RankedCandidate extends CandidateResult {
    * Rang ungeklärt, muss die Versammlung entscheiden: Losentscheid, Verzicht
    * auf den höheren Platz, Stichwahl. Die Anwendung sortiert dann **nicht**
    * heimlich nach dem Namen, sondern sagt, dass hier etwas offen ist.
+   *
+   * Sobald die Entscheidung als `decidedOrder` vorliegt, ist der Rang geklärt
+   * und dieses Merkmal verschwindet.
    */
   tied: boolean
   /**
@@ -211,17 +214,31 @@ export function compareResults(a: CandidateResult, b: CandidateResult): number {
 export function rankCandidates(
   candidates: CandidateResult[],
   seats: number,
-  options: { acceptance?: boolean } = {}
+  options: { acceptance?: boolean; decidedOrder?: string[] } = {}
 ): RankedCandidate[] {
   const akzeptanz = options.acceptance ?? candidates.some((candidate) => candidate.yes !== undefined)
   const erfuellt = (candidate: CandidateResult): boolean =>
     akzeptanz ? acceptanceQualified(candidate) : true
+
+  /*
+   * Was die Versammlung entschieden hat, zählt vor dem Namen.
+   *
+   * `decidedOrder` kommt aus dem Ergebnis und hält fest, wie ein Gleichstand
+   * aufgelöst wurde — durch Verzicht, Stichwahl oder Losentscheid. Es
+   * verschiebt niemanden über die Zahlen hinweg: Der Platz in dieser Liste
+   * entscheidet nur dort, wo sonst nichts mehr trennt.
+   */
+  const entschieden = new Map((options.decidedOrder ?? []).map((id, index) => [id, index]))
+  const platzLaut = (candidate: CandidateResult): number =>
+    entschieden.get(candidate.candidateId) ?? Number.MAX_SAFE_INTEGER
 
   const sorted = [...candidates].sort((a, b) => {
     /* Wer die Bedingung nicht erfüllt, steht hinten — unabhängig von Zahlen. */
     if (erfuellt(a) !== erfuellt(b)) return erfuellt(a) ? -1 : 1
     const nachRegel = compareResults(a, b)
     if (nachRegel !== 0) return nachRegel
+    const nachBeschluss = platzLaut(a) - platzLaut(b)
+    if (nachBeschluss !== 0) return nachBeschluss
     /*
      * Bleibt es gleich, wird nach Namen sortiert — nur damit die Liste stabil
      * ist, nicht als Entscheidung. Dass hier nichts entschieden wurde, steht
@@ -231,7 +248,10 @@ export function rankCandidates(
   })
 
   const gleichauf = (a: CandidateResult, b: CandidateResult): boolean =>
-    erfuellt(a) === erfuellt(b) && compareResults(a, b) === 0
+    erfuellt(a) === erfuellt(b) &&
+    compareResults(a, b) === 0 &&
+    /* Sobald die Versammlung beide eingereiht hat, ist der Rang entschieden. */
+    !(entschieden.has(a.candidateId) && entschieden.has(b.candidateId))
 
   /* Plätze bekommt nur, wer die Bedingung erfüllt. */
   const plaetze = Math.min(seats, sorted.filter(erfuellt).length)

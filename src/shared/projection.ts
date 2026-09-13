@@ -15,6 +15,7 @@ export const PROJECTION_MODES = [
   'agenda',
   'upcoming_round',
   'candidate_presentation',
+  'speaker',
   'round_ready',
   'round_open',
   'round_closed',
@@ -34,6 +35,7 @@ export const PROJECTION_MODE_LABELS: Record<ProjectionMode, string> = {
   agenda: 'Tagesordnung',
   upcoming_round: 'Nächster Wahlgang',
   candidate_presentation: 'Kandidaten',
+  speaker: 'Vorstellung',
   round_ready: 'Wahlgang bereit',
   round_open: 'Wahl läuft',
   round_closed: 'Stimmabgabe beendet',
@@ -285,7 +287,37 @@ export interface ProjectionState {
    * erreicht.
    */
   video?: ProjectionVideo
+  /**
+   * Wer gerade spricht und wie lange noch.
+   *
+   * Wie bei der Pause steht hier ein **Zeitpunkt**, keine Restdauer: Jedes
+   * Gerät rechnet sich den Rest selbst aus, und ein Bildschirm, der später
+   * dazukommt, zeigt sofort die richtige Zahl. Eine heruntergezählte Restzeit
+   * im Zustand müsste dagegen mehrmals je Sekunde durch alle Leitungen.
+   */
+  speaker?: ProjectionSpeaker
   updatedAt: IsoDateTime
+}
+
+/** Wer sich gerade vorstellt — und wie lange die Redezeit noch läuft. */
+export interface ProjectionSpeaker {
+  name: string
+  /** Zusatz unter dem Namen, etwa „Bewerbung um den Vorsitz". */
+  note?: string
+  /**
+   * Ende der Redezeit. Fehlt es, wird nur der Name gezeigt — nicht jede
+   * Vorstellung ist begrenzt.
+   */
+  until?: IsoDateTime
+  /** Zugestandene Redezeit in Sekunden, für den Fortschrittsbalken. */
+  totalSeconds?: number
+  /**
+   * Angehalten bei dieser Restzeit in Sekunden.
+   *
+   * Eine Zwischenfrage hält die Uhr an, ohne die Vorstellung zu beenden.
+   * Steht hier ein Wert, ruht der Countdown.
+   */
+  pausedSecondsLeft?: number
 }
 
 export interface ProjectionHistoryEntry {
@@ -415,4 +447,27 @@ export function pausenende(uhrzeit: string, jetzt = new Date()): IsoDateTime | u
   ziel.setHours(stunde, minute, 0, 0)
   if (ziel.getTime() <= jetzt.getTime()) ziel.setDate(ziel.getDate() + 1)
   return ziel.toISOString()
+}
+
+/**
+ * Verbleibende Redezeit in Sekunden.
+ *
+ * Angehalten heißt: Der gemerkte Rest gilt unverändert. Läuft die Uhr, ergibt
+ * sich der Rest aus dem Endzeitpunkt. Negative Werte werden **nicht**
+ * abgeschnitten — eine überzogene Redezeit soll sichtbar sein, nicht bei null
+ * stehen bleiben.
+ */
+export function redezeitRest(speaker: ProjectionSpeaker, jetzt = Date.now()): number | undefined {
+  if (speaker.pausedSecondsLeft !== undefined) return speaker.pausedSecondsLeft
+  if (!speaker.until) return undefined
+  return Math.round((new Date(speaker.until).getTime() - jetzt) / 1000)
+}
+
+/** Mundgerechte Anzeige: "4:03", bei Überziehung "-0:12". */
+export function redezeitText(sekunden: number): string {
+  const negativ = sekunden < 0
+  const gesamt = Math.abs(sekunden)
+  const minuten = Math.floor(gesamt / 60)
+  const rest = gesamt % 60
+  return `${negativ ? '-' : ''}${minuten}:${String(rest).padStart(2, '0')}`
 }

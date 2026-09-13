@@ -494,7 +494,9 @@ export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfi
   /* ----------------------------------------------------------------- Zahlen */
   if (result.countingMode === 'counted') {
     if (art === 'votes') {
-      const rangfolge = rankCandidates(result.resultData.candidates, round.seats)
+      const rangfolge = rankCandidates(result.resultData.candidates, round.seats, {
+        decidedOrder: result.rankOrder
+      })
       let grenzeGesetzt = false
       for (const eintrag of rangfolge) {
         if (!eintrag.withinSeats && !grenzeGesetzt && round.seats < rangfolge.length) {
@@ -525,7 +527,10 @@ export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfi
        * nach vorne geht: Wer ist Delegierter, wer Ersatz — und in welcher
        * Reihenfolge wird nachgerückt.
        */
-      const rangfolge = rankCandidates(result.resultData.candidates, round.seats, { acceptance: true })
+      const rangfolge = rankCandidates(result.resultData.candidates, round.seats, {
+        acceptance: true,
+        decidedOrder: result.rankOrder
+      })
       let grenzeGesetzt = false
       for (const eintrag of rangfolge) {
         /* Eine Linie zwischen Gewählten und Nichtgewählten — sie trennt zwei
