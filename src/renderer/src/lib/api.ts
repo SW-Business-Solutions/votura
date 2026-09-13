@@ -10,6 +10,7 @@
 import type { ApiMethod, ApiParams, ApiResult } from '@shared/ipc'
 import type { AudienceWindowState, Buehne, ProjectionState } from '@shared/projection'
 import type { PrompterWindowState } from '@shared/presentation'
+import type { PrompterViewState } from '@shared/speech'
 import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
 interface Bridge {
@@ -28,6 +29,10 @@ interface Bridge {
    * „Vortragssteuerung schließen" für ein Fenster an, das längst zu ist.
    */
   onPrompterState(listener: (state: PrompterWindowState) => void): () => void
+  /** Der Stand des Teleprompters. */
+  onPrompterView(listener: (state: PrompterViewState) => void): () => void
+  /** Ob das Teleprompterfenster am Hauptrechner offen steht. */
+  onTeleprompterState(listener: (state: PrompterWindowState) => void): () => void
 }
 
 declare global {
@@ -170,7 +175,11 @@ function pollingBridge(): Bridge {
     /* Die Vortragssteuerung ist ein Fenster am Hauptrechner; ein Gerät im Netz
        kann es weder öffnen noch sehen. */
     onPrompterState: (listener) =>
-      poll(() => remoteInvoke('presentation.prompterState', []) as Promise<PrompterWindowState>, listener, 5000)
+      poll(() => remoteInvoke('presentation.prompterState', []) as Promise<PrompterWindowState>, listener, 5000),
+    onPrompterView: (listener) =>
+      poll(() => remoteInvoke('prompter.view', []) as Promise<PrompterViewState>, listener, 2000),
+    onTeleprompterState: (listener) =>
+      poll(() => remoteInvoke('prompter.windowState', []) as Promise<PrompterWindowState>, listener, 5000)
   }
 }
 

@@ -10,10 +10,31 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { IPC, type Api, type ApiMethod } from '@shared/ipc'
-import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE } from '@shared/projection'
+import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type Buehnenwahl } from '@shared/projection'
 import { db } from './db'
 import { appPaths } from './paths'
 import { logger } from './logger'
+import {
+  getPrompterView,
+  loadSpeech,
+  nudgePrompter,
+  refreshSpeech,
+  setPrompterDarstellung,
+  setPrompterPosition,
+  setPrompterRunning,
+  setPrompterTempo,
+  setPrompterUntil
+} from './services/prompter'
+import {
+  assignSpeech,
+  createSpeech,
+  deleteSpeech,
+  getSpeech,
+  importSpeech,
+  listSpeeches,
+  renameSpeech,
+  saveSpeech
+} from './services/speeches'
 import {
   networkStatus,
   startNetworkProjection,
@@ -142,8 +163,11 @@ import {
   getOperatorWindow,
   listDisplays,
   openAudienceWindow,
+  closeTeleprompterWindow,
   getPrompterBuehne,
   openPrompterWindow,
+  openTeleprompterWindow,
+  teleprompterState,
   prompterState,
   setPrompterBuehne,
   sendToOperator
@@ -182,8 +206,26 @@ async function dateiZielWaehlen(title: string, vorschlag: string): Promise<strin
  *
  * Der Master hat selbst keinen Zustand — gefragt wird dann die Hauptbühne.
  */
-function bezugsbuehne(stage?: number): number {
-  return !stage || stage === ALLE_BUEHNEN ? HAUPTBUEHNE : stage
+function bezugsbuehne(stage?: Buehnenwahl): number {
+  const ziele = zielBuehnen(stage)
+  return ziele.includes(HAUPTBUEHNE) ? HAUPTBUEHNE : ziele[0]
+}
+
+/**
+ * Die Bühnen, auf die sich eine Schaltung bezieht.
+ *
+ * Eine leere Auswahl bedeutet „alle" und nicht „keine": Wer im Master nichts
+ * angehakt hat, meint die ganze Versammlung — ein Knopf, der dann gar nichts
+ * täte, wäre eine Falle.
+ */
+function zielBuehnen(stage?: Buehnenwahl): number[] {
+  const vorhanden = listBuehnen().map((buehne) => buehne.id)
+  if (Array.isArray(stage)) {
+    const gewaehlt = stage.filter((id) => vorhanden.includes(id))
+    return gewaehlt.length > 0 ? gewaehlt : vorhanden
+  }
+  if (stage === ALLE_BUEHNEN) return vorhanden
+  return [stage ?? HAUPTBUEHNE]
 }
 
 /**
@@ -193,12 +235,12 @@ function bezugsbuehne(stage?: number): number {
  * Zustand, nicht eine Liste, und der Master ist nur eine Abkürzung für „das
  * Gleiche überall", keine eigene Fläche.
  */
-function aufBuehnen<T>(stage: number | undefined, tue: (buehne: number) => T): T {
-  if (stage !== ALLE_BUEHNEN) return tue(stage ?? HAUPTBUEHNE)
+function aufBuehnen<T>(stage: Buehnenwahl | undefined, tue: (buehne: number) => T): T {
+  const ziele = zielBuehnen(stage)
+  if (ziele.length === 1) return tue(ziele[0])
   const ergebnisse = new Map<number, T>()
-  for (const buehne of listBuehnen()) ergebnisse.set(buehne.id, tue(buehne.id))
-  const haupt = ergebnisse.get(HAUPTBUEHNE)
-  return haupt ?? tue(HAUPTBUEHNE)
+  for (const buehne of ziele) ergebnisse.set(buehne, tue(buehne))
+  return ergebnisse.get(bezugsbuehne(stage)) ?? ergebnisse.get(ziele[0])!
 }
 
 const api: Api = {
@@ -556,9 +598,9 @@ const api: Api = {
    * fehlen, hilft niemandem. Geändert wird dabei nichts, was zählt: eine
    * Foliennummer im Projektionszustand.
    */
-  'presentation.setSlide': async (slide, stage) => setPresentationSlide(stage ?? HAUPTBUEHNE, slide),
+  'presentation.setSlide': async (slide, stage) => setPresentationSlide(bezugsbuehne(stage), slide),
   'presentation.report': async ({ slide, slideCount, stage }) =>
-    reportPresentationState(stage ?? HAUPTBUEHNE, slide, slideCount),
+    reportPresentationState(bezugsbuehne(stage), slide, slideCount),
   /* -------------------------------------------------------------- Videos */
   'video.list': async () => listVideos(),
   'video.import': async () => {
@@ -589,9 +631,66 @@ const api: Api = {
     aufBuehnen(stage, (buehne) => setVideoPlaying(buehne, playing)),
   'video.seek': async (seconds, stage) => aufBuehnen(stage, (buehne) => seekVideo(buehne, seconds)),
   'video.setMuted': async (muted, stage) => aufBuehnen(stage, (buehne) => setVideoMuted(buehne, muted)),
-  'video.reportDuration': async (seconds, stage) => reportVideoDuration(stage ?? HAUPTBUEHNE, seconds),
-  'video.reportReady': async (stage) => reportVideoReady(stage ?? HAUPTBUEHNE),
-  'video.reportEnded': async (stage) => videoEnded(stage ?? HAUPTBUEHNE),
+  'video.reportDuration': async (seconds, stage) => reportVideoDuration(bezugsbuehne(stage), seconds),
+  'video.reportReady': async (stage) => reportVideoReady(bezugsbuehne(stage)),
+  'video.reportEnded': async (stage) => videoEnded(bezugsbuehne(stage)),
+
+  /* -------------------------------------------------------- Teleprompter */
+  'speech.list': async () => listSpeeches(),
+  'speech.get': async (id) => getSpeech(id) ?? null,
+  'speech.import': async () => {
+    requirePermission('round.manage')
+    const auswahl = await dialog.showOpenDialog({
+      title: 'Rede einspeisen',
+      buttonLabel: 'Einspeisen',
+      properties: ['openFile'],
+      filters: [{ name: 'Rede (Markdown)', extensions: ['md', 'markdown', 'txt'] }]
+    })
+    const pfad = auswahl.canceled ? undefined : auswahl.filePaths[0]
+    return pfad ? importSpeech(pfad) : null
+  },
+  'speech.create': async (title) => {
+    requirePermission('round.manage')
+    return createSpeech(title)
+  },
+  'speech.save': async ({ id, markdown }) => {
+    requirePermission('round.manage')
+    const eintrag = saveSpeech(id, markdown)
+    /* Liegt die Rede gerade auf dem Prompter, bekommt er den neuen Text —
+       ohne an den Anfang zu springen. */
+    refreshSpeech(id)
+    return eintrag
+  },
+  'speech.rename': async ({ id, title }) => {
+    requirePermission('round.manage')
+    return renameSpeech(id, title)
+  },
+  'speech.assign': async ({ id, candidateId, candidateName }) => {
+    requirePermission('round.manage')
+    return assignSpeech(id, candidateId, candidateName)
+  },
+  'speech.delete': async (id) => {
+    requirePermission('round.manage')
+    deleteSpeech(id)
+  },
+
+  'prompter.view': async () => getPrompterView(),
+  'prompter.load': async (id) => {
+    requirePermission('round.manage')
+    return loadSpeech(id)
+  },
+  'prompter.setRunning': async (running) => setPrompterRunning(running),
+  'prompter.setPosition': async (position) => setPrompterPosition(position),
+  'prompter.nudge': async (zeilen) => nudgePrompter(zeilen),
+  'prompter.setTempo': async (tempo) => setPrompterTempo(tempo),
+  'prompter.setDarstellung': async (aenderung) => setPrompterDarstellung(aenderung),
+  'prompter.setUntil': async (until) => setPrompterUntil(until),
+  'prompter.openWindow': async () => {
+    requirePermission('round.manage')
+    return openTeleprompterWindow()
+  },
+  'prompter.closeWindow': async () => closeTeleprompterWindow(),
+  'prompter.windowState': async () => teleprompterState(),
 
   'presentation.prompterState': async () => prompterState(),
   'presentation.prompterBuehne': async (stage) =>
@@ -677,14 +776,23 @@ export function registerIpc(): void {
    * Quelle für dieselbe Wahrheit — und zwei Quellen laufen irgendwann
    * auseinander.
    */
-  ipcMain.on(IPC.prompterCommand, (_event, input: { slide?: number; stage?: number }) => {
+  ipcMain.on(IPC.prompterCommand, (_event, input: { slide?: number; stage?: Buehnenwahl }) => {
     /* Ohne Folie ist es keine Anweisung zum Blättern, sondern die Ansage,
        welche Bühne dieses Fenster bedient. */
-    if (typeof input?.stage === 'number' && typeof input?.slide !== 'number') {
-      setPrompterBuehne(input.stage)
+    if (input?.stage !== undefined && typeof input?.slide !== 'number') {
+      setPrompterBuehne(bezugsbuehne(input.stage))
       return
     }
-    if (typeof input?.slide === 'number') setPresentationSlide(input.stage ?? HAUPTBUEHNE, input.slide)
+    /*
+     * Geblättert wird auf allen genannten Bühnen.
+     *
+     * Läuft derselbe Foliensatz auf zwei Wänden, muss ein Tastendruck beide
+     * weiterschalten — sonst stehen sie nach der ersten Folie auseinander.
+     */
+    if (typeof input?.slide === 'number') {
+      const folie = input.slide
+      aufBuehnen(input.stage, (buehne) => setPresentationSlide(buehne, folie))
+    }
   })
 
   /* Alle Bühnen auf einmal — die Vortragssteuerung sucht sich die mit dem
@@ -722,8 +830,9 @@ export function registerIpc(): void {
     }
   )
 
-  ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number; stage?: number }) => {
+  ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number; stage?: Buehnenwahl }) => {
     if (typeof input?.slide !== 'number' || typeof input?.slideCount !== 'number') return
-    reportPresentationState(input.stage ?? HAUPTBUEHNE, input.slide, input.slideCount)
+    const { slide, slideCount } = input
+    aufBuehnen(input.stage, (buehne) => reportPresentationState(buehne, slide, slideCount))
   })
 }

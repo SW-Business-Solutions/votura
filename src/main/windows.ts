@@ -43,13 +43,15 @@ let operatorWindow: BrowserWindow | null = null
 const audienceWindows = new Map<number, BrowserWindow>()
 const audienceDisplays = new Map<number, number>()
 let prompterWindow: BrowserWindow | null = null
+let teleprompterWindow: BrowserWindow | null = null
+let teleprompterStateListener: ((state: PrompterWindowState) => void) | null = null
 let prompterStateListener: ((state: PrompterWindowState) => void) | null = null
 let powerSaveId: number | null = null
 let audienceStateListener: ((state: AudienceWindowState) => void) | null = null
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
-type Seite = 'index' | 'audience' | 'prompter'
+type Seite = 'index' | 'audience' | 'prompter' | 'teleprompter'
 
 function rendererUrl(page: Seite): { url?: string; file?: string } {
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -317,6 +319,82 @@ export function closePrompterWindow(): PrompterWindowState {
   prompterWindow = null
   emitPrompterState()
   return prompterState()
+}
+
+/* --------------------------------------------------------- Teleprompter */
+
+export function teleprompterState(): PrompterWindowState {
+  return { open: !!teleprompterWindow && !teleprompterWindow.isDestroyed() }
+}
+
+export function onTeleprompterStateChanged(listener: (state: PrompterWindowState) => void): void {
+  teleprompterStateListener = listener
+}
+
+function emitTeleprompterState(): void {
+  teleprompterStateListener?.(teleprompterState())
+}
+
+/**
+ * Öffnet den Teleprompter am Hauptrechner.
+ *
+ * Ein eigenes Fenster und keine Seite in der Bedienung: Es gehört auf den
+ * Bildschirm vor der vortragenden Person, oft auf einen zweiten Rechner am
+ * Pult — und es lebt von den Pfeiltasten, die in der Bedienung längst
+ * vergeben sind. Ohne Rahmen und ohne Menü, damit nichts vom Text ablenkt.
+ */
+export function openTeleprompterWindow(): PrompterWindowState {
+  if (teleprompterWindow && !teleprompterWindow.isDestroyed()) {
+    teleprompterWindow.focus()
+    return teleprompterState()
+  }
+
+  teleprompterWindow = new BrowserWindow({
+    width: 1100,
+    height: 720,
+    minWidth: 520,
+    minHeight: 360,
+    show: false,
+    autoHideMenuBar: true,
+    title: 'Votura – Teleprompter',
+    icon: fensterSymbol(),
+    backgroundColor: '#000000',
+    webPreferences: {
+      preload: join(__dirname, '../preload/teleprompter.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false
+    }
+  })
+
+  teleprompterWindow.setMenuBarVisibility(false)
+  teleprompterWindow.once('ready-to-show', () => teleprompterWindow?.show())
+  teleprompterWindow.on('closed', () => {
+    teleprompterWindow = null
+    emitTeleprompterState()
+  })
+  teleprompterWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error(`Teleprompter abgestuerzt: ${details.reason}`)
+    emitTeleprompterState()
+  })
+
+  load(teleprompterWindow, 'teleprompter')
+  emitTeleprompterState()
+  return teleprompterState()
+}
+
+export function closeTeleprompterWindow(): PrompterWindowState {
+  if (teleprompterWindow && !teleprompterWindow.isDestroyed()) teleprompterWindow.destroy()
+  teleprompterWindow = null
+  emitTeleprompterState()
+  return teleprompterState()
+}
+
+export function sendToTeleprompter(channel: string, payload: unknown): void {
+  if (teleprompterWindow && !teleprompterWindow.isDestroyed()) {
+    teleprompterWindow.webContents.send(channel, payload)
+  }
 }
 
 /**

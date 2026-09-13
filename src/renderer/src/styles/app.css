@@ -861,3 +861,145 @@ button.mini {
 .buehnen-vorschau-marke .hint {
   margin: 0;
 }
+
+/*
+ * Die Kacheln des Masters sind anklickbar.
+ *
+ * Ein Klick hakt eine Bühne an; dann trifft jede Schaltung nur noch die
+ * angehakten. Nichts angehakt heißt „alle" — wer im Master steht, meint im
+ * Zweifel die ganze Versammlung, und ein Knopf, der dann nichts täte, wäre
+ * eine Falle.
+ */
+button.buehnen-vorschau {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  min-height: 0;
+}
+
+button.buehnen-vorschau:hover {
+  border-color: var(--border, #2b313a);
+}
+
+button.buehnen-vorschau.gewaehlt {
+  border-color: var(--accent, #4d9bff);
+  background: color-mix(in srgb, var(--accent, #4d9bff) 10%, transparent);
+}
+
+/* Nicht betroffene Bühnen treten zurück, statt zu verschwinden. */
+button.buehnen-vorschau.beiseite {
+  opacity: 0.45;
+}
+
+.buehnen-vorschau-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.buehnen-haken {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border, #2b313a);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.buehnen-haken.an {
+  background: var(--accent, #4d9bff);
+  border-color: var(--accent, #4d9bff);
+  color: #fff;
+}
+
+.buehnen-auswahl-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.buehnen-auswahl-zeile .hint {
+  margin: 0;
+}
+
+/*
+ * Editor für Reden.
+ *
+ * Groß, ruhig, ohne Zierrat: Hier steht ein Text, der gleich vorgelesen wird,
+ * und die einzige Formatierung, die zählt, sind Absätze.
+ */
+.rede-editor {
+  width: 100%;
+  min-height: 320px;
+  margin: 10px 0;
+  padding: 12px 14px;
+  font-family: 'Cascadia Mono', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* Wie weit die Rede gelaufen ist. */
+.prompter-stand-balken {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2, #1a1f26);
+  overflow: hidden;
+}
+
+.prompter-stand-fuellung {
+  height: 100%;
+  background: var(--accent, #4d9bff);
+  transition: width 0.4s linear;
+}
+
+/* Ein Tabelleneintrag, der gerade dran ist. */
+tr.hervorgehoben > td {
+  background: color-mix(in srgb, var(--accent, #4d9bff) 10%, transparent);
+}
+
+/* Ein Knopf, der wie ein Verweis aussieht — für Namen in Listen. */
+button.linkartig {
+  padding: 0;
+  min-height: 0;
+  background: none;
+  border: none;
+  color: var(--accent, #4d9bff);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.linkartig:hover {
+  text-decoration: underline;
+}
+
+/* Lauf des Prompters: Start, Feinsprung und Anfang auf einer Fluchtlinie. */
+.prompter-lauf-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Die Knöpfe einer Redenzeile bleiben zusammen und rechtsbündig. */
+td.rede-knoepfe {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}

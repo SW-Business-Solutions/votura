@@ -57,7 +57,7 @@ export function PresentationLibrary(): JSX.Element {
 
   const zeigen = async (id: string): Promise<void> => {
     try {
-      await api('projection.setMode', { mode: 'presentation', presentationId: id }, app.buehne)
+      await api('projection.setMode', { mode: 'presentation', presentationId: id }, app.ziel)
       /*
        * Die Vortragssteuerung öffnet sich mit.
        *

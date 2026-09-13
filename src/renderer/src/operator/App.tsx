@@ -5,6 +5,7 @@ import { useApp } from './state'
 import { AgendaPage } from './pages/AgendaPage'
 import { AuditPage } from './pages/AuditPage'
 import { BeamerPage } from './pages/BeamerPage'
+import { PrompterPage } from './pages/PrompterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EventPage } from './pages/EventPage'
 import { LoginPage } from './pages/LoginPage'
@@ -24,6 +25,7 @@ export type Route =
   | { name: 'round-new' }
   | { name: 'round'; id: string; tab?: string }
   | { name: 'beamer' }
+  | { name: 'prompter' }
   | { name: 'audit' }
   | { name: 'preflight' }
   | { name: 'settings' }
@@ -40,6 +42,8 @@ function parseHash(): Route {
       return param === 'new' ? { name: 'round-new' } : { name: 'round', id: param, tab }
     case 'beamer':
       return { name: 'beamer' }
+    case 'prompter':
+      return { name: 'prompter' }
     case 'audit':
       return { name: 'audit' }
     case 'preflight':
@@ -80,6 +84,10 @@ export function App(): React.JSX.Element {
       if (keyEvent.key.toLowerCase() === 't') {
         keyEvent.preventDefault()
         navigate('agenda')
+      }
+      if (keyEvent.key.toLowerCase() === 'p') {
+        keyEvent.preventDefault()
+        navigate('prompter')
       }
     }
     window.addEventListener('keydown', handler)
@@ -153,6 +161,12 @@ export function App(): React.JSX.Element {
           </div>
         )}
         <NavItem label="Beamer" active={route.name === 'beamer'} onClick={() => navigate('beamer')} hint="Strg+B" />
+        <NavItem
+          label="Prompter"
+          active={route.name === 'prompter'}
+          onClick={() => navigate('prompter')}
+          hint="Strg+P"
+        />
         <NavItem label="Audit-Trail" active={route.name === 'audit'} onClick={() => navigate('audit')} />
         <NavItem label="Systemcheck" active={route.name === 'preflight'} onClick={() => navigate('preflight')} />
         <NavItem label="Einstellungen" active={route.name === 'settings'} onClick={() => navigate('settings')} />
@@ -193,6 +207,7 @@ export function App(): React.JSX.Element {
         {route.name === 'round-new' && <RoundWizardPage />}
         {route.name === 'round' && <RoundDetailPage roundId={route.id} tab={route.tab} />}
         {route.name === 'beamer' && <BeamerPage />}
+        {route.name === 'prompter' && <PrompterPage />}
         {route.name === 'audit' && <AuditPage />}
         {route.name === 'preflight' && <PreflightPage />}
         {route.name === 'settings' && <SettingsPage />}

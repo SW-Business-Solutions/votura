@@ -11,6 +11,7 @@ import {
 } from 'react'
 import type { SystemSettings } from '@shared/config'
 import type { SetupState } from '@shared/ipc'
+import { PROMPTER_VORGABE, type PrompterViewState } from '@shared/speech'
 import {
   ALLE_BUEHNEN,
   BUEHNE_VORGABE,
@@ -18,6 +19,7 @@ import {
   HAUPTBUEHNE,
   type AudienceWindowState,
   type Buehne,
+  type Buehnenwahl,
   type ProjectionState
 } from '@shared/projection'
 import type {
@@ -54,10 +56,28 @@ interface AppState {
   /** Die bearbeitete Bühne, oder `ALLE_BUEHNEN` für den Master. */
   buehne: number
   setBuehne(id: number): void
+  /**
+   * Im Master angehakte Bühnen.
+   *
+   * Leer heißt „alle" — wer nichts anhakt, meint die ganze Versammlung.
+   * Außerhalb des Masters bedeutungslos.
+   */
+  auswahl: number[]
+  toggleAuswahl(id: number): void
+  setAuswahl(ids: number[]): void
+  /**
+   * Worauf eine Schaltung wirkt — die eine Bühne, alle, oder die angehakten.
+   *
+   * Jede Ansicht, die etwas auf den Beamer bringt, reicht diesen Wert weiter
+   * und muss die Unterscheidung nicht kennen.
+   */
+  ziel: Buehnenwahl
   refreshBuehnen(): Promise<void>
   projection: ProjectionState
   projektionen: Record<number, ProjectionState>
   audience: AudienceWindowState | null
+  /** Der Stand des Teleprompters — eigener Weg, nicht der Projektionszustand. */
+  prompter: PrompterViewState
   beamerfenster: Record<number, AudienceWindowState>
   printProgress: PrintProgress | null
   notices: Notice[]
@@ -85,10 +105,26 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
   const [rounds, setRounds] = useState<RoundSummary[]>([])
   const [buehnen, setBuehnen] = useState<Buehne[]>([{ ...BUEHNE_VORGABE }])
   const [buehne, setBuehne] = useState<number>(HAUPTBUEHNE)
+  const [auswahl, setAuswahl] = useState<number[]>([])
   const [projektionen, setProjektionen] = useState<Record<number, ProjectionState>>({})
   const [audiences, setAudiences] = useState<Record<number, AudienceWindowState>>({})
+  const [prompter, setPrompter] = useState<PrompterViewState>(PROMPTER_VORGABE)
   /* Der Master hat keinen eigenen Zustand — gezeigt wird die Hauptbühne. */
-  const bezug = buehne === ALLE_BUEHNEN ? HAUPTBUEHNE : buehne
+  /*
+   * Die Bühne, deren Zustand die Bedienung anzeigt.
+   *
+   * Dieselbe Regel wie im Hauptprozess (`bezugsbuehne`): Ist die Hauptbühne
+   * betroffen, gilt sie; sonst die erste angehakte. Sonst zeigte die Vorschau
+   * eine Wand, die von der nächsten Schaltung gar nicht getroffen wird.
+   */
+  const bezug =
+    buehne !== ALLE_BUEHNEN
+      ? buehne
+      : auswahl.length === 0 || auswahl.includes(HAUPTBUEHNE)
+        ? HAUPTBUEHNE
+        : auswahl[0]
+  const ziel: Buehnenwahl =
+    buehne === ALLE_BUEHNEN ? (auswahl.length > 0 ? auswahl : ALLE_BUEHNEN) : buehne
   const projection = projektionen[bezug] ?? EMPTY_PROJECTION_STATE
   const audience = audiences[bezug] ?? null
   const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null)
@@ -155,6 +191,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
         setEvent(currentEvent)
         setSettings(currentSettings)
         setBuehnen(stages)
+        void api('prompter.view').then(setPrompter).catch(() => undefined)
         /* Jede Bühne einmal vollständig holen — danach kommen nur noch
            Wechsel über das Ereignis herein. */
         const zustaende = await Promise.all(
@@ -231,6 +268,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
     const offAudience = bridge.onAudienceState((state) =>
       setAudiences((current) => ({ ...current, [state.buehne]: state }))
     )
+    const offPrompter = bridge.onPrompterView(setPrompter)
     const offSession = bridge.onSessionChanged((next) => {
       setSession(next)
       if (!next) notify('warning', 'Die Sitzung wurde beendet. Bitte erneut anmelden.')
@@ -242,6 +280,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       offAudience()
       offSession()
       offNotice()
+      offPrompter()
     }
   }, [notify, refreshBuehnen])
 
@@ -277,10 +316,18 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       buehnen,
       buehne,
       setBuehne,
+      auswahl,
+      setAuswahl,
+      ziel,
+      toggleAuswahl: (id) =>
+        setAuswahl((current) =>
+          current.includes(id) ? current.filter((eintrag) => eintrag !== id) : [...current, id]
+        ),
       refreshBuehnen,
       projection,
       projektionen,
       audience,
+      prompter,
       beamerfenster: audiences,
       printProgress,
       notices,
@@ -305,11 +352,14 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       rounds,
       buehnen,
       buehne,
+      auswahl,
+      ziel,
       refreshBuehnen,
       projection,
       projektionen,
       audience,
       audiences,
+      prompter,
       printProgress,
       notices,
       theme,

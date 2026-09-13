@@ -1,0 +1,236 @@
+/*
+ * Teleprompter.
+ *
+ * Heller Text auf tiefem Schwarz, große Zeilenabstände, wenig Kontrastspiel:
+ * Am Pult wird aus zwei Metern Entfernung gelesen, oft über einen Spiegel,
+ * der einen Teil des Lichts schluckt. Alles, was hier hübsch wäre, wäre dort
+ * im Weg.
+ */
+:root {
+  color-scheme: dark;
+}
+
+.teleprompter-body {
+  margin: 0;
+  background: #000;
+  color: #f5f5f5;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.tp {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Die spiegelbare Fläche.
+ *
+ * Gespiegelt wird nur der Text, nicht die Leiste: Wer die Knöpfe bedient,
+ * schaut direkt aufs Gerät, nicht durch den Spiegel.
+ */
+.tp-spiegel {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tp-lauf {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 80%;
+  /* Kein Übergang: Der Lauf wird 20-mal je Sekunde neu gesetzt, eine
+     Animation obendrauf ergäbe ein Zittern. */
+  will-change: transform;
+}
+
+.tp-lauf p {
+  margin: 0 0 0.7em;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.tp-ueberschrift {
+  font-weight: 800;
+  color: #7ab6ff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+  margin-top: 0.8em;
+}
+
+.tp-ueberschrift.ebene-1 {
+  font-size: 1em;
+}
+
+.tp-punkt {
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+
+.tp-zitat {
+  padding-left: 0.8em;
+  border-left: 0.12em solid #7ab6ff;
+  color: #cfe3ff;
+  font-style: italic;
+}
+
+/* Drei Striche im Text: eine Stelle zum Durchatmen. */
+.tp-pause {
+  height: 1.2em;
+}
+
+.tp-pause::after {
+  content: '• • •';
+  display: block;
+  text-align: center;
+  color: #4a4a4a;
+  font-size: 0.5em;
+}
+
+/*
+ * Die Lesezeile.
+ *
+ * Dünn und gedämpft: Sie soll die Stelle markieren, nicht mit dem Text um
+ * Aufmerksamkeit ringen.
+ */
+.tp-leselinie {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid rgba(122, 182, 255, 0.35);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tp-leselinie::before,
+.tp-leselinie::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  border: 7px solid transparent;
+}
+
+.tp-leselinie::before {
+  left: 0;
+  border-left-color: rgba(122, 182, 255, 0.7);
+}
+
+.tp-leselinie::after {
+  right: 0;
+  border-right-color: rgba(122, 182, 255, 0.7);
+}
+
+/* Die Bedienleiste bleibt klein und unten — sie wird selten gebraucht. */
+.tp-leiste {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: #0d0f12;
+  border-top: 1px solid #23272e;
+  font-size: 13px;
+}
+
+.tp-leiste button {
+  min-height: 32px;
+  padding: 4px 12px;
+  color: #e8e8e8;
+  background: #191d23;
+  border: 1px solid #2b313a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tp-leiste button:hover {
+  background: #222831;
+}
+
+.tp-leiste button.aktiv {
+  border-color: #4d9bff;
+  color: #9ecbff;
+}
+
+.tp-leiste .tp-los {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #fff;
+}
+
+.tp-leiste .tp-halt {
+  background: #6e3030;
+  border-color: #8a3a3a;
+  color: #ffdede;
+}
+
+.tp-leiste label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #9aa4b2;
+}
+
+.tp-leiste input[type='range'] {
+  width: 120px;
+}
+
+.tp-wert {
+  min-width: 2.5em;
+  color: #e8e8e8;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-uhr {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #7ab6ff;
+}
+
+.tp-getrennt {
+  color: #ff8181;
+  border: 1px solid #ff8181;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.tp-netz {
+  color: #6b7484;
+}
+
+.tp-leer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: #8a94a3;
+}
+
+.tp-leer h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #e8e8e8;
+}
+
+/* Am Telefon quer am Pult: Die Leiste darf den Text nicht auffressen. */
+@media (max-height: 480px) {
+  .tp-leiste {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .tp-leiste label {
+    display: none;
+  }
+}

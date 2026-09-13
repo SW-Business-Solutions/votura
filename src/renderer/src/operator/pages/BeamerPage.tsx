@@ -131,7 +131,7 @@ export function BeamerPage(): React.JSX.Element {
           showAll,
           ...(extra ?? {})
         },
-        buehne
+        ziel
       )
     } catch (error) {
       app.reportError(error)
@@ -170,19 +170,22 @@ export function BeamerPage(): React.JSX.Element {
 
   const aktuelleBuehne = app.buehnen.find((stage) => stage.id === buehne)
   const master = buehne === ALLE_BUEHNEN
+  /* Worauf ein Knopf wirkt — siehe `ziel` im gemeinsamen Zustand. */
+  const ziel = app.ziel
   /*
    * Was gerade läuft — beim Master nur, wenn es überall dasselbe ist.
    *
    * Sonst stünde ein Knopf hervorgehoben da, obwohl zwei von drei Wänden
    * etwas anderes zeigen. „Nichts hervorgehoben" ist die ehrlichere Angabe.
    */
-  const gemeinsamerModus = master
-    ? app.buehnen.every(
-        (stage) => (app.projektionen[stage.id]?.mode ?? projection.mode) === projection.mode
-      )
-      ? projection.mode
-      : undefined
-    : projection.mode
+  const betroffeneBuehnen = master
+    ? app.buehnen.filter((stage) => app.auswahl.length === 0 || app.auswahl.includes(stage.id))
+    : app.buehnen.filter((stage) => stage.id === buehne)
+  const gemeinsamerModus = betroffeneBuehnen.every(
+    (stage) => (app.projektionen[stage.id]?.mode ?? projection.mode) === projection.mode
+  )
+    ? projection.mode
+    : undefined
 
   return (
     <>
@@ -196,10 +199,12 @@ export function BeamerPage(): React.JSX.Element {
         <div className="row">
           {master ? (
             (() => {
-              const offen = app.buehnen.filter((stage) => app.beamerfenster[stage.id]?.open).length
+              const offen = betroffeneBuehnen.filter(
+                (stage) => app.beamerfenster[stage.id]?.open
+              ).length
               return (
                 <span className={`badge ${offen > 0 ? 'ok' : 'warn'}`}>
-                  {offen} von {app.buehnen.length} Beamerfenstern offen
+                  {offen} von {betroffeneBuehnen.length} Beamerfenstern offen
                 </span>
               )
             })()
@@ -264,7 +269,11 @@ export function BeamerPage(): React.JSX.Element {
           </button>
         )}
         {master && (
-          <span className="hint">Jede Schaltung unten trifft alle Bühnen gleichzeitig.</span>
+          <span className="hint">
+            {app.auswahl.length === 0
+              ? 'Jede Schaltung unten trifft alle Bühnen gleichzeitig.'
+              : `Jede Schaltung trifft die ${app.auswahl.length} angehakten Bühnen.`}
+          </span>
         )}
       </div>
 
@@ -274,28 +283,61 @@ export function BeamerPage(): React.JSX.Element {
             {master ? (
               /* Beim Master zählt der Überblick: jede Wand einmal klein,
                  statt einer großen, die für alle stehen soll. */
-              <div className="buehnen-vorschauen">
-                {app.buehnen.map((stage) => (
-                  <div key={stage.id} className="buehnen-vorschau">
-                    <div className="preview-frame">
-                      <ProjectionScreen
-                        state={app.projektionen[stage.id] ?? projection}
-                        preview
-                      />
-                    </div>
-                    <div className="buehnen-vorschau-marke">
-                      <button className="mini" onClick={() => app.setBuehne(stage.id)}>
-                        {stage.name}
+              <>
+                <div className="buehnen-vorschauen">
+                  {app.buehnen.map((stage) => {
+                    const angehakt = app.auswahl.includes(stage.id)
+                    /* Ohne Auswahl gilt „alle" — dann ist auch alles hell. */
+                    const betroffen = app.auswahl.length === 0 || angehakt
+                    return (
+                      <button
+                        key={stage.id}
+                        type="button"
+                        className={`buehnen-vorschau${angehakt ? ' gewaehlt' : ''}${
+                          betroffen ? '' : ' beiseite'
+                        }`}
+                        aria-pressed={angehakt}
+                        title={
+                          angehakt
+                            ? `${stage.name} aus der Auswahl nehmen`
+                            : `Nur ${stage.name} und weitere angehakte schalten`
+                        }
+                        onClick={() => app.toggleAuswahl(stage.id)}
+                      >
+                        <div className="preview-frame">
+                          <ProjectionScreen
+                            state={app.projektionen[stage.id] ?? projection}
+                            preview
+                          />
+                        </div>
+                        <div className="buehnen-vorschau-marke">
+                          <span className="buehnen-vorschau-name">
+                            <span className={`buehnen-haken${angehakt ? ' an' : ''}`} aria-hidden="true">
+                              {angehakt ? '✓' : ''}
+                            </span>
+                            {stage.name}
+                          </span>
+                          <span className="hint">
+                            {PROJECTION_MODE_LABELS[(app.projektionen[stage.id] ?? projection).mode]}
+                          </span>
+                        </div>
                       </button>
-                      <span className="hint">
-                        {PROJECTION_MODE_LABELS[
-                          (app.projektionen[stage.id] ?? projection).mode
-                        ]}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+                <div className="buehnen-auswahl-zeile">
+                  <span className="hint">
+                    {app.auswahl.length === 0
+                      ? 'Nichts angehakt — es gilt für alle Bühnen.'
+                      : `Es gilt für ${app.auswahl.length} von ${app.buehnen.length} Bühnen.`}
+                  </span>
+                  {app.auswahl.length > 0 && (
+                    <button className="mini" onClick={() => app.setAuswahl([])}>
+                      Auswahl aufheben
+                    </button>
+                  )}
+                </div>
+              </>
             ) : (
               <div className="preview-frame">
                 <ProjectionScreen state={projection} preview />
@@ -304,7 +346,7 @@ export function BeamerPage(): React.JSX.Element {
             <div className="row" style={{ marginTop: 12 }}>
               <Checkbox
                 checked={projection.locked}
-                onChange={(value) => void api('projection.setLocked', value, buehne).catch(app.reportError)}
+                onChange={(value) => void api('projection.setLocked', value, ziel).catch(app.reportError)}
                 label="Beamer sperren"
               />
             </div>
@@ -335,7 +377,7 @@ export function BeamerPage(): React.JSX.Element {
                       void api(
                         'projection.setCandidatePage',
                         Math.max(0, projection.candidatePage - 1),
-                        buehne
+                        ziel
                       ).catch(app.reportError)
                     }
                   >
@@ -348,7 +390,7 @@ export function BeamerPage(): React.JSX.Element {
                       void api(
                         'projection.setCandidatePage',
                         projection.candidatePage + 1,
-                        buehne
+                        ziel
                       ).catch(app.reportError)
                     }
                   >
@@ -365,7 +407,7 @@ export function BeamerPage(): React.JSX.Element {
                       className={projection.candidatePageIntervalSeconds === takt ? 'active' : ''}
                       disabled={projection.locked}
                       onClick={() =>
-                        void api('projection.setCandidatePageInterval', takt, buehne).catch(
+                        void api('projection.setCandidatePageInterval', takt, ziel).catch(
                           app.reportError
                         )
                       }
@@ -503,22 +545,22 @@ export function BeamerPage(): React.JSX.Element {
                 <button
                   key={display.id}
                   className={display.current ? 'primary' : ''}
-                  onClick={() => void api('projection.openAudience', display.id, buehne).catch(app.reportError)}
+                  onClick={() => void api('projection.openAudience', display.id, ziel).catch(app.reportError)}
                 >
                   {display.label}
                 </button>
               ))}
             </div>
             <div className="row" style={{ marginTop: 12 }}>
-              <button className="primary" onClick={() => void api('projection.openAudience', undefined, buehne).catch(app.reportError)}>
+              <button className="primary" onClick={() => void api('projection.openAudience', undefined, ziel).catch(app.reportError)}>
                 Beamerfenster öffnen
               </button>
-              <button onClick={() => void api('projection.closeAudience', buehne).catch(app.reportError)}>
+              <button onClick={() => void api('projection.closeAudience', ziel).catch(app.reportError)}>
                 Schließen
               </button>
               <button
                 onClick={async () => {
-                  await api('projection.demo', true, buehne).catch(app.reportError)
+                  await api('projection.demo', true, ziel).catch(app.reportError)
                   app.notify('info', 'Demomodus aktiv – Testdaten für die Beamerpruefung.')
                 }}
               >
@@ -664,7 +706,7 @@ export function BeamerPage(): React.JSX.Element {
                       ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
                       : 'Niemand mehr in der Reihe'
                   }
-                  onClick={() => void api('projection.nextSpeaker', buehne).catch(app.reportError)}
+                  onClick={() => void api('projection.nextSpeaker', ziel).catch(app.reportError)}
                 >
                   Nächster{' '}
                   {(projection.speaker.upcoming ?? [])[0]
@@ -676,7 +718,7 @@ export function BeamerPage(): React.JSX.Element {
                     void api(
                       'projection.setSpeakerPaused',
                       projection.speaker?.pausedSecondsLeft === undefined,
-                      buehne
+                      ziel
                     ).catch(app.reportError)
                   }
                   disabled={!projection.speaker.until && projection.speaker.pausedSecondsLeft === undefined}
@@ -694,7 +736,7 @@ export function BeamerPage(): React.JSX.Element {
                   <button
                     key={beschriftung}
                     onClick={() =>
-                      void api('projection.addSpeakerSeconds', sekunden as number, buehne).catch(
+                      void api('projection.addSpeakerSeconds', sekunden as number, ziel).catch(
                         app.reportError
                       )
                     }

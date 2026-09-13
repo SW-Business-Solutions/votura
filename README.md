@@ -286,6 +286,31 @@ Vorstellung mit Redezeit, im Foyer die Begrüßung.
 - **Die Vortragssteuerung folgt von selbst.** Sie zeigt die Bühne, auf der gerade ein Foliensatz
   läuft. Bei mehreren Bühnen liegt im Fuß des Fensters eine Auswahl.
 
+## Teleprompter
+
+Wer vorn steht, liest selten frei. Votura legt Reden als **Markdown** ab und zeigt sie am Pult —
+im eigenen Fenster oder auf einem beliebigen Gerät über einen **eigenen Netzendpunkt**
+(`/prompter`). Auf dem Beamer erscheint davon nichts.
+
+![Teleprompter am Pult](docs/screenshots/24-teleprompter.png)
+
+- **Markdown, weil eine Rede Text mit Gliederung ist.** `#` wird zur Marke, `-` zur Aufzählung,
+  `>` zum Zitat, `---` zu einer Stelle zum Durchatmen. Geschrieben wird in jedem Editor — oder
+  gleich in Votura, auch noch während der Versammlung.
+- **Der Lauf hängt an der Uhr,** nicht an fortlaufenden Befehlen: gespeichert sind die Stelle, der
+  Zeitpunkt und das Tempo. Ein Gerät, das mitten in der Rede dazukommt, rechnet sich seinen Stand
+  selbst aus.
+- **In Zeilen gemessen, nicht in Pixeln.** Telefon, Tablet und Pultmonitor haben verschiedene
+  Flächen — und stehen trotzdem an derselben Stelle im Text.
+- **Spiegelung** waagerecht (für den Prompterspiegel) und senkrecht (Gerät hängt über Kopf),
+  einzeln schaltbar; dazu Schriftgröße, Textbreite und die Höhe der Lesezeile.
+- **Gesteuert vom Masterboard oder am Pult:** Leertaste hält an, Pfeile springen zeilenweise, `+`
+  und `−` ändern das Tempo, `M` spiegelt. Dieselben Werte liegen in der Bedienung.
+- **Die Redezeit der Vorstellung** lässt sich auf den Prompter holen — dann sieht die vortragende
+  Person dieselbe Uhr wie der Saal.
+
+![Bedienung des Prompters](docs/screenshots/25-prompter-bedienung.png)
+
 ## Präsentationen
 
 Zwischen zwei Wahlgängen wird geredet — Rechenschaftsbericht, Kandidatenvorstellung, Ausblick.
@@ -362,6 +387,8 @@ abgeschottetes Veranstaltungsnetz vorgesehen:
 
 - **Beameransicht im Browser** (`/`) — ausschließlich lesende Endpunkte, Server-Sent-Events,
   optionales Zugriffstoken. Mit `/b/2`, `/b/3` … wählt ein Gerät die Bühne, die es zeigen soll.
+- **Teleprompter am Pult** (`/prompter`) — eigener Endpunkt mit eigener Leitung, rein lesend.
+  Gesteuert wird von der Bedienung oder am Prompterfenster des Hauptrechners.
 - **Bedienung von einem zweiten Gerät** (`/operator`) — Anmeldung mit einem lokalen Konto, gleiche
   Rollen und Rechte, gleiche Audit-Zuordnung. Jeder Aufruf läuft im Sitzungskontext des
   angemeldeten Benutzers; Systemdialoge des Hauptrechners sind gesperrt. Details und Grenzen:

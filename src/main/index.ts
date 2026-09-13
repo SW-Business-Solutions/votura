@@ -9,7 +9,9 @@ import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
 import { initLogger, logger } from './logger'
 import { checkOnStartIfEnabled } from './services/updates'
+import { onPrompterViewChanged } from './services/prompter'
 import {
+  broadcastPrompter,
   broadcastProjection,
   networkStatus,
   setRemoteDispatcher,
@@ -29,6 +31,8 @@ import {
   getOperatorWindow,
   onAudienceStateChanged,
   onPrompterStateChanged,
+  onTeleprompterStateChanged,
+  sendToTeleprompter,
   sendToAudience,
   sendToOperator,
   sendToPrompter,
@@ -275,6 +279,18 @@ async function bootstrap(): Promise<void> {
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))
   onPrompterStateChanged((state) => sendToOperator(IPC.prompterState, state))
+  /*
+   * Der Prompter geht seinen eigenen Weg.
+   *
+   * Er hängt nicht am Projektionszustand: Was am Pult steht, ist nicht das,
+   * was an der Wand steht — und soll es auch nie versehentlich werden.
+   */
+  onPrompterViewChanged((view) => {
+    sendToOperator(IPC.prompterView, view)
+    sendToTeleprompter(IPC.prompterView, view)
+    broadcastPrompter(view)
+  })
+  onTeleprompterStateChanged((state) => sendToOperator(IPC.teleprompterState, state))
   onSessionChanged((currentSession) => sendToOperator(IPC.sessionChanged, currentSession))
 
   const network = getNetworkProjection()

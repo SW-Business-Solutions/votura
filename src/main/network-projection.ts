@@ -14,11 +14,13 @@ import { networkInterfaces } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
 import { BUEHNEN_MAX, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
+import { PROMPTER_PFAD, type PrompterViewState } from '@shared/speech'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
 import { getPresentation, presentationFileFor } from './services/presentations'
 import { getVideo, videoFileFor } from './services/videos'
 import { getProjectionState } from './services/projection'
+import { getPrompterView } from './services/prompter'
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -45,6 +47,15 @@ let dispatcher: RemoteDispatcher | null = null
  * dem einen Beamer stehen, während auf dem anderen ein Video läuft.
  */
 const clients = new Map<ServerResponse, number>()
+
+/**
+ * Leitungen der Prompteransicht — getrennt von denen der Bühnen.
+ *
+ * Der Prompter hat einen eigenen Endpunkt, weil er etwas anderes zeigt: den
+ * Text, den das Publikum gerade **nicht** sehen soll. Eine gemeinsame Leitung
+ * hieße, dass jedes Gerät im Saal beides bekommt.
+ */
+const prompterClients = new Set<ServerResponse>()
 
 /** Liest die Bühne aus der Adresse — fehlt oder unsinnig, gilt die Hauptbühne. */
 function buehneAus(url: URL): number {
@@ -187,6 +198,47 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
+  /*
+   * Die Prompteransicht auf eigenem Endpunkt.
+   *
+   * `/prompter` liefert dieselbe Seite wie das Fenster am Hauptrechner; der
+   * Text kommt über die eigene Leitung darunter.
+   */
+  if (url.pathname === PROMPTER_PFAD || url.pathname === `${PROMPTER_PFAD}/`) {
+    if (process.env.ELECTRON_RENDERER_URL) {
+      response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/teleprompter.html` })
+      response.end()
+      return
+    }
+    serveFile(response, join(rendererRoot(), 'teleprompter.html'))
+    return
+  }
+
+  if (url.pathname === '/api/prompter/state') {
+    response.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    })
+    response.end(JSON.stringify(getPrompterView()))
+    return
+  }
+
+  if (url.pathname === '/api/prompter/stream') {
+    response.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-store',
+      Connection: 'keep-alive'
+    })
+    response.write(`data: ${JSON.stringify(getPrompterView())}\n\n`)
+    prompterClients.add(response)
+    const keepAlive = setInterval(() => response.write(': ping\n\n'), 20000)
+    request.on('close', () => {
+      clearInterval(keepAlive)
+      prompterClients.delete(response)
+    })
+    return
+  }
+
   if (url.pathname === '/api/projection/state') {
     response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
     response.end(JSON.stringify(getProjectionState(buehneAus(url))))
@@ -297,6 +349,19 @@ export function broadcastProjection(buehne: number, state: ProjectionState): voi
   }
 }
 
+/** Der Stand des Prompters an alle Geräte, die ihn zeigen. */
+export function broadcastPrompter(state: PrompterViewState): void {
+  if (prompterClients.size === 0) return
+  const payload = `data: ${JSON.stringify(state)}\n\n`
+  for (const client of prompterClients) {
+    try {
+      client.write(payload)
+    } catch {
+      prompterClients.delete(client)
+    }
+  }
+}
+
 export interface NetworkStatus {
   running: boolean
   urls: string[]
@@ -326,6 +391,14 @@ export async function stopNetworkProjection(): Promise<void> {
     }
   }
   clients.clear()
+  for (const client of prompterClients) {
+    try {
+      client.end()
+    } catch {
+      // Verbindung ist bereits weg.
+    }
+  }
+  prompterClients.clear()
   if (!server) return
   await new Promise<void>((resolve) => server?.close(() => resolve()))
   server = null

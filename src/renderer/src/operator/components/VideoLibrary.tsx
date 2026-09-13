@@ -89,7 +89,7 @@ export function VideoLibrary(): JSX.Element {
 
   const zeigen = async (id: string): Promise<void> => {
     try {
-      await api('projection.setMode', { mode: 'video', videoId: id }, app.buehne)
+      await api('projection.setMode', { mode: 'video', videoId: id }, app.ziel)
     } catch (fehler) {
       app.reportError(fehler)
     }
@@ -118,7 +118,7 @@ export function VideoLibrary(): JSX.Element {
 
   const springen = async (sekunden: number): Promise<void> => {
     try {
-      await api('video.seek', sekunden, app.buehne)
+      await api('video.seek', sekunden, app.ziel)
     } catch (fehler) {
       app.reportError(fehler)
     }
@@ -137,13 +137,13 @@ export function VideoLibrary(): JSX.Element {
           <div className="row" style={{ alignItems: 'center', gap: 10 }}>
             <button
               className="primary"
-              onClick={() => void api('video.setPlaying', !video.playing, app.buehne).catch(app.reportError)}
+              onClick={() => void api('video.setPlaying', !video.playing, app.ziel).catch(app.reportError)}
             >
               {video.playing ? '⏸ Anhalten' : '▶ Abspielen'}
             </button>
             <button onClick={() => void springen(Math.max(0, position - 10))}>− 10 s</button>
             <button onClick={() => void springen(position + 10)}>+ 10 s</button>
-            <button onClick={() => void api('video.setMuted', !video.muted, app.buehne).catch(app.reportError)}>
+            <button onClick={() => void api('video.setMuted', !video.muted, app.ziel).catch(app.reportError)}>
               {video.muted ? '🔇 Ton aus' : '🔊 Ton an'}
             </button>
             <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>

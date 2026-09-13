@@ -116,6 +116,25 @@ darunter gilt für die dort gewählte Bühne.
 - **Die Vortragssteuerung** folgt der Bühne, auf der ein Foliensatz läuft. Laufen zwei, wählt die
   Liste im Fuß des Fensters.
 
+## Teleprompter
+
+*Prompter* (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
+
+- **Rede ablegen:** *Rede einspeisen* holt eine Markdown-Datei (.md/.txt); *Neu anlegen* öffnet ein
+  leeres Blatt. Der Editor darunter speichert mit **Strg+S**; liegt die Rede gerade am Pult,
+  bekommt sie den neuen Text, ohne an den Anfang zu springen.
+- **Auflegen:** Die Rede steht dann am Pult, angehalten und am Anfang.
+- **Starten/Anhalten:** in der Bedienung, am Prompterfenster oder mit der **Leertaste** am Pult.
+  Pfeile springen zeilenweise, Bild auf/ab in Achterschritten, **Pos1** zurück an den Anfang.
+- **Tempo** in Zeilen je Minute. 90 bis 120 passen zu ruhigem Vortragen; mit `+` und `−` am Pult
+  nachjustieren. Verstellen unterbricht den Lauf nicht — die Stelle bleibt.
+- **Spiegel:** *Seitenverkehrt* für die Glasscheibe vor dem Objektiv, *Über Kopf* für ein Gerät,
+  das umgedreht darunter hängt. Beides einzeln, weil beide Aufbauten vorkommen.
+- **Am Pult im Browser:** Netzwerkansicht einschalten (Beamer → Ausgabe & Netz), dann die Adresse
+  mit `/prompter` am Endgerät öffnen. Diese Ansicht zeigt nur an; gesteuert wird vom Board.
+- **Redezeit übernehmen:** Läuft auf einer Bühne eine Vorstellung mit Uhr, holt ein Klick dieselbe
+  Uhr an das Pult — der Saal und die vortragende Person sehen dann dieselbe Zahl.
+
 ## Rangliste bei mehreren Plätzen
 
 Im Reiter *Ergebnis* steht unter der Feststellung die **Rangliste**: erst die Gewählten in ihrer

@@ -44,9 +44,9 @@ interface PrompterBridge {
   getInitialState(stage?: number): Promise<ProjectionState>
   getStages(): Promise<{ buehnen: Buehne[]; zustaende: Record<number, ProjectionState> }>
   onStateChange(callback: (nachricht: { buehne: number; state: ProjectionState }) => void): () => void
-  goto(slide: number, stage?: number): void
+  goto(slide: number, stage?: number | number[]): void
   setStage(stage: number): void
-  report(slide: number, slideCount: number, stage?: number): void
+  report(slide: number, slideCount: number, stage?: number | number[]): void
   onBeamerSize(callback: (size: { width: number; height: number }) => void): () => void
 }
 
@@ -228,28 +228,42 @@ function Stoppuhr({ seit }: { seit: number }): JSX.Element {
 }
 
 /**
- * Auf welcher Bühne läuft ein Foliensatz?
+ * Auf welchen Bühnen läuft ein Foliensatz?
  *
  * Die Vortragssteuerung soll niemand einstellen müssen: Wird eine
- * Präsentation aufgerufen, folgt sie ihr. Laufen zwei zugleich — selten, aber
- * möglich —, gilt die niedrigste Bühne, und die Auswahl im Kopf des Fensters
- * bleibt für den Rest.
+ * Präsentation aufgerufen, folgt sie ihr — und zwar **allen** Wänden, die sie
+ * zeigen. Läuft derselbe Foliensatz auf zwei Bühnen, muss ein Tastendruck
+ * beide weiterschalten; sonst stehen sie nach der ersten Folie auseinander.
  */
-function buehneMitFoliensatz(
+function buehnenMitFoliensatz(
   zustaende: Record<number, ProjectionState>,
   buehnen: Buehne[]
-): number | undefined {
-  return buehnen
+): number[] {
+  const mitFolien = buehnen
     .map((stage) => stage.id)
     .sort((a, b) => a - b)
-    .find((id) => zustaende[id]?.mode === 'presentation' && zustaende[id]?.presentation)
+    .filter((id) => zustaende[id]?.mode === 'presentation' && zustaende[id]?.presentation)
+  /*
+   * Nur Bühnen mit **demselben** Dokument.
+   *
+   * Liegen zwei verschiedene Foliensätze auf zwei Wänden, wäre eine
+   * gemeinsame Foliennummer sinnlos: Folie 7 des einen hat mit Folie 7 des
+   * anderen nichts zu tun. Dann bleibt es bei der ersten, und die Auswahl im
+   * Fuß entscheidet über den Rest.
+   */
+  const erste = mitFolien[0]
+  if (erste === undefined) return []
+  const dokument = zustaende[erste]?.presentation?.id
+  return mitFolien.filter((id) => zustaende[id]?.presentation?.id === dokument)
 }
 
 function PrompterApp(): JSX.Element {
   const [buehnen, setBuehnen] = useState<Buehne[]>([{ ...BUEHNE_VORGABE }])
   const [zustaende, setZustaende] = useState<Record<number, ProjectionState>>({})
-  /* Von Hand gewählt schlägt automatisch — aber nur, solange dort etwas
-     läuft. */
+  /*
+   * Von Hand gewählt schlägt automatisch — aber nur, solange dort etwas läuft.
+   * `null` heißt „alle, auf denen der Foliensatz liegt".
+   */
   const [gewaehlt, setGewaehlt] = useState<number | null>(null)
   const [seit, setSeit] = useState(() => Date.now())
   /* Bis der Hauptprozess die wirkliche Größe meldet, gilt das gängige
@@ -273,11 +287,15 @@ function PrompterApp(): JSX.Element {
     }
   }, [])
 
-  const automatisch = buehneMitFoliensatz(zustaende, buehnen)
-  const buehne =
+  const laufende = buehnenMitFoliensatz(zustaende, buehnen)
+  /* Worauf geblättert wird: die eine gewählte Bühne, sonst alle laufenden. */
+  const ziel =
     gewaehlt !== null && zustaende[gewaehlt]?.mode === 'presentation'
-      ? gewaehlt
-      : (automatisch ?? gewaehlt ?? HAUPTBUEHNE)
+      ? [gewaehlt]
+      : laufende.length > 0
+        ? laufende
+        : [gewaehlt ?? HAUPTBUEHNE]
+  const buehne = ziel[0]
   const state = zustaende[buehne] ?? EMPTY_PROJECTION_STATE
 
   /* Der Hauptprozess misst die Größe des Beamerfensters dieser Bühne. */
@@ -291,11 +309,12 @@ function PrompterApp(): JSX.Element {
    * Ohne diesen Weg bliebe die Gesamtzahl unbekannt, und die Steuerung zählte
    * über das Ende des Vortrags hinaus weiter.
    */
+  const zielSchluessel = ziel.join(',')
   const melde = useCallback(
     (folie: number, anzahl: number) => {
-      window.prompter?.report(folie, anzahl, buehne)
+      window.prompter?.report(folie, anzahl, zielSchluessel.split(',').map(Number))
     },
-    [buehne]
+    [zielSchluessel]
   )
 
   const praesentation = state.presentation
@@ -309,12 +328,15 @@ function PrompterApp(): JSX.Element {
   }, [praesentation?.id])
 
   const springe = useCallback(
-    (ziel: number) => {
+    (folie: number) => {
       if (!laeuft) return
       const grenze = anzahl ?? Number.MAX_SAFE_INTEGER
-      window.prompter?.goto(Math.max(1, Math.min(ziel, grenze)), buehne)
+      window.prompter?.goto(
+        Math.max(1, Math.min(folie, grenze)),
+        zielSchluessel.split(',').map(Number)
+      )
     },
-    [laeuft, anzahl, buehne]
+    [laeuft, anzahl, zielSchluessel]
   )
 
   const weiter = useCallback(() => springe(folie + 1), [springe, folie])
@@ -411,13 +433,22 @@ function PrompterApp(): JSX.Element {
           {buehnen.length > 1 && (
             <select
               className="prompter-buehnenwahl"
-              value={buehne}
-              title="Welche Bühne diese Steuerung bedient"
-              onChange={(event) => setGewaehlt(Number(event.target.value))}
+              value={gewaehlt === null ? 'alle' : String(gewaehlt)}
+              title="Welche Bühnen diese Steuerung blättert"
+              onChange={(event) =>
+                setGewaehlt(event.target.value === 'alle' ? null : Number(event.target.value))
+              }
             >
+              {/* Vorgabe: alle Wände, auf denen der Foliensatz liegt. Nur so
+                  bleiben zwei Beamer beim Blättern beieinander. */}
+              <option value="alle">
+                {laufende.length > 1
+                  ? `Alle ${laufende.length} mit Foliensatz`
+                  : 'Alle mit Foliensatz'}
+              </option>
               {buehnen.map((stage) => (
                 <option key={stage.id} value={stage.id}>
-                  {stage.name}
+                  nur {stage.name}
                 </option>
               ))}
             </select>

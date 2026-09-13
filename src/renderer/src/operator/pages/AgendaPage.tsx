@@ -146,7 +146,7 @@ export function AgendaPage(): React.JSX.Element {
                     next: items.filter((item) => !item.done)[1]?.title
                   }
                 },
-                app.buehne
+                app.ziel
               ).catch(app.reportError)
             }
           >
