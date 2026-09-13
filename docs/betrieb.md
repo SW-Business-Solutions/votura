@@ -131,8 +131,10 @@ Hinweis, falls ein Rang offen ist.
 
 ## Vorstellung mit Redezeit
 
-Unter *Beamer → Inhalte → Vorstellung mit Redezeit*: Name eintragen (Bewerber des Bezugswahlgangs
-werden vorgeschlagen), optional einen Zusatz wie „Bewerbung um den Vorsitz", Redezeit in Minuten,
+Unter *Beamer → Inhalte → Vorstellung mit Redezeit*: Ist ein **Bezugswahlgang** gewählt, steht
+dort die Liste seiner Bewerber zur Auswahl — abtippen entfällt, und ein Tippfehler steht nicht
+groß an der Wand. Für alles andere — Gast, Bericht, Grußwort — gibt es daneben ein freies Feld.
+Dazu optional ein Zusatz wie „Bewerbung um den Vorsitz", die Redezeit in Minuten, dann
 *Vorstellung anzeigen*.
 
 Der Saal sieht den Namen groß, darunter den Zusatz und die verbleibende Zeit mit Balken. Die
@@ -142,8 +144,8 @@ wer überzieht, soll es sehen, und die Versammlungsleitung auch.
 Während der Vorstellung stehen drei Schaltflächen bereit:
 
 - **Anhalten / Weiter** — für eine Zwischenfrage, ohne die Vorstellung zu beenden.
-- **+1 Min.** — der übliche Zuruf „noch eine Minute", ohne die Uhr zurückzusetzen.
-- **−1 Min.** — falls zu großzügig gerechnet wurde.
+- **+1 Min. / −1 Min.** — der übliche Zuruf „noch eine Minute", ohne die Uhr zurückzusetzen.
+- **+10 s / −10 s** — zum Nachjustieren kurz vor Schluss.
 
 Redezeit 0 zeigt nur den Namen, ohne Uhr — nicht jede Vorstellung ist begrenzt.
 
