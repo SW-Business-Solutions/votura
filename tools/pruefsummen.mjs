@@ -21,7 +21,8 @@ const ORDNER = ['release', 'release-saal']
 const zeilen = []
 for (const ordner of ORDNER) {
   if (!existsSync(ordner)) continue
-  for (const name of readdirSync(ordner).filter((datei) => /\.(exe|zip)$/i.test(datei))) {
+  const paket = /\.(exe|zip|deb|AppImage)$|\.tar\.gz$/i
+  for (const name of readdirSync(ordner).filter((datei) => paket.test(datei))) {
     const summe = createHash('sha512').update(readFileSync(join(ordner, name))).digest('base64')
     console.log(`  ${name}`)
     zeilen.push(`${summe}  ${name}`)

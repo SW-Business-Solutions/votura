@@ -41,6 +41,23 @@ win:
   artifactName: Votura-Saal-${version}-${arch}-Setup.${ext}
   icon: build/icon.ico
 
+# Linux ist für die Begleitanwendung der wichtigere Fall: Beamerrechner im
+# Saal und der Raspberry Pi laufen darauf. arm64 deckt Pi 4 und Pi 5 ab —
+# beide brauchen dafür ein 64-Bit-System, denn Electron unterstützt kein
+# armv7 mehr.
+linux:
+  target:
+    - target: tar.gz
+      arch: [x64, arm64]
+  # Das Einrichtungsskript für den Raspberry Pi lädt genau diesen Namen.
+  artifactName: Votura-Saal-${version}-linux-${arch}.${ext}
+  category: Utility
+  synopsis: Bühne oder Pult für eine Versammlung mit Votura
+  description: >-
+    Zeigt eine Bühne oder den Prompter eines Votura-Hauptrechners. Findet ihn
+    beim Start selbst im Netz.
+  icon: build/icon.png
+
 nsis:
   oneClick: false
   perMachine: false
