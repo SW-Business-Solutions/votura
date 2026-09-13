@@ -5,9 +5,13 @@
 import { useEffect, useState } from 'react'
 import type { NetworkProjectionStatus } from '@shared/ipc'
 import {
+  ALLE_BUEHNEN,
+  BUEHNEN_MAX,
+  HAUPTBUEHNE,
   PROJECTION_MODE_LABELS,
   REDNER_VORSCHAU,
   REDNER_VORSCHAU_MAX,
+  type Buehne,
   type ProjectionHistoryEntry,
   type ProjectionMode
 } from '@shared/projection'
@@ -52,6 +56,7 @@ type Bereich = (typeof BEREICHE)[number]['id']
 
 export function BeamerPage(): React.JSX.Element {
   const app = useApp()
+  const buehne = app.buehne
   const projection = app.projection
   const audience = app.audience
 
@@ -118,18 +123,66 @@ export function BeamerPage(): React.JSX.Element {
 
   const setMode = async (mode: ProjectionMode, extra?: Record<string, unknown>): Promise<void> => {
     try {
-      await api('projection.setMode', {
-        mode,
-        roundId: roundId || undefined,
-        showAll,
-        ...(extra ?? {})
-      })
+      await api(
+        'projection.setMode',
+        {
+          mode,
+          roundId: roundId || undefined,
+          showAll,
+          ...(extra ?? {})
+        },
+        buehne
+      )
     } catch (error) {
       app.reportError(error)
     }
   }
 
   const [bereich, setBereich] = useState<Bereich>('inhalte')
+
+  /**
+   * Bühnen speichern und die Oberfläche nachziehen.
+   *
+   * Es gibt nur diesen einen Weg — Anlegen, Umbenennen und Abbauen schicken
+   * dieselbe vollständige Liste. Eine Bühne, die nur halb angelegt ist, kann
+   * es damit nicht geben.
+   */
+  const speichereBuehnen = async (liste: Buehne[]): Promise<void> => {
+    try {
+      await api('projection.saveBuehnen', liste)
+      await app.refreshBuehnen()
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
+  const buehneAnlegen = (): void => {
+    /* Die kleinste freie Nummer — sie steht später in der Netzadresse. */
+    const frei = Array.from({ length: BUEHNEN_MAX }, (_, index) => index + 1).find(
+      (nummer) => !app.buehnen.some((stage) => stage.id === nummer)
+    )
+    if (!frei) return
+    void speichereBuehnen([
+      ...app.buehnen,
+      { id: frei, name: `Bühne ${frei}`, followsRound: false }
+    ]).then(() => app.setBuehne(frei))
+  }
+
+  const aktuelleBuehne = app.buehnen.find((stage) => stage.id === buehne)
+  const master = buehne === ALLE_BUEHNEN
+  /*
+   * Was gerade läuft — beim Master nur, wenn es überall dasselbe ist.
+   *
+   * Sonst stünde ein Knopf hervorgehoben da, obwohl zwei von drei Wänden
+   * etwas anderes zeigen. „Nichts hervorgehoben" ist die ehrlichere Angabe.
+   */
+  const gemeinsamerModus = master
+    ? app.buehnen.every(
+        (stage) => (app.projektionen[stage.id]?.mode ?? projection.mode) === projection.mode
+      )
+      ? projection.mode
+      : undefined
+    : projection.mode
 
   return (
     <>
@@ -141,23 +194,117 @@ export function BeamerPage(): React.JSX.Element {
           </div>
         </div>
         <div className="row">
-          <span className={`badge ${audience?.open ? 'ok' : 'warn'}`}>
-            {audience?.open ? 'Beamerfenster aktiv' : 'Beamerfenster nicht aktiv'}
+          {master ? (
+            (() => {
+              const offen = app.buehnen.filter((stage) => app.beamerfenster[stage.id]?.open).length
+              return (
+                <span className={`badge ${offen > 0 ? 'ok' : 'warn'}`}>
+                  {offen} von {app.buehnen.length} Beamerfenstern offen
+                </span>
+              )
+            })()
+          ) : (
+            <span className={`badge ${audience?.open ? 'ok' : 'warn'}`}>
+              {audience?.open ? 'Beamerfenster aktiv' : 'Beamerfenster nicht aktiv'}
+            </span>
+          )}
+          <span className="badge accent">
+            {gemeinsamerModus ? PROJECTION_MODE_LABELS[gemeinsamerModus] : 'Bühnen zeigen Verschiedenes'}
           </span>
-          <span className="badge accent">{PROJECTION_MODE_LABELS[projection.mode]}</span>
         </div>
+      </div>
+
+      {/*
+        * Die Bühnen als Reiter.
+        *
+        * Alles darunter — Vorschau, Anzeige, Präsentation, Video, Pause —
+        * bezieht sich auf die hier gewählte Bühne. Es gibt keine zweite
+        * Stelle, an der man die Bühne einstellt, und keinen Regler, der
+        * versehentlich die falsche Wand trifft.
+        */}
+      <div className="buehnen-leiste">
+        <div className="segmented">
+          {/* Der Master ganz links: dieselben Knöpfe, aber auf allen Wänden
+              zugleich. „Pause" oder „Versammlung beendet" gehören überall
+              hin — dafür soll niemand drei Reiter durchklicken. */}
+          {app.buehnen.length > 1 && (
+            <button
+              className={master ? 'active' : ''}
+              onClick={() => app.setBuehne(ALLE_BUEHNEN)}
+              title="Schaltet alle Bühnen gleichzeitig"
+            >
+              Alle
+            </button>
+          )}
+          {app.buehnen.map((stage) => (
+            <button
+              key={stage.id}
+              className={stage.id === buehne ? 'active' : ''}
+              onClick={() => app.setBuehne(stage.id)}
+              title={
+                app.projektionen[stage.id]
+                  ? PROJECTION_MODE_LABELS[app.projektionen[stage.id].mode]
+                  : undefined
+              }
+            >
+              {stage.name}
+              {/* Der Punkt sagt: Auf dieser Bühne steht ein Fenster offen. */}
+              {app.buehnen.length > 1 && (
+                <span
+                  className={`buehnen-punkt${app.beamerfenster[stage.id]?.open ? ' an' : ''}`}
+                  title={app.beamerfenster[stage.id]?.open ? 'Fenster offen' : 'Kein Fenster'}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+        {app.buehnen.length < BUEHNEN_MAX && app.can('system.manage') && (
+          <button className="mini" onClick={buehneAnlegen} title="Eine weitere Anzeigefläche anlegen">
+            + Bühne
+          </button>
+        )}
+        {master && (
+          <span className="hint">Jede Schaltung unten trifft alle Bühnen gleichzeitig.</span>
+        )}
       </div>
 
       <div className="grid cols-2">
         <div className="beamer-spalte-fest">
-          <Card title="Aktuelle Anzeige">
-            <div className="preview-frame">
-              <ProjectionScreen state={projection} preview />
-            </div>
+          <Card title={master ? 'Alle Bühnen' : 'Aktuelle Anzeige'}>
+            {master ? (
+              /* Beim Master zählt der Überblick: jede Wand einmal klein,
+                 statt einer großen, die für alle stehen soll. */
+              <div className="buehnen-vorschauen">
+                {app.buehnen.map((stage) => (
+                  <div key={stage.id} className="buehnen-vorschau">
+                    <div className="preview-frame">
+                      <ProjectionScreen
+                        state={app.projektionen[stage.id] ?? projection}
+                        preview
+                      />
+                    </div>
+                    <div className="buehnen-vorschau-marke">
+                      <button className="mini" onClick={() => app.setBuehne(stage.id)}>
+                        {stage.name}
+                      </button>
+                      <span className="hint">
+                        {PROJECTION_MODE_LABELS[
+                          (app.projektionen[stage.id] ?? projection).mode
+                        ]}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="preview-frame">
+                <ProjectionScreen state={projection} preview />
+              </div>
+            )}
             <div className="row" style={{ marginTop: 12 }}>
               <Checkbox
                 checked={projection.locked}
-                onChange={(value) => void api('projection.setLocked', value).catch(app.reportError)}
+                onChange={(value) => void api('projection.setLocked', value, buehne).catch(app.reportError)}
                 label="Beamer sperren"
               />
             </div>
@@ -168,50 +315,66 @@ export function BeamerPage(): React.JSX.Element {
               <strong>und</strong> das Weiterblättern. Von Hand geht beides weiter.
             </div>
             {projection.candidatePageCount > 1 && (
-              <div className="row">
-                <span className="hint">
+              /*
+               * Eine Zeile, eine Fluchtlinie.
+               *
+               * Vorher standen Seitenzahl und Takt in zwei Zeilen mit
+               * unterschiedlich breiten Beschriftungen und Knöpfen in voller
+               * Größe — nichts fluchtete, und die Blätterknöpfe wirkten
+               * wichtiger als die Vorschau darüber.
+               */
+              <div className="beamer-blaettern">
+                <span className="beamer-blaettern-marke">
                   Seite {projection.candidatePage + 1} von {projection.candidatePageCount}
                 </span>
-                <button
-                  onClick={() =>
-                    void api('projection.setCandidatePage', Math.max(0, projection.candidatePage - 1)).catch(
-                      app.reportError
-                    )
-                  }
-                >
-                  Zurück
-                </button>
-                <button
-                  onClick={() =>
-                    void api('projection.setCandidatePage', projection.candidatePage + 1).catch(app.reportError)
-                  }
-                >
-                  Weiter
-                </button>
-              </div>
-            )}
-            {projection.candidatePageCount > 1 && (
-              <div className="row" style={{ alignItems: 'center', gap: 8 }}>
-                <span className="hint" title="Nur das Blättern durch die Seiten dieser Ansicht">
-                  Seiten wechseln alle:
+                <div className="row" style={{ gap: 6 }}>
+                  <button
+                    className="mini"
+                    aria-label="Vorige Seite"
+                    onClick={() =>
+                      void api(
+                        'projection.setCandidatePage',
+                        Math.max(0, projection.candidatePage - 1),
+                        buehne
+                      ).catch(app.reportError)
+                    }
+                  >
+                    ‹
+                  </button>
+                  <button
+                    className="mini"
+                    aria-label="Nächste Seite"
+                    onClick={() =>
+                      void api(
+                        'projection.setCandidatePage',
+                        projection.candidatePage + 1,
+                        buehne
+                      ).catch(app.reportError)
+                    }
+                  >
+                    ›
+                  </button>
+                </div>
+                <span className="beamer-blaettern-marke" title="Nur das Blättern in dieser Ansicht">
+                  Wechsel alle
                 </span>
-                <div className="segmented">
+                <div className="segmented klein">
                   {[0, 8, 15, 30].map((takt) => (
                     <button
                       key={takt}
                       className={projection.candidatePageIntervalSeconds === takt ? 'active' : ''}
                       disabled={projection.locked}
                       onClick={() =>
-                        void api('projection.setCandidatePageInterval', takt).catch(app.reportError)
+                        void api('projection.setCandidatePageInterval', takt, buehne).catch(
+                          app.reportError
+                        )
                       }
                     >
                       {takt === 0 ? 'aus' : `${takt} s`}
                     </button>
                   ))}
                 </div>
-                {projection.locked && (
-                  <span className="hint">— gesperrt, es wird gar nicht geblättert.</span>
-                )}
+                {projection.locked && <span className="hint">gesperrt</span>}
               </div>
             )}
           </Card>
@@ -232,7 +395,7 @@ export function BeamerPage(): React.JSX.Element {
                 <button
                   key={entry.mode}
                   className={
-                    projection.mode === entry.mode &&
+                    gemeinsamerModus === entry.mode &&
                     (entry.mode !== 'agenda' || projection.agenda?.view === 'full')
                       ? 'primary'
                       : ''
@@ -278,6 +441,55 @@ export function BeamerPage(): React.JSX.Element {
             ))}
           </div>
 
+          {bereich === 'ausgabe' && aktuelleBuehne && !master && (
+          <Card title={`Bühne „${aktuelleBuehne.name}"`}>
+            <Field label="Name">
+              <input
+                value={aktuelleBuehne.name}
+                disabled={!app.can('system.manage')}
+                onChange={(event) =>
+                  void speichereBuehnen(
+                    app.buehnen.map((stage) =>
+                      stage.id === buehne ? { ...stage, name: event.target.value } : stage
+                    )
+                  )
+                }
+              />
+            </Field>
+            {/* Der Ablauf einer Wahl darf nicht auf jeder Wand landen: Wer
+                die Rednerliste stehen lassen will, nimmt diesen Haken weg. */}
+            <Checkbox
+              checked={aktuelleBuehne.followsRound}
+              disabled={!app.can('system.manage')}
+              onChange={(value) =>
+                void speichereBuehnen(
+                  app.buehnen.map((stage) =>
+                    stage.id === buehne ? { ...stage, followsRound: value } : stage
+                  )
+                )
+              }
+              label="Folgt automatisch dem Wahlgang"
+            />
+            <div className="hint">
+              Ohne Haken bleibt diese Bühne stehen, bis sie von Hand umgeschaltet wird — für eine
+              Rednerliste oder ein Standbild neben dem Wahlgeschehen.
+            </div>
+            {buehne !== HAUPTBUEHNE && app.can('system.manage') && (
+              <div className="row" style={{ marginTop: 12 }}>
+                <button
+                  className="danger"
+                  onClick={() => {
+                    void speichereBuehnen(app.buehnen.filter((stage) => stage.id !== buehne))
+                    app.setBuehne(HAUPTBUEHNE)
+                  }}
+                >
+                  Bühne abbauen
+                </button>
+              </div>
+            )}
+          </Card>
+          )}
+
           {bereich === 'ausgabe' && (
           <Card title="Ausgabegerät">
             {audience?.singleDisplay && (
@@ -291,22 +503,22 @@ export function BeamerPage(): React.JSX.Element {
                 <button
                   key={display.id}
                   className={display.current ? 'primary' : ''}
-                  onClick={() => void api('projection.openAudience', display.id).catch(app.reportError)}
+                  onClick={() => void api('projection.openAudience', display.id, buehne).catch(app.reportError)}
                 >
                   {display.label}
                 </button>
               ))}
             </div>
             <div className="row" style={{ marginTop: 12 }}>
-              <button className="primary" onClick={() => void api('projection.openAudience').catch(app.reportError)}>
+              <button className="primary" onClick={() => void api('projection.openAudience', undefined, buehne).catch(app.reportError)}>
                 Beamerfenster öffnen
               </button>
-              <button onClick={() => void api('projection.closeAudience').catch(app.reportError)}>
+              <button onClick={() => void api('projection.closeAudience', buehne).catch(app.reportError)}>
                 Schließen
               </button>
               <button
                 onClick={async () => {
-                  await api('projection.demo', true).catch(app.reportError)
+                  await api('projection.demo', true, buehne).catch(app.reportError)
                   app.notify('info', 'Demomodus aktiv – Testdaten für die Beamerpruefung.')
                 }}
               >
@@ -452,7 +664,7 @@ export function BeamerPage(): React.JSX.Element {
                       ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
                       : 'Niemand mehr in der Reihe'
                   }
-                  onClick={() => void api('projection.nextSpeaker').catch(app.reportError)}
+                  onClick={() => void api('projection.nextSpeaker', buehne).catch(app.reportError)}
                 >
                   Nächster{' '}
                   {(projection.speaker.upcoming ?? [])[0]
@@ -463,7 +675,8 @@ export function BeamerPage(): React.JSX.Element {
                   onClick={() =>
                     void api(
                       'projection.setSpeakerPaused',
-                      projection.speaker?.pausedSecondsLeft === undefined
+                      projection.speaker?.pausedSecondsLeft === undefined,
+                      buehne
                     ).catch(app.reportError)
                   }
                   disabled={!projection.speaker.until && projection.speaker.pausedSecondsLeft === undefined}
@@ -481,7 +694,7 @@ export function BeamerPage(): React.JSX.Element {
                   <button
                     key={beschriftung}
                     onClick={() =>
-                      void api('projection.addSpeakerSeconds', sekunden as number).catch(
+                      void api('projection.addSpeakerSeconds', sekunden as number, buehne).catch(
                         app.reportError
                       )
                     }
@@ -719,6 +932,24 @@ function NetworkSection({
               {url}
             </div>
           ))}
+          {/*
+            * Eine Adresse je Bühne.
+            *
+            * Ein Gerät im Saal wählt seine Bühne über die Adresse — `/b/2`
+            * neben dem zweiten Beamer, und es zeigt bis zum Schluss genau
+            * das, was dort hingehört.
+            */}
+          {app.buehnen.length > 1 && (
+            <>
+              <label style={{ marginTop: 10 }}>Einzelne Bühnen</label>
+              {app.buehnen.map((stage) => (
+                <div key={`b-${stage.id}`} className="mono">
+                  {status.urls[0].split('?')[0].replace(/\/$/, '')}/b/{stage.id}
+                  {status.token ? `?t=${status.token}` : ''} — {stage.name}
+                </div>
+              ))}
+            </>
+          )}
           {status.allowRemoteOperator && (
             <>
               <label style={{ marginTop: 10 }}>Bedienung (Anmeldung erforderlich)</label>

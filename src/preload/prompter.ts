@@ -12,7 +12,11 @@
  */
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcChannels } from '@shared/ipc'
-import type { ProjectionState } from '@shared/projection'
+import type { Buehne, ProjectionState } from '@shared/projection'
+
+/* Wie im Audience-Preload: kein Wert aus einem gemeinsamen Modul, sonst
+   scheitert das Laden in der Sandbox. */
+const HAUPTBUEHNE: Buehne['id'] = 1
 
 /* Eigene Kanalnamen wie in den anderen Preloads: Eine Sandbox-Datei darf
    keine gemeinsamen Bundle-Teile nachladen. Der Typ prüft sie beim Übersetzen
@@ -22,13 +26,29 @@ const CHANNEL_GET_STATE: IpcChannels['audienceGetState'] = 'wz:audience-get-stat
 const CHANNEL_COMMAND: IpcChannels['prompterCommand'] = 'wz:prompter-command'
 const CHANNEL_REPORT: IpcChannels['prompterReport'] = 'wz:prompter-report'
 const CHANNEL_BEAMER_SIZE: IpcChannels['beamerSize'] = 'wz:beamer-size'
+const CHANNEL_STAGES: IpcChannels['stagesSnapshot'] = 'wz:stages-snapshot'
 
 const bridge = {
-  getInitialState: (): Promise<ProjectionState> =>
-    ipcRenderer.invoke(CHANNEL_GET_STATE) as Promise<ProjectionState>,
+  getInitialState: (stage = HAUPTBUEHNE): Promise<ProjectionState> =>
+    ipcRenderer.invoke(CHANNEL_GET_STATE, stage) as Promise<ProjectionState>,
 
-  onStateChange: (callback: (state: ProjectionState) => void): (() => void) => {
-    const handler = (_event: unknown, state: ProjectionState): void => callback(state)
+  /**
+   * Alle Bühnen auf einmal.
+   *
+   * Der Prompter folgt der Bühne, auf der gerade ein Foliensatz läuft — dafür
+   * muss er alle kennen, nicht nur eine.
+   */
+  getStages: (): Promise<{ buehnen: Buehne[]; zustaende: Record<number, ProjectionState> }> =>
+    ipcRenderer.invoke(CHANNEL_STAGES) as Promise<{
+      buehnen: Buehne[]
+      zustaende: Record<number, ProjectionState>
+    }>,
+
+  onStateChange: (
+    callback: (nachricht: { buehne: number; state: ProjectionState }) => void
+  ): (() => void) => {
+    const handler = (_event: unknown, nachricht: { buehne: number; state: ProjectionState }): void =>
+      callback(nachricht)
     ipcRenderer.on(CHANNEL_STATE, handler)
     return () => ipcRenderer.removeListener(CHANNEL_STATE, handler)
   },
@@ -40,8 +60,18 @@ const bridge = {
    * denselben Weg, den auch der Beamer geht. Zwei Quellen für dieselbe
    * Wahrheit liefen sonst irgendwann auseinander.
    */
-  goto: (slide: number): void => {
-    ipcRenderer.send(CHANNEL_COMMAND, { slide })
+  goto: (slide: number, stage = HAUPTBUEHNE): void => {
+    ipcRenderer.send(CHANNEL_COMMAND, { slide, stage })
+  },
+
+  /**
+   * Sagt dem Hauptprozess, welche Bühne dieses Fenster bedient.
+   *
+   * Nur dann meldet er die Größe des richtigen Beamerfensters zurück — die
+   * Vorschau soll im selben Format rechnen wie die Wand, die sie zeigt.
+   */
+  setStage: (stage: number): void => {
+    ipcRenderer.send(CHANNEL_COMMAND, { stage })
   },
 
   /**
@@ -52,8 +82,8 @@ const bridge = {
    * Beameransicht kann sie nicht melden — sie ist rein lesend. Der Prompter
    * laedt denselben Foliensatz und bekommt dieselbe Meldung.
    */
-  report: (slide: number, slideCount: number): void => {
-    ipcRenderer.send(CHANNEL_REPORT, { slide, slideCount })
+  report: (slide: number, slideCount: number, stage = HAUPTBUEHNE): void => {
+    ipcRenderer.send(CHANNEL_REPORT, { slide, slideCount, stage })
   },
 
   /** Größe des Beamerfensters, damit die Vorschau im selben Format rechnet. */

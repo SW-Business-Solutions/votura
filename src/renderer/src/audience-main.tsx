@@ -11,11 +11,13 @@ import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { presentationKind, presentationPath, presentationUrl } from '@shared/presentation'
 import { videoPath, videoUrl } from '@shared/video'
-import { EMPTY_PROJECTION_STATE, type ProjectionState } from '@shared/projection'
+import { EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { ProjectionScreen } from './projection/ProjectionScreen'
 import './styles/projection.css'
 
 interface AudienceBridge {
+  /** Die Bühne dieses Fensters; der Hauptprozess hat sie beim Öffnen gesetzt. */
+  buehne: number
   getInitialState(): Promise<ProjectionState>
   onStateChange(callback: (state: ProjectionState) => void): () => void
   /**
@@ -34,7 +36,19 @@ declare global {
   }
 }
 
-function useProjectionState(): { state: ProjectionState; disconnected: boolean } {
+/**
+ * Welche Bühne diese Ansicht zeigt.
+ *
+ * Im Fenster steht sie in der Adresse, die der Hauptprozess gesetzt hat; im
+ * Browser wählt sie das Gerät selbst über `/b/2`. Beide Wege enden in
+ * derselben Suchzeile — es gibt nur eine Stelle, an der sie gelesen wird.
+ */
+function eigeneBuehne(): number {
+  const roh = Number(new URLSearchParams(window.location.search).get('buehne'))
+  return Number.isInteger(roh) && roh > 0 ? roh : HAUPTBUEHNE
+}
+
+function useProjectionState(buehne: number): { state: ProjectionState; disconnected: boolean } {
   const [state, setState] = useState<ProjectionState>(EMPTY_PROJECTION_STATE)
   const [disconnected, setDisconnected] = useState(false)
 
@@ -47,7 +61,7 @@ function useProjectionState(): { state: ProjectionState; disconnected: boolean }
 
     // Netzwerkansicht im Browser.
     const token = new URLSearchParams(window.location.search).get('t')
-    const query = token ? `?t=${encodeURIComponent(token)}` : ''
+    const query = `?buehne=${buehne}${token ? `&t=${encodeURIComponent(token)}` : ''}`
     let source: EventSource | null = null
     let retry: number | undefined
     let knownInstance: string | null = null
@@ -81,13 +95,22 @@ function useProjectionState(): { state: ProjectionState; disconnected: boolean }
       if (retry) window.clearTimeout(retry)
       source?.close()
     }
-  }, [])
+  }, [buehne])
 
   return { state, disconnected }
 }
 
 function AudienceApp(): React.JSX.Element {
-  const { state, disconnected } = useProjectionState()
+  const buehne = eigeneBuehne()
+
+  /* Zwei gleich benannte Fenster in der Taskleiste sind nicht zu
+     unterscheiden — der Fenstertitel der Anwendung wird vom Titel dieser
+     Seite überschrieben, also steht die Bühne hier. */
+  useEffect(() => {
+    if (buehne !== HAUPTBUEHNE) document.title = `Votura – Beameransicht ${buehne}`
+  }, [buehne])
+
+  const { state, disconnected } = useProjectionState(buehne)
 
   // Automatischer Seitenwechsel bei langen Kandidatenlisten (Beamer §8).
   const [page, setPage] = useState(0)
@@ -122,13 +145,13 @@ function AudienceApp(): React.JSX.Element {
   const presentationSrc = state.presentation
     ? imFenster
       ? presentationUrl(state.presentation.id, presentationKind(state.presentation))
-      : presentationPath(state.presentation.id, presentationKind(state.presentation))
+      : presentationPath(state.presentation.id, presentationKind(state.presentation), buehne)
     : undefined
 
   const videoSrc = state.video
     ? imFenster
       ? videoUrl(state.video.id)
-      : videoPath(state.video.id)
+      : videoPath(state.video.id, buehne)
     : undefined
 
   /*

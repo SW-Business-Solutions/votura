@@ -169,7 +169,7 @@ describe('Auslieferung mit Bereichsanfragen', () => {
 
   it('liefert nur das Video aus, das gerade projiziert wird', () => {
     const server = lies('src/main/network-projection.ts')
-    expect(server).toContain('getProjectionState().video')
+    expect(server).toContain('getProjectionState(buehneAus(url)).video')
   })
 })
 

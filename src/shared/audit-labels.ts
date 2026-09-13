@@ -88,6 +88,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   /* ------------------------------------------------------------- Anzeige */
   'projection.mode_set': 'Anzeige umgeschaltet',
   'projection.theme_changed': 'Erscheinungsbild der Anzeige geändert',
+  'projection.stages_saved': 'Bühnen geändert',
 
   /* ------------------------------------------------------- Zweites Gerät */
   'remote.session_started': 'Fernzugriff angemeldet',

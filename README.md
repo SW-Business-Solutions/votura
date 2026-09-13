@@ -263,6 +263,29 @@ jedem Wechsel nach, ob alles ins Bild passt.
 </tr>
 </table>
 
+## Mehrere Bühnen
+
+Eine Versammlung hat selten nur eine Wand. Votura verwaltet bis zu **vier Anzeigeflächen** — im
+Haus **Bühnen** genannt —, jede mit eigenem Inhalt: vorn die Kandidatenliste, seitlich die laufende
+Vorstellung mit Redezeit, im Foyer die Begrüßung.
+
+![Alle Bühnen im Blick](docs/screenshots/23-buehnen.png)
+
+- **Reiter über der Steuerung.** Alles darunter — Ansicht, Präsentation, Video, Pause, Redezeit —
+  bezieht sich auf die dort gewählte Bühne. Es gibt keine zweite Stelle, an der man die Bühne
+  einstellt, und keinen Regler, der versehentlich die falsche Wand trifft.
+- **„Alle" als Master.** Derselbe Satz Knöpfe, aber auf allen Bühnen zugleich — „Pause" oder
+  „Versammlung beendet" gehören überall hin. Die Vorschau zeigt dabei jede Wand einzeln; ein Modus
+  wird nur dann hervorgehoben, wenn wirklich überall dasselbe läuft.
+- **Folgt dem Wahlgang — oder eben nicht.** Je Bühne einstellbar. Ohne Haken bleibt eine Bühne
+  stehen, bis sie von Hand umgeschaltet wird: für eine Rednerliste oder ein Standbild neben dem
+  Wahlgeschehen. Die Hauptbühne folgt immer und lässt sich nicht abbauen.
+- **Lokal und im Netz.** Ein zweites Beamerfenster wählt seinen Bildschirm wie das erste. Geräte im
+  Netz wählen ihre Bühne über die Adresse: `/b/2` neben dem zweiten Beamer, und dort steht bis zum
+  Schluss genau das, was hingehört. Die Adressen listet die Bedienung unter **Ausgabe & Netz** auf.
+- **Die Vortragssteuerung folgt von selbst.** Sie zeigt die Bühne, auf der gerade ein Foliensatz
+  läuft. Bei mehreren Bühnen liegt im Fuß des Fensters eine Auswahl.
+
 ## Präsentationen
 
 Zwischen zwei Wahlgängen wird geredet — Rechenschaftsbericht, Kandidatenvorstellung, Ausblick.
@@ -338,7 +361,7 @@ Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und n
 abgeschottetes Veranstaltungsnetz vorgesehen:
 
 - **Beameransicht im Browser** (`/`) — ausschließlich lesende Endpunkte, Server-Sent-Events,
-  optionales Zugriffstoken.
+  optionales Zugriffstoken. Mit `/b/2`, `/b/3` … wählt ein Gerät die Bühne, die es zeigen soll.
 - **Bedienung von einem zweiten Gerät** (`/operator`) — Anmeldung mit einem lokalen Konto, gleiche
   Rollen und Rechte, gleiche Audit-Zuordnung. Jeder Aufruf läuft im Sitzungskontext des
   angemeldeten Benutzers; Systemdialoge des Hauptrechners sind gesperrt. Details und Grenzen:

@@ -13,7 +13,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
-import type { ProjectionState } from '@shared/projection'
+import { BUEHNEN_MAX, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
 import { getPresentation, presentationFileFor } from './services/presentations'
@@ -37,7 +37,21 @@ let server: Server | null = null
 let config: NetworkProjectionConfig | null = null
 let lastError: string | undefined
 let dispatcher: RemoteDispatcher | null = null
-const clients = new Set<ServerResponse>()
+/**
+ * Offene SSE-Leitungen samt der Bühne, die sie abonniert haben.
+ *
+ * Ein Gerät im Saal wählt seine Bühne über die Adresse (`/b/2`); es bekommt
+ * danach nur noch Wechsel dieser einen Bühne. So bleibt die Rednerliste auf
+ * dem einen Beamer stehen, während auf dem anderen ein Video läuft.
+ */
+const clients = new Map<ServerResponse, number>()
+
+/** Liest die Bühne aus der Adresse — fehlt oder unsinnig, gilt die Hauptbühne. */
+function buehneAus(url: URL): number {
+  const roh = Number(url.searchParams.get('buehne'))
+  if (!Number.isInteger(roh) || roh < 1 || roh > BUEHNEN_MAX) return HAUPTBUEHNE
+  return roh
+}
 
 /** Verbindet den Netzwerkserver mit der API des Hauptprozesses. */
 export function setRemoteDispatcher(next: RemoteDispatcher): void {
@@ -159,20 +173,35 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
+  /*
+   * Kurzadresse je Bühne: `/b/2` ist das, was auf einem Zettel neben dem
+   * Beamer steht. Sie leitet auf die Ansicht mit gesetzter Bühne weiter, damit
+   * alle Dateipfade relativ bleiben.
+   */
+  const kurz = /^\/b\/(\d+)\/?$/.exec(url.pathname)
+  if (kurz) {
+    const gewaehlt = Math.min(Math.max(Number(kurz[1]), 1), BUEHNEN_MAX)
+    const token = config?.token ? `&t=${encodeURIComponent(config.token)}` : ''
+    response.writeHead(302, { Location: `/?buehne=${gewaehlt}${token}` })
+    response.end()
+    return
+  }
+
   if (url.pathname === '/api/projection/state') {
     response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
-    response.end(JSON.stringify(getProjectionState()))
+    response.end(JSON.stringify(getProjectionState(buehneAus(url))))
     return
   }
 
   if (url.pathname === '/api/projection/stream') {
+    const buehne = buehneAus(url)
     response.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-store',
       Connection: 'keep-alive'
     })
-    response.write(`data: ${JSON.stringify(getProjectionState())}\n\n`)
-    clients.add(response)
+    response.write(`data: ${JSON.stringify(getProjectionState(buehne))}\n\n`)
+    clients.set(response, buehne)
     const keepAlive = setInterval(() => response.write(': ping\n\n'), 20000)
     request.on('close', () => {
       clearInterval(keepAlive)
@@ -201,7 +230,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
    * durchprobiert.
    */
   if (url.pathname === '/video') {
-    const laufend = getProjectionState().video
+    const laufend = getProjectionState(buehneAus(url)).video
     if (!laufend) {
       deny(response, 404, 'Gerade läuft kein Video.')
       return
@@ -216,7 +245,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   if (url.pathname === '/presentation.html') {
-    const laufend = getProjectionState().presentation
+    const laufend = getProjectionState(buehneAus(url)).presentation
     if (!laufend) {
       deny(response, 404, 'Gerade läuft keine Präsentation.')
       return
@@ -255,10 +284,11 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   serveFile(response, filePath)
 }
 
-export function broadcastProjection(state: ProjectionState): void {
+export function broadcastProjection(buehne: number, state: ProjectionState): void {
   if (clients.size === 0) return
   const payload = `data: ${JSON.stringify(state)}\n\n`
-  for (const client of clients) {
+  for (const [client, abonniert] of clients) {
+    if (abonniert !== buehne) continue
     try {
       client.write(payload)
     } catch {
@@ -288,7 +318,7 @@ export function localUrls(port: number, token: string): string[] {
 }
 
 export async function stopNetworkProjection(): Promise<void> {
-  for (const client of clients) {
+  for (const client of clients.keys()) {
     try {
       client.end()
     } catch {

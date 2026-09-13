@@ -11,7 +11,15 @@ import {
 } from 'react'
 import type { SystemSettings } from '@shared/config'
 import type { SetupState } from '@shared/ipc'
-import { EMPTY_PROJECTION_STATE, type AudienceWindowState, type ProjectionState } from '@shared/projection'
+import {
+  ALLE_BUEHNEN,
+  BUEHNE_VORGABE,
+  EMPTY_PROJECTION_STATE,
+  HAUPTBUEHNE,
+  type AudienceWindowState,
+  type Buehne,
+  type ProjectionState
+} from '@shared/projection'
 import type {
   ElectionEvent,
   Permission,
@@ -35,8 +43,22 @@ interface AppState {
   settings: SystemSettings | null
   event: ElectionEvent | null
   rounds: RoundSummary[]
+  /**
+   * Die Bühnen und die Bühne, die die Bedienung gerade bearbeitet.
+   *
+   * `projection` und `audience` zeigen immer auf diese eine Bühne — jede
+   * Ansicht, die Folien, Videos oder Ansagen schaltet, trifft damit
+   * automatisch die richtige, ohne die Bühne selbst zu kennen.
+   */
+  buehnen: Buehne[]
+  /** Die bearbeitete Bühne, oder `ALLE_BUEHNEN` für den Master. */
+  buehne: number
+  setBuehne(id: number): void
+  refreshBuehnen(): Promise<void>
   projection: ProjectionState
+  projektionen: Record<number, ProjectionState>
   audience: AudienceWindowState | null
+  beamerfenster: Record<number, AudienceWindowState>
   printProgress: PrintProgress | null
   notices: Notice[]
   theme: 'dark' | 'light'
@@ -61,8 +83,14 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
   const [settings, setSettings] = useState<SystemSettings | null>(null)
   const [event, setEvent] = useState<ElectionEvent | null>(null)
   const [rounds, setRounds] = useState<RoundSummary[]>([])
-  const [projection, setProjection] = useState<ProjectionState>(EMPTY_PROJECTION_STATE)
-  const [audience, setAudience] = useState<AudienceWindowState | null>(null)
+  const [buehnen, setBuehnen] = useState<Buehne[]>([{ ...BUEHNE_VORGABE }])
+  const [buehne, setBuehne] = useState<number>(HAUPTBUEHNE)
+  const [projektionen, setProjektionen] = useState<Record<number, ProjectionState>>({})
+  const [audiences, setAudiences] = useState<Record<number, AudienceWindowState>>({})
+  /* Der Master hat keinen eigenen Zustand — gezeigt wird die Hauptbühne. */
+  const bezug = buehne === ALLE_BUEHNEN ? HAUPTBUEHNE : buehne
+  const projection = projektionen[bezug] ?? EMPTY_PROJECTION_STATE
+  const audience = audiences[bezug] ?? null
   const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null)
   const [notices, setNotices] = useState<Notice[]>([])
   const [theme, setTheme] = useState<'dark' | 'light'>(
@@ -119,16 +147,25 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       setSetup(setupState)
       setSession(currentSession)
       if (currentSession) {
-        const [currentEvent, currentSettings, projectionState, audienceState] = await Promise.all([
+        const [currentEvent, currentSettings, stages] = await Promise.all([
           api('event.active'),
           api('system.settings'),
-          api('projection.state'),
-          api('projection.audienceState')
+          api('projection.buehnen')
         ])
         setEvent(currentEvent)
         setSettings(currentSettings)
-        setProjection(projectionState)
-        setAudience(audienceState)
+        setBuehnen(stages)
+        /* Jede Bühne einmal vollständig holen — danach kommen nur noch
+           Wechsel über das Ereignis herein. */
+        const zustaende = await Promise.all(
+          stages.map(async (stage) => ({
+            id: stage.id,
+            state: await api('projection.state', stage.id),
+            audience: await api('projection.audienceState', stage.id)
+          }))
+        )
+        setProjektionen(Object.fromEntries(zustaende.map((z) => [z.id, z.state])))
+        setAudiences(Object.fromEntries(zustaende.map((z) => [z.id, z.audience])))
       } else {
         setEvent(null)
         setRounds([])
@@ -137,6 +174,22 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       reportError(error)
     } finally {
       setReady(true)
+    }
+  }, [reportError])
+
+  const refreshBuehnen = useCallback(async () => {
+    try {
+      const stages = await api('projection.buehnen')
+      setBuehnen(stages)
+      /* Wurde die bearbeitete Bühne abgebaut, springt die Bedienung zurück
+         auf die Hauptbühne, statt ins Leere zu zeigen. */
+      setBuehne((current) =>
+        current === ALLE_BUEHNEN || stages.some((stage) => stage.id === current)
+          ? current
+          : HAUPTBUEHNE
+      )
+    } catch (error) {
+      reportError(error)
     }
   }, [reportError])
 
@@ -166,8 +219,18 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
 
   useEffect(() => {
     const offProgress = bridge.onPrintProgress(setPrintProgress)
-    const offProjection = bridge.onProjectionState(setProjection)
-    const offAudience = bridge.onAudienceState(setAudience)
+    const offProjection = bridge.onProjectionState(({ buehne: id, state }) => {
+      setProjektionen((current) => ({ ...current, [id]: state }))
+      /* Meldet sich eine Bühne, die diese Oberfläche nicht kennt, hat jemand
+         anders sie angelegt — etwa von einem zweiten Gerät im Netz. */
+      setBuehnen((current) => {
+        if (!current.some((stage) => stage.id === id)) void refreshBuehnen()
+        return current
+      })
+    })
+    const offAudience = bridge.onAudienceState((state) =>
+      setAudiences((current) => ({ ...current, [state.buehne]: state }))
+    )
     const offSession = bridge.onSessionChanged((next) => {
       setSession(next)
       if (!next) notify('warning', 'Die Sitzung wurde beendet. Bitte erneut anmelden.')
@@ -180,7 +243,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       offSession()
       offNotice()
     }
-  }, [notify])
+  }, [notify, refreshBuehnen])
 
   // Sitzung bei Aktivität verlaengern (§56).
   useEffect(() => {
@@ -211,8 +274,14 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       settings,
       event,
       rounds,
+      buehnen,
+      buehne,
+      setBuehne,
+      refreshBuehnen,
       projection,
+      projektionen,
       audience,
+      beamerfenster: audiences,
       printProgress,
       notices,
       theme,
@@ -234,8 +303,13 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       settings,
       event,
       rounds,
+      buehnen,
+      buehne,
+      refreshBuehnen,
       projection,
+      projektionen,
       audience,
+      audiences,
       printProgress,
       notices,
       theme,

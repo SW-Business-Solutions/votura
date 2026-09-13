@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { IPC, type Api, type ApiMethod } from '@shared/ipc'
-import { EMPTY_PROJECTION_STATE } from '@shared/projection'
+import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE } from '@shared/projection'
 import { db } from './db'
 import { appPaths } from './paths'
 import { logger } from './logger'
@@ -71,6 +71,8 @@ import {
   refreshTheme,
   addSpeakerSeconds,
   nextSpeaker,
+  listBuehnen,
+  saveBuehnen,
   setCandidatePage,
   setCandidatePageInterval,
   setSpeakerPaused,
@@ -140,8 +142,10 @@ import {
   getOperatorWindow,
   listDisplays,
   openAudienceWindow,
+  getPrompterBuehne,
   openPrompterWindow,
   prompterState,
+  setPrompterBuehne,
   sendToOperator
 } from './windows'
 
@@ -171,6 +175,30 @@ async function dateiZielWaehlen(title: string, vorschlag: string): Promise<strin
     ? await dialog.showSaveDialog(window, options)
     : await dialog.showSaveDialog(options)
   return result.canceled || !result.filePath ? undefined : result.filePath
+}
+
+/**
+ * Die Bühne, auf die sich eine Abfrage bezieht.
+ *
+ * Der Master hat selbst keinen Zustand — gefragt wird dann die Hauptbühne.
+ */
+function bezugsbuehne(stage?: number): number {
+  return !stage || stage === ALLE_BUEHNEN ? HAUPTBUEHNE : stage
+}
+
+/**
+ * Führt eine Bühnenaktion aus — beim Master auf allen Bühnen zugleich.
+ *
+ * Zurück kommt immer die Antwort der Hauptbühne: Die Bedienung erwartet einen
+ * Zustand, nicht eine Liste, und der Master ist nur eine Abkürzung für „das
+ * Gleiche überall", keine eigene Fläche.
+ */
+function aufBuehnen<T>(stage: number | undefined, tue: (buehne: number) => T): T {
+  if (stage !== ALLE_BUEHNEN) return tue(stage ?? HAUPTBUEHNE)
+  const ergebnisse = new Map<number, T>()
+  for (const buehne of listBuehnen()) ergebnisse.set(buehne.id, tue(buehne.id))
+  const haupt = ergebnisse.get(HAUPTBUEHNE)
+  return haupt ?? tue(HAUPTBUEHNE)
 }
 
 const api: Api = {
@@ -468,16 +496,32 @@ const api: Api = {
     downloadAndInstallUpdate((fortschritt) => sendToOperator(IPC.updateProgress, fortschritt)),
 
   /* ------------------------------------------------------------ Projektion */
-  'projection.state': async () => getProjectionState(),
-  'projection.setMode': async (input) => {
-    requirePermission('round.manage')
-    return setProjection(input)
+  'projection.state': async (stage) => getProjectionState(bezugsbuehne(stage)),
+  'projection.buehnen': async () => listBuehnen(),
+  'projection.saveBuehnen': async (buehnen) => {
+    requirePermission('system.manage')
+    const vorher = listBuehnen()
+    const gespeichert = saveBuehnen(buehnen)
+    /* Eine abgebaute Bühne darf kein Fenster zurücklassen. */
+    for (const alt of vorher) {
+      if (!gespeichert.some((stage) => stage.id === alt.id)) closeAudienceWindow(alt.id)
+    }
+    appendAudit({ action: 'projection.stages_saved', newValue: { anzahl: gespeichert.length } })
+    return gespeichert
   },
-  'projection.setCandidatePage': async (page) => setCandidatePage(page),
-  'projection.setCandidatePageInterval': async (seconds) => setCandidatePageInterval(seconds),
-  'projection.setSpeakerPaused': async (paused) => setSpeakerPaused(paused),
-  'projection.addSpeakerSeconds': async (seconds) => addSpeakerSeconds(seconds),
-  'projection.nextSpeaker': async () => nextSpeaker(),
+  'projection.setMode': async (input, stage) => {
+    requirePermission('round.manage')
+    return aufBuehnen(stage, (buehne) => setProjection(buehne, input))
+  },
+  'projection.setCandidatePage': async (page, stage) =>
+    aufBuehnen(stage, (buehne) => setCandidatePage(buehne, page)),
+  'projection.setCandidatePageInterval': async (seconds, stage) =>
+    aufBuehnen(stage, (buehne) => setCandidatePageInterval(buehne, seconds)),
+  'projection.setSpeakerPaused': async (paused, stage) =>
+    aufBuehnen(stage, (buehne) => setSpeakerPaused(buehne, paused)),
+  'projection.addSpeakerSeconds': async (seconds, stage) =>
+    aufBuehnen(stage, (buehne) => addSpeakerSeconds(buehne, seconds)),
+  'projection.nextSpeaker': async (stage) => aufBuehnen(stage, (buehne) => nextSpeaker(buehne)),
 
   /* --------------------------------------------------------- Präsentationen */
   'presentation.list': async () => listPresentations(),
@@ -512,8 +556,9 @@ const api: Api = {
    * fehlen, hilft niemandem. Geändert wird dabei nichts, was zählt: eine
    * Foliennummer im Projektionszustand.
    */
-  'presentation.setSlide': async (slide) => setPresentationSlide(slide),
-  'presentation.report': async ({ slide, slideCount }) => reportPresentationState(slide, slideCount),
+  'presentation.setSlide': async (slide, stage) => setPresentationSlide(stage ?? HAUPTBUEHNE, slide),
+  'presentation.report': async ({ slide, slideCount, stage }) =>
+    reportPresentationState(stage ?? HAUPTBUEHNE, slide, slideCount),
   /* -------------------------------------------------------------- Videos */
   'video.list': async () => listVideos(),
   'video.import': async () => {
@@ -540,28 +585,31 @@ const api: Api = {
    * Blättern: Wer den Film zeigt, ist nicht zwangsläufig die Person, die
    * Wahlgänge führt.
    */
-  'video.setPlaying': async (playing) => setVideoPlaying(playing),
-  'video.seek': async (seconds) => seekVideo(seconds),
-  'video.setMuted': async (muted) => setVideoMuted(muted),
-  'video.reportDuration': async (seconds) => reportVideoDuration(seconds),
-  'video.reportReady': async () => reportVideoReady(),
-  'video.reportEnded': async () => videoEnded(),
+  'video.setPlaying': async (playing, stage) =>
+    aufBuehnen(stage, (buehne) => setVideoPlaying(buehne, playing)),
+  'video.seek': async (seconds, stage) => aufBuehnen(stage, (buehne) => seekVideo(buehne, seconds)),
+  'video.setMuted': async (muted, stage) => aufBuehnen(stage, (buehne) => setVideoMuted(buehne, muted)),
+  'video.reportDuration': async (seconds, stage) => reportVideoDuration(stage ?? HAUPTBUEHNE, seconds),
+  'video.reportReady': async (stage) => reportVideoReady(stage ?? HAUPTBUEHNE),
+  'video.reportEnded': async (stage) => videoEnded(stage ?? HAUPTBUEHNE),
 
   'presentation.prompterState': async () => prompterState(),
+  'presentation.prompterBuehne': async (stage) =>
+    stage === undefined ? getPrompterBuehne() : setPrompterBuehne(stage),
   'presentation.openPrompter': async () => {
     requirePermission('round.manage')
     return openPrompterWindow()
   },
   'presentation.closePrompter': async () => closePrompterWindow(),
-  'projection.setLocked': async (locked) => setLocked(locked),
+  'projection.setLocked': async (locked, stage) => aufBuehnen(stage, (buehne) => setLocked(buehne, locked)),
   'projection.history': async () => projectionHistory(),
-  'projection.displays': async () => listDisplays(),
-  'projection.audienceState': async () => audienceState(),
-  'projection.openAudience': async (displayId) => {
+  'projection.displays': async (stage) => listDisplays(bezugsbuehne(stage)),
+  'projection.audienceState': async (stage) => audienceState(bezugsbuehne(stage)),
+  'projection.openAudience': async (displayId, stage) => {
     requirePermission('round.manage')
-    return openAudienceWindow(displayId)
+    return aufBuehnen(stage, (buehne) => openAudienceWindow(displayId, buehne))
   },
-  'projection.closeAudience': async () => closeAudienceWindow(),
+  'projection.closeAudience': async (stage) => aufBuehnen(stage, (buehne) => closeAudienceWindow(buehne)),
   'projection.network': async () => {
     const settings = getSettings()
     return { ...settings.networkProjection, ...networkStatus() }
@@ -576,7 +624,7 @@ const api: Api = {
     })
     return { ...saved, ...status }
   },
-  'projection.demo': async (enabled) => setDemoMode(enabled),
+  'projection.demo': async (enabled, stage) => aufBuehnen(stage, (buehne) => setDemoMode(buehne, enabled)),
   'projection.theme': async () => getProjectionTheme(),
   'projection.setTheme': async (theme) => {
     requirePermission('system.manage')
@@ -616,7 +664,10 @@ export function registerIpc(): void {
   })
 
   // Rein lesender Kanal für die Beameransicht (§31: keine Schreib-API).
-  ipcMain.handle(IPC.audienceGetState, async () => getProjectionState() ?? EMPTY_PROJECTION_STATE)
+  ipcMain.handle(
+    IPC.audienceGetState,
+    async (_event, stage?: number) => getProjectionState(stage ?? HAUPTBUEHNE) ?? EMPTY_PROJECTION_STATE
+  )
 
   /*
    * Der Prompter blättert über `send`, nicht über `invoke`.
@@ -626,8 +677,24 @@ export function registerIpc(): void {
    * Quelle für dieselbe Wahrheit — und zwei Quellen laufen irgendwann
    * auseinander.
    */
-  ipcMain.on(IPC.prompterCommand, (_event, input: { slide?: number }) => {
-    if (typeof input?.slide === 'number') setPresentationSlide(input.slide)
+  ipcMain.on(IPC.prompterCommand, (_event, input: { slide?: number; stage?: number }) => {
+    /* Ohne Folie ist es keine Anweisung zum Blättern, sondern die Ansage,
+       welche Bühne dieses Fenster bedient. */
+    if (typeof input?.stage === 'number' && typeof input?.slide !== 'number') {
+      setPrompterBuehne(input.stage)
+      return
+    }
+    if (typeof input?.slide === 'number') setPresentationSlide(input.stage ?? HAUPTBUEHNE, input.slide)
+  })
+
+  /* Alle Bühnen auf einmal — die Vortragssteuerung sucht sich die mit dem
+     laufenden Foliensatz. */
+  ipcMain.handle(IPC.stagesSnapshot, async () => {
+    const stages = listBuehnen()
+    return {
+      buehnen: stages,
+      zustaende: Object.fromEntries(stages.map((stage) => [stage.id, getProjectionState(stage.id)]))
+    }
   })
 
   /*
@@ -647,15 +714,16 @@ export function registerIpc(): void {
    */
   ipcMain.on(
     IPC.audienceVideoReport,
-    (_event, input: { durationSeconds?: number; ready?: boolean; ended?: boolean }) => {
-      if (typeof input?.durationSeconds === 'number') reportVideoDuration(input.durationSeconds)
-      if (input?.ready === true) reportVideoReady()
-      if (input?.ended === true) videoEnded()
+    (_event, input: { durationSeconds?: number; ready?: boolean; ended?: boolean; stage?: number }) => {
+      const buehne = input?.stage ?? HAUPTBUEHNE
+      if (typeof input?.durationSeconds === 'number') reportVideoDuration(buehne, input.durationSeconds)
+      if (input?.ready === true) reportVideoReady(buehne)
+      if (input?.ended === true) videoEnded(buehne)
     }
   )
 
-  ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number }) => {
+  ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number; stage?: number }) => {
     if (typeof input?.slide !== 'number' || typeof input?.slideCount !== 'number') return
-    reportPresentationState(input.slide, input.slideCount)
+    reportPresentationState(input.stage ?? HAUPTBUEHNE, input.slide, input.slideCount)
   })
 }

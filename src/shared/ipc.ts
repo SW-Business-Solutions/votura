@@ -7,6 +7,7 @@
 import type { NetworkProjectionConfig, SystemSettings } from './config'
 import type {
   AudienceWindowState,
+  Buehne,
   DisplayInfo,
   ProjectionHistoryEntry,
   ProjectionMode,
@@ -83,6 +84,13 @@ export const IPC = {
    * einer anderen Größe, zeigte sie ein anderes Layout als die Wand.
    */
   beamerSize: 'wz:beamer-size',
+  /**
+   * Alle Bühnen samt Zustand in einem Zug.
+   *
+   * Die Vortragssteuerung folgt der Bühne, auf der ein Foliensatz läuft; dafür
+   * braucht sie beim Öffnen ein vollständiges Bild, nicht nur eine Bühne.
+   */
+  stagesSnapshot: 'wz:stages-snapshot',
   /**
    * Die Beameransicht meldet, was sie über das laufende Video weiß.
    *
@@ -442,7 +450,15 @@ export interface Api {
   'update.install': () => Promise<UpdateInstallResult>
 
   /* --------------------------------------------------------- Projektion */
-  'projection.state': () => Promise<ProjectionState>
+  /*
+   * Fast alle Projektionskanäle nehmen die Bühne als **letztes, entbehrliches**
+   * Argument. Ohne Angabe gilt die Hauptbühne — so bleibt jeder Aufruf gültig,
+   * der von einer einzigen Ansicht ausging.
+   */
+  'projection.state': (stage?: number) => Promise<ProjectionState>
+  /** Die eingerichteten Bühnen. */
+  'projection.buehnen': () => Promise<Buehne[]>
+  'projection.saveBuehnen': (buehnen: Buehne[]) => Promise<Buehne[]>
   'projection.setMode': (input: {
     mode: ProjectionMode
     roundId?: UUID
@@ -465,25 +481,25 @@ export interface Api {
     }
     presentationId?: UUID
     videoId?: UUID
-  }) => Promise<ProjectionState>
-  'projection.setCandidatePage': (page: number) => Promise<ProjectionState>
+    }, stage?: number) => Promise<ProjectionState>
+  'projection.setCandidatePage': (page: number, stage?: number) => Promise<ProjectionState>
   /** Takt des automatischen Seitenwechsels in Sekunden; 0 hält ihn an. */
-  'projection.setCandidatePageInterval': (seconds: number) => Promise<ProjectionState>
+  'projection.setCandidatePageInterval': (seconds: number, stage?: number) => Promise<ProjectionState>
   /** Hält die Redezeit an oder lässt sie weiterlaufen (Zwischenfrage). */
-  'projection.setSpeakerPaused': (paused: boolean) => Promise<ProjectionState>
+  'projection.setSpeakerPaused': (paused: boolean, stage?: number) => Promise<ProjectionState>
   /** Verlängert oder kürzt die laufende Redezeit um Sekunden. */
-  'projection.addSpeakerSeconds': (seconds: number) => Promise<ProjectionState>
+  'projection.addSpeakerSeconds': (seconds: number, stage?: number) => Promise<ProjectionState>
   /** Ruft die nächste Person der Reihe auf; die Uhr beginnt von vorn. */
-  'projection.nextSpeaker': () => Promise<ProjectionState>
-  'projection.setLocked': (locked: boolean) => Promise<ProjectionState>
+  'projection.nextSpeaker': (stage?: number) => Promise<ProjectionState>
+  'projection.setLocked': (locked: boolean, stage?: number) => Promise<ProjectionState>
   'projection.history': () => Promise<ProjectionHistoryEntry[]>
-  'projection.displays': () => Promise<DisplayInfo[]>
-  'projection.audienceState': () => Promise<AudienceWindowState>
-  'projection.openAudience': (displayId?: number) => Promise<AudienceWindowState>
-  'projection.closeAudience': () => Promise<AudienceWindowState>
+  'projection.displays': (stage?: number) => Promise<DisplayInfo[]>
+  'projection.audienceState': (stage?: number) => Promise<AudienceWindowState>
+  'projection.openAudience': (displayId?: number, stage?: number) => Promise<AudienceWindowState>
+  'projection.closeAudience': (stage?: number) => Promise<AudienceWindowState>
   'projection.network': () => Promise<NetworkProjectionStatus>
   'projection.setNetwork': (config: NetworkProjectionConfig) => Promise<NetworkProjectionStatus>
-  'projection.demo': (enabled: boolean) => Promise<ProjectionState>
+  'projection.demo': (enabled: boolean, stage?: number) => Promise<ProjectionState>
   /* ------------------------------------------------------- Präsentationen */
   /**
    * Eingespeiste Präsentationen. Die Datei selbst geht **nie** über diese
@@ -496,9 +512,13 @@ export interface Api {
   'presentation.rename': (input: { id: UUID; title: string }) => Promise<PresentationInfo>
   'presentation.delete': (id: UUID) => Promise<void>
   /** Blättert in der laufenden Präsentation (1-basiert). */
-  'presentation.setSlide': (slide: number) => Promise<ProjectionState>
+  'presentation.setSlide': (slide: number, stage?: number) => Promise<ProjectionState>
   /** Was das Dokument über sich meldet — Folie und Gesamtzahl. */
-  'presentation.report': (input: { slide: number; slideCount: number }) => Promise<ProjectionState>
+  'presentation.report': (input: {
+    slide: number
+    slideCount: number
+    stage?: number
+  }) => Promise<ProjectionState>
   /* -------------------------------------------------------------- Videos */
   /**
    * Eingespeiste Videos. Die Datei selbst geht **nie** über diese
@@ -512,18 +532,25 @@ export interface Api {
   'video.rename': (input: { id: UUID; title: string }) => Promise<VideoInfo>
   'video.delete': (id: UUID) => Promise<void>
   /** Start und Pause; die Uhr im Zustand wird dabei neu gesetzt. */
-  'video.setPlaying': (playing: boolean) => Promise<ProjectionState>
+  'video.setPlaying': (playing: boolean, stage?: number) => Promise<ProjectionState>
   /** Springt an diese Stelle (Sekunden). */
-  'video.seek': (seconds: number) => Promise<ProjectionState>
-  'video.setMuted': (muted: boolean) => Promise<ProjectionState>
+  'video.seek': (seconds: number, stage?: number) => Promise<ProjectionState>
+  'video.setMuted': (muted: boolean, stage?: number) => Promise<ProjectionState>
   /** Was das Gerät aus der Datei gelesen hat. */
-  'video.reportDuration': (seconds: number) => Promise<ProjectionState>
+  'video.reportDuration': (seconds: number, stage?: number) => Promise<ProjectionState>
   /** Dieses Gerät hat genug gepuffert. */
-  'video.reportReady': () => Promise<ProjectionState>
+  'video.reportReady': (stage?: number) => Promise<ProjectionState>
   /** Das Video ist durchgelaufen. */
-  'video.reportEnded': () => Promise<ProjectionState>
+  'video.reportEnded': (stage?: number) => Promise<ProjectionState>
 
   'presentation.prompterState': () => Promise<PrompterWindowState>
+  /**
+   * Welche Bühne die Vortragssteuerung bedient.
+   *
+   * Ohne Argument fragt sie nach, mit Argument stellt sie um. Ein Foliensatz
+   * kann auf jeder Bühne laufen — der Prompter zeigt und steuert eine davon.
+   */
+  'presentation.prompterBuehne': (stage?: number) => Promise<number>
   'presentation.openPrompter': () => Promise<PrompterWindowState>
   'presentation.closePrompter': () => Promise<PrompterWindowState>
 
@@ -538,7 +565,8 @@ export type ApiResult<M extends ApiMethod> = Awaited<ReturnType<Api[M]>>
 /** Ereignisse, die das Main an den Operator-Renderer schickt. */
 export interface OperatorEvents {
   printProgress: PrintProgress
-  projectionState: ProjectionState
+  /** Zustandswechsel samt Bühne — die Oberfläche hält alle Bühnen zugleich. */
+  projectionState: { buehne: number; state: ProjectionState }
   audienceState: AudienceWindowState
   sessionChanged: Session | null
   notice: { level: 'info' | 'warning' | 'error'; message: string }

@@ -42,6 +42,7 @@ const results = await import('../src/main/services/results')
 const audit = await import('../src/main/services/audit')
 const settings = await import('../src/main/services/settings')
 const projection = await import('../src/main/services/projection')
+const { HAUPTBUEHNE } = await import('../src/shared/projection')
 
 const CHECKLIST = ['round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode']
 const NAMES = [
@@ -986,7 +987,7 @@ describe('Rednerreihe bei der Vorstellung', () => {
    * und „Nächster" rückt sie weiter.
    */
   it('rückt weiter und lässt die Uhr von vorn laufen', () => {
-    projection.setProjection({
+    projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: {
         name: 'Erste Person',
@@ -997,11 +998,11 @@ describe('Rednerreihe bei der Vorstellung', () => {
       }
     })
 
-    const start = projection.getProjectionState().speaker
+    const start = projection.getProjectionState(HAUPTBUEHNE).speaker
     expect(start?.name).toBe('Erste Person')
     expect(start?.upcoming).toEqual(['Zweite Person', 'Dritte Person'])
 
-    const nachher = projection.nextSpeaker().speaker
+    const nachher = projection.nextSpeaker(HAUPTBUEHNE).speaker
     expect(nachher?.name).toBe('Zweite Person')
     expect(nachher?.upcoming).toEqual(['Dritte Person'])
     /* Die zugestandene Zeit bleibt, die Uhr beginnt von vorn. */
@@ -1014,24 +1015,24 @@ describe('Rednerreihe bei der Vorstellung', () => {
   })
 
   it('tut nichts, wenn niemand mehr in der Reihe steht', () => {
-    projection.setProjection({
+    projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: { name: 'Letzte Person', seconds: 60 }
     })
-    const vorher = projection.getProjectionState().updatedAt
-    projection.nextSpeaker()
-    expect(projection.getProjectionState().speaker?.name).toBe('Letzte Person')
-    expect(projection.getProjectionState().updatedAt).toBe(vorher)
+    const vorher = projection.getProjectionState(HAUPTBUEHNE).updatedAt
+    projection.nextSpeaker(HAUPTBUEHNE)
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.name).toBe('Letzte Person')
+    expect(projection.getProjectionState(HAUPTBUEHNE).updatedAt).toBe(vorher)
   })
 
   /* Ein Moduswechsel beendet die Vorstellung — beim nächsten Aufruf soll die
      Uhr von vorn laufen, nicht beim Rest der vorigen Person. */
   it('vergisst die Reihe beim Wechsel der Ansicht', () => {
-    projection.setProjection({
+    projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: { name: 'Jemand', seconds: 60, upcoming: ['Danach'] }
     })
-    projection.setProjection({ mode: 'welcome' })
-    expect(projection.getProjectionState().speaker).toBeUndefined()
+    projection.setProjection(HAUPTBUEHNE, { mode: 'welcome' })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker).toBeUndefined()
   })
 })

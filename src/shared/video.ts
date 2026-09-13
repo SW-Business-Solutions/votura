@@ -161,8 +161,8 @@ export function videoUrl(id: UUID): string {
 }
 
 /** Dasselbe Video über den Projektionsserver, für Geräte im Netz. */
-export function videoPath(id: UUID): string {
-  return `/video?v=${encodeURIComponent(id)}`
+export function videoPath(id: UUID, buehne = 1): string {
+  return `/video?v=${encodeURIComponent(id)}&buehne=${buehne}`
 }
 
 /**

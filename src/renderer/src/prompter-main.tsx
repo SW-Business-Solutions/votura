@@ -31,14 +31,22 @@ import {
   type PresentationKind
 } from '@shared/presentation'
 import { PdfFrame } from './projection/PdfFrame'
-import { EMPTY_PROJECTION_STATE, type ProjectionState } from '@shared/projection'
+import {
+  BUEHNE_VORGABE,
+  EMPTY_PROJECTION_STATE,
+  HAUPTBUEHNE,
+  type Buehne,
+  type ProjectionState
+} from '@shared/projection'
 import './styles/prompter.css'
 
 interface PrompterBridge {
-  getInitialState(): Promise<ProjectionState>
-  onStateChange(callback: (state: ProjectionState) => void): () => void
-  goto(slide: number): void
-  report(slide: number, slideCount: number): void
+  getInitialState(stage?: number): Promise<ProjectionState>
+  getStages(): Promise<{ buehnen: Buehne[]; zustaende: Record<number, ProjectionState> }>
+  onStateChange(callback: (nachricht: { buehne: number; state: ProjectionState }) => void): () => void
+  goto(slide: number, stage?: number): void
+  setStage(stage: number): void
+  report(slide: number, slideCount: number, stage?: number): void
   onBeamerSize(callback: (size: { width: number; height: number }) => void): () => void
 }
 
@@ -219,8 +227,30 @@ function Stoppuhr({ seit }: { seit: number }): JSX.Element {
   )
 }
 
+/**
+ * Auf welcher Bühne läuft ein Foliensatz?
+ *
+ * Die Vortragssteuerung soll niemand einstellen müssen: Wird eine
+ * Präsentation aufgerufen, folgt sie ihr. Laufen zwei zugleich — selten, aber
+ * möglich —, gilt die niedrigste Bühne, und die Auswahl im Kopf des Fensters
+ * bleibt für den Rest.
+ */
+function buehneMitFoliensatz(
+  zustaende: Record<number, ProjectionState>,
+  buehnen: Buehne[]
+): number | undefined {
+  return buehnen
+    .map((stage) => stage.id)
+    .sort((a, b) => a - b)
+    .find((id) => zustaende[id]?.mode === 'presentation' && zustaende[id]?.presentation)
+}
+
 function PrompterApp(): JSX.Element {
-  const [state, setState] = useState<ProjectionState>(EMPTY_PROJECTION_STATE)
+  const [buehnen, setBuehnen] = useState<Buehne[]>([{ ...BUEHNE_VORGABE }])
+  const [zustaende, setZustaende] = useState<Record<number, ProjectionState>>({})
+  /* Von Hand gewählt schlägt automatisch — aber nur, solange dort etwas
+     läuft. */
+  const [gewaehlt, setGewaehlt] = useState<number | null>(null)
   const [seit, setSeit] = useState(() => Date.now())
   /* Bis der Hauptprozess die wirkliche Größe meldet, gilt das gängige
      Beamerformat — so steht nie ein leerer Kasten da. */
@@ -229,8 +259,13 @@ function PrompterApp(): JSX.Element {
   useEffect(() => {
     const bridge = window.prompter
     if (!bridge) return
-    void bridge.getInitialState().then(setState)
-    const abState = bridge.onStateChange(setState)
+    void bridge.getStages().then((schnappschuss) => {
+      setBuehnen(schnappschuss.buehnen)
+      setZustaende(schnappschuss.zustaende)
+    })
+    const abState = bridge.onStateChange(({ buehne: id, state: neu }) =>
+      setZustaende((current) => ({ ...current, [id]: neu }))
+    )
     const abGroesse = bridge.onBeamerSize(setBeamer)
     return () => {
       abState()
@@ -238,15 +273,30 @@ function PrompterApp(): JSX.Element {
     }
   }, [])
 
+  const automatisch = buehneMitFoliensatz(zustaende, buehnen)
+  const buehne =
+    gewaehlt !== null && zustaende[gewaehlt]?.mode === 'presentation'
+      ? gewaehlt
+      : (automatisch ?? gewaehlt ?? HAUPTBUEHNE)
+  const state = zustaende[buehne] ?? EMPTY_PROJECTION_STATE
+
+  /* Der Hauptprozess misst die Größe des Beamerfensters dieser Bühne. */
+  useEffect(() => {
+    window.prompter?.setStage(buehne)
+  }, [buehne])
+
   /*
    * Was der Foliensatz über sich meldet, an den Hauptprozess geben.
    *
    * Ohne diesen Weg bliebe die Gesamtzahl unbekannt, und die Steuerung zählte
    * über das Ende des Vortrags hinaus weiter.
    */
-  const melde = useCallback((folie: number, anzahl: number) => {
-    window.prompter?.report(folie, anzahl)
-  }, [])
+  const melde = useCallback(
+    (folie: number, anzahl: number) => {
+      window.prompter?.report(folie, anzahl, buehne)
+    },
+    [buehne]
+  )
 
   const praesentation = state.presentation
   const folie = praesentation?.slide ?? 1
@@ -262,9 +312,9 @@ function PrompterApp(): JSX.Element {
     (ziel: number) => {
       if (!laeuft) return
       const grenze = anzahl ?? Number.MAX_SAFE_INTEGER
-      window.prompter?.goto(Math.max(1, Math.min(ziel, grenze)))
+      window.prompter?.goto(Math.max(1, Math.min(ziel, grenze)), buehne)
     },
-    [laeuft, anzahl]
+    [laeuft, anzahl, buehne]
   )
 
   const weiter = useCallback(() => springe(folie + 1), [springe, folie])
@@ -356,6 +406,22 @@ function PrompterApp(): JSX.Element {
           <strong>{folie}</strong>
           <span> / {anzahl ?? '?'}</span>
           <em>{praesentation?.title}</em>
+          {/* Nur zeigen, wenn es überhaupt etwas zu wählen gibt — bei einer
+              Bühne wäre die Auswahl eine Frage ohne Antwortmöglichkeit. */}
+          {buehnen.length > 1 && (
+            <select
+              className="prompter-buehnenwahl"
+              value={buehne}
+              title="Welche Bühne diese Steuerung bedient"
+              onChange={(event) => setGewaehlt(Number(event.target.value))}
+            >
+              {buehnen.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="prompter-zeiten">

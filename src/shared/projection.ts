@@ -356,6 +356,8 @@ export interface DisplayInfo {
 }
 
 export interface AudienceWindowState {
+  /** Welche Bühne dieses Fenster zeigt. */
+  buehne: number
   open: boolean
   displayId?: number
   displays: DisplayInfo[]
@@ -490,4 +492,57 @@ export function redezeitText(sekunden: number): string {
   const minuten = Math.floor(gesamt / 60)
   const rest = gesamt % 60
   return `${negativ ? '-' : ''}${minuten}:${String(rest).padStart(2, '0')}`
+}
+
+/* ------------------------------------------------------------- Bühnen */
+
+/**
+ * Eine Bühne ist eine eigenständige Anzeigefläche mit eigenem Zustand.
+ *
+ * Bis 0.13 gab es genau eine: ein Beamerfenster, eine Netzansicht, ein
+ * Zustand. Auf einer Versammlung reicht das oft nicht — vorne die
+ * Rednerliste, seitlich wer gerade spricht; oder Begrüßung auf dem einen
+ * Schirm und ein Film auf dem anderen.
+ *
+ * Die **Form** des Zustands ändert sich dadurch nicht: Jede Bühne trägt
+ * denselben `ProjectionState` wie zuvor. Es sind nur mehrere davon.
+ */
+export interface Buehne {
+  id: number
+  /** Anzeigename in der Bedienung, z. B. „Hauptbeamer" oder „Seitenschirm". */
+  name: string
+  /**
+   * Folgt dem Wahlgang automatisch.
+   *
+   * Kandidatenerfassung, Freigabe, Eröffnung, Auszählung, Ergebnis — diese
+   * Wechsel stößt der Wahlgang selbst an. Sie dürfen **nicht** auf allen
+   * Bühnen landen: Sonst zeigten alle dasselbe, und der Zweck mehrerer
+   * Flächen wäre dahin. Ab Werk folgt nur die Hauptbühne.
+   */
+  followsRound: boolean
+}
+
+/** Die Bühne, die es immer gibt — die bisherige Beameransicht. */
+export const HAUPTBUEHNE = 1
+/**
+ * Der Master: alle Bühnen zugleich.
+ *
+ * Mehrere Flächen sind der Normalfall, das gemeinsame Schalten aber auch —
+ * „Pause" oder „Versammlung beendet" gehören auf jede Wand. Statt jede Bühne
+ * einzeln anzufassen, nimmt jede Bühnenfunktion diese Null entgegen und tut
+ * dasselbe überall. Sie ist bewusst keine Bühne: Sie hat keinen Zustand, kein
+ * Fenster und keine Adresse.
+ */
+export const ALLE_BUEHNEN = 0
+
+/**
+ * Mehr als das wird unübersichtlich, und jede Bühne kostet ein Fenster oder
+ * eine Netzverbindung. Wer mehr braucht, hat ein anderes Problem.
+ */
+export const BUEHNEN_MAX = 4
+
+export const BUEHNE_VORGABE: Buehne = {
+  id: HAUPTBUEHNE,
+  name: 'Beamer',
+  followsRound: true
 }

@@ -22,6 +22,10 @@ import {
   type ProjectionHistoryEntry,
   type ProjectionMode,
   type ProjectionResult,
+  BUEHNEN_MAX,
+  BUEHNE_VORGABE,
+  HAUPTBUEHNE,
+  type Buehne,
   type ProjectionRound,
   type ProjectionSpeaker,
   type ProjectionState
@@ -46,35 +50,111 @@ import { getResult } from './results'
 import { getProjectionTheme } from './settings'
 import { agendaOverview } from './agenda'
 
-type Listener = (state: ProjectionState) => void
+type Listener = (buehne: number, state: ProjectionState) => void
 
-let state: ProjectionState = { ...EMPTY_PROJECTION_STATE }
+/**
+ * Der Zustand je Bühne.
+ *
+ * Bis 0.13 war das eine einzelne Variable. Die Form des Zustands ist
+ * unverändert geblieben — es sind nur mehrere davon, einer je Anzeigefläche.
+ * `buehneVon()` liefert immer einen: Wird eine unbekannte Bühne gefragt,
+ * entsteht sie mit leerem Zustand, statt dass irgendwo `undefined` auftaucht.
+ */
+const zustaende = new Map<number, ProjectionState>()
+let buehnen: Buehne[] = [{ ...BUEHNE_VORGABE }]
 let currentRoundId: UUID | undefined
 let demoMode = false
 const listeners: Listener[] = []
 
-export function onProjectionChanged(listener: Listener): void {
-  listeners.push(listener)
+function buehneVon(id: number): ProjectionState {
+  const vorhanden = zustaende.get(id)
+  if (vorhanden) return vorhanden
+  const frisch: ProjectionState = { ...EMPTY_PROJECTION_STATE }
+  zustaende.set(id, frisch)
+  return frisch
 }
 
-function broadcast(): void {
-  const snapshot = getProjectionState()
-  for (const listener of listeners) listener(snapshot)
+/** Schreibt den Zustand in die Sammlung und gibt ihn zurück. */
+function setzeUndGib(id: number, neuerZustand: ProjectionState): ProjectionState {
+  zustaende.set(id, neuerZustand)
+  return neuerZustand
+}
+
+export function onProjectionChanged(listener: Listener): () => void {
+  listeners.push(listener)
+  return () => {
+    const stelle = listeners.indexOf(listener)
+    if (stelle >= 0) listeners.splice(stelle, 1)
+  }
+}
+
+export function listBuehnen(): Buehne[] {
+  return buehnen.map((buehne) => ({ ...buehne }))
+}
+
+/**
+ * Legt eine Bühne an oder ändert ihren Namen und ihr Folgeverhalten.
+ *
+ * Die Hauptbühne lässt sich nicht entfernen: Sie ist die Ansicht, die es
+ * immer gab, und an ihr hängt der automatische Ablauf.
+ */
+export function saveBuehnen(eingabe: Buehne[]): Buehne[] {
+  const sauber = eingabe
+    .filter((buehne) => Number.isFinite(buehne.id) && buehne.id >= 1 && buehne.id <= BUEHNEN_MAX)
+    .map((buehne) => ({
+      id: Math.round(buehne.id),
+      name: buehne.name.trim() || `Bühne ${buehne.id}`,
+      followsRound: Boolean(buehne.followsRound)
+    }))
+  if (!sauber.some((buehne) => buehne.id === HAUPTBUEHNE)) sauber.unshift({ ...BUEHNE_VORGABE })
+  buehnen = sauber.sort((a, b) => a.id - b.id)
+
+  /* Zustände entfernter Bühnen mitnehmen — sonst wüchse die Ablage endlos. */
+  for (const id of [...zustaende.keys()]) {
+    if (!buehnen.some((buehne) => buehne.id === id)) zustaende.delete(id)
+  }
+  persist()
+  for (const buehne of buehnen) broadcast(buehne.id)
+  return listBuehnen()
+}
+
+function broadcast(buehne: number): void {
+  const snapshot = getProjectionState(buehne)
+  for (const listener of listeners) listener(buehne, snapshot)
 }
 
 function persist(): void {
+  const haupt = buehneVon(HAUPTBUEHNE)
   db()
     .prepare(
       `INSERT INTO projection_state (id, state_json, updated_at) VALUES (1, ?, ?)
        ON CONFLICT(id) DO UPDATE SET state_json = excluded.state_json, updated_at = excluded.updated_at`
     )
-    .run(JSON.stringify({ state, currentRoundId }), state.updatedAt)
+    .run(
+      JSON.stringify({
+        buehnen,
+        zustaende: Object.fromEntries(zustaende),
+        currentRoundId
+      }),
+      haupt.updatedAt
+    )
 }
 
-function recordHistory(mode: ProjectionMode): void {
+/**
+ * Hält fest, was gezeigt wurde.
+ *
+ * Der Verlauf ist bühnenübergreifend: Für das Protokoll zählt, was im Saal zu
+ * sehen war, nicht auf welcher Fläche. Der Bühnenname steht deshalb im Etikett.
+ */
+function recordHistory(buehne: number, mode: ProjectionMode, zustand: ProjectionState): void {
+  const name = buehnen.find((eintrag) => eintrag.id === buehne)?.name
+  const etikett =
+    buehne === HAUPTBUEHNE
+      ? PROJECTION_MODE_LABELS[mode]
+      : `${PROJECTION_MODE_LABELS[mode]} (${name ?? `Bühne ${buehne}`})`
   db()
     .prepare(`INSERT INTO projection_history (timestamp, mode, label, round_label) VALUES (?, ?, ?, ?)`)
-    .run(state.updatedAt, mode, PROJECTION_MODE_LABELS[mode], state.round?.roundLabel ?? null)
+    .run(zustand.updatedAt, mode, etikett, zustand.round?.roundLabel ?? null)
 }
 
 export function history(): ProjectionHistoryEntry[] {
@@ -96,16 +176,18 @@ export function history(): ProjectionHistoryEntry[] {
  */
 const SERVER_INSTANCE_ID = randomUUID()
 
-export function getProjectionState(): ProjectionState {
+export function getProjectionState(buehne: number = HAUPTBUEHNE): ProjectionState {
+  let state = buehneVon(buehne)
   // Das Erscheinungsbild kommt immer frisch aus der Konfiguration, damit
   // Farb- und Logoänderungen sofort auf allen Anzeigen ankommen.
   return { ...state, serverInstanceId: SERVER_INSTANCE_ID, theme: getProjectionTheme() }
 }
 
 /** Nach Änderung von Farben oder Logo alle Anzeigen aktualisieren. */
-export function refreshTheme(): ProjectionState {
-  state = { ...state, theme: getProjectionTheme(), updatedAt: new Date().toISOString() }
-  broadcast()
+export function refreshTheme(buehne: number = HAUPTBUEHNE): ProjectionState {
+  let state = buehneVon(buehne)
+  state = setzeUndGib(buehne, { ...state, theme: getProjectionTheme(), updatedAt: new Date().toISOString() })
+  broadcast(buehne)
   return state
 }
 
@@ -115,27 +197,44 @@ export function refreshTheme(): ProjectionState {
  */
 export function restoreProjection(): void {
   const row = db().prepare(`SELECT state_json FROM projection_state WHERE id = 1`).get<{ state_json: string }>()
-  const stored = fromJson<{ state: ProjectionState; currentRoundId?: UUID } | null>(row?.state_json, null)
+  /*
+   * Zwei Ablageformen: Bis 0.13 stand dort ein einzelner Zustand unter
+   * `state`, seither die Bühnen. Beide werden gelesen — sonst stünde nach
+   * einer Aktualisierung mitten in der Versammlung plötzlich keine Bühne mehr
+   * da.
+   */
+  const stored = fromJson<{
+    state?: ProjectionState
+    buehnen?: Buehne[]
+    zustaende?: Record<string, ProjectionState>
+    currentRoundId?: UUID
+  } | null>(row?.state_json, null)
   const event = activeEvent()
 
-  state = {
-    ...EMPTY_PROJECTION_STATE,
-    event: event
-      ? { title: event.title, organization: event.organization, date: event.date }
-      : EMPTY_PROJECTION_STATE.event,
-    updatedAt: new Date().toISOString()
-  }
+  buehnen = stored?.buehnen?.length ? stored.buehnen : [{ ...BUEHNE_VORGABE }]
   currentRoundId = stored?.currentRoundId
-  if (stored && (stored.state.mode === 'result' || stored.state.mode === 'runoff_announced')) {
-    // Ergebnisse werden nach Neustart nicht ungefragt erneut öffentlich gezeigt.
-    state.mode = 'welcome'
+
+  zustaende.clear()
+  for (const buehne of buehnen) {
+    /*
+     * Der Modus wird bewusst **nicht** wiederhergestellt: Nach einem Neustart
+     * beginnt jede Fläche bei der Begrüßung. Ergebnisse dürfen nicht
+     * ungefragt erneut öffentlich werden.
+     */
+    zustaende.set(buehne.id, {
+      ...EMPTY_PROJECTION_STATE,
+      event: event
+        ? { title: event.title, organization: event.organization, date: event.date }
+        : EMPTY_PROJECTION_STATE.event,
+      updatedAt: new Date().toISOString()
+    })
   }
-  broadcast()
+  for (const buehne of buehnen) broadcast(buehne.id)
 }
 
-function eventInfo(): ProjectionState['event'] {
+function eventInfo(buehne: number): ProjectionState['event'] {
   const event = activeEvent()
-  if (!event) return state.event
+  if (!event) return buehneVon(buehne).event
   return { title: event.title, organization: event.organization, date: event.date }
 }
 
@@ -335,7 +434,12 @@ export interface SetModeInput {
   }
 }
 
-export function setProjection(input: SetModeInput, options: { audit?: boolean } = {}): ProjectionState {
+export function setProjection(
+  buehne: number,
+  input: SetModeInput,
+  options: { audit?: boolean } = {}
+): ProjectionState {
+  let state = buehneVon(buehne)
   if (demoMode && input.mode !== 'welcome') demoMode = false
 
   const roundId = input.roundId ?? currentRoundId
@@ -391,11 +495,11 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
   const agendaItems = agenda?.view === 'full' ? (agenda.items?.length ?? 0) : 0
   const agendaPages = agendaItems > 0 ? Math.max(1, Math.ceil(agendaItems / (agendaItems > 10 ? 32 : 16))) : 1
 
-  state = {
+  state = setzeUndGib(buehne, {
     mode: input.mode,
     serverInstanceId: SERVER_INSTANCE_ID,
     theme: getProjectionTheme(),
-    event: eventInfo(),
+    event: eventInfo(buehne),
     round,
     result,
     message: input.message ?? (input.mode === 'custom_message' ? state.message : undefined),
@@ -441,11 +545,11 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
      */
     speaker: input.mode === 'speaker' ? rednerFuer(input.speaker) : undefined,
     updatedAt: new Date().toISOString()
-  }
+  })
 
   persist()
-  recordHistory(input.mode)
-  broadcast()
+  recordHistory(buehne, input.mode, state)
+  broadcast(buehne)
 
   if (options.audit !== false) {
     const session = getSession()
@@ -488,9 +592,20 @@ export function projectDomainEvent(
   }
   const mode = mapping[event]
   if (!mode) return
-  // Beamer-Sperre: während laufender Wahl nicht ungefragt umschalten (§79).
-  if (state.locked && state.round && state.round.id !== roundId) return
-  setProjection({ mode, roundId }, { audit: false })
+  /*
+   * Nur die Bühnen, die dem Wahlgang folgen sollen.
+   *
+   * Folgten alle, zeigten sie zwangsläufig dasselbe — und mehrere Flächen
+   * hätten keinen Zweck. Wer nebenher eine Rednerliste oder einen Film zeigt,
+   * will davon nicht überschrieben werden.
+   */
+  for (const buehne of buehnen) {
+    if (!buehne.followsRound) continue
+    const zustand = buehneVon(buehne.id)
+    // Beamer-Sperre: während laufender Wahl nicht ungefragt umschalten (§79).
+    if (zustand.locked && zustand.round && zustand.round.id !== roundId) continue
+    setProjection(buehne.id, { mode, roundId }, { audit: false })
+  }
 }
 
 /**
@@ -571,12 +686,13 @@ function rednerFuer(eingabe?: SetModeInput['speaker']): ProjectionSpeaker | unde
  *
  * **Ohne Prüfeintrag** wie die übrige Anzeigesteuerung.
  */
-export function nextSpeaker(): ProjectionState {
+export function nextSpeaker(buehne: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'speaker' || !state.speaker) return state
   const [naechster, ...rest] = state.speaker.upcoming ?? []
   if (!naechster) return state
   const sekunden = state.speaker.totalSeconds
-  state = {
+  state = setzeUndGib(buehne, {
     ...state,
     speaker: {
       name: naechster,
@@ -588,8 +704,8 @@ export function nextSpeaker(): ProjectionState {
       ...(rest.length ? { upcoming: rest } : {})
     },
     updatedAt: new Date().toISOString()
-  }
-  broadcast()
+  })
+  broadcast(buehne)
   return state
 }
 
@@ -600,7 +716,8 @@ export function nextSpeaker(): ProjectionState {
  * währenddessen weiterlaufen lassen. **Ohne Prüfeintrag**: eine Anzeige, keine
  * Wahlhandlung.
  */
-export function setSpeakerPaused(paused: boolean): ProjectionState {
+export function setSpeakerPaused(buehne: number, paused: boolean): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'speaker' || !state.speaker) return state
   const redner = state.speaker
   if (paused === (redner.pausedSecondsLeft !== undefined)) return state
@@ -608,21 +725,21 @@ export function setSpeakerPaused(paused: boolean): ProjectionState {
   if (paused) {
     const rest = redezeitRest(redner)
     if (rest === undefined) return state
-    state = {
+    state = setzeUndGib(buehne, {
       ...state,
       speaker: { ...redner, pausedSecondsLeft: rest },
       updatedAt: new Date().toISOString()
-    }
+    })
   } else {
     const rest = redner.pausedSecondsLeft ?? 0
     const { pausedSecondsLeft: _weg, ...ohnePause } = redner
-    state = {
+    state = setzeUndGib(buehne, {
       ...state,
       speaker: { ...ohnePause, until: new Date(Date.now() + rest * 1000).toISOString() },
       updatedAt: new Date().toISOString()
-    }
+    })
   }
-  broadcast()
+  broadcast(buehne)
   return state
 }
 
@@ -632,31 +749,32 @@ export function setSpeakerPaused(paused: boolean): ProjectionState {
  * „Noch eine Minute" ist auf einer Versammlung ein üblicher Zuruf; ihn über
  * einen Neustart der Vorstellung abzubilden hieße, die Uhr zurückzusetzen.
  */
-export function addSpeakerSeconds(seconds: number): ProjectionState {
+export function addSpeakerSeconds(buehne: number, seconds: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'speaker' || !state.speaker) return state
   if (!Number.isFinite(seconds) || seconds === 0) return state
   const redner = state.speaker
   const zusatz = Math.round(seconds)
 
   if (redner.pausedSecondsLeft !== undefined) {
-    state = {
+    state = setzeUndGib(buehne, {
       ...state,
       speaker: { ...redner, pausedSecondsLeft: redner.pausedSecondsLeft + zusatz },
       updatedAt: new Date().toISOString()
-    }
+    })
   } else if (redner.until) {
-    state = {
+    state = setzeUndGib(buehne, {
       ...state,
       speaker: {
         ...redner,
         until: new Date(new Date(redner.until).getTime() + zusatz * 1000).toISOString()
       },
       updatedAt: new Date().toISOString()
-    }
+    })
   } else {
     /* Bisher ohne Uhr: Der Zuschlag startet sie. */
     if (zusatz <= 0) return state
-    state = {
+    state = setzeUndGib(buehne, {
       ...state,
       speaker: {
         ...redner,
@@ -664,9 +782,9 @@ export function addSpeakerSeconds(seconds: number): ProjectionState {
         totalSeconds: zusatz
       },
       updatedAt: new Date().toISOString()
-    }
+    })
   }
-  broadcast()
+  broadcast(buehne)
   return state
 }
 
@@ -697,14 +815,15 @@ function videoFuer(id?: UUID): ProjectionVideo | undefined {
  * Daraus rechnet jedes Gerät seinen Sollstand aus, auch eines, das erst danach
  * dazukommt.
  */
-function setzeVideo(aenderung: Partial<ProjectionVideo>): ProjectionState {
+function setzeVideo(buehne: number, aenderung: Partial<ProjectionVideo>): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
-  state = {
+  state = setzeUndGib(buehne, {
     ...state,
     video: { ...state.video, ...aenderung, anchoredAt: aenderung.anchoredAt ?? Date.now() },
     updatedAt: new Date().toISOString()
-  }
-  broadcast()
+  })
+  broadcast(buehne)
   return state
 }
 
@@ -722,28 +841,31 @@ function sollPosition(video: ProjectionVideo): number {
  * bereits als Moduswechsel im Protokoll. Wie oft dabei pausiert wurde, gehört
  * nicht zu den Wahlhandlungen.
  */
-export function setVideoPlaying(playing: boolean): ProjectionState {
+export function setVideoPlaying(buehne: number, playing: boolean): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
   if (state.video.playing === playing) return state
   /* Beim Anhalten wird der erreichte Stand festgeschrieben — sonst liefe die
      Uhr im Zustand weiter, während das Bild steht. */
-  return setzeVideo({ playing, position: sollPosition(state.video) })
+  return setzeVideo(buehne, { playing, position: sollPosition(state.video) })
 }
 
-export function seekVideo(seconds: number): ProjectionState {
+export function seekVideo(buehne: number, seconds: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
   if (!Number.isFinite(seconds)) return state
   const grenze = state.video.durationSeconds
   const ziel = Math.max(0, grenze !== undefined ? Math.min(seconds, grenze) : seconds)
   /* Ein Sprung setzt die Bereitmeldungen zurück: Was die Geräte gepuffert
      hatten, liegt jetzt an der falschen Stelle. */
-  return setzeVideo({ position: ziel, readyCount: 0 })
+  return setzeVideo(buehne, { position: ziel, readyCount: 0 })
 }
 
-export function setVideoMuted(muted: boolean): ProjectionState {
+export function setVideoMuted(buehne: number, muted: boolean): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
   if (state.video.muted === muted) return state
-  return setzeVideo({ muted, position: sollPosition(state.video) })
+  return setzeVideo(buehne, { muted, position: sollPosition(state.video) })
 }
 
 /**
@@ -752,9 +874,10 @@ export function setVideoMuted(muted: boolean): ProjectionState {
  * Gezählt wird nur, wie viele es sind — welches Gerät, ist für die Anzeige
  * gleichgültig und wäre eine Angabe über Anwesende, die niemand braucht.
  */
-export function reportVideoReady(): ProjectionState {
+export function reportVideoReady(buehne: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
-  return setzeVideo({
+  return setzeVideo(buehne, {
     readyCount: state.video.readyCount + 1,
     position: sollPosition(state.video)
   })
@@ -766,13 +889,14 @@ export function reportVideoReady(): ProjectionState {
  * Sie steckt im Containerformat; ihn hier zu zerlegen hieße, einen
  * Videodecoder nachzubauen.
  */
-export function reportVideoDuration(seconds: number): ProjectionState {
+export function reportVideoDuration(buehne: number, seconds: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
   if (!Number.isFinite(seconds) || seconds <= 0) return state
   const gerundet = Math.round(seconds * 100) / 100
   rememberDuration(state.video.id, gerundet)
   if (state.video.durationSeconds === gerundet) return state
-  return setzeVideo({ durationSeconds: gerundet, position: sollPosition(state.video) })
+  return setzeVideo(buehne, { durationSeconds: gerundet, position: sollPosition(state.video) })
 }
 
 /**
@@ -782,9 +906,10 @@ export function reportVideoDuration(seconds: number): ProjectionState {
  * beginnt, während die Versammlungsleitung schon spricht, zieht die
  * Aufmerksamkeit zurück auf die Wand.
  */
-export function videoEnded(): ProjectionState {
+export function videoEnded(buehne: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video || !state.video.playing) return state
-  return setzeVideo({
+  return setzeVideo(buehne, {
     playing: false,
     position: state.video.durationSeconds ?? sollPosition(state.video)
   })
@@ -798,17 +923,18 @@ export function videoEnded(): ProjectionState {
  * Tastendrücke. Dass eine Präsentation gezeigt wurde, steht bereits als
  * Moduswechsel darin.
  */
-export function setPresentationSlide(slide: number): ProjectionState {
+export function setPresentationSlide(buehne: number, slide: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'presentation' || !state.presentation) return state
   const gesamt = state.presentation.slideCount
   const sicher = Math.max(1, gesamt ? Math.min(Math.round(slide), gesamt) : Math.round(slide))
   if (sicher === state.presentation.slide) return state
-  state = {
+  state = setzeUndGib(buehne, {
     ...state,
     presentation: { ...state.presentation, slide: sicher },
     updatedAt: new Date().toISOString()
-  }
-  broadcast()
+  })
+  broadcast(buehne)
   return state
 }
 
@@ -818,19 +944,24 @@ export function setPresentationSlide(slide: number): ProjectionState {
  * Die Folienzahl kennt nur das Dokument selbst — sie steht nirgends im
  * Dateikopf, sondern ergibt sich, wenn dessen Skript gelaufen ist.
  */
-export function reportPresentationState(slide: number, slideCount: number): ProjectionState {
+export function reportPresentationState(
+  buehne: number,
+  slide: number,
+  slideCount: number
+): ProjectionState {
+  let state = buehneVon(buehne)
   if (state.mode !== 'presentation' || !state.presentation) return state
   if (!Number.isFinite(slideCount) || slideCount < 1) return state
   const gerundet = Math.round(slideCount)
   rememberSlideCount(state.presentation.id, gerundet)
   const sicher = Math.max(1, Math.min(Math.round(slide), gerundet))
   if (state.presentation.slideCount === gerundet && state.presentation.slide === sicher) return state
-  state = {
+  state = setzeUndGib(buehne, {
     ...state,
     presentation: { ...state.presentation, slide: sicher, slideCount: gerundet },
     updatedAt: new Date().toISOString()
-  }
-  broadcast()
+  })
+  broadcast(buehne)
   return state
 }
 
@@ -839,33 +970,36 @@ export function reportPresentationState(slide: number, slideCount: number): Proj
  *
  * **Ohne Prüfeintrag**: eine Anzeigeeinstellung, keine Wahlhandlung.
  */
-export function setCandidatePageInterval(seconds: number): ProjectionState {
+export function setCandidatePageInterval(buehne: number, seconds: number): ProjectionState {
+  let state = buehneVon(buehne)
   if (!Number.isFinite(seconds)) return state
   const sicher = Math.max(0, Math.min(Math.round(seconds), 300))
   if (sicher === state.candidatePageIntervalSeconds) return state
-  state = { ...state, candidatePageIntervalSeconds: sicher, updatedAt: new Date().toISOString() }
+  state = setzeUndGib(buehne, { ...state, candidatePageIntervalSeconds: sicher, updatedAt: new Date().toISOString() })
   persist()
-  broadcast()
+  broadcast(buehne)
   return state
 }
 
-export function setCandidatePage(page: number): ProjectionState {
+export function setCandidatePage(buehne: number, page: number): ProjectionState {
+  let state = buehneVon(buehne)
   const maxPage = Math.max(0, state.candidatePageCount - 1)
-  state = {
+  state = setzeUndGib(buehne, {
     ...state,
     candidatePage: Math.min(Math.max(0, page), maxPage),
     updatedAt: new Date().toISOString()
-  }
+  })
   persist()
-  broadcast()
+  broadcast(buehne)
   return state
 }
 
-export function setLocked(locked: boolean): ProjectionState {
+export function setLocked(buehne: number, locked: boolean): ProjectionState {
+  let state = buehneVon(buehne)
   const session = getSession()
-  state = { ...state, locked, updatedAt: new Date().toISOString() }
+  state = setzeUndGib(buehne, { ...state, locked, updatedAt: new Date().toISOString() })
   persist()
-  broadcast()
+  broadcast(buehne)
   appendAudit({
     action: locked ? 'projection.locked' : 'projection.unlocked',
     userId: session?.user.id,
@@ -875,14 +1009,16 @@ export function setLocked(locked: boolean): ProjectionState {
 }
 
 /** Kandidatenliste der aktuellen Beamerseite (für Renderer und Netzwerkansicht). */
-export function currentPageCandidates(): ProjectionCandidate[] {
+export function currentPageCandidates(buehne: number = HAUPTBUEHNE): ProjectionCandidate[] {
+  let state = buehneVon(buehne)
   if (!state.round) return []
   return paginateCandidates(state.round.candidates, state.candidatePage)
 }
 
 /* --------------------------------------------------------------- Demo-Modus */
 
-export function setDemoMode(enabled: boolean): ProjectionState {
+export function setDemoMode(buehne: number, enabled: boolean): ProjectionState {
+  let state = buehneVon(buehne)
   demoMode = enabled
   if (!enabled) {
     restoreProjection()
@@ -909,7 +1045,7 @@ export function setDemoMode(enabled: boolean): ProjectionState {
     ballotNumber: index + 1
   }))
 
-  state = {
+  state = setzeUndGib(buehne, {
     mode: 'candidate_presentation',
     serverInstanceId: SERVER_INSTANCE_ID,
     theme: getProjectionTheme(),
@@ -938,8 +1074,8 @@ export function setDemoMode(enabled: boolean): ProjectionState {
     candidatePageIntervalSeconds: 8,
     locked: false,
     updatedAt: new Date().toISOString()
-  }
-  broadcast()
+  })
+  broadcast(buehne)
   return state
 }
 
@@ -959,12 +1095,15 @@ export function refreshEventInfo(): void {
     }
   }
   if (!event) return
-  state = {
-    ...state,
-    event: { title: event.title, organization: event.organization, date: event.date },
-    updatedAt: new Date().toISOString()
+  for (const buehne of buehnen) {
+    const zustand = buehneVon(buehne.id)
+    setzeUndGib(buehne.id, {
+      ...zustand,
+      event: { title: event.title, organization: event.organization, date: event.date },
+      updatedAt: new Date().toISOString()
+    })
+    broadcast(buehne.id)
   }
-  broadcast()
 }
 
 export function projectionEventTitle(eventId: UUID): string {
