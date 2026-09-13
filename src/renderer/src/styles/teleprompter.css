@@ -315,3 +315,73 @@
     grid-template-columns: 1fr;
   }
 }
+
+/*
+ * Das Einstellungsfeld über der Leiste.
+ *
+ * Es klappt auf, statt dauerhaft Platz zu nehmen: Was hier steht, stellt man
+ * einmal ein, bevor es losgeht. Während der Rede zählt der Text.
+ */
+.tp-einstellungen {
+  display: flex;
+  align-items: center;
+  gap: 14px 18px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #0d0f12;
+  border-top: 1px solid #23272e;
+  font-size: 13px;
+}
+
+.tp-einstellungen label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #9aa4b2;
+}
+
+.tp-einstellungen input[type='range'] {
+  width: 110px;
+}
+
+.tp-einstellungen button {
+  min-height: 30px;
+  padding: 3px 10px;
+  color: #e8e8e8;
+  background: #191d23;
+  border: 1px solid #2b313a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tp-einstellungen button:hover {
+  background: #222831;
+}
+
+.tp-einstellungen button.aktiv {
+  border-color: #4d9bff;
+  color: #9ecbff;
+}
+
+.tp-gruppe {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tp-marke {
+  color: #6b7484;
+}
+
+/* Was die Erkennung gerade hört — über die ganze Breite, damit es auffällt. */
+.tp-hoerstand {
+  flex-basis: 100%;
+  color: #7c8797;
+  font-style: italic;
+}
+
+/* Der Punkt sagt: Es wird zugehört. */
+.tp-hoert {
+  color: #3fb950;
+  font-variant-numeric: tabular-nums;
+}

@@ -38,6 +38,7 @@ import {
 import { HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { presentationKind, presentationPath, presentationUrl } from '@shared/presentation'
 import { FolienVorschau } from './prompter/FolienVorschau'
+import { starteMithoeren, type Mithoeren, type MithoerenStand } from './prompter/mithoeren'
 import './styles/teleprompter.css'
 
 interface TeleprompterBridge {
@@ -174,6 +175,13 @@ function useProjektion(aktiv: boolean): Record<number, ProjectionState> {
   return zustaende
 }
 
+/** Die Laufarten in der Reihenfolge, in der sie am Pult zur Wahl stehen. */
+const LAUFARTEN = [
+  ['auto', 'Gleichmäßig'],
+  ['stimme', 'Nach Stimme'],
+  ['hand', 'Von Hand']
+] as const
+
 /** Restzeit als m:ss — dieselbe Darstellung wie auf dem Beamer. */
 function restzeit(until: string | undefined, jetzt: number): string | undefined {
   if (!until) return undefined
@@ -204,7 +212,18 @@ function TeleprompterApp(): React.JSX.Element {
   const { view, getrennt, imFenster } = useView()
   const [jetzt, setJetzt] = useState(() => Date.now())
   const [meldung, setMeldung] = useState<string | undefined>()
-  const flaeche = useRef<HTMLDivElement>(null)
+  const [einstellungenOffen, setEinstellungenOffen] = useState(false)
+  const [hoeren, setHoeren] = useState<MithoerenStand>({ art: 'aus' })
+  /*
+   * Die Textfläche als Zustand, nicht als `ref`.
+   *
+   * Ein `ref` meldet nicht, wenn das Element kommt oder geht — und es geht:
+   * Beim Umschalten auf die Folien verschwindet die Fläche und wird beim
+   * Zurückschalten neu aufgebaut. Die Vermessung lief dann nicht erneut, der
+   * alte Wert blieb stehen, und der Text bewegte sich bis zum Neuladen nicht
+   * mehr. Ein Rückruf-Ref löst ein Rendern aus und damit die Messung.
+   */
+  const [flaeche, setFlaeche] = useState<HTMLDivElement | null>(null)
   /*
    * Oberkante und Höhe jedes Blocks.
    *
@@ -258,8 +277,8 @@ function TeleprompterApp(): React.JSX.Element {
   const schriftGroesse = `${view.schrift}vh`
 
   useEffect(() => {
-    const element = flaeche.current
-    if (!element) return
+    if (!flaeche) return
+    const element = flaeche
     const messen = (): void => {
       const absaetze = [...element.querySelectorAll<HTMLElement>('p')]
       setMasse(
@@ -275,10 +294,21 @@ function TeleprompterApp(): React.JSX.Element {
     const beobachter = new ResizeObserver(messen)
     beobachter.observe(element)
     return () => beobachter.disconnect()
-  }, [view.schrift, view.breite, bloecke])
+  }, [flaeche, view.schrift, view.breite, bloecke])
 
   const stelle = prompterPosition(view, jetzt)
   const amEnde = prompterAmEnde(view, jetzt)
+  const standRef = useRef(stelle)
+  standRef.current = stelle
+
+  /*
+   * Wer bedienen darf.
+   *
+   * Das Fenster am Hauptrechner immer — es steht unter derselben Aufsicht wie
+   * die Bedienung selbst. Ein Gerät im Saal nur, wenn es ausdrücklich
+   * freigegeben wurde; sonst zeigt es und schweigt.
+   */
+  const darfBedienen = imFenster || view.netzBedienung
 
   /* Wortindex → Bildpunkt: den Block suchen, in dem das Wort liegt, und
      innerhalb des Blocks anteilig weiterrücken. */
@@ -299,10 +329,40 @@ function TeleprompterApp(): React.JSX.Element {
     return letzte.oben + letzte.hoehe
   })()
 
+  /*
+   * Mithören läuft nur, wo ein Mikrofon ist und bedient werden darf.
+   *
+   * Die Stelle wird über einen Ref gelesen und nicht über den Zustand: Sonst
+   * müsste das Mithören bei jedem Bildwechsel neu aufgesetzt werden — und das
+   * hieße, Mikrofon und Modell jede Sekunde neu zu laden.
+   */
+  const manuskript = view.speech?.markdown ?? ''
+  useEffect(() => {
+    if (view.laufart !== 'stimme' || !manuskript || !darfBedienen) {
+      setHoeren({ art: 'aus' })
+      return
+    }
+    let laufend: Mithoeren | undefined
+    let abgebrochen = false
+    void starteMithoeren({
+      manuskript,
+      stand: () => standRef.current,
+      aufStelle: (position) => void rufe('prompter.setPosition', position),
+      aufStand: setHoeren
+    }).then((mithoeren) => {
+      if (abgebrochen) mithoeren.beenden()
+      else laufend = mithoeren
+    })
+    return () => {
+      abgebrochen = true
+      laufend?.beenden()
+    }
+  }, [view.laufart, darfBedienen, manuskript, rufe])
+
   useEffect(() => {
     /* Ist die Bedienung am Pult abgeschaltet, tun auch die Tasten nichts —
        sonst wäre die fehlende Leiste nur eine Kulisse. */
-    if (!view.bedienbar) return
+    if (!darfBedienen) return
     function taste(event: KeyboardEvent): void {
       switch (event.key) {
         case ' ':
@@ -345,7 +405,7 @@ function TeleprompterApp(): React.JSX.Element {
     }
     window.addEventListener('keydown', taste)
     return () => window.removeEventListener('keydown', taste)
-  }, [rufe, view.running, view.tempo, view.spiegel, view.bedienbar])
+  }, [rufe, view.running, view.tempo, view.spiegel, darfBedienen])
 
   const rest = restzeit(view.until, jetzt)
 
@@ -413,7 +473,7 @@ function TeleprompterApp(): React.JSX.Element {
             <strong>{folie}</strong>
             <span> / {laufend?.slideCount ?? '?'}</span>
           </span>
-          {view.bedienbar && view.speech && (
+          {darfBedienen && view.speech && (
             <button type="button" onClick={() => void rufe('prompter.setAnsicht', 'rede')}>
               Zum Redetext
             </button>
@@ -439,9 +499,19 @@ function TeleprompterApp(): React.JSX.Element {
     )
   }
 
-  const spiegelung = [view.spiegel.horizontal ? 'scaleX(-1)' : '', view.spiegel.vertikal ? 'scaleY(-1)' : '']
-    .filter(Boolean)
-    .join(' ')
+  /*
+   * Gespiegelt wird nur am Gerät im Prompterspiegel.
+   *
+   * Das Fenster am Hauptrechner steht auf einem gewöhnlichen Bildschirm —
+   * verkehrt herum wäre es dort nur unlesbar. Die Einstellung bleibt trotzdem
+   * bedienbar: Gemeint ist das Tablet unter der Glasscheibe, und eingestellt
+   * wird es von hier.
+   */
+  const spiegelung = imFenster
+    ? undefined
+    : [view.spiegel.horizontal ? 'scaleX(-1)' : '', view.spiegel.vertikal ? 'scaleY(-1)' : '']
+        .filter(Boolean)
+        .join(' ')
 
   return (
     <div className="tp">
@@ -450,7 +520,7 @@ function TeleprompterApp(): React.JSX.Element {
         <div className="tp-leselinie" style={{ top: `${view.leselinie}%` }} aria-hidden="true" />
         <div
           className="tp-lauf"
-          ref={flaeche}
+          ref={setFlaeche}
           style={{
             width: `${view.breite}%`,
             /* Waagerecht über die Verschiebung mitten setzen — ein fester
@@ -466,22 +536,150 @@ function TeleprompterApp(): React.JSX.Element {
         </div>
       </div>
 
+      {/*
+        * Die Leiste bleibt kurz.
+        *
+        * Am Pult zählt, was mitten im Satz gebraucht wird: anhalten, ein Stück
+        * zurück, Tempo. Alles Übrige stellt man einmal ein, bevor es losgeht —
+        * das liegt hinter „Einstellungen" und verdeckt den Text nicht.
+        */}
+      {einstellungenOffen && darfBedienen && (
+        <div className="tp-einstellungen">
+          <label>
+            Schrift
+            <input
+              type="range"
+              min={SCHRIFT_MIN}
+              max={SCHRIFT_MAX}
+              step={0.5}
+              value={view.schrift}
+              onChange={(event) =>
+                void rufe('prompter.setDarstellung', { schrift: Number(event.target.value) })
+              }
+            />
+            <span className="tp-wert">{view.schrift}</span>
+          </label>
+          <label>
+            Breite
+            <input
+              type="range"
+              min={40}
+              max={100}
+              step={5}
+              value={view.breite}
+              onChange={(event) =>
+                void rufe('prompter.setDarstellung', { breite: Number(event.target.value) })
+              }
+            />
+            <span className="tp-wert">{view.breite}%</span>
+          </label>
+          <label>
+            Lesezeile
+            <input
+              type="range"
+              min={10}
+              max={80}
+              step={5}
+              value={view.leselinie}
+              onChange={(event) =>
+                void rufe('prompter.setDarstellung', { leselinie: Number(event.target.value) })
+              }
+            />
+            <span className="tp-wert">{view.leselinie}%</span>
+          </label>
+
+          <div className="tp-gruppe">
+            <span className="tp-marke">Lauf</span>
+            {LAUFARTEN.map(([wert, beschriftung]) => (
+              <button
+                key={wert}
+                type="button"
+                className={view.laufart === wert ? 'aktiv' : ''}
+                onClick={() => void rufe('prompter.setLaufart', wert)}
+              >
+                {beschriftung}
+              </button>
+            ))}
+          </div>
+
+          {/*
+            * Spiegelung wirkt nicht auf dieses Fenster.
+            *
+            * Es steht auf einem gewöhnlichen Bildschirm; verkehrt herum wäre es
+            * nur unlesbar. Gemeint ist das Gerät unter der Glasscheibe am Pult —
+            * dort, und nur dort, wird gespiegelt.
+            */}
+          <div className="tp-gruppe">
+            <span className="tp-marke">{imFenster ? 'Spiegel (Gerät am Pult)' : 'Spiegel'}</span>
+            <button
+              type="button"
+              className={view.spiegel.horizontal ? 'aktiv' : ''}
+              onClick={() =>
+                void rufe('prompter.setDarstellung', {
+                  spiegel: { ...view.spiegel, horizontal: !view.spiegel.horizontal }
+                })
+              }
+            >
+              Seitenverkehrt
+            </button>
+            <button
+              type="button"
+              className={view.spiegel.vertikal ? 'aktiv' : ''}
+              onClick={() =>
+                void rufe('prompter.setDarstellung', {
+                  spiegel: { ...view.spiegel, vertikal: !view.spiegel.vertikal }
+                })
+              }
+            >
+              Über Kopf
+            </button>
+          </div>
+
+          <div className="tp-gruppe">
+            <button
+              type="button"
+              className={view.zeigeUhr ? 'aktiv' : ''}
+              onClick={() => void rufe('prompter.setDarstellung', { zeigeUhr: !view.zeigeUhr })}
+            >
+              Restzeit
+            </button>
+            <button type="button" onClick={() => void rufe('prompter.setAnsicht', 'vortrag')}>
+              Folien statt Text
+            </button>
+          </div>
+
+          {view.laufart === 'stimme' && (
+            <div className="tp-hoerstand">
+              {hoeren.art === 'startet' && 'Mikrofon und Sprachmodell werden geladen …'}
+              {hoeren.art === 'hoert' && `Hört mit${hoeren.zuletzt ? `: „${hoeren.zuletzt}"` : ' …'}`}
+              {hoeren.art === 'fehler' && hoeren.text}
+              {hoeren.art === 'aus' &&
+                (imFenster ? 'Mithören ist aus.' : 'Mithören läuft nur am Gerät mit Mikrofon.')}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="tp-leiste">
-        {view.bedienbar && (
+        {darfBedienen && (
           <>
             <button
               type="button"
               className={view.running ? 'tp-halt' : 'tp-los'}
+              disabled={view.laufart === 'stimme'}
+              title={
+                view.laufart === 'stimme' ? 'Bei „Nach Stimme" bewegt das Sprechen den Text.' : undefined
+              }
               onClick={() => void rufe('prompter.setRunning', !view.running)}
             >
               {/* Am Ende sagt der Knopf, was er tut: von vorn. Sonst sähe es aus,
-              als sei er kaputt — er zählt ja nicht weiter. */}
+                  als sei er kaputt — er zählt ja nicht weiter. */}
               {view.running ? 'Anhalten' : amEnde ? 'Von vorn' : 'Starten'}
             </button>
-            <button type="button" onClick={() => void rufe('prompter.nudge', -4)} aria-label="Zurück">
+            <button type="button" onClick={() => void rufe('prompter.nudge', -12)} aria-label="Zurück">
               ▲
             </button>
-            <button type="button" onClick={() => void rufe('prompter.nudge', 4)} aria-label="Vor">
+            <button type="button" onClick={() => void rufe('prompter.nudge', 12)} aria-label="Vor">
               ▼
             </button>
             <label>
@@ -492,69 +690,30 @@ function TeleprompterApp(): React.JSX.Element {
                 max={TEMPO_MAX}
                 step={5}
                 value={view.tempo}
+                disabled={view.laufart !== 'auto'}
                 onChange={(event) => void rufe('prompter.setTempo', Number(event.target.value))}
               />
               <span className="tp-wert">{view.tempo}</span>
             </label>
-            <label>
-              Schrift
-              <input
-                type="range"
-                min={SCHRIFT_MIN}
-                max={SCHRIFT_MAX}
-                step={0.5}
-                value={view.schrift}
-                onChange={(event) =>
-                  void rufe('prompter.setDarstellung', {
-                    schrift: Number(event.target.value)
-                  })
-                }
-              />
-            </label>
             <button
               type="button"
-              className={view.spiegel.horizontal ? 'aktiv' : ''}
-              title="Für den Prompterspiegel seitenverkehrt"
-              onClick={() =>
-                void rufe('prompter.setDarstellung', {
-                  spiegel: {
-                    ...view.spiegel,
-                    horizontal: !view.spiegel.horizontal
-                  }
-                })
-              }
+              className={einstellungenOffen ? 'aktiv' : ''}
+              onClick={() => setEinstellungenOffen((offen) => !offen)}
             >
-              Spiegel
-            </button>
-            <button
-              type="button"
-              className={view.spiegel.vertikal ? 'aktiv' : ''}
-              title="Wenn das Gerät über Kopf hängt"
-              onClick={() =>
-                void rufe('prompter.setDarstellung', {
-                  spiegel: {
-                    ...view.spiegel,
-                    vertikal: !view.spiegel.vertikal
-                  }
-                })
-              }
-            >
-              Über Kopf
-            </button>
-            <button
-              type="button"
-              title="Statt des Textes die laufenden Folien zeigen"
-              onClick={() => void rufe('prompter.setAnsicht', 'vortrag')}
-            >
-              Folien
+              Einstellungen
             </button>
           </>
+        )}
+        {view.laufart === 'stimme' && hoeren.art === 'hoert' && (
+          <span className="tp-hoert" title="Der Prompter hört mit">
+            ● hört
+          </span>
         )}
         {amEnde && <span className="tp-ende">Ende der Rede</span>}
         {meldung && <span className="tp-getrennt">{meldung}</span>}
         {view.zeigeUhr && rest && <span className="tp-uhr">{rest}</span>}
         {getrennt && <span className="tp-getrennt">Verbindung unterbrochen</span>}
-        {!imFenster && !getrennt && <span className="tp-netz">Netzansicht</span>}
+        {!imFenster && !getrennt && !darfBedienen && <span className="tp-netz">Nur Anzeige</span>}
       </div>
     </div>
   )

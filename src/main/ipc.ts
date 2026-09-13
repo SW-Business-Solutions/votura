@@ -22,11 +22,17 @@ import {
   setPrompterAnsicht,
   setPrompterDarstellung,
   setPrompterLaufart,
+  setPrompterNetzBedienung,
   setPrompterPosition,
   setPrompterRunning,
   setPrompterTempo,
   setPrompterUntil
 } from './services/prompter'
+import {
+  sprachmodellEinlegen,
+  sprachmodellEntfernen,
+  sprachmodellInfo
+} from './services/sprachmodell'
 import {
   assignSpeech,
   createSpeech,
@@ -696,6 +702,23 @@ const api: Api = {
   'prompter.closeWindow': async () => closeTeleprompterWindow(),
   'prompter.windowState': async () => teleprompterState(),
 
+  'speechmodel.info': async () => sprachmodellInfo(),
+  'speechmodel.install': async () => {
+    requirePermission('system.manage')
+    const auswahl = await dialog.showOpenDialog({
+      title: 'Sprachmodell hinterlegen',
+      buttonLabel: 'Hinterlegen',
+      properties: ['openFile'],
+      filters: [{ name: 'Modellarchiv', extensions: ['zip', 'gz', 'tgz'] }]
+    })
+    if (auswahl.canceled || !auswahl.filePaths[0]) return sprachmodellInfo()
+    return sprachmodellEinlegen(auswahl.filePaths[0])
+  },
+  'speechmodel.remove': async () => {
+    requirePermission('system.manage')
+    return sprachmodellEntfernen()
+  },
+
   'presentation.prompterState': async () => prompterState(),
   'presentation.prompterBuehne': async (stage) =>
     stage === undefined ? getPrompterBuehne() : setPrompterBuehne(stage),
@@ -720,6 +743,9 @@ const api: Api = {
   'projection.setNetwork': async (config) => {
     requirePermission('system.manage')
     const saved = saveNetworkProjection(config)
+    /* Der Prompter führt die Freigabe mit, damit die Netzansicht ihre Leiste
+       zeigen oder weglassen kann. Durchgesetzt wird sie am Server. */
+    setPrompterNetzBedienung(saved.enabled && saved.allowPrompterControl)
     const status = saved.enabled ? await startNetworkProjection(saved) : (await stopNetworkProjection(), networkStatus())
     appendAudit({
       action: saved.enabled ? 'projection.network_enabled' : 'projection.network_disabled',

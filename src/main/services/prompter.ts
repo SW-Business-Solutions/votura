@@ -153,7 +153,7 @@ export function setPrompterDarstellung(
   aenderung: Partial<
     Pick<
       PrompterViewState,
-      'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr' | 'bedienbar'
+      'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'
     >
   >
 ): PrompterViewState {
@@ -184,6 +184,18 @@ export function setPrompterLaufart(laufart: Laufart): PrompterViewState {
 /** Die zugestandene Redezeit — dieselbe Uhr, die auch auf dem Beamer läuft. */
 export function setPrompterUntil(until?: string): PrompterViewState {
   return setze({ until }, false)
+}
+
+/**
+ * Übernimmt aus der Netzkonfiguration, ob ein Gerät im Saal bedienen darf.
+ *
+ * Der Prompter führt den Wert nur mit, damit die Netzansicht ihre Leiste
+ * zeigen oder weglassen kann. Entschieden wird er in der Netzkonfiguration —
+ * und dort durchgesetzt, nicht hier.
+ */
+export function setPrompterNetzBedienung(erlaubt: boolean): PrompterViewState {
+  if (state.netzBedienung === erlaubt) return getPrompterView()
+  return setze({ netzBedienung: erlaubt }, false)
 }
 
 /** Setzt alles zurück — nach der Versammlung und beim Start. */

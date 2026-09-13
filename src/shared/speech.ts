@@ -150,15 +150,18 @@ export interface PrompterViewState {
   /** Uhr und Restzeit einblenden. */
   zeigeUhr: boolean
   /**
-   * Darf am Pult bedient werden?
+   * Darf die **Netzansicht** bedienen?
    *
-   * Nicht jede vortragende Person soll das können — und nicht jede will es.
-   * Wer nur abliest, braucht keine Regler, und ein versehentlicher Griff an
-   * das Tempo mitten im Satz ist schlimmer als gar kein Knopf. Ist das aus,
-   * verschwindet die Leiste und die Tasten tun nichts; gesteuert wird dann
-   * ausschließlich vom Board.
+   * Nur sie: Das Prompterfenster am Hauptrechner darf immer. Es steht unter
+   * derselben Aufsicht wie die Bedienung selbst — es dafür zu sperren, hieße
+   * der Wahlleitung etwas zu verbieten, das sie ohnehin nebenan tun kann.
+   *
+   * Ein Gerät im Saal ist etwas anderes: Es liegt am Pult, jemand Fremdes hat
+   * es in der Hand, und ob es mehr darf als zeigen, ist eine Entscheidung.
+   * Der Wert kommt deshalb aus der Netzkonfiguration und lässt sich hier
+   * nicht verstellen — sonst gäbe es zwei Schalter für eine Frage.
    */
-  bedienbar: boolean
+  netzBedienung: boolean
   /** Ende der zugestandenen Redezeit (ISO) — dieselbe Uhr wie auf dem Beamer. */
   until?: string
   /** Zuletzt geändert (ISO). */
@@ -180,7 +183,7 @@ export const PROMPTER_VORGABE: PrompterViewState = {
   breite: 80,
   leselinie: 40,
   zeigeUhr: true,
-  bedienbar: true,
+  netzBedienung: false,
   updatedAt: new Date(0).toISOString()
 }
 

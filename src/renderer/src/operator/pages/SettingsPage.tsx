@@ -14,6 +14,8 @@ import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
 import { Card, Checkbox, ConfirmDialog, Field, Modal, NumberInput } from '../components/ui'
 import { ProjectionDesign } from './ProjectionDesign'
+import { NetzwerkEinstellungen } from './NetzwerkEinstellungen'
+import { SprachmodellEinstellungen } from './SprachmodellEinstellungen'
 
 export function SettingsPage(): React.JSX.Element {
   const app = useApp()
@@ -38,7 +40,7 @@ export function SettingsPage(): React.JSX.Element {
           Allgemein
         </button>
         <button className={`tab${tab === 'beamer' ? ' active' : ''}`} onClick={() => setTab('beamer')}>
-          Beamer-Design
+          Beamer
         </button>
         <button className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
           Benutzer
@@ -50,7 +52,16 @@ export function SettingsPage(): React.JSX.Element {
 
       {tab === 'printers' && <PrinterSettings />}
       {tab === 'general' && <GeneralSettings />}
-      {tab === 'beamer' && <ProjectionDesign />}
+      {tab === 'beamer' && (
+        <>
+          <ProjectionDesign />
+          {/* Erscheinungsbild und Netzwerkansicht gehören beide zur Frage
+              „Wie kommt das Bild an die Wand" — und beide stellt man vor der
+              Versammlung ein, nicht während. */}
+          <NetzwerkEinstellungen />
+          <SprachmodellEinstellungen />
+        </>
+      )}
       {tab === 'users' && <UserSettings />}
       {tab === 'backup' && <BackupSettings />}
     </>

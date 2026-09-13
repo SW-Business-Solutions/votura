@@ -94,6 +94,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'speech.edited': 'Rede bearbeitet',
   'speech.renamed': 'Rede umbenannt',
   'speech.deleted': 'Rede entfernt',
+  'speechmodel.installed': 'Sprachmodell hinterlegt',
+  'speechmodel.removed': 'Sprachmodell entfernt',
 
   /* ------------------------------------------------------- Zweites Gerät */
   'remote.session_started': 'Fernzugriff angemeldet',

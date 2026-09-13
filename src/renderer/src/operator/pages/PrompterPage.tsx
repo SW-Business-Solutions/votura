@@ -485,14 +485,26 @@ export function PrompterPage(): React.JSX.Element {
               onChange={(wert) => void rufe(() => api('prompter.setDarstellung', { zeigeUhr: wert }))}
               label="Restzeit einblenden"
             />
-            {/* Nicht jede vortragende Person soll die Regler bedienen — und
-                nicht jede will es. Ohne Haken verschwindet die Leiste, und die
-                Tasten am Pult tun nichts. */}
+            {/* Derselbe Wert wie unter Beamer → Ausgabe & Netz, nur von hier
+                aus erreichbar: Wer den Prompter einrichtet, soll dafür nicht
+                die Seite wechseln müssen. Das Prompterfenster am Hauptrechner
+                darf ohnehin immer — gemeint ist das Gerät im Saal. */}
             <Checkbox
-              checked={view.bedienbar}
-              onChange={(wert) => void rufe(() => api('prompter.setDarstellung', { bedienbar: wert }))}
-              label="Bedienung am Pult erlauben"
+              checked={netz?.allowPrompterControl ?? false}
+              disabled={!netz?.enabled}
+              onChange={(wert) =>
+                void rufe(async () => {
+                  if (!netz) return
+                  setNetz(await api('projection.setNetwork', { ...netz, allowPrompterControl: wert }))
+                })
+              }
+              label="Bedienung am Gerät im Netz erlauben"
             />
+            {!netz?.enabled && (
+              <div className="hint">
+                Dafür muss die Netzwerkansicht laufen — Beamer → Ausgabe &amp; Netz.
+              </div>
+            )}
           </Card>
 
           <Card title="Wo der Prompter läuft">
@@ -513,8 +525,9 @@ export function PrompterPage(): React.JSX.Element {
                 <label style={{ marginTop: 10 }}>Am Pult im Browser</label>
                 <div className="mono">{prompterAdresse}</div>
                 <div className="hint">
-                  Eigener Endpunkt, rein lesend. Gesteuert wird von hier oder am Prompterfenster;
-                  ein Gerät im Netz zeigt nur an.
+                  {view.netzBedienung
+                    ? 'Dieses Gerät darf auch bedienen — anhalten, Stelle, Tempo, Darstellung. An Wahldaten kommt es nicht heran.'
+                    : 'Eigener Endpunkt, rein lesend. Gesteuert wird von hier oder am Prompterfenster.'}
                 </div>
               </>
             ) : (

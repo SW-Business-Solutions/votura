@@ -16,6 +16,7 @@ import type {
 } from './projection'
 import type { Buehnenwahl } from './projection'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
+import type { SprachmodellInfo } from './sprachmodell'
 import type {
   Laufart,
   PrompterAnsicht,
@@ -588,7 +589,7 @@ export interface Api {
   'prompter.setTempo': (tempo: number) => Promise<PrompterViewState>
   'prompter.setDarstellung': (
     aenderung: Partial<
-      Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr' | 'bedienbar'>
+      Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'>
     >
   ) => Promise<PrompterViewState>
   /** Übernimmt die Redezeit der laufenden Vorstellung auf den Prompter. */
@@ -601,6 +602,18 @@ export interface Api {
   'prompter.openWindow': () => Promise<PrompterWindowState>
   'prompter.closeWindow': () => Promise<PrompterWindowState>
   'prompter.windowState': () => Promise<PrompterWindowState>
+
+  /**
+   * Das Sprachmodell für das Mitlaufen nach Gehör.
+   *
+   * Die Datei selbst geht **nie** über diese Schnittstelle — sie käme als ein
+   * Stück im Arbeitsspeicher an. Ausgeliefert wird sie über das eigene Schema
+   * der Prompterseite.
+   */
+  'speechmodel.info': () => Promise<SprachmodellInfo>
+  /** Öffnet den Dateidialog und legt das gewählte Archiv ab. */
+  'speechmodel.install': () => Promise<SprachmodellInfo>
+  'speechmodel.remove': () => Promise<SprachmodellInfo>
 
   'presentation.prompterState': () => Promise<PrompterWindowState>
   /**

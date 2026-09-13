@@ -12,6 +12,8 @@ import { callApi, registerIpc } from './ipc'
 import { initLogger, logger } from './logger'
 import { checkOnStartIfEnabled } from './services/updates'
 import { onPrompterViewChanged } from './services/prompter'
+import { sprachmodellDatei } from './services/sprachmodell'
+import { setPrompterNetzBedienung } from './services/prompter'
 import {
   broadcastPrompter,
   broadcastProjection,
@@ -112,6 +114,32 @@ protocol.registerSchemesAsPrivileged([
  * kein Fenster ins Dateisystem, sondern nur eine andere Adresse für das, was
  * ohnehin im Programm steckt.
  */
+/**
+ * Die Richtlinie der Prompterseite — eine Spur weiter als die der Anwendung.
+ *
+ * `unsafe-eval` steht hier, und nur hier. Die Spracherkennung erzeugt zur
+ * Laufzeit Funktionen (`new Function`), wie es Emscripten-Anbindungen tun;
+ * ohne diese Erlaubnis stirbt ihr Worker still, und am Pult stünde für immer
+ * „wird geladen". Alles Übrige bleibt streng: `default-src 'self'`,
+ * `connect-src` nur auf die eigene Herkunft, kein Weg ins Netz, keine fremden
+ * Quellen. Und die Seite selbst kann wenig: Sie zeigt einen Text und darf
+ * sieben Prompterbefehle auslösen — an Wahldaten kommt sie nicht heran.
+ */
+const PULT_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  `connect-src 'self' blob: ${PRESENTATION_SCHEME}:`,
+  `frame-src ${PRESENTATION_SCHEME}:`,
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'"
+].join('; ')
+
 function registerPultProtocol(): void {
   const wurzel = resolve(join(__dirname, '../renderer'))
   const typen: Record<string, string> = {
@@ -127,11 +155,34 @@ function registerPultProtocol(): void {
   }
   protocol.handle(PULT_SCHEME, async (request) => {
     const pfad = new URL(request.url).pathname
+    /*
+     * Das Sprachmodell kommt nicht aus dem Oberflächenordner.
+     *
+     * Es liegt entweder in den Programmressourcen oder im Benutzerordner —
+     * und wird als eine Datei ausgeliefert, die die Erkennung selbst
+     * auspackt. Eine eigene Adresse dafür ist ehrlicher als ein Pfad, der
+     * scheinbar in den Oberflächenordner zeigt.
+     */
+    if (pfad === '/sprachmodell') {
+      const modell = sprachmodellDatei()
+      if (!modell) return new Response('Kein Sprachmodell hinterlegt.', { status: 404 })
+      return new Response(Readable.toWeb(createReadStream(modell.pfad)) as ReadableStream, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(statSync(modell.pfad).size),
+          'Cache-Control': 'no-store'
+        }
+      })
+    }
     const datei = resolve(join(wurzel, decodeURIComponent(pfad)))
     if (!datei.startsWith(wurzel)) return new Response('Zugriff verweigert.', { status: 403 })
     if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
+    const endung = extname(datei).toLowerCase()
     return new Response(await readFile(datei), {
-      headers: { 'Content-Type': typen[extname(datei).toLowerCase()] ?? 'application/octet-stream' }
+      headers: {
+        'Content-Type': typen[endung] ?? 'application/octet-stream',
+        ...(endung === '.html' ? { 'Content-Security-Policy': PULT_CSP } : {})
+      }
     })
   })
 }
@@ -241,6 +292,12 @@ function hardenSecurity(): void {
 
   // Strenge CSP: alles aus dem Paket, nichts aus dem Netz.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    /* Die Prompterseite bringt ihre eigene Richtlinie mit (siehe PULT_CSP) —
+       hier würde sie sonst überschrieben. */
+    if (details.url.startsWith(`${PULT_SCHEME}://`)) {
+      callback({ responseHeaders: details.responseHeaders })
+      return
+    }
     const isDev = Boolean(process.env.ELECTRON_RENDERER_URL)
     /*
      * Die eingespeiste Präsentation bekommt ihre **eigene** Richtlinie.
@@ -276,7 +333,27 @@ function hardenSecurity(): void {
         ": ; media-src 'self' " +
         VIDEO_SCHEME +
         ": blob:"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' " +
+      : /*
+         * `worker-src 'self' blob:` ist für den Prompter da.
+         *
+         * Die Spracherkennung bringt ihren Worker als eingebettetes Skript mit
+         * und startet ihn über eine `blob:`-Adresse. Ohne diese Erlaubnis
+         * bricht Chromium das ab — ohne Fehlermeldung, die irgendwo ankäme.
+         * Nachgeladen wird damit nichts: `blob:` sind Daten aus dem eigenen
+         * Paket, kein Weg ins Netz.
+         */
+        /*
+         * `wasm-unsafe-eval` ist ausschließlich für die Spracherkennung da.
+         *
+         * Sie bringt ihren Rechenteil als WebAssembly mit, und Chromium
+         * verweigert dessen Übersetzung, sobald eine Richtlinie gesetzt ist —
+         * ohne Fehlermeldung, die irgendwo ankäme: Der Worker stirbt still,
+         * und am Pult steht für immer „wird geladen". Die Erlaubnis gilt nur
+         * WebAssembly; `eval` von JavaScript-Text bleibt verboten, und
+         * geladen wird weiterhin nichts aus dem Netz.
+         */
+        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; child-src 'self' blob:; " +
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: " +
         PRESENTATION_SCHEME +
         ": ; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " +
         PRESENTATION_SCHEME +
@@ -323,6 +400,10 @@ async function bootstrap(): Promise<void> {
   }
 
   restoreProjection()
+  /* Beim Start dasselbe wie beim Speichern: Der Prompter soll von Anfang an
+     wissen, ob ein Gerät im Saal bedienen darf. */
+  const netz = getNetworkProjection()
+  setPrompterNetzBedienung(netz.enabled && netz.allowPrompterControl)
   registerPresentationProtocol()
   registerVideoProtocol()
   registerPultProtocol()
