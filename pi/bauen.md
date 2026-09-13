@@ -43,13 +43,20 @@ unter Windows.
 ```bash
 # Im Projektverzeichnis, mit dem fertigen Linux-Paket in release-saal/
 sudo ./pi/abbild-bauen.sh \
-  --paket release-saal/Votura-Saal-1.1.0-linux-arm64.tar.gz \
+  --paket release-saal/Votura-Saal-1.2.0-linux-arm64.tar.gz \
   --wartung votura-admin
 ```
 
-**Das Linux-Paket muss unter Linux entstanden sein.** Ein unter Windows gebautes Archiv trägt kein
-Ausführungsrecht — NTFS kennt keines —, und die Einrichtung bricht ab, weil `votura-saal` nicht
-ausführbar ist. Unter Windows also im WSL bauen, nicht nebenan.
+**Das Linux-Paket muss aus `npm run dist:linux` stammen** — nicht aus einem blanken
+`electron-builder`-Aufruf. Unter Windows hergestellte Archive tragen kein Ausführungsrecht, weil NTFS
+keines kennt; die Einrichtung bricht dann ab mit „Im Archiv fehlt die Programmdatei". Der Lauf hängt
+darum `tools/linux-rechte.mjs` an, das die Rechte im fertigen Archiv nachträgt. Ob eines richtig
+liegt, sagt ein Blick:
+
+```bash
+tar -tvzf release-saal/Votura-Saal-*-linux-arm64.tar.gz | grep '/votura-saal$'
+# -rwxr-xr-x  … richtig      -rw-r--r--  … unbrauchbar
+```
 
 ## Das Wartungskonto
 
@@ -107,7 +114,7 @@ Beamerausgang. Was sich prüfen lässt:
 
 ```bash
 # Ist alles drin, wo es hingehört?
-sudo ./pi/abbild-pruefen.sh release-pi/votura-saal-1.1.0-arm64.img.xz
+sudo ./pi/abbild-pruefen.sh release-pi/votura-saal-1.2.0-arm64.img.xz
 ```
 
 Der erste Start auf einem echten Pi bleibt trotzdem Pflicht.
