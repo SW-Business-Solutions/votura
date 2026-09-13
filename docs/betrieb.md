@@ -331,9 +331,29 @@ Zu beachten:
 | Strg+N | Neuer Wahlgang |
 | Strg+T | Tagesordnung |
 | Strg+B | Beamer-Steuerung |
+| Strg+P | Prompter |
 | Esc | Dialog schließen |
 
 Kein Tastenkürzel löst einen Massendruck aus.
+
+**Am Pult** (Prompterfenster und Votura Saal in der Rolle *Prompter*):
+
+| Kürzel | Funktion |
+|---|---|
+| Leertaste | Anhalten / weiter |
+| ↓ ↑ | eine Zeile vor / zurück |
+| Bild ab / Bild auf | acht Zeilen vor / zurück |
+| Pos1 | an den Anfang |
+| + − | Tempo |
+| M | Spiegelung |
+
+**In Votura Saal** (jede Rolle):
+
+| Kürzel | Funktion |
+|---|---|
+| Strg+Umschalt+E | zurück in die Einrichtung — Hauptrechner und Rolle neu wählen |
+
+Der Kurzbefehl steht auch im Fenstertitel; im Vollbild ist er der einzige Weg zurück.
 
 ## Bildschirmansichten
 

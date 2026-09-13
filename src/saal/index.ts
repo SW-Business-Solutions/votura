@@ -86,6 +86,29 @@ if (gespeichert) {
 
 /* --------------------------------------------------------------- Fenster */
 
+/**
+ * Der Rückweg in die Einrichtung.
+ *
+ * **Strg + Umschalt + E**, an jedem Fenster dieser Anwendung. Er muss
+ * zuverlässig sein: Steht ein Gerät im Vollbild und zeigt die falsche Bühne,
+ * gibt es sonst keinen Weg zurück außer Task-Manager — und im Saal steht
+ * niemand mit Tastatur und Ruhe daneben.
+ *
+ * Angehängt wird er beim Erzeugen des Fensters, nicht bei jedem Fokuswechsel:
+ * Sonst sammeln sich Zuhörer an, und ob überhaupt einer angehängt wurde,
+ * hinge von der Reihenfolge der Ereignisse ab.
+ */
+function ruestRueckweg(ziel: BrowserWindow): void {
+  ziel.webContents.on('before-input-event', (_ereignis, eingabe) => {
+    if (eingabe.type !== 'keyDown') return
+    if (eingabe.control && eingabe.shift && eingabe.key.toLowerCase() === 'e') {
+      schreibeEinstellung(null)
+      app.relaunch()
+      app.exit(0)
+    }
+  })
+}
+
 function ladeSeite(ziel: BrowserWindow, seite: 'einrichtung'): void {
   if (process.env.ELECTRON_RENDERER_URL) {
     void ziel.loadURL(`${process.env.ELECTRON_RENDERER_URL}/${seite}.html`)
@@ -117,6 +140,7 @@ function oeffneEinrichtung(): void {
   fenster.on('closed', () => {
     fenster = null
   })
+  ruestRueckweg(fenster)
   ladeSeite(fenster, 'einrichtung')
 }
 
@@ -135,7 +159,9 @@ function oeffneAnzeige(einstellung: SaalEinstellung): void {
     fullscreen: nurEiner,
     autoHideMenuBar: true,
     backgroundColor: '#000000',
-    title: `Votura Saal — ${rollenName(einstellung.rolle)}`,
+    /* Der Kurzbefehl steht im Titel: Er ist in der Fensterleiste und in der
+       Taskleiste zu sehen, ohne das Bild an der Wand zu stören. */
+    title: `Votura Saal — ${rollenName(einstellung.rolle)} · Strg+Umschalt+E für die Einrichtung`,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -149,6 +175,7 @@ function oeffneAnzeige(einstellung: SaalEinstellung): void {
   fenster.on('closed', () => {
     fenster = null
   })
+  ruestRueckweg(fenster)
 
   /*
    * Kommt der Hauptrechner nicht ans Telefon, wird nicht schwarz gezeigt.
@@ -287,17 +314,6 @@ if (!app.requestSingleInstanceLock()) {
 
     if (gespeichert) oeffneAnzeige(gespeichert)
     else oeffneEinrichtung()
-
-    /* Ein Weg zurück in die Einrichtung — ohne Menü, aber nicht ohne Ausweg. */
-    app.on('browser-window-focus', () => {
-      fenster?.webContents.on('before-input-event', (_event, eingabe) => {
-        if (eingabe.control && eingabe.shift && eingabe.key.toLowerCase() === 'e') {
-          schreibeEinstellung(null)
-          app.relaunch()
-          app.exit(0)
-        }
-      })
-    })
   })
 
   app.on('window-all-closed', () => app.quit())
