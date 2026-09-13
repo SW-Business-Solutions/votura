@@ -59,6 +59,13 @@ export function BeamerPage(): React.JSX.Element {
   const [showAll, setShowAll] = useState(true)
   const [showRoundContext, setShowRoundContext] = useState(false)
   const [breakMinutes, setBreakMinutes] = useState(10)
+  const [pausenart, setPausenart] = useState<'dauer' | 'uhrzeit'>('dauer')
+  /* Vorschlag: die nächste halbe Stunde — das ist die häufigste Ansage. */
+  const [breakUntil, setBreakUntil] = useState(() => {
+    const ziel = new Date(Date.now() + 15 * 60_000)
+    ziel.setMinutes(ziel.getMinutes() > 30 ? 60 : 30, 0, 0)
+    return `${String(ziel.getHours()).padStart(2, '0')}:${String(ziel.getMinutes()).padStart(2, '0')}`
+  })
   const [breakNote, setBreakNote] = useState('')
 
   useEffect(() => {
@@ -112,7 +119,7 @@ export function BeamerPage(): React.JSX.Element {
               <Checkbox
                 checked={projection.locked}
                 onChange={(value) => void api('projection.setLocked', value).catch(app.reportError)}
-                label="Beamer sperren (kein automatisches Umschalten während laufender Wahl)"
+                label="Beamer sperren — kein automatisches Umschalten, kein Weiterblättern"
               />
             </div>
             {projection.candidatePageCount > 1 && (
@@ -136,6 +143,26 @@ export function BeamerPage(): React.JSX.Element {
                 >
                   Weiter
                 </button>
+              </div>
+            )}
+            {projection.candidatePageCount > 1 && (
+              <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+                <span className="hint">Automatisch weiter:</span>
+                <div className="segmented">
+                  {[0, 8, 15, 30].map((takt) => (
+                    <button
+                      key={takt}
+                      className={projection.candidatePageIntervalSeconds === takt ? 'active' : ''}
+                      disabled={projection.locked}
+                      onClick={() =>
+                        void api('projection.setCandidatePageInterval', takt).catch(app.reportError)
+                      }
+                    >
+                      {takt === 0 ? 'aus' : `${takt} s`}
+                    </button>
+                  ))}
+                </div>
+                {projection.locked && <span className="hint">— der Beamer ist gesperrt.</span>}
               </div>
             )}
           </Card>
@@ -267,11 +294,41 @@ export function BeamerPage(): React.JSX.Element {
           </Card>
 
           <Card title="Pause">
+            {/* Zwei Wege zum selben Ziel: „noch 15 Minuten" ist beim spontanen
+                Unterbrechen bequemer, „weiter um 12:30" bei einer geplanten
+                Pause — und nur die Uhrzeit steht auch dann noch richtig, wenn
+                zwischen Ansage und Anzeigen ein paar Minuten vergehen. */}
+            <div className="row" style={{ marginBottom: 8 }}>
+              <div className="segmented">
+                <button
+                  className={pausenart === 'dauer' ? 'active' : ''}
+                  onClick={() => setPausenart('dauer')}
+                >
+                  Dauer
+                </button>
+                <button
+                  className={pausenart === 'uhrzeit' ? 'active' : ''}
+                  onClick={() => setPausenart('uhrzeit')}
+                >
+                  Bis Uhrzeit
+                </button>
+              </div>
+            </div>
             <div className="row">
               <div style={{ width: 170 }}>
-                <Field label="Dauer (Minuten)" hint="0 = ohne Countdown">
-                  <NumberInput value={breakMinutes} min={0} max={240} onChange={setBreakMinutes} />
-                </Field>
+                {pausenart === 'dauer' ? (
+                  <Field label="Dauer (Minuten)" hint="0 = ohne Countdown">
+                    <NumberInput value={breakMinutes} min={0} max={240} onChange={setBreakMinutes} />
+                  </Field>
+                ) : (
+                  <Field label="Weiter um" hint="Nach der Uhr dieses Rechners.">
+                    <input
+                      type="time"
+                      value={breakUntil}
+                      onChange={(e) => setBreakUntil(e.target.value)}
+                    />
+                  </Field>
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 <Field label="Hinweistext (optional)">
@@ -287,7 +344,9 @@ export function BeamerPage(): React.JSX.Element {
               className="primary"
               onClick={() =>
                 void setMode('break', {
-                  breakMinutes: breakMinutes > 0 ? breakMinutes : undefined,
+                  breakMinutes:
+                    pausenart === 'dauer' && breakMinutes > 0 ? breakMinutes : undefined,
+                  breakUntilTime: pausenart === 'uhrzeit' && breakUntil ? breakUntil : undefined,
                   message: {
                     title: 'KURZE PAUSE',
                     body: breakNote || undefined,

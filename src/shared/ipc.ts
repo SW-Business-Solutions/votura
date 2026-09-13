@@ -449,10 +449,14 @@ export interface Api {
     agendaView?: 'full' | 'focus'
     showAll?: boolean
     breakMinutes?: number
+    /** Feste Uhrzeit "HH:MM", zu der es weitergeht — statt einer Dauer. */
+    breakUntilTime?: string
     presentationId?: UUID
     videoId?: UUID
   }) => Promise<ProjectionState>
   'projection.setCandidatePage': (page: number) => Promise<ProjectionState>
+  /** Takt des automatischen Seitenwechsels in Sekunden; 0 hält ihn an. */
+  'projection.setCandidatePageInterval': (seconds: number) => Promise<ProjectionState>
   'projection.setLocked': (locked: boolean) => Promise<ProjectionState>
   'projection.history': () => Promise<ProjectionHistoryEntry[]>
   'projection.displays': () => Promise<DisplayInfo[]>

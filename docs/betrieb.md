@@ -73,7 +73,9 @@ lässt sich die Reihenfolge gefahrlos ändern, ohne dass Kennungen wandern.
   **Präsentation & Video**, **Ausgabe & Netz** und **Verlauf** hinter Reitern.
 - **Erscheinungsbild:** unter *Einstellungen → Beamer-Design* Farben wählen und ein Logo hinterlegen
   (wird in die Konfiguration eingebettet, kein Nachladen aus dem Netz).
-- **Pause mit Countdown:** Dauer in Minuten eintragen und *Pause anzeigen*. Für die Stimmabgabe gibt
+- **Pause mit Countdown:** entweder *Dauer* in Minuten oder *Bis Uhrzeit* („weiter um 12:30", nach
+  der Uhr dieses Rechners). Die Uhrzeit ist bei einer angesagten Pause die bessere Wahl: Sie bleibt
+  richtig, auch wenn zwischen Ansage und Anzeigen noch Minuten vergehen. Für die Stimmabgabe gibt
   es bewusst keinen Countdown.
 - **Freie Mitteilung:** optional mit oder ohne Wahlgangbezug in der Fußzeile.
 - **Sachanträge:** Beschlusstext und Abstimmungsmöglichkeiten werden statt einer Kandidatenliste
@@ -82,10 +84,37 @@ lässt sich die Reihenfolge gefahrlos ändern, ohne dass Kennungen wandern.
 - Die Vorschau links zeigt jederzeit exakt das, was öffentlich zu sehen ist.
 - Statuswechsel erfolgen automatisch aus dem Wahlgang; manuelle Übersteuerung ist jederzeit möglich
   (Pause, freie Mitteilung, Tagesordnung).
-- *Beamer sperren* verhindert während laufender Wahl ein versehentliches Umschalten.
+- *Beamer sperren* verhindert ein versehentliches Umschalten **und** hält das automatische
+  Weiterblättern an. Bei langen Kandidaten- und Ergebnislisten ist das der Griff, wenn die Anzeige
+  auf einer bestimmten Seite stehen bleiben soll — von Hand lässt sich weiter blättern.
+- **Automatisch weiter:** unter der Vorschau einstellbar (aus, 8, 15 oder 30 Sekunden). Gilt für
+  Kandidaten- und Ergebnisseiten.
 - Bei nur einem Bildschirm öffnet das Fenster bewusst im Fenstermodus.
 - **Netzwerkansicht** (optional): aktivieren, Port und Token vergeben, angezeigte Adresse am
   Zweitgerät im Browser öffnen. Rein lesend; nur in einem abgeschotteten Veranstaltungsnetz nutzen.
+
+## Rangliste bei mehreren Plätzen
+
+Im Reiter *Ergebnis* steht unter der Feststellung die **Rangliste**: erst die Gewählten in ihrer
+Reihenfolge, dann eine Trennlinie, dann die Nichtgewählten. Bei einer Delegiertenwahl ist genau
+das die Auskunft, mit der jemand nach vorne geht — wer ist Delegierter, wer Ersatz, in welcher
+Folge wird nachgerückt.
+
+Sortiert wird nach den Regeln des Verfahrens:
+
+- **Ankreuzverfahren:** nach Stimmen.
+- **Akzeptanzverfahren:** zuerst nach Ja-Stimmen; bei gleicher Ja-Zahl entscheidet die
+  **geringere** Zahl an Nein-Stimmen. Enthaltungen bleiben außen vor. Wer mehr Nein als Ja hat,
+  steht hinter der Trennlinie — auch dann, wenn ein Platz frei bliebe.
+
+**Bleibt ein Rang offen**, weil zwei Bewerber in beiden Zahlen gleichauf liegen, sagt die
+Anwendung das und sortiert **nicht** heimlich nach dem Namen. Die Versammlung muss dann
+entscheiden: Verzicht auf den höheren Platz, Stichwahl oder Losentscheid. Ein Losentscheid lässt
+sich im selben Reiter dokumentieren.
+
+Die Rangliste lässt sich über *Rangliste auf Bon drucken* sofort ausgeben — derselbe Beleg wie
+*Ergebnis auf Bon drucken*, mit Trennlinie zwischen Gewählten und Nichtgewählten und einem
+Hinweis, falls ein Rang offen ist.
 
 ## Vortrag und Film zwischen den Wahlgängen
 

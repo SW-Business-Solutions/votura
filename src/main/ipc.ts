@@ -70,6 +70,7 @@ import {
   refreshEventInfo,
   refreshTheme,
   setCandidatePage,
+  setCandidatePageInterval,
   setDemoMode,
   setLocked,
   setProjection,
@@ -470,6 +471,7 @@ const api: Api = {
     return setProjection(input)
   },
   'projection.setCandidatePage': async (page) => setCandidatePage(page),
+  'projection.setCandidatePageInterval': async (seconds) => setCandidatePageInterval(seconds),
 
   /* --------------------------------------------------------- Präsentationen */
   'presentation.list': async () => listPresentations(),

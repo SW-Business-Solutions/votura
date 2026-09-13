@@ -495,16 +495,50 @@ export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfi
   if (result.countingMode === 'counted') {
     if (art === 'votes') {
       const rangfolge = rankCandidates(result.resultData.candidates, round.seats)
+      let grenzeGesetzt = false
       for (const eintrag of rangfolge) {
-        const gewaehlt = input.electedNames.includes(eintrag.name)
-        const name = `${gewaehlt ? '*' : ' '}${String(eintrag.rank).padStart(2, '0')} ${eintrag.name}`
-        ops.push(text(zweiSpalten(name, String(eintrag.votes ?? 0), width), { bold: gewaehlt }))
+        if (!eintrag.withinSeats && !grenzeGesetzt && round.seats < rangfolge.length) {
+          grenzeGesetzt = true
+          ops.push(text(ruler(width, '-'), { align: 'center' }))
+          ops.push(text('NICHT GEWÄHLT', { align: 'center' }))
+        }
+        const zeichen = eintrag.tied ? '=' : eintrag.withinSeats ? '*' : ' '
+        const name = `${zeichen}${String(eintrag.rank).padStart(2, '0')} ${eintrag.name}`
+        ops.push(
+          text(zweiSpalten(name, String(eintrag.votes ?? 0), width), { bold: eintrag.withinSeats })
+        )
+      }
+      if (rangfolge.some((eintrag) => eintrag.tied)) {
+        ops.push(feed(1))
+        for (const line of wrapText(
+          '= Rang nicht entschieden: Stimmengleichheit. Die Versammlung muss die Reihenfolge klären.',
+          width
+        )) {
+          ops.push(text(line))
+        }
       }
     } else if (art === 'yes_no_abstain') {
-      for (const eintrag of result.resultData.candidates) {
-        const gewaehlt = input.electedNames.includes(eintrag.name)
-        for (const line of wrapText(`${gewaehlt ? '*' : ' '}${eintrag.name}`, width)) {
-          ops.push(text(line, { bold: gewaehlt }))
+      /*
+       * In der Rangfolge, nicht in der Eingabereihenfolge.
+       *
+       * Bei einer Delegiertenwahl ist genau das die Frage, mit der jemand
+       * nach vorne geht: Wer ist Delegierter, wer Ersatz — und in welcher
+       * Reihenfolge wird nachgerückt.
+       */
+      const rangfolge = rankCandidates(result.resultData.candidates, round.seats, { acceptance: true })
+      let grenzeGesetzt = false
+      for (const eintrag of rangfolge) {
+        /* Eine Linie zwischen Gewählten und Nichtgewählten — sie trennt zwei
+           verschiedene Aussagen, nicht nur zwei Zeilen. */
+        if (!eintrag.withinSeats && !grenzeGesetzt) {
+          grenzeGesetzt = true
+          ops.push(text(ruler(width, '-'), { align: 'center' }))
+          ops.push(text('NICHT GEWÄHLT', { align: 'center' }))
+        }
+        const rang = eintrag.withinSeats ? `${String(eintrag.rank).padStart(2, '0')} ` : '   '
+        const zeichen = eintrag.tied ? '=' : eintrag.withinSeats ? '*' : ' '
+        for (const line of wrapText(`${zeichen}${rang}${eintrag.name}`, width, 4)) {
+          ops.push(text(line, { bold: eintrag.withinSeats }))
         }
         /*
          * Feste Spaltenbreiten statt rechtsbuendig: so stehen die Zahlen
@@ -517,6 +551,15 @@ export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfi
             `    ${spalte('Ja  ', eintrag.yes ?? 0)}  ${spalte('Nein', eintrag.no ?? 0)}  ${spalte('Enth', eintrag.abstain ?? 0)}`
           )
         )
+      }
+      if (rangfolge.some((eintrag) => eintrag.tied)) {
+        ops.push(feed(1))
+        for (const line of wrapText(
+          '= Rang nicht entschieden: gleiche Ja- und Nein-Zahl. Die Versammlung muss die Reihenfolge klären.',
+          width
+        )) {
+          ops.push(text(line))
+        }
       }
     }
 

@@ -4,7 +4,7 @@
  * Die Software rechnet und schlaegt vor — die Feststellung trifft ausschließlich
  * die Wahlleitung und wird ausdrücklich bestätigt.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { checkResultPlausibility } from '@shared/accounting'
 import { profileFor } from '@shared/election'
 import { FINAL_DECISION_LABELS, type FinalDecision } from '@shared/projection'
@@ -585,10 +585,16 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                             nicht mehr Ja als Nein
                           </span>
                         )}
-                        {candidate.tiedAtCutoff && (
+                        {candidate.tiedAtCutoff ? (
                           <span className="badge warn" style={{ marginLeft: 8 }}>
-                            Stimmengleichheit an der Grenze
+                            Gleichstand an der Grenze
                           </span>
+                        ) : (
+                          candidate.tied && (
+                            <span className="badge" style={{ marginLeft: 8 }}>
+                              Rang offen
+                            </span>
+                          )
                         )}
                       </>
                     }
@@ -681,6 +687,72 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             </div>
           )}
         </Card>
+
+        {/*
+          * Die Rangliste als eigene Ansicht.
+          *
+          * Bei einer Delegiertenwahl ist sie das Ergebnis: Wer ist Delegierter,
+          * wer Ersatz, in welcher Reihenfolge wird nachgerückt. Aus der
+          * Ankreuzliste darüber lässt sich das ablesen, aber sie ist zum
+          * Festlegen da, nicht zum Vorlesen.
+          */}
+        {profile.entryKind !== 'none' && ranked.length > 0 && (
+          <Card title="Rangliste">
+            <table className="rangliste">
+              <tbody>
+                {ranked.map((candidate, index) => {
+                  const ersteNichtGewaehlte =
+                    !candidate.withinSeats && (index === 0 || ranked[index - 1].withinSeats)
+                  return (
+                    <Fragment key={candidate.candidateId}>
+                      {ersteNichtGewaehlte && (
+                        <tr className="trennzeile">
+                          <td colSpan={3}>Nicht gewählt</td>
+                        </tr>
+                      )}
+                      <tr className={candidate.withinSeats ? 'gewaehlt' : 'nicht-gewaehlt'}>
+                        <td style={{ width: 44, textAlign: 'right' }}>
+                          {candidate.withinSeats ? `${candidate.rank}.` : '—'}
+                        </td>
+                        <td>
+                          {candidate.name}
+                          {candidate.tied && (
+                            <span className="badge warn" style={{ marginLeft: 8 }}>
+                              Rang offen
+                            </span>
+                          )}
+                        </td>
+                        <td className="mono" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {profile.perCandidateChoice
+                            ? `${candidate.yes ?? 0} / ${candidate.no ?? 0} / ${candidate.abstain ?? 0}`
+                            : (candidate.votes ?? 0)}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+            <div className="hint" style={{ marginTop: 8 }}>
+              {profile.perCandidateChoice
+                ? 'Sortiert nach Ja-Stimmen; bei Gleichstand entscheidet die geringere Zahl an Nein-Stimmen. Zahlen: Ja / Nein / Enthaltung.'
+                : 'Sortiert nach Stimmen.'}{' '}
+              Die Reihenfolge ist ein Vorschlag — festgestellt wird sie von der Wahlleitung.
+            </div>
+            {ranked.some((candidate) => candidate.tied) && (
+              <div className="notice warn" style={{ marginTop: 8 }}>
+                Bei mindestens zwei Bewerbern trennt kein Kriterium mehr. Die Versammlung muss die
+                Reihenfolge klären — durch Verzicht auf den höheren Platz, Stichwahl oder
+                Losentscheid. Ein Losentscheid lässt sich unten dokumentieren.
+              </div>
+            )}
+            <div className="row" style={{ marginTop: 12 }}>
+              <button disabled={!existing || bonLaeuft} onClick={ergebnisDrucken}>
+                {bonLaeuft ? 'Bon wird gedruckt …' : 'Rangliste auf Bon drucken'}
+              </button>
+            </div>
+          </Card>
+        )}
 
         <Card title="Weiteres Vorgehen">
           {/* Der Ergebnisbon steht zuerst: nach der Auszaehlung wird er am

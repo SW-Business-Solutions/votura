@@ -737,3 +737,35 @@ tr.muted td {
 .drag-item.dragging {
   opacity: 0.4;
 }
+
+/* ------------------------------------------------------------- Rangliste */
+
+.rangliste {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rangliste td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: baseline;
+}
+
+.rangliste tr.gewaehlt td {
+  font-weight: 600;
+}
+
+/* Nicht gewählt heißt nicht unwichtig — nur nachrangig. Zurückgenommen statt
+   ausgegraut, damit die Zahlen weiter lesbar bleiben. */
+.rangliste tr.nicht-gewaehlt td {
+  color: var(--text-muted);
+}
+
+.rangliste tr.trennzeile td {
+  padding-top: 12px;
+  border-bottom: none;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
