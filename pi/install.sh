@@ -1,34 +1,45 @@
 #!/usr/bin/env bash
 #
-# Richtet einen Raspberry Pi als Anzeigegerät für Votura ein.
+# Richtet einen Raspberry Pi für Votura ein — in einer von zwei Rollen.
 #
-# Nach dem Durchlauf bootet der Pi ohne Anmeldung in Votura Saal — Vollbild,
-# kein Desktop, kein Mauszeiger. Stürzt die Anwendung ab, startet sie neu.
+#   saal          Anzeigegerät hinter dem Beamer oder unter dem Pult.
+#                 Vollbild, kein Desktop, kein Mauszeiger.
+#   hauptrechner  Der Rechner, an dem die Versammlung geführt wird.
+#                 Mit Fensterverwaltung und Mauszeiger — er wird bedient.
+#
+# In beiden Fällen bootet der Pi ohne Anmeldung in die Anwendung, und was
+# abstürzt, kommt zurück.
 #
 # Bewusst ein Skript und kein fertiges Abbild als einziger Weg: Ein Skript
 # lässt sich lesen, bevor man es ausführt, es läuft auf einem bereits
-# eingerichteten Pi, und es ist die Grundlage, aus der das Abbild entsteht.
+# eingerichteten Pi, und es ist die Grundlage, aus der die Abbilder entstehen.
 #
 # Aufruf:
-#   sudo ./install.sh                        (holt das Paket von getvotura.de)
-#   sudo ./install.sh --paket ./votura-saal-1.2.0-arm64.tar.gz
-#   sudo ./install.sh --version 1.2.0
+#   sudo ./install.sh                              (Saal, Paket von GitHub)
+#   sudo ./install.sh --rolle hauptrechner
+#   sudo ./install.sh --paket ./Votura-Saal-1.3.0-linux-arm64.tar.gz
+#   sudo ./install.sh --version 1.3.0
+#   sudo ./install.sh --zeitzone Europe/Vienna --tastatur ch
 set -euo pipefail
 
 QUELLE_BASIS='https://github.com/SW-Business-Solutions/votura/releases'
-ZIEL='/opt/votura-saal'
 BENUTZER='votura'
-DATEN='/var/lib/votura-saal'
 
+rolle='saal'
 paket=''
 version='latest'
+zeitzone='Europe/Berlin'
+tastatur='de'
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --rolle) rolle="$2"; shift 2 ;;
     --paket) paket="$2"; shift 2 ;;
     --version) version="$2"; shift 2 ;;
+    --zeitzone) zeitzone="$2"; shift 2 ;;
+    --tastatur) tastatur="$2"; shift 2 ;;
     -h|--help)
-      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
       exit 0 ;;
     *) echo "Unbekannte Angabe: $1" >&2; exit 2 ;;
   esac
@@ -36,6 +47,35 @@ done
 
 melde() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 fehler() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
+
+# --------------------------------------------------------------- Die Rolle
+#
+# Die beiden Rollen unterscheiden sich in einem Punkt grundsätzlich: Die eine
+# wird *angesehen*, die andere *bedient*. Daran hängt alles Weitere — ob es
+# eine Fensterverwaltung gibt, ob ein Mauszeiger zu sehen ist, ob Drucker und
+# Wechseldatenträger gebraucht werden.
+
+case "$rolle" in
+  saal)
+    ANWENDUNG='Votura Saal'
+    PROGRAMM='votura-saal'
+    ARCHIV='Votura-Saal'
+    RECHNERNAME='votura-saal'
+    ;;
+  hauptrechner)
+    ANWENDUNG='Votura'
+    PROGRAMM='votura'
+    ARCHIV='Votura'
+    RECHNERNAME='votura'
+    ;;
+  *)
+    fehler "Unbekannte Rolle: $rolle (erlaubt sind 'saal' und 'hauptrechner')"
+    ;;
+esac
+
+ZIEL="/opt/$PROGRAMM"
+DATEN="/var/lib/$PROGRAMM"
+DIENST="$PROGRAMM"
 
 # Die Adresse des Pakets zu einer Fassung.
 #
@@ -51,8 +91,8 @@ paketadresse() {
     nummer="${ziel##*/v}"
     [[ "$nummer" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fehler "Unerwartetes Etikett: $ziel"
   fi
-  printf '%s/download/v%s/Votura-Saal-%s-linux-%s.tar.gz' \
-    "$QUELLE_BASIS" "$nummer" "$nummer" "$bogen"
+  printf '%s/download/v%s/%s-%s-linux-%s.tar.gz' \
+    "$QUELLE_BASIS" "$nummer" "$ARCHIV" "$nummer" "$bogen"
 }
 
 [[ $EUID -eq 0 ]] || fehler 'Bitte mit sudo ausführen.'
@@ -64,12 +104,19 @@ melde 'Gerät und System prüfen'
 architektur="$(dpkg --print-architecture)"
 if [[ "$architektur" != 'arm64' && "$architektur" != 'amd64' ]]; then
   fehler "Diese Architektur ($architektur) wird nicht unterstützt.
-Votura Saal braucht ein 64-Bit-System — Electron unterstützt kein armv7 mehr.
+$ANWENDUNG braucht ein 64-Bit-System — Electron unterstützt kein armv7 mehr.
 Bitte Raspberry Pi OS (64-bit) verwenden."
 fi
 
 speicher_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
-if (( speicher_kb < 1800000 )); then
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  # Der Hauptrechner rechnet: Foliensätze umwandeln, Ergebnisse setzen,
+  # drucken. Mit 2 GB läuft er, aber 4 GB sind hier keine Zierde.
+  if (( speicher_kb < 3600000 )); then
+    echo "Hinweis: Nur $((speicher_kb / 1024)) MB Arbeitsspeicher. Der Hauptrechner
+wandelt Foliensätze um und setzt Ergebnisse — 4 GB sind hier die empfohlene Größe."
+  fi
+elif (( speicher_kb < 1800000 )); then
   echo "Hinweis: Nur $((speicher_kb / 1024)) MB Arbeitsspeicher. Für eine Wand,
 die stundenlang läuft, sind 2 GB die untere Grenze — es läuft, kann aber ruckeln."
 fi
@@ -78,39 +125,92 @@ fi
 
 melde 'Systempakete einrichten'
 
-# Bewusst knapp: ein X-Server, ein Startprogramm, sonst nichts. Ein
-# Fenstermanager brächte Titelleisten und einen Mauszeiger auf die Leinwand.
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y --no-install-recommends \
-  xserver-xorg xinit x11-xserver-utils \
-  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libgbm1 \
-  libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
-  libpango-1.0-0 libcairo2 libasound2 \
-  unclutter avahi-daemon curl ca-certificates >/dev/null
+
+# Was beide Rollen brauchen: ein X-Server, ein Startprogramm, die
+# Bibliotheken von Chromium — und Schriften. Ohne Schriften zeigt Chromium
+# Kästchen statt Buchstaben, und auf einer Leinwand fällt das spät auf.
+gemeinsam=(
+  xserver-xorg xinit x11-xserver-utils
+  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libgbm1
+  libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2
+  libpango-1.0-0 libcairo2 libasound2
+  fonts-dejavu fonts-liberation
+  locales tzdata keyboard-configuration console-setup
+  avahi-daemon curl ca-certificates
+)
+
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  # Eine Fensterverwaltung, weil dieser Rechner bedient wird: Ohne sie hat
+  # ein Dateidialog keinen Rahmen, lässt sich nicht verschieben und landet
+  # womöglich hinter dem Hauptfenster.
+  #
+  # CUPS für einen per USB angeschlossenen Bondrucker — der Netzwerkdruck
+  # über Port 9100 braucht es nicht, aber welchen Drucker jemand mitbringt,
+  # weiß man vorher nicht.
+  #
+  # gvfs und udisks2, damit im Dateidialog ein USB-Stick auftaucht: Das
+  # Ergebnis will mitgenommen, der Foliensatz mitgebracht werden.
+  besonders=(openbox xterm cups printer-driver-escpr gvfs gvfs-backends udisks2 xdg-utils)
+else
+  # Den Mauszeiger blendet `unclutter` aus — er hat auf einer Leinwand nichts
+  # zu suchen.
+  besonders=(unclutter)
+fi
+
+apt-get install -y --no-install-recommends "${gemeinsam[@]}" "${besonders[@]}" >/dev/null
+
+# -------------------------------------------------- Deutsche Voreinstellung
+#
+# Raspberry Pi OS kommt britisch: Zeitzone Europe/London, Tastatur `gb`,
+# Sprache en_GB. Für eine Versammlung in Deutschland ist jede der drei
+# Angaben falsch, und zwar still:
+#
+#   Die Uhr geht eine Stunde daneben — und Uhrzeiten stehen im Protokoll.
+#   Auf der Tastatur sitzen Y und Z vertauscht, Umlaute fehlen ganz.
+#   Zahlen und Datumsangaben des Systems kommen englisch heraus.
+
+melde 'Sprache, Zeit und Tastatur'
+
+ln -sf "/usr/share/zoneinfo/$zeitzone" /etc/localtime
+echo "$zeitzone" > /etc/timezone
+
+sed -i 's/^# *\(de_DE.UTF-8 UTF-8\)/\1/' /etc/locale.gen
+grep -q '^de_DE.UTF-8' /etc/locale.gen || echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen
+locale-gen >/dev/null
+echo 'LANG=de_DE.UTF-8' > /etc/default/locale
+
+cat > /etc/default/keyboard <<TASTATUR
+XKBMODEL="pc105"
+XKBLAYOUT="$tastatur"
+XKBVARIANT=""
+XKBOPTIONS=""
+BACKSPACE="guess"
+TASTATUR
 
 # ------------------------------------------------------------------ Paket
 
-melde 'Votura Saal einspielen'
+melde "$ANWENDUNG einspielen"
 
 arbeit="$(mktemp -d)"
 trap 'rm -rf "$arbeit"' EXIT
 
 if [[ -n "$paket" ]]; then
   [[ -f "$paket" ]] || fehler "Datei nicht gefunden: $paket"
-  cp "$paket" "$arbeit/votura-saal.tar.gz"
+  cp "$paket" "$arbeit/paket.tar.gz"
 else
   adresse="$(paketadresse "$version" "$architektur")"
   echo "Lade $adresse"
-  curl -fL --progress-bar -o "$arbeit/votura-saal.tar.gz" "$adresse" \
+  curl -fL --progress-bar -o "$arbeit/paket.tar.gz" "$adresse" \
     || fehler "Herunterladen fehlgeschlagen. Mit --paket eine lokale Datei angeben."
 fi
 
 rm -rf "$ZIEL"
 mkdir -p "$ZIEL"
 # Das Archiv bringt einen eigenen Wurzelordner mit; der kommt weg.
-tar -xzf "$arbeit/votura-saal.tar.gz" -C "$ZIEL" --strip-components=1
-[[ -x "$ZIEL/votura-saal" ]] || fehler 'Im Archiv fehlt die Programmdatei votura-saal.'
+tar -xzf "$arbeit/paket.tar.gz" -C "$ZIEL" --strip-components=1
+[[ -x "$ZIEL/$PROGRAMM" ]] || fehler "Im Archiv fehlt die Programmdatei $PROGRAMM."
 
 # ---------------------------------------------------------------- Benutzer
 
@@ -120,23 +220,71 @@ if ! id -u "$BENUTZER" >/dev/null 2>&1; then
   useradd --system --create-home --home-dir "/home/$BENUTZER" --shell /usr/sbin/nologin "$BENUTZER"
 fi
 # `video` und `render` für die Grafikausgabe, `audio` für den Ton eines Films,
-# `input` für Tastatur (Strg+Umschalt+E) — mehr braucht dieser Benutzer nicht.
+# `input` für die Tastatur — mehr braucht dieser Benutzer in der Saal-Rolle
+# nicht. Der Hauptrechner kommt in `lp` und `plugdev` dazu: drucken und einen
+# USB-Stick einhängen.
 usermod -aG video,render,audio,input,tty "$BENUTZER"
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  usermod -aG lp,lpadmin,plugdev "$BENUTZER" 2>/dev/null || true
+fi
 
 mkdir -p "$DATEN"
 chown -R "$BENUTZER:$BENUTZER" "$DATEN" "/home/$BENUTZER"
 
 # --------------------------------------------------------------- Startskript
 
-melde 'Kioskstart einrichten'
+melde 'Start einrichten'
 
-cat > "$ZIEL/kiosk.sh" <<'SKRIPT'
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  # Eine Fensterverwaltung mit genau einer eigenen Tastenkombination: Strg +
+  # Alt + T öffnet ein Fenster mit einer Eingabezeile. Im Vollbild ohne
+  # Anmeldung ist das der einzige Weg an das System heran, wenn etwas klemmt.
+  mkdir -p "$ZIEL/openbox"
+  cat > "$ZIEL/openbox/rc.xml" <<'FENSTER'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <keyboard>
+    <keybind key="C-A-t">
+      <action name="Execute"><command>xterm</command></action>
+    </keybind>
+    <keybind key="A-F4">
+      <action name="Close"/>
+    </keybind>
+  </keyboard>
+</openbox_config>
+FENSTER
+
+  cat > "$ZIEL/start.sh" <<SKRIPT
 #!/usr/bin/env bash
 #
-# Startet Votura Saal in einem X-Server ohne Fensterverwaltung.
+# Startet Votura in einem X-Server mit Fensterverwaltung.
 #
-# `xset` schaltet Bildschirmschoner und Energiesparen ab: Ein Beamer, der nach
-# zehn Minuten Vortrag schwarz wird, ist der klassische Saalunfall.
+# Anders als im Saal bleibt hier der Mauszeiger sichtbar — dieser Rechner
+# wird bedient, nicht angesehen. Der Bildschirmschoner bleibt trotzdem aus:
+# Wer vorn spricht, wartet nicht, bis jemand eine Taste drückt.
+set -euo pipefail
+
+xset s off
+xset s noblank
+xset -dpms
+
+# Ohne Fensterverwaltung hätte ein Dateidialog keinen Rahmen und ließe sich
+# nicht verschieben. Strg + Alt + T öffnet eine Eingabezeile.
+openbox --config-file $ZIEL/openbox/rc.xml &
+
+exec $ZIEL/$PROGRAMM \\
+  --no-sandbox \\
+  --disable-features=UseChromeOSDirectVideoDecoder \\
+  --user-data-dir=$DATEN
+SKRIPT
+else
+  cat > "$ZIEL/start.sh" <<SKRIPT
+#!/usr/bin/env bash
+#
+# Startet $ANWENDUNG in einem X-Server ohne Fensterverwaltung.
+#
+# \`xset\` schaltet Bildschirmschoner und Energiesparen ab: Ein Beamer, der
+# nach zehn Minuten Vortrag schwarz wird, ist der klassische Saalunfall.
 set -euo pipefail
 
 xset s off
@@ -147,12 +295,23 @@ xset -dpms
 # nichts zu suchen, lässt sich aber durch Bewegen wieder hervorholen.
 unclutter -idle 1 -root &
 
-exec /opt/votura-saal/votura-saal \
-  --no-sandbox \
-  --disable-features=UseChromeOSDirectVideoDecoder \
-  --user-data-dir=/var/lib/votura-saal
+exec $ZIEL/$PROGRAMM \\
+  --no-sandbox \\
+  --disable-features=UseChromeOSDirectVideoDecoder \\
+  --user-data-dir=$DATEN
 SKRIPT
-chmod +x "$ZIEL/kiosk.sh"
+fi
+chmod +x "$ZIEL/start.sh"
+
+# Bis Fassung 1.3.0 hieß das Startskript `kiosk.sh`. Der Name bleibt als
+# Verweis, damit ein selbstgeschriebener Dienst nicht ins Leere zeigt.
+ln -sf "$ZIEL/start.sh" "$ZIEL/kiosk.sh"
+
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  bleibt='Die Daten der Versammlung bleiben erhalten.'
+else
+  bleibt='Die Zuordnung zum Hauptrechner bleibt erhalten.'
+fi
 
 cat > "$ZIEL/aktualisieren.sh" <<SKRIPT
 #!/usr/bin/env bash
@@ -161,7 +320,7 @@ set -euo pipefail
 [[ \$EUID -eq 0 ]] || { echo 'Bitte mit sudo ausführen.' >&2; exit 1; }
 
 # Erst holen, dann tauschen: Bricht das Netz weg, läuft die alte Fassung
-# weiter. Andersherum bliebe die Leinwand schwarz, bis jemand kommt.
+# weiter. Andersherum bliebe der Bildschirm schwarz, bis jemand kommt.
 #
 # Die Dateien tragen die Versionsnummer im Namen, GitHubs \`latest/download\`
 # braucht aber den genauen Dateinamen. Die Weiterleitung von
@@ -171,17 +330,17 @@ nummer="\${etikett##*/v}"
 [[ "\$nummer" =~ ^[0-9]+\.[0-9]+\.[0-9]+\$ ]] \\
   || { echo "Unerwartetes Etikett: \$etikett" >&2; exit 1; }
 
-curl -fL --progress-bar -o /tmp/votura-saal.tar.gz \\
-  "$QUELLE_BASIS/download/v\$nummer/Votura-Saal-\$nummer-linux-$architektur.tar.gz"
-tar -tzf /tmp/votura-saal.tar.gz >/dev/null \\
+curl -fL --progress-bar -o /tmp/votura-paket.tar.gz \\
+  "$QUELLE_BASIS/download/v\$nummer/$ARCHIV-\$nummer-linux-$architektur.tar.gz"
+tar -tzf /tmp/votura-paket.tar.gz >/dev/null \\
   || { echo 'Die geladene Datei ist unvollständig.' >&2; exit 1; }
 
-systemctl stop votura-saal
-rm -rf '$ZIEL'/{resources,locales,chrome*,lib*,votura-saal,*.pak,*.bin,*.dat,*.json}
-tar -xzf /tmp/votura-saal.tar.gz -C '$ZIEL' --strip-components=1
-rm -f /tmp/votura-saal.tar.gz
-systemctl start votura-saal
-echo "Fertig, jetzt \$nummer. Die Zuordnung zum Hauptrechner bleibt erhalten."
+systemctl stop $DIENST
+rm -rf '$ZIEL'/{resources,locales,chrome*,lib*,$PROGRAMM,*.pak,*.bin,*.dat,*.json}
+tar -xzf /tmp/votura-paket.tar.gz -C '$ZIEL' --strip-components=1
+rm -f /tmp/votura-paket.tar.gz
+systemctl start $DIENST
+echo "Fertig, jetzt \$nummer. $bleibt"
 SKRIPT
 chmod +x "$ZIEL/aktualisieren.sh"
 
@@ -189,9 +348,9 @@ chmod +x "$ZIEL/aktualisieren.sh"
 
 melde 'Dienst einrichten'
 
-cat > /etc/systemd/system/votura-saal.service <<SKRIPT
+cat > "/etc/systemd/system/$DIENST.service" <<SKRIPT
 [Unit]
-Description=Votura Saal — Anzeige für eine Versammlung
+Description=$ANWENDUNG
 After=network-online.target
 Wants=network-online.target
 
@@ -210,8 +369,9 @@ TTYReset=yes
 TTYVHangup=yes
 TTYVTDisallocate=yes
 Environment=HOME=/home/$BENUTZER
+Environment=LANG=de_DE.UTF-8
 Environment=XDG_RUNTIME_DIR=/run/user/%U
-ExecStart=/usr/bin/xinit $ZIEL/kiosk.sh -- :0 vt1 -nolisten tcp -keeptty
+ExecStart=/usr/bin/xinit $ZIEL/start.sh -- :0 vt1 -nolisten tcp -keeptty
 
 [Install]
 WantedBy=multi-user.target
@@ -226,29 +386,75 @@ fi
 grep -q '^needs_root_rights' /etc/X11/Xwrapper.config || echo 'needs_root_rights=yes' >> /etc/X11/Xwrapper.config
 
 systemctl daemon-reload
-systemctl enable votura-saal >/dev/null
+systemctl enable "$DIENST" >/dev/null
+
+# --------------------------------------------------------------- Sicherung
+#
+# Nur für den Hauptrechner, und nur er braucht es: Dort liegen die Daten der
+# Versammlung, und sie liegen auf einer SD-Karte. Karten sterben ohne
+# Vorwarnung. Das Skript schreibt eine Kopie auf einen eingehängten
+# Datenträger — von Hand aufgerufen, nicht heimlich im Hintergrund.
+
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  cat > /usr/local/bin/votura-sichern <<SKRIPT
+#!/usr/bin/env bash
+# Schreibt eine Kopie der Daten auf einen Datenträger.
+#
+#   sudo votura-sichern /media/usb
+set -euo pipefail
+[[ \$EUID -eq 0 ]] || { echo 'Bitte mit sudo ausführen.' >&2; exit 1; }
+ziel="\${1:-}"
+[[ -d "\$ziel" ]] || { echo "Kein Ordner: \$ziel" >&2; exit 2; }
+
+name="votura-\$(date +%Y-%m-%d-%H%M).tar.gz"
+# Angehalten wird nicht: SQLite im WAL-Verfahren verträgt eine Kopie im
+# Betrieb, und eine Versammlung anzuhalten, um sie zu sichern, wäre verkehrt.
+tar -czf "\$ziel/\$name" -C '$DATEN' .
+sync
+echo "Geschrieben: \$ziel/\$name (\$(du -h "\$ziel/\$name" | cut -f1))"
+SKRIPT
+  chmod +x /usr/local/bin/votura-sichern
+fi
 
 # ------------------------------------------------------------------- Name
 
 melde 'Netzwerkname setzen'
 
 # Damit sich der Pi aus der Ferne finden lässt, ohne seine Adresse zu kennen.
-if [[ "$(hostname)" != 'votura-saal' ]]; then
+if [[ "$(hostname)" != "$RECHNERNAME" ]]; then
   # Beim Abbildbau läuft dieses Skript im chroot. Dort gibt es kein systemd,
   # `hostnamectl` findet seinen Bus nicht und riss bisher den ganzen Lauf mit.
   # Die Datei genügt: Gelesen wird sie ohnehin erst beim Start auf dem Pi.
   if [[ -d /run/systemd/system ]]; then
-    hostnamectl set-hostname votura-saal
+    hostnamectl set-hostname "$RECHNERNAME"
   else
-    echo 'votura-saal' > /etc/hostname
+    echo "$RECHNERNAME" > /etc/hostname
   fi
-  sed -i "s/127.0.1.1.*/127.0.1.1\tvotura-saal/" /etc/hosts
+  sed -i "s/127.0.1.1.*/127.0.1.1\t$RECHNERNAME/" /etc/hosts
 fi
 systemctl enable avahi-daemon >/dev/null 2>&1 || true
 
 # ----------------------------------------------------------------- Fertig
 
-cat <<'ENDE'
+if [[ "$rolle" == 'hauptrechner' ]]; then
+  cat <<ENDE
+
+  Fertig — der Pi ist jetzt der Hauptrechner.
+
+    sudo reboot
+
+  Später:
+    Strg + Alt + T                  Eingabezeile, wenn etwas klemmt
+    sudo votura-sichern /media/…    Daten auf einen Datenträger kopieren
+    ssh $RECHNERNAME.local                aus der Ferne ansehen
+    journalctl -fu $DIENST          mitlesen, was der Dienst sagt
+
+  Die Daten der Versammlung liegen unter $DATEN — auf der SD-Karte.
+  Vor jeder Versammlung eine Sicherung, danach noch eine.
+
+ENDE
+else
+  cat <<ENDE
 
   Fertig.
 
@@ -258,8 +464,9 @@ cat <<'ENDE'
     sudo reboot
 
   Später:
-    Strg + Umschalt + E          zurück in die Einrichtung
-    ssh votura-saal.local        aus der Ferne ansehen
-    journalctl -fu votura-saal   mitlesen, was der Dienst sagt
+    Strg + Umschalt + E             zurück in die Einrichtung
+    ssh $RECHNERNAME.local           aus der Ferne ansehen
+    journalctl -fu $DIENST     mitlesen, was der Dienst sagt
 
 ENDE
+fi

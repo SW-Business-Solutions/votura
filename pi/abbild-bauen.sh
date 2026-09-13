@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Baut ein fertiges Raspberry-Pi-Abbild, das in Votura Saal bootet.
+# Baut ein fertiges Raspberry-Pi-Abbild, das in Votura bootet.
 #
 # ## Warum nicht pi-gen
 #
@@ -14,9 +14,13 @@
 # und gemerkt hätte man es im Saal.
 #
 # Aufruf:
-#   sudo ./pi/abbild-bauen.sh --paket release-saal/Votura-Saal-1.2.0-linux-arm64.tar.gz
+#   sudo ./pi/abbild-bauen.sh --paket release-saal/Votura-Saal-1.3.0-linux-arm64.tar.gz
+#   sudo ./pi/abbild-bauen.sh --rolle hauptrechner --paket release/Votura-1.3.0-linux-arm64.tar.gz
 #
 # Weitere Angaben:
+#   --rolle <saal|hauptrechner>
+#                         Welche Rolle das Abbild bekommt. Voreingestellt ist
+#                         `saal` — das Anzeigegerät hinter dem Beamer.
 #   --wartung <benutzer>  Legt ein Konto für die Fernwartung an (SSH, sudo).
 #                         Das Passwort wird abgefragt — oder aus der Umgebung
 #                         VOTURA_WARTUNG_PASSWORT genommen, damit auch ein
@@ -31,10 +35,12 @@ ZUSATZ_MB=2500
 paket=''
 behalten=0
 wartung=''
+rolle='saal'
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --paket) paket="$2"; shift 2 ;;
+    --rolle) rolle="$2"; shift 2 ;;
     --wartung) wartung="$2"; shift 2 ;;
     --behalten) behalten=1; shift ;;
     # Den Kopf ausgeben, so weit er reicht — feste Zeilennummern stimmten nach
@@ -49,6 +55,15 @@ fehler() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || fehler 'Bitte mit sudo ausführen.'
 [[ -n "$paket" && -f "$paket" ]] || fehler 'Bitte mit --paket das Linux-Paket (arm64) angeben.'
+
+# Der Name des Abbilds und der Rechnername im Abbild folgen der Rolle. Ein
+# Abbild, das `votura-saal` heißt, aber den Hauptrechner enthält, wäre die Art
+# Verwechslung, die erst im Saal auffällt.
+case "$rolle" in
+  saal) KURZ='votura-saal'; TITEL='Votura Saal' ;;
+  hauptrechner) KURZ='votura'; TITEL='Votura' ;;
+  *) fehler "Unbekannte Rolle: $rolle (erlaubt sind 'saal' und 'hauptrechner')" ;;
+esac
 
 for werkzeug in qemu-aarch64-static xz parted kpartx losetup curl; do
   command -v "$werkzeug" >/dev/null || fehler "Es fehlt: $werkzeug — siehe pi/bauen.md"
@@ -119,7 +134,7 @@ else
 fi
 
 melde 'Abbild auspacken und vergrößern'
-abbild="$arbeit/votura-saal.img"
+abbild="$arbeit/$KURZ.img"
 xz -dc "$grundabbild" > "$abbild"
 
 # Electron braucht Platz, den ein Lite-Abbild nicht vorsieht.
@@ -164,7 +179,7 @@ chmod +x "$arbeit/wurzel/tmp/votura/install.sh"
 
 chroot "$arbeit/wurzel" /usr/bin/qemu-aarch64-static /bin/bash -c '
   set -euo pipefail
-  /tmp/votura/install.sh --paket /tmp/votura/paket.tar.gz
+  /tmp/votura/install.sh --rolle '"$rolle"' --paket /tmp/votura/paket.tar.gz
 '
 
 # --------------------------------------------------------------- Aufräumen
@@ -210,7 +225,7 @@ trap - EXIT
 # ------------------------------------------------------------------ Packen
 
 melde 'Packen'
-ziel="$hier/$AUSGABE/votura-saal-$version-arm64.img"
+ziel="$hier/$AUSGABE/$KURZ-$version-arm64.img"
 mv "$abbild" "$ziel" 2>/dev/null || cp "$abbild" "$ziel"
 verwerfen
 xz -T0 -9 -f "$ziel"
@@ -221,13 +236,13 @@ xz -T0 -9 -f "$ziel"
 
 groesse="$(du -h "$ziel.xz" | cut -f1)"
 if [[ -n "$wartung" ]]; then
-  zugang="  Wartung:   ssh $wartung@votura-saal.local (ab dem ersten Start)"
+  zugang="  Wartung:   ssh $wartung@$KURZ.local (ab dem ersten Start)"
 else
   zugang='  Wartung:   kein Konto — nur mit Tastatur am Gerät erreichbar'
 fi
 cat <<ENDE
 
-  Fertig: $ziel.xz ($groesse)
+  Fertig: $TITEL — $ziel.xz ($groesse)
   Prüfsumme: $(awk '{print $1}' "$ziel.xz.sha256")
 $zugang
 

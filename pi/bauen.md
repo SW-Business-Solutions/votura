@@ -1,7 +1,8 @@
 # Ein fertiges Abbild für den Raspberry Pi bauen
 
 Das Ergebnis ist eine `.img.xz`, die sich mit dem Raspberry Pi Imager auf eine SD-Karte schreiben
-lässt und beim ersten Start in die Einrichtung von Votura Saal bootet.
+lässt und beim ersten Start in Votura bootet — je nach Rolle in die Einrichtung von Votura Saal
+oder in den Hauptrechner.
 
 Gebaut wird mit **Linux und Root** — in Windows selbst geht es nicht: Das Abbild wird über
 Loop-Geräte eingehängt, und die Fremdarchitektur braucht `binfmt_misc`. Beides gibt es dort nicht.
@@ -9,11 +10,11 @@ Ein WSL2-Ubuntu genügt aber, siehe unten.
 
 ## Was gebraucht wird
 
-| | |
-|---|---|
+|        |                                        |
+| ------ | -------------------------------------- |
 | System | Debian oder Ubuntu, 64 Bit, mit `sudo` |
-| Platz | rund 12 GB frei |
-| Dauer | 20 bis 40 Minuten, je nach Netz |
+| Platz  | rund 12 GB frei                        |
+| Dauer  | 20 bis 40 Minuten, je nach Netz        |
 
 ```bash
 sudo apt-get update
@@ -41,11 +42,21 @@ unter Windows.
 ## Bauen
 
 ```bash
-# Im Projektverzeichnis, mit dem fertigen Linux-Paket in release-saal/
+# Bühne oder Pult — die Voreinstellung
 sudo ./pi/abbild-bauen.sh \
-  --paket release-saal/Votura-Saal-1.2.0-linux-arm64.tar.gz \
+  --paket release-saal/Votura-Saal-1.3.0-linux-arm64.tar.gz \
+  --wartung votura-admin
+
+# Der Hauptrechner
+sudo ./pi/abbild-bauen.sh --rolle hauptrechner \
+  --paket release/Votura-1.3.0-linux-arm64.tar.gz \
   --wartung votura-admin
 ```
+
+**Die Rolle bestimmt alles Weitere:** den Namen des Abbilds, den Rechnernamen, ob es eine
+Fensterverwaltung gibt und ob ein Sicherungsskript mitkommt. Ein Abbild, das `votura-saal` heißt,
+aber den Hauptrechner enthält, wäre die Art Verwechslung, die erst im Saal auffällt — deshalb
+folgt der Dateiname der Rolle und nicht der Laune beim Aufrufen.
 
 **Das Linux-Paket muss aus `npm run dist:linux` stammen** — nicht aus einem blanken
 `electron-builder`-Aufruf. Unter Windows hergestellte Archive tragen kein Ausführungsrecht, weil NTFS
@@ -85,7 +96,8 @@ Das Skript
 4. führt darin `pi/install.sh --paket …` aus — dasselbe Skript, das auch von Hand läuft,
 5. räumt auf (Paketzwischenspeicher, SSH-Schlüssel, Protokolle) und packt das Ergebnis.
 
-Heraus kommt `release-pi/votura-saal-<version>-arm64.img.xz` samt `.sha256`.
+Heraus kommt `release-pi/votura-saal-<version>-arm64.img.xz` bzw.
+`release-pi/votura-<version>-arm64.img.xz`, je samt `.sha256`.
 
 **Ein Skript für beide Wege.** Das Abbild führt genau das aus, was auch auf einem laufenden Pi
 ausgeführt wird. Zwei getrennte Einrichtungen liefen bei der ersten Änderung auseinander, und
@@ -95,7 +107,7 @@ gemerkt hätte man es im Saal.
 
 Ein Browser kann das nicht — er hat keinen Zugriff auf Blockgeräte. Es gibt zwei Wege:
 
-**Von Hand:** Raspberry Pi Imager → *Eigenes Abbild verwenden* → die `.img.xz` auswählen.
+**Von Hand:** Raspberry Pi Imager → _Eigenes Abbild verwenden_ → die `.img.xz` auswählen.
 
 **Über ein eigenes Verzeichnis** — dann erscheint Votura Saal in der Liste des Imagers wie ein
 offizielles Abbild:
@@ -108,8 +120,11 @@ Das Verzeichnis selbst entsteht aus dem fertigen Abbild und liegt bei der jeweil
 Veröffentlichung, weil Prüfsumme und Größe darin stehen:
 
 ```bash
-node tools/os-list.mjs release-pi/votura-saal-1.2.0-arm64.img.xz
+node tools/os-list.mjs release-pi/votura-saal-1.3.0-arm64.img.xz release-pi/votura-1.3.0-arm64.img.xz
 ```
+
+Mehrere Abbilder ergeben mehrere Einträge in einer Datei; der Imager zeigt sie untereinander zur
+Auswahl.
 
 ## Prüfen, bevor es in den Saal geht
 
@@ -118,7 +133,13 @@ Beamerausgang. Was sich prüfen lässt:
 
 ```bash
 # Ist alles drin, wo es hingehört?
-sudo ./pi/abbild-pruefen.sh release-pi/votura-saal-1.2.0-arm64.img.xz
+sudo ./pi/abbild-pruefen.sh release-pi/votura-saal-1.3.0-arm64.img.xz
+sudo ./pi/abbild-pruefen.sh release-pi/votura-1.3.0-arm64.img.xz
 ```
+
+Welche Rolle geprüft wird, liest das Skript aus dem Abbild — angeben muss man es nicht, und wer
+sich vertippte, prüfte sonst fröhlich das Falsche als bestanden. Neben den Dateien sieht es nach,
+was Raspberry Pi OS britisch mitbringt: Zeitzone, Tastaturbelegung, Sprache und Schriften. Genau
+das stand im ersten gebauten Abbild noch falsch drin.
 
 Der erste Start auf einem echten Pi bleibt trotzdem Pflicht.

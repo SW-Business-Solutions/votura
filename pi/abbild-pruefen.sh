@@ -53,18 +53,77 @@ pruefe() {
 }
 
 echo
-echo 'Im Abbild:'
-pruefe 'opt/votura-saal/votura-saal' 'Programmdatei'
-pruefe 'opt/votura-saal/kiosk.sh' 'Kioskstart'
-pruefe 'opt/votura-saal/aktualisieren.sh' 'Aktualisierungsskript'
-pruefe 'opt/votura-saal/resources/app.asar' 'Anwendungspaket'
-pruefe 'etc/systemd/system/votura-saal.service' 'Dienst'
-pruefe 'etc/systemd/system/multi-user.target.wants/votura-saal.service' 'Dienst ist eingeschaltet'
+# Welche Rolle steckt drin? Das sagt das Abbild selbst, statt dass es
+# jemand beim Aufruf angeben müsste — und wer sich vertippt, prüft sonst
+# fröhlich das Falsche als bestanden.
+if [[ -d "$arbeit/wurzel/opt/votura-saal" ]]; then
+  PROGRAMM='votura-saal'; TITEL='Votura Saal'
+elif [[ -d "$arbeit/wurzel/opt/votura" ]]; then
+  PROGRAMM='votura'; TITEL='Votura (Hauptrechner)'
+else
+  printf '  \033[31m✗\033[0m In diesem Abbild steckt weder Votura noch Votura Saal.\n'
+  exit 1
+fi
+
+echo "Im Abbild: $TITEL"
+pruefe "opt/$PROGRAMM/$PROGRAMM" 'Programmdatei'
+pruefe "opt/$PROGRAMM/start.sh" 'Startskript'
+pruefe "opt/$PROGRAMM/aktualisieren.sh" 'Aktualisierungsskript'
+pruefe "opt/$PROGRAMM/resources/app.asar" 'Anwendungspaket'
+pruefe "etc/systemd/system/$PROGRAMM.service" 'Dienst'
+pruefe "etc/systemd/system/multi-user.target.wants/$PROGRAMM.service" 'Dienst ist eingeschaltet'
 pruefe 'usr/bin/xinit' 'X-Server-Start'
-pruefe 'var/lib/votura-saal' 'Datenordner'
+pruefe "var/lib/$PROGRAMM" 'Datenordner'
+
+if [[ "$PROGRAMM" == 'votura' ]]; then
+  # Der Hauptrechner wird bedient: Ohne Fensterverwaltung hätte ein
+  # Dateidialog keinen Rahmen, und ohne Sicherungsskript läge die
+  # Versammlung allein auf einer SD-Karte.
+  pruefe 'usr/bin/openbox' 'Fensterverwaltung'
+  pruefe "opt/$PROGRAMM/openbox/rc.xml" 'Tastenkombination für die Eingabezeile'
+  pruefe 'usr/local/bin/votura-sichern' 'Sicherungsskript'
+  pruefe 'usr/sbin/cupsd' 'Drucksystem'
+else
+  pruefe 'usr/bin/unclutter' 'Mauszeiger wird ausgeblendet'
+fi
 
 echo
-if grep -q 'Restart=always' "$arbeit/wurzel/etc/systemd/system/votura-saal.service" 2>/dev/null; then
+# Raspberry Pi OS kommt britisch. Jede der drei Angaben ist für eine
+# Versammlung in Deutschland falsch, und keine davon meldet sich: Die Uhr
+# ginge eine Stunde daneben, und Uhrzeiten stehen im Protokoll.
+zeitzone="$(cat "$arbeit/wurzel/etc/timezone" 2>/dev/null || echo '?')"
+if [[ "$zeitzone" == Europe/* ]]; then
+  printf '  \033[32m✓\033[0m Zeitzone: %s\n' "$zeitzone"
+else
+  printf '  \033[31m✗\033[0m Zeitzone steht auf %s\n' "$zeitzone"
+  fehler=1
+fi
+
+belegung="$(sed -n 's/^XKBLAYOUT="\(.*\)"/\1/p' "$arbeit/wurzel/etc/default/keyboard" 2>/dev/null)"
+if [[ -n "$belegung" && "$belegung" != 'gb' && "$belegung" != 'us' ]]; then
+  printf '  \033[32m✓\033[0m Tastatur: %s\n' "$belegung"
+else
+  printf '  \033[31m✗\033[0m Tastatur steht auf %s — Umlaute fehlen, Y und Z sind vertauscht\n' "${belegung:-?}"
+  fehler=1
+fi
+
+if grep -q '^LANG=de' "$arbeit/wurzel/etc/default/locale" 2>/dev/null; then
+  printf '  \033[32m✓\033[0m Sprache: %s\n' "$(sed -n 's/^LANG=//p' "$arbeit/wurzel/etc/default/locale")"
+else
+  printf '  \033[31m✗\033[0m Sprache steht nicht auf Deutsch\n'
+  fehler=1
+fi
+
+# Ohne Schriften zeigt Chromium Kästchen statt Buchstaben.
+if [[ -n "$(find "$arbeit/wurzel/usr/share/fonts" -name '*.ttf' -print -quit 2>/dev/null)" ]]; then
+  printf '  \033[32m✓\033[0m Schriften sind vorhanden\n'
+else
+  printf '  \033[31m✗\033[0m Keine Schriften — Chromium zeigte Kästchen\n'
+  fehler=1
+fi
+
+echo
+if grep -q 'Restart=always' "$arbeit/wurzel/etc/systemd/system/$PROGRAMM.service" 2>/dev/null; then
   printf '  \033[32m✓\033[0m Neustart nach Absturz ist eingerichtet\n'
 else
   printf '  \033[31m✗\033[0m Neustart nach Absturz fehlt\n'

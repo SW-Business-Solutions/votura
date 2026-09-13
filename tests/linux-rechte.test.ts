@@ -71,17 +71,17 @@ const DATEN = Buffer.from('nur Daten, kein Programm')
 
 describe('Rechte im Linux-Archiv', () => {
   const tar = baueTar([
-    { name: 'Votura-Saal-1.2.0-linux-arm64/', inhalt: Buffer.alloc(0), art: '5' },
-    { name: 'Votura-Saal-1.2.0-linux-arm64/votura-saal', inhalt: ELF },
-    { name: 'Votura-Saal-1.2.0-linux-arm64/libffmpeg.so', inhalt: ELF },
-    { name: 'Votura-Saal-1.2.0-linux-arm64/chrome-sandbox', inhalt: ELF },
-    { name: 'Votura-Saal-1.2.0-linux-arm64/resources.pak', inhalt: DATEN },
-    { name: 'Votura-Saal-1.2.0-linux-arm64/resources/app.asar', inhalt: DATEN }
+    { name: 'Votura-Saal-1.3.0-linux-arm64/', inhalt: Buffer.alloc(0), art: '5' },
+    { name: 'Votura-Saal-1.3.0-linux-arm64/votura-saal', inhalt: ELF },
+    { name: 'Votura-Saal-1.3.0-linux-arm64/libffmpeg.so', inhalt: ELF },
+    { name: 'Votura-Saal-1.3.0-linux-arm64/chrome-sandbox', inhalt: ELF },
+    { name: 'Votura-Saal-1.3.0-linux-arm64/resources.pak', inhalt: DATEN },
+    { name: 'Votura-Saal-1.3.0-linux-arm64/resources/app.asar', inhalt: DATEN }
   ])
   const { daten, geaendert } = richteRechte(tar)
   const nachher = new Map(lieseTar(daten).map((eintrag) => [eintrag.name, eintrag]))
   const recht = (name: string): number | undefined =>
-    nachher.get(`Votura-Saal-1.2.0-linux-arm64/${name}`)?.recht
+    nachher.get(`Votura-Saal-1.3.0-linux-arm64/${name}`)?.recht
 
   it('macht die Programmdatei ausführbar', () => {
     /* Der Fehler, der den Bau des Pi-Abbilds abbrechen ließ. */
@@ -119,10 +119,10 @@ describe('Rechte im Linux-Archiv', () => {
   })
 
   it('meldet, was es angefasst hat', () => {
-    expect(geaendert.map((eintrag) => eintrag.name)).toContain('Votura-Saal-1.2.0-linux-arm64/votura-saal')
+    expect(geaendert.map((eintrag) => eintrag.name)).toContain('Votura-Saal-1.3.0-linux-arm64/votura-saal')
     /* Was schon richtig war, taucht nicht auf. */
     expect(geaendert.map((eintrag) => eintrag.name)).not.toContain(
-      'Votura-Saal-1.2.0-linux-arm64/resources.pak'
+      'Votura-Saal-1.3.0-linux-arm64/resources.pak'
     )
   })
 })
