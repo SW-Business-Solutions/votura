@@ -47,13 +47,17 @@ gemerkt hätte man es im Saal.
 
 Ein Browser kann das nicht — er hat keinen Zugriff auf Blockgeräte. Es gibt zwei Wege:
 
-**Über das Verzeichnis von Votura** (bequem, das Abbild erscheint in der Liste wie ein offizielles):
+**Von Hand:** Raspberry Pi Imager → *Eigenes Abbild verwenden* → die `.img.xz` auswählen.
+
+**Über ein eigenes Verzeichnis** — dann erscheint Votura Saal in der Liste des Imagers wie ein
+offizielles Abbild:
 
 ```bash
-rpi-imager --repo https://getvotura.de/pi/os-list.json
+rpi-imager --repo https://www.getvotura.de/pi/os-list.json
 ```
 
-**Oder von Hand:** Raspberry Pi Imager → *Eigenes Abbild verwenden* → die `.img.xz` auswählen.
+> Diese Adresse gibt es noch nicht. Sie wird eingerichtet, sobald das erste Abbild veröffentlicht
+> ist — vorher hätte sie nichts zu zeigen.
 
 ## Prüfen, bevor es in den Saal geht
 

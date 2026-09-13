@@ -190,7 +190,7 @@ Ein Pi 4 oder 5 hinter dem Beamer: lautlos, klein, und beim Aufbauen nur ein Str
 **Einmalig einrichten** (Raspberry Pi OS Lite, **64 Bit**, Netz verbunden):
 
 ```
-curl -fsSL https://getvotura.de/pi/install.sh | sudo bash
+curl -fsSL https://www.getvotura.de/pi/install.sh | sudo bash
 sudo reboot
 ```
 

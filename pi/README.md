@@ -21,7 +21,7 @@ stundenlang laufen soll, zu knapp.
 Auf dem frisch aufgesetzten Pi, angemeldet als der übliche Benutzer:
 
 ```bash
-curl -fsSL https://getvotura.de/pi/install.sh | sudo bash
+curl -fsSL https://www.getvotura.de/pi/install.sh | sudo bash
 ```
 
 Oder aus dem Projekt heraus, wenn kein Netz zur Website besteht:

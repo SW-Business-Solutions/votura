@@ -353,7 +353,7 @@ Ein Pi 4 oder 5 hinter dem Beamer ist das naheliegende Gerät dafür — lautlos
 weniger als ein Verlängerungskabel für HDMI. Ein Befehl macht ihn zum Anzeigegerät:
 
 ```bash
-curl -fsSL https://getvotura.de/pi/install.sh | sudo bash
+curl -fsSL https://www.getvotura.de/pi/install.sh | sudo bash
 ```
 
 Danach bootet er ohne Anmeldung in Votura Saal: Vollbild, kein Desktop, kein Mauszeiger, kein
