@@ -104,8 +104,12 @@ offizielles Abbild:
 rpi-imager --repo https://www.getvotura.de/pi/os-list.json
 ```
 
-> Diese Adresse gibt es noch nicht. Sie wird eingerichtet, sobald das erste Abbild veröffentlicht
-> ist — vorher hätte sie nichts zu zeigen.
+Das Verzeichnis selbst entsteht aus dem fertigen Abbild und liegt bei der jeweiligen
+Veröffentlichung, weil Prüfsumme und Größe darin stehen:
+
+```bash
+node tools/os-list.mjs release-pi/votura-saal-1.2.0-arm64.img.xz
+```
 
 ## Prüfen, bevor es in den Saal geht
 
