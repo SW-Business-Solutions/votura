@@ -179,6 +179,17 @@ export interface RankedCandidate extends CandidateResult {
    * sind.
    */
   qualified: boolean
+  /**
+   * Kennung der Gruppe, innerhalb derer die Zahlen nicht mehr trennen.
+   *
+   * Wer dieselbe Kennung trägt, steht gleichauf. Die Bedienung braucht das,
+   * um beim Umreihen **nur diese** Gruppe festzuschreiben: Trüge sie die
+   * ganze Liste ein, gälten mit einem Klick auch alle anderen Gleichstände
+   * als entschieden, über die niemand befunden hat.
+   *
+   * Fehlt die Kennung, steht der Rang für sich.
+   */
+  tieGroup?: number
 }
 
 /**
@@ -257,12 +268,15 @@ export function rankCandidates(
   const plaetze = Math.min(seats, sorted.filter(erfuellt).length)
 
   let rank = 0
+  /* Gleichstehende stehen nach dem Sortieren zwangsläufig beieinander; die
+     Gruppe ist deshalb der Rang, bei dem sie beginnt. */
+  let gruppe = 0
   return sorted.map((candidate, index) => {
-    /* Gleichauf heißt: derselbe Rang wie der Vordermann. */
-    if (index === 0 || !gleichauf(sorted[index - 1], candidate)) rank = index + 1
-    const tied =
-      (index > 0 && gleichauf(sorted[index - 1], candidate)) ||
-      (index + 1 < sorted.length && gleichauf(sorted[index + 1], candidate))
+    const wieVorher = index > 0 && gleichauf(sorted[index - 1], candidate)
+    if (!wieVorher) rank = index + 1
+    const wieDanach = index + 1 < sorted.length && gleichauf(sorted[index + 1], candidate)
+    const tied = wieVorher || wieDanach
+    if (tied && !wieVorher) gruppe = rank
     return {
       ...candidate,
       rank,
@@ -271,7 +285,8 @@ export function rankCandidates(
          entscheidet er über gewählt oder nicht gewählt. */
       tiedAtCutoff: tied && (index === plaetze - 1 || index === plaetze),
       tied,
-      qualified: erfuellt(candidate)
+      qualified: erfuellt(candidate),
+      ...(tied ? { tieGroup: gruppe } : {})
     }
   })
 }

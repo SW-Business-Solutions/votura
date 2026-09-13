@@ -233,17 +233,30 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   /**
    * Reiht einen Bewerber innerhalb seiner Gleichstandsgruppe um.
    *
-   * Geschrieben wird die vollständige Reihenfolge, nicht nur das verschobene
-   * Paar: Sie ist für sich lesbar und bleibt gültig, auch wenn sich die Zahlen
-   * durch eine Korrektur noch verschieben. Über die Zahlen hinweg hebt sie
-   * niemanden — beim Sortieren zählt sie erst, wenn sonst nichts mehr trennt.
+   * Festgeschrieben wird **nur diese Gruppe**. Die ganze Liste einzutragen
+   * wäre bequemer, ließe aber mit einem Klick auch jeden anderen Gleichstand
+   * als entschieden gelten — über den niemand befunden hat.
+   *
+   * Über die Zahlen hinweg hebt die Reihenfolge niemanden: Beim Sortieren
+   * zählt sie erst, wenn sonst nichts mehr trennt.
    */
   const verschiebe = (index: number, richtung: -1 | 1): void => {
-    const ziel = index + richtung
-    if (ziel < 0 || ziel >= ranked.length) return
-    const neu = ranked.map((eintrag) => eintrag.candidateId)
-    ;[neu[index], neu[ziel]] = [neu[ziel], neu[index]]
-    setRankOrder(neu)
+    const eintrag = ranked[index]
+    const nachbar = ranked[index + richtung]
+    /* Getauscht wird nur innerhalb der Gruppe — am Rand ist Schluss. */
+    if (!eintrag?.tieGroup || nachbar?.tieGroup !== eintrag.tieGroup) return
+
+    const gruppe = ranked.filter((kandidat) => kandidat.tieGroup === eintrag.tieGroup)
+    const innen = gruppe.findIndex((kandidat) => kandidat.candidateId === eintrag.candidateId)
+    const neueGruppe = gruppe.map((kandidat) => kandidat.candidateId)
+    ;[neueGruppe[innen], neueGruppe[innen + richtung]] = [
+      neueGruppe[innen + richtung],
+      neueGruppe[innen]
+    ]
+
+    /* Frühere Entscheidungen zu anderen Gruppen bleiben stehen. */
+    const andere = rankOrder.filter((id) => !neueGruppe.includes(id))
+    setRankOrder([...andere, ...neueGruppe])
   }
 
   const save = async (): Promise<boolean> => {
@@ -752,7 +765,9 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                               <button
                                 className="mini"
                                 style={{ marginLeft: 8 }}
-                                disabled={confirmed || index === 0}
+                                disabled={
+                                  confirmed || ranked[index - 1]?.tieGroup !== candidate.tieGroup
+                                }
                                 title="Einen Platz nach oben"
                                 onClick={() => verschiebe(index, -1)}
                               >
@@ -760,7 +775,9 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                               </button>
                               <button
                                 className="mini"
-                                disabled={confirmed || index === ranked.length - 1}
+                                disabled={
+                                  confirmed || ranked[index + 1]?.tieGroup !== candidate.tieGroup
+                                }
                                 title="Einen Platz nach unten"
                                 onClick={() => verschiebe(index, 1)}
                               >

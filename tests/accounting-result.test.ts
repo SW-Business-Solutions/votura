@@ -202,6 +202,36 @@ describe('Rangfolge und Feststellungsvorschlag', () => {
     expect(entschieden.map((entry) => entry.rank)).toEqual([1, 2])
   })
 
+  /*
+   * Zwei getrennte Gleichstände in einer Liste.
+   *
+   * Der Fehler, den dieser Test festhält: Wurde beim Umreihen die vollständige
+   * Reihenfolge festgeschrieben, galt mit einem Klick auch der andere
+   * Gleichstand als entschieden — über den niemand befunden hatte.
+   */
+  it('lässt einen zweiten Gleichstand offen, wenn nur der erste entschieden wurde', () => {
+    const stimmen = [
+      { candidateId: 'a', name: 'Anna', yes: 90, no: 10 },
+      { candidateId: 'b', name: 'Bernd', yes: 90, no: 10 },
+      { candidateId: 'c', name: 'Cem', yes: 40, no: 20 },
+      { candidateId: 'd', name: 'Dora', yes: 40, no: 20 }
+    ]
+
+    /* Ohne Beschluss: beide Paare offen, und zwar als zwei Gruppen. */
+    const offen = rankCandidates(stimmen, 4)
+    expect(offen.every((entry) => entry.tied)).toBe(true)
+    expect(new Set(offen.map((entry) => entry.tieGroup)).size).toBe(2)
+
+    /* Nur das erste Paar wird eingereiht. */
+    const teilweise = rankCandidates(stimmen, 4, { decidedOrder: ['b', 'a'] })
+    expect(teilweise.map((entry) => entry.name)).toEqual(['Bernd', 'Anna', 'Cem', 'Dora'])
+    expect(teilweise[0].tied).toBe(false)
+    expect(teilweise[1].tied).toBe(false)
+    /* Und der zweite bleibt offen. */
+    expect(teilweise[2].tied).toBe(true)
+    expect(teilweise[3].tied).toBe(true)
+  })
+
   it('hebt niemanden über die Zahlen hinweg', () => {
     const ranked = rankCandidates(
       [
