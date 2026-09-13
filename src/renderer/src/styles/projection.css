@@ -690,3 +690,37 @@ html {
 .projection-redezeit-balken > div.vorbei {
   background: var(--projection-danger);
 }
+
+/* ------------------------------------------------------ Nächste Redner */
+
+.projection-naechste {
+  margin-top: 3cqh;
+  text-align: center;
+}
+
+.projection-naechste-titel {
+  font-size: calc(1.5cqw * var(--s, 1));
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--projection-muted);
+}
+
+/* Waagerecht und mit Trennpunkten: Die Reihe soll als Reihe lesbar sein, nicht
+   als zweite Liste neben dem Namen der sprechenden Person. */
+.projection-naechste ol {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 2cqw;
+  margin: 1cqh 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: calc(2cqw * var(--s, 1));
+  color: var(--projection-text);
+}
+
+.projection-naechste li + li::before {
+  content: '·';
+  margin-right: 2cqw;
+  color: var(--projection-muted);
+}

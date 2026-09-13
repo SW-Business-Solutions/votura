@@ -318,7 +318,27 @@ export interface ProjectionSpeaker {
    * Steht hier ein Wert, ruht der Countdown.
    */
   pausedSecondsLeft?: number
+  /**
+   * Wer danach an der Reihe ist, in Reihenfolge.
+   *
+   * Die Liste ist der ganze Vorrat, aus dem „Nächster" schöpft — angezeigt
+   * wird davon nur der vordere Teil (`upcomingShown`).
+   */
+  upcoming?: string[]
+  /**
+   * Wie viele der nächsten Namen der Beamer zeigt.
+   *
+   * Einstellbar, weil es von der Versammlung abhängt: Bei kurzen
+   * Vorstellungen mögen zwei genügen, bei langen Wegen zum Pult helfen sechs.
+   * 0 blendet die Vorschau aus.
+   */
+  upcomingShown?: number
 }
+
+/** Vorgabe, wenn nichts eingestellt ist. */
+export const REDNER_VORSCHAU = 4
+/** Mehr als das liest im Saal niemand mehr. */
+export const REDNER_VORSCHAU_MAX = 8
 
 export interface ProjectionHistoryEntry {
   timestamp: IsoDateTime

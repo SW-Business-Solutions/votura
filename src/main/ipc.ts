@@ -70,6 +70,7 @@ import {
   refreshEventInfo,
   refreshTheme,
   addSpeakerSeconds,
+  nextSpeaker,
   setCandidatePage,
   setCandidatePageInterval,
   setSpeakerPaused,
@@ -476,6 +477,7 @@ const api: Api = {
   'projection.setCandidatePageInterval': async (seconds) => setCandidatePageInterval(seconds),
   'projection.setSpeakerPaused': async (paused) => setSpeakerPaused(paused),
   'projection.addSpeakerSeconds': async (seconds) => addSpeakerSeconds(seconds),
+  'projection.nextSpeaker': async () => nextSpeaker(),
 
   /* --------------------------------------------------------- Präsentationen */
   'presentation.list': async () => listPresentations(),

@@ -143,6 +143,12 @@ Video (`anchoredAt`).
 Negative Reste werden **nicht** abgeschnitten: Eine überzogene Redezeit soll sichtbar bleiben,
 nicht bei null stehen.
 
+`upcoming` trägt die Reihe der Folgenden, `upcomingShown` wie viele davon der Beamer zeigt. Die
+Reihe wird **nicht gepflegt**, sondern beim Aufruf aus der Kandidatenliste abgeleitet: Vorgestellt
+wird in der Reihenfolge des Stimmzettels, und die steht dort bereits. `nextSpeaker()` schiebt sie
+weiter und setzt die Uhr auf `totalSeconds` zurück — der Zusatz gehörte zur vorigen Person und
+wird nicht mitgeschleppt.
+
 ## Präsentationen
 
 Zwischen den Wahlgängen wird geredet. Eine eingespeiste **HTML-Präsentation** läuft im selben

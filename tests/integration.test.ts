@@ -41,6 +41,7 @@ const accounting = await import('../src/main/services/accounting')
 const results = await import('../src/main/services/results')
 const audit = await import('../src/main/services/audit')
 const settings = await import('../src/main/services/settings')
+const projection = await import('../src/main/services/projection')
 
 const CHECKLIST = ['round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode']
 const NAMES = [
@@ -975,5 +976,62 @@ describe('Bündelung erzeugt tatsächlich jeden Zettel', () => {
     expect(zettel).toBe(25)
 
     settings.saveConfig(konfiguration)
+  })
+})
+
+describe('Rednerreihe bei der Vorstellung', () => {
+  /*
+   * Vorgestellt wird in der Reihenfolge des Stimmzettels. Die Reihe muss
+   * deshalb nicht gepflegt werden — sie ergibt sich aus der Kandidatenliste,
+   * und „Nächster" rückt sie weiter.
+   */
+  it('rückt weiter und lässt die Uhr von vorn laufen', () => {
+    projection.setProjection({
+      mode: 'speaker',
+      speaker: {
+        name: 'Erste Person',
+        note: 'Bewerbung',
+        seconds: 180,
+        upcoming: ['Zweite Person', 'Dritte Person'],
+        upcomingShown: 2
+      }
+    })
+
+    const start = projection.getProjectionState().speaker
+    expect(start?.name).toBe('Erste Person')
+    expect(start?.upcoming).toEqual(['Zweite Person', 'Dritte Person'])
+
+    const nachher = projection.nextSpeaker().speaker
+    expect(nachher?.name).toBe('Zweite Person')
+    expect(nachher?.upcoming).toEqual(['Dritte Person'])
+    /* Die zugestandene Zeit bleibt, die Uhr beginnt von vorn. */
+    expect(nachher?.totalSeconds).toBe(180)
+    expect(new Date(nachher?.until ?? 0).getTime()).toBeGreaterThan(Date.now() + 170_000)
+    /* Die Einstellung, wie viele gezeigt werden, bleibt erhalten. */
+    expect(nachher?.upcomingShown).toBe(2)
+    /* Der Zusatz gehörte zur vorigen Person. */
+    expect(nachher?.note).toBeUndefined()
+  })
+
+  it('tut nichts, wenn niemand mehr in der Reihe steht', () => {
+    projection.setProjection({
+      mode: 'speaker',
+      speaker: { name: 'Letzte Person', seconds: 60 }
+    })
+    const vorher = projection.getProjectionState().updatedAt
+    projection.nextSpeaker()
+    expect(projection.getProjectionState().speaker?.name).toBe('Letzte Person')
+    expect(projection.getProjectionState().updatedAt).toBe(vorher)
+  })
+
+  /* Ein Moduswechsel beendet die Vorstellung — beim nächsten Aufruf soll die
+     Uhr von vorn laufen, nicht beim Rest der vorigen Person. */
+  it('vergisst die Reihe beim Wechsel der Ansicht', () => {
+    projection.setProjection({
+      mode: 'speaker',
+      speaker: { name: 'Jemand', seconds: 60, upcoming: ['Danach'] }
+    })
+    projection.setProjection({ mode: 'welcome' })
+    expect(projection.getProjectionState().speaker).toBeUndefined()
   })
 })

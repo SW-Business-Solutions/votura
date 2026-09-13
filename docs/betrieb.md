@@ -137,6 +137,15 @@ groß an der Wand. Für alles andere — Gast, Bericht, Grußwort — gibt es da
 Dazu optional ein Zusatz wie „Bewerbung um den Vorsitz", die Redezeit in Minuten, dann
 *Vorstellung anzeigen*.
 
+Ist ein Bezugswahlgang gewählt, zeigt der Beamer darunter auch, **wer als Nächstes an der Reihe
+ist** — die Reihe ergibt sich von selbst aus der Kandidatenliste, denn vorgestellt wird in der
+Reihenfolge des Stimmzettels. Niemand muss eine Warteliste pflegen. Wie viele Namen zu sehen sind,
+stellt das Feld *Nächste zeigen* ein (0 blendet die Vorschau aus); so können sich die Folgenden
+schon in Stellung bringen, statt erst beim Aufruf loszugehen.
+
+*Nächster* ruft die nächste Person auf: Der Name wechselt, die Reihe rückt nach, und die Uhr
+beginnt von vorn mit derselben zugestandenen Zeit.
+
 Der Saal sieht den Namen groß, darunter den Zusatz und die verbleibende Zeit mit Balken. Die
 letzten dreißig Sekunden werden gelb, danach zählt die Anzeige **ins Minus weiter** und wird rot —
 wer überzieht, soll es sehen, und die Versammlungsleitung auch.
