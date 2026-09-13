@@ -37,6 +37,24 @@ done
 melde() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 fehler() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
+# Die Adresse des Pakets zu einer Fassung.
+#
+# Die Dateien tragen die Versionsnummer im Namen, GitHubs `latest/download`
+# braucht aber den genauen Dateinamen — ohne Nummer antwortet es mit 404. Bei
+# `latest` wird die Nummer deshalb zuerst nachgeschlagen: Die Weiterleitung
+# von `.../releases/latest` endet auf dem Etikett der neuesten Fassung.
+paketadresse() {
+  local wunsch="$1" bogen="$2" nummer="$1" ziel
+  if [[ "$wunsch" == 'latest' ]]; then
+    ziel="$(curl -fsSL -o /dev/null -w '%{url_effective}' "$QUELLE_BASIS/latest")" \
+      || fehler 'Die neueste Fassung ließ sich nicht ermitteln. Steht das Netz?'
+    nummer="${ziel##*/v}"
+    [[ "$nummer" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fehler "Unerwartetes Etikett: $ziel"
+  fi
+  printf '%s/download/v%s/Votura-Saal-%s-linux-%s.tar.gz' \
+    "$QUELLE_BASIS" "$nummer" "$nummer" "$bogen"
+}
+
 [[ $EUID -eq 0 ]] || fehler 'Bitte mit sudo ausführen.'
 
 # ---------------------------------------------------------------- Prüfungen
@@ -82,11 +100,7 @@ if [[ -n "$paket" ]]; then
   [[ -f "$paket" ]] || fehler "Datei nicht gefunden: $paket"
   cp "$paket" "$arbeit/votura-saal.tar.gz"
 else
-  if [[ "$version" == 'latest' ]]; then
-    adresse="$QUELLE_BASIS/latest/download/Votura-Saal-linux-$architektur.tar.gz"
-  else
-    adresse="$QUELLE_BASIS/download/v$version/Votura-Saal-linux-$architektur.tar.gz"
-  fi
+  adresse="$(paketadresse "$version" "$architektur")"
   echo "Lade $adresse"
   curl -fL --progress-bar -o "$arbeit/votura-saal.tar.gz" "$adresse" \
     || fehler "Herunterladen fehlgeschlagen. Mit --paket eine lokale Datei angeben."
@@ -145,14 +159,29 @@ cat > "$ZIEL/aktualisieren.sh" <<SKRIPT
 # Holt die neueste Fassung und startet den Dienst neu.
 set -euo pipefail
 [[ \$EUID -eq 0 ]] || { echo 'Bitte mit sudo ausführen.' >&2; exit 1; }
-systemctl stop votura-saal
+
+# Erst holen, dann tauschen: Bricht das Netz weg, läuft die alte Fassung
+# weiter. Andersherum bliebe die Leinwand schwarz, bis jemand kommt.
+#
+# Die Dateien tragen die Versionsnummer im Namen, GitHubs \`latest/download\`
+# braucht aber den genauen Dateinamen. Die Weiterleitung von
+# \`.../releases/latest\` verrät das Etikett der neuesten Fassung.
+etikett="\$(curl -fsSL -o /dev/null -w '%{url_effective}' '$QUELLE_BASIS/latest')"
+nummer="\${etikett##*/v}"
+[[ "\$nummer" =~ ^[0-9]+\.[0-9]+\.[0-9]+\$ ]] \\
+  || { echo "Unerwartetes Etikett: \$etikett" >&2; exit 1; }
+
 curl -fL --progress-bar -o /tmp/votura-saal.tar.gz \\
-  '$QUELLE_BASIS/latest/download/Votura-Saal-linux-$architektur.tar.gz'
+  "$QUELLE_BASIS/download/v\$nummer/Votura-Saal-\$nummer-linux-$architektur.tar.gz"
+tar -tzf /tmp/votura-saal.tar.gz >/dev/null \\
+  || { echo 'Die geladene Datei ist unvollständig.' >&2; exit 1; }
+
+systemctl stop votura-saal
 rm -rf '$ZIEL'/{resources,locales,chrome*,lib*,votura-saal,*.pak,*.bin,*.dat,*.json}
 tar -xzf /tmp/votura-saal.tar.gz -C '$ZIEL' --strip-components=1
 rm -f /tmp/votura-saal.tar.gz
 systemctl start votura-saal
-echo 'Fertig. Die Zuordnung zum Hauptrechner bleibt erhalten.'
+echo "Fertig, jetzt \$nummer. Die Zuordnung zum Hauptrechner bleibt erhalten."
 SKRIPT
 chmod +x "$ZIEL/aktualisieren.sh"
 

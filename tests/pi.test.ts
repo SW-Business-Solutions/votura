@@ -73,12 +73,71 @@ describe('Das Einrichtungsskript', () => {
     /*
      * Die häufigste stille Panne: Das Paket heißt anders, als das Skript es
      * sucht — und der Pi zeigt beim Aufbauen einen 404.
+     *
+     * Genau das ist passiert, und diese Prüfung hat es durchgelassen: Sie
+     * verglich die beiden Namen nicht, sie sah nur nach, dass jeder für sich
+     * vorkommt. Jetzt wird der Name des Bauplans in die Form des Skripts
+     * übersetzt und muss dort wörtlich stehen.
      */
-    expect(linuxAngabe('electron-builder-saal.yml', 'artifactName')).toBe(
-      'Votura-Saal-${version}-linux-${arch}.${ext}'
-    )
-    /* Im Skript steht derselbe Name, nur mit eingesetzter Architektur. */
-    expect(install).toContain('Votura-Saal-linux-$architektur.tar.gz')
+    const bauplan = linuxAngabe('electron-builder-saal.yml', 'artifactName')
+    expect(bauplan).toBe('Votura-Saal-${version}-linux-${arch}.${ext}')
+
+    const gesucht = bauplan.replace('${version}', '%s').replace('${arch}', '%s').replace('${ext}', 'tar.gz')
+    expect(install).toContain(gesucht)
+  })
+})
+
+describe('Die Adresse, von der das Paket kommt', () => {
+  it('trägt die Versionsnummer im Dateinamen', () => {
+    /*
+     * GitHubs `latest/download/<name>` braucht den **genauen** Dateinamen.
+     * Die Assets heißen `Votura-Saal-1.2.0-linux-arm64.tar.gz`; die Adresse
+     * ohne Nummer antwortete mit 404 — und damit lief der in README und auf
+     * der Webseite dokumentierte Einzeiler ins Leere.
+     */
+    expect(install).not.toContain('latest/download/Votura-Saal-linux-')
+    expect(install).toContain('Votura-Saal-%s-linux-%s.tar.gz')
+  })
+
+  it('schlägt die neueste Fassung über die Weiterleitung nach', () => {
+    /* `.../releases/latest` leitet auf `.../releases/tag/v1.2.0` — daraus
+       kommt die Nummer, ohne dass jq auf dem Pi liegen müsste. */
+    expect(install).toContain('url_effective')
+    expect(install).toContain('${ziel##*/v}')
+  })
+
+  it('nimmt nur eine Nummer an, die wie eine aussieht', () => {
+    /* Sonst stünde bei einer unerwarteten Antwort halbes HTML im Dateinamen
+       und der Fehler käme erst beim Auspacken. */
+    expect(install).toMatch(/\[\[ "\$nummer" =~ \^\[0-9\]\+/)
+  })
+})
+
+describe('Die Aktualisierung auf dem Pi', () => {
+  const aktualisieren = install.slice(
+    install.indexOf('aktualisieren.sh" <<SKRIPT'),
+    install.indexOf('chmod +x "$ZIEL/aktualisieren.sh"')
+  )
+
+  it('lädt und prüft, bevor sie den Dienst anhält', () => {
+    /*
+     * Bricht das Netz mittendrin weg, läuft die alte Fassung weiter.
+     * Andersherum bliebe die Leinwand schwarz, bis jemand hingeht — und im
+     * Saal steht niemand daneben.
+     */
+    const geladen = aktualisieren.indexOf('curl -fL')
+    const geprueft = aktualisieren.indexOf('tar -tzf')
+    const angehalten = aktualisieren.indexOf('systemctl stop')
+    expect(geladen).toBeGreaterThan(-1)
+    expect(geladen).toBeLessThan(geprueft)
+    expect(geprueft).toBeLessThan(angehalten)
+  })
+
+  it('schlägt die Fassung bei jedem Lauf neu nach', () => {
+    /* Die Nummer darf nicht aus der Einrichtung eingebrannt sein, sonst holt
+       der Pi für immer dieselbe Fassung. */
+    expect(aktualisieren).toContain('url_effective')
+    expect(aktualisieren).toContain('Votura-Saal-\\$nummer-linux-')
   })
 })
 
