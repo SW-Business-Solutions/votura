@@ -40,6 +40,7 @@ import {
   saveSpeech
 } from './services/speeches'
 import { networkStatus, startNetworkProjection, stopNetworkProjection } from './network-projection'
+import { starteSuchruf, stoppeSuchruf, type SuchrufQuelle } from './suchruf'
 import { accountingFor, saveAccounting } from './services/accounting'
 import { appendAudit, listAudit, verifyAuditChain } from './services/audit'
 import {
@@ -139,6 +140,7 @@ import {
 } from './services/agenda'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
+  getNetworkProjection,
   getProjectionTheme,
   getSettings,
   saveConfig,
@@ -239,6 +241,24 @@ function aufBuehnen<T>(stage: Buehnenwahl | undefined, tue: (buehne: number) => 
   const ergebnisse = new Map<number, T>()
   for (const buehne of ziele) ergebnisse.set(buehne, tue(buehne))
   return ergebnisse.get(bezugsbuehne(stage)) ?? ergebnisse.get(ziele[0])!
+}
+
+/**
+ * Woher die Antwort auf einen Suchruf ihre Angaben nimmt.
+ *
+ * Als Funktionen und nicht als Werte: Der Dienst läuft weiter, während Bühnen
+ * umbenannt oder angelegt werden — er soll dann das Heutige sagen, nicht das
+ * von seinem Start.
+ */
+export function suchrufQuelle(): SuchrufQuelle {
+  return {
+    name: () => activeEvent()?.title ?? 'Votura',
+    port: () => getNetworkProjection().port,
+    version: () => app.getVersion(),
+    tokenNoetig: () => Boolean(getNetworkProjection().token),
+    buehnen: () => listBuehnen().map((buehne) => ({ id: buehne.id, name: buehne.name })),
+    prompterBedienung: () => getNetworkProjection().allowPrompterControl
+  }
 }
 
 const api: Api = {
@@ -745,6 +765,10 @@ const api: Api = {
     const status = saved.enabled
       ? await startNetworkProjection(saved)
       : (await stopNetworkProjection(), networkStatus())
+    /* Der Suchruf hängt an der Netzwerkansicht: Ohne sie gibt es nichts
+       anzuzeigen, und ein Rechner, der still sein soll, antwortet auch nicht. */
+    if (saved.enabled && status.running) await starteSuchruf(suchrufQuelle())
+    else await stoppeSuchruf()
     appendAudit({
       action: saved.enabled ? 'projection.network_enabled' : 'projection.network_disabled',
       newValue: { port: saved.port, adresse: saved.bindAddress, tokenGesetzt: Boolean(saved.token) }

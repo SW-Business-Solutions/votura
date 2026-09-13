@@ -7,7 +7,12 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: { index: resolve(__dirname, 'src/main/index.ts') }
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          /* Die Begleitanwendung hat einen eigenen Hauptprozess, teilt sich
+             aber alles unter `src/shared` mit dem Hauptrechner. */
+          saal: resolve(__dirname, 'src/saal/index.ts')
+        }
       }
     },
     resolve: {
@@ -22,7 +27,8 @@ export default defineConfig({
           index: resolve(__dirname, 'src/preload/index.ts'),
           audience: resolve(__dirname, 'src/preload/audience.ts'),
           prompter: resolve(__dirname, 'src/preload/prompter.ts'),
-          teleprompter: resolve(__dirname, 'src/preload/teleprompter.ts')
+          teleprompter: resolve(__dirname, 'src/preload/teleprompter.ts'),
+          saal: resolve(__dirname, 'src/preload/saal.ts')
         },
         output: { format: 'cjs', entryFileNames: '[name].js' }
       }
@@ -39,7 +45,8 @@ export default defineConfig({
           index: resolve(__dirname, 'src/renderer/index.html'),
           audience: resolve(__dirname, 'src/renderer/audience.html'),
           prompter: resolve(__dirname, 'src/renderer/prompter.html'),
-          teleprompter: resolve(__dirname, 'src/renderer/teleprompter.html')
+          teleprompter: resolve(__dirname, 'src/renderer/teleprompter.html'),
+          einrichtung: resolve(__dirname, 'src/renderer/einrichtung.html')
         }
       }
     },

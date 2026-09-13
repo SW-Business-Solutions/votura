@@ -14,6 +14,8 @@ import { checkOnStartIfEnabled } from './services/updates'
 import { onPrompterViewChanged } from './services/prompter'
 import { sprachmodellDatei } from './services/sprachmodell'
 import { setPrompterNetzBedienung } from './services/prompter'
+import { starteSuchruf, stoppeSuchruf } from './suchruf'
+import { suchrufQuelle } from './ipc'
 import {
   broadcastPrompter,
   broadcastProjection,
@@ -450,6 +452,9 @@ async function bootstrap(): Promise<void> {
         level: 'warning',
         message: `Netzwerk-Beameransicht konnte nicht gestartet werden: ${status.error ?? 'unbekannter Fehler'}`
       })
+    } else {
+      /* Erst wenn der Server steht, hat es Sinn, sich rufen zu lassen. */
+      await starteSuchruf(suchrufQuelle())
     }
   }
 
@@ -492,6 +497,7 @@ app.on('before-quit', () => {
 app.on('will-quit', async (event) => {
   event.preventDefault()
   await stopNetworkProjection()
+  await stoppeSuchruf()
   closeDatabase()
   logger.info(`Netzwerkstatus beim Beenden: ${JSON.stringify(networkStatus())}`)
   app.exit(0)

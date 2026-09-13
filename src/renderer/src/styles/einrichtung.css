@@ -1,0 +1,186 @@
+/*
+ * Einrichtung der Begleitanwendung.
+ *
+ * Sie wird einmal gesehen, meist im Halbdunkel beim Aufbauen, oft auf einem
+ * kleinen Bildschirm. Große Schaltflächen, wenig Text, keine Zierde.
+ */
+:root {
+  --grund: #0f1214;
+  --flaeche: #171b1f;
+  --rand: #2b3238;
+  --rand-stark: #3d474f;
+  --schrift: #eef2f5;
+  --leise: #9fadb8;
+  --akzent: #2f81f7;
+  --warn: #f85149;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--schrift);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.ein {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+p {
+  margin: 6px 0;
+  color: var(--leise);
+  line-height: 1.5;
+}
+
+.leise {
+  color: var(--leise);
+  font-size: 13px;
+}
+
+.mono {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 13px;
+  color: var(--akzent);
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+}
+
+.kopfzeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+button {
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 16px;
+  color: var(--schrift);
+  background: var(--grund);
+  border: 1px solid var(--rand-stark);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--akzent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.gewaehlt {
+  border-color: var(--akzent);
+  background: color-mix(in srgb, var(--akzent) 16%, transparent);
+}
+
+button.primaer {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Ein gefundener Rechner: Name groß, Adresse klein, Kennzahlen daneben. */
+.fund {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  text-align: left;
+  padding: 12px 14px;
+}
+
+.fund .mono {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+}
+
+.fund .leise {
+  grid-column: 1 / -1;
+}
+
+.rollen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.rollen button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 14px;
+  font-weight: 600;
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--leise);
+}
+
+.feld input {
+  font: inherit;
+  font-size: 15px;
+  min-height: 44px;
+  padding: 8px 12px;
+  color: var(--schrift);
+  background: var(--grund);
+  border: 1px solid var(--rand-stark);
+  border-radius: 10px;
+}
+
+.hinweis {
+  padding: 10px 12px;
+  border-left: 3px solid var(--akzent);
+  background: color-mix(in srgb, var(--akzent) 8%, transparent);
+  color: var(--schrift);
+  font-size: 14px;
+}
+
+.fehler {
+  padding: 12px 14px;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  color: var(--warn);
+}
+
+footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
