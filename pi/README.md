@@ -47,10 +47,13 @@ wählen, fertig.
 | Handgriff | Wie |
 |---|---|
 | Zurück in die Einrichtung | **Strg + Umschalt + E** (Tastatur anstecken genügt) |
-| Aus der Ferne ansehen | `ssh votura@votura-saal.local journalctl -fu votura-saal` |
+| Aus der Ferne ansehen | `ssh <benutzer>@votura-saal.local journalctl -fu votura-saal` |
 | Neu starten | `sudo systemctl restart votura-saal` |
 | Anhalten | `sudo systemctl stop votura-saal` |
 | Aktualisieren | `sudo /opt/votura-saal/aktualisieren.sh` |
+
+`<benutzer>` ist das eigene Konto des Pi — bei einem fertigen Abbild das, was beim Bauen mit
+`--wartung` angelegt wurde. Nicht `votura`: Der Dienstbenutzer hat bewusst keine Anmeldeshell.
 
 ## Was das Skript bewusst **nicht** tut
 
