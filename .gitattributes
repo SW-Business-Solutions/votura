@@ -1,0 +1,26 @@
+# Zeilenenden.
+#
+# Entwickelt wird unter Windows, ausgeführt wird im Saal auch unter Linux.
+# Ein Shell-Skript mit Windows-Zeilenenden scheitert dort an der ersten
+# Zeile — `/usr/bin/env bash\r: not found` — und zwar an einem Pi hinter dem
+# Beamer, wo niemand die Meldung liest. Deshalb sind sie hier festgelegt und
+# nicht dem Zufall der Arbeitskopie überlassen.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.mjs text eol=lf
+
+# Windows-eigene Dateien behalten ihre Zeilenenden.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binärdateien werden nicht angefasst.
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.mp4 binary
+*.zip binary
+*.exe binary
+*.woff2 binary

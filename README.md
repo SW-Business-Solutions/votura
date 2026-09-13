@@ -35,7 +35,8 @@ Gesprochenen folgt.
 | Ergebnis | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
 | Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst, wird Bühne oder Pult |
-| Installation | Windows-Installer (NSIS) und portable Fassung, je für Votura und Votura Saal |
+| Installation | Windows: Installer (NSIS) und portable Fassung · Linux: `tar.gz` für x64 und arm64 |
+| Raspberry Pi | Pi 4/5 als Anzeigegerät: ein Befehl richtet Kiosk und Neustart nach Absturz ein |
 
 ## Herunterladen
 
@@ -345,6 +346,23 @@ Projektionsserver spricht einfaches HTTP.
   sie wartet, und versucht es alle vier Sekunden erneut — der Regelfall beim Aufbauen.
 - **Zurück in die Einrichtung: `Strg + Umschalt + E`.** Im Vollbild ist das der einzige Weg zurück,
   deshalb ist er an jedem Fenster fest verankert und steht zusätzlich im Fenstertitel.
+
+### Auf einem Raspberry Pi
+
+Ein Pi 4 oder 5 hinter dem Beamer ist das naheliegende Gerät dafür — lautlos, klein, und er kostet
+weniger als ein Verlängerungskabel für HDMI. Ein Befehl macht ihn zum Anzeigegerät:
+
+```bash
+curl -fsSL https://getvotura.de/pi/install.sh | sudo bash
+```
+
+Danach bootet er ohne Anmeldung in Votura Saal: Vollbild, kein Desktop, kein Mauszeiger, kein
+Bildschirmschoner. Stürzt die Anwendung ab, ist sie in drei Sekunden zurück; fällt der Strom aus,
+kommt der Pi von selbst wieder. Einzelheiten in [`pi/README.md`](pi/README.md); wie daraus ein
+flashbares Abbild entsteht, steht in [`pi/bauen.md`](pi/bauen.md).
+
+**64 Bit ist Pflicht** — Electron unterstützt kein armv7 mehr. Raspberry Pi OS Lite (64 Bit)
+genügt; ein Desktop wird nicht gebraucht.
 
 Gebaut wird sie aus derselben Quelle (`npm run dist:saal`): Sie zeigt die Seiten des Hauptrechners
 an, und zwei getrennte Projekte liefen unweigerlich auseinander.

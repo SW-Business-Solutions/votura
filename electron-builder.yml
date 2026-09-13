@@ -48,6 +48,29 @@ win:
   artifactName: ${productName}-${version}-${arch}-Setup.${ext}
   icon: build/icon.ico
 
+# Linux: Der Hauptrechner läuft auch dort — der Netzwerkdruck (ESC/POS über
+# Port 9100 und Epson ePOS) ist plattformunabhängig; nur der Weg über den
+# Windows-Spooler entfällt, und den braucht nur ein per USB angeschlossener
+# Drucker.
+#
+# `tar.gz` ist das Format, das sich überall auspacken lässt und keine
+# Paketverwaltung voraussetzt. deb und AppImage entstehen in einer
+# Linux-Bauumgebung; sie brauchen Werkzeuge, die es unter Windows nicht gibt.
+linux:
+  target:
+    - target: tar.gz
+      arch: [x64, arm64]
+  # Sprechender Name mit Plattform und Architektur: Auf der
+  # Veröffentlichungsseite liegen Windows- und Linux-Dateien nebeneinander,
+  # und `votura-1.1.0.tar.gz` sagt nicht, wofür es ist.
+  artifactName: Votura-${version}-linux-${arch}.${ext}
+  category: Office
+  synopsis: Software für die Mitgliederversammlung
+  description: >-
+    Wahlgänge und Stimmzettel, Beamer und Pult — vollständig offline auf einem
+    Rechner.
+  icon: build/icon.png
+
 nsis:
   oneClick: false
   perMachine: false

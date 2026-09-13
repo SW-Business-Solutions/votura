@@ -183,6 +183,35 @@ sie fragt.
   es nicht.
 - **Das Sprachmodell** kommt über das Netz vom Hauptrechner; auf dem Saalgerät ist keines nötig.
 
+## Ein Raspberry Pi als Anzeigegerät
+
+Ein Pi 4 oder 5 hinter dem Beamer: lautlos, klein, und beim Aufbauen nur ein Stromkabel und HDMI.
+
+**Einmalig einrichten** (Raspberry Pi OS Lite, **64 Bit**, Netz verbunden):
+
+```
+curl -fsSL https://getvotura.de/pi/install.sh | sudo bash
+sudo reboot
+```
+
+Danach bootet der Pi in die Einrichtung von Votura Saal — Hauptrechner suchen, Rolle wählen,
+übernehmen. Ab dann kommt er ohne Zutun in seine Rolle zurück, auch nach einem Stromausfall.
+
+| Handgriff | Wie |
+|---|---|
+| Zurück in die Einrichtung | Tastatur anstecken, **Strg + Umschalt + E** |
+| Aus der Ferne ansehen | `ssh votura@votura-saal.local` |
+| Mitlesen, was der Dienst sagt | `journalctl -fu votura-saal` |
+| Neu starten | `sudo systemctl restart votura-saal` |
+| Aktualisieren | `sudo /opt/votura-saal/aktualisieren.sh` |
+
+**Vor der Versammlung einmal durchspielen.** Der Pi braucht beim ersten Start des Prompters etwas
+Zeit, um das Sprachmodell vom Hauptrechner zu holen und zu entpacken; danach liegt es bereit.
+
+**Nicht während der Versammlung aktualisieren.** Das Skript richtet bewusst keine automatischen
+Systemaktualisierungen ein: Ein Pi, der sich mitten im Wahlgang neu startet, ist schlimmer als
+einer mit alten Paketen.
+
 ## Rangliste bei mehreren Plätzen
 
 Im Reiter *Ergebnis* steht unter der Feststellung die **Rangliste**: erst die Gewählten in ihrer
