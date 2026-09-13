@@ -14,7 +14,7 @@
 # und gemerkt hätte man es im Saal.
 #
 # Aufruf:
-#   sudo ./pi/abbild-bauen.sh --paket release-saal/Votura-Saal-1.1.0-linux-arm64.tar.gz
+#   sudo ./pi/abbild-bauen.sh --paket release-saal/Votura-Saal-1.2.0-linux-arm64.tar.gz
 #
 # Weitere Angaben:
 #   --wartung <benutzer>  Legt ein Konto für die Fernwartung an (SSH, sudo).

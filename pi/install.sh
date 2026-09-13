@@ -11,8 +11,8 @@
 #
 # Aufruf:
 #   sudo ./install.sh                        (holt das Paket von getvotura.de)
-#   sudo ./install.sh --paket ./votura-saal-1.1.0-arm64.tar.gz
-#   sudo ./install.sh --version 1.1.0
+#   sudo ./install.sh --paket ./votura-saal-1.2.0-arm64.tar.gz
+#   sudo ./install.sh --version 1.2.0
 set -euo pipefail
 
 QUELLE_BASIS='https://github.com/SW-Business-Solutions/votura/releases'

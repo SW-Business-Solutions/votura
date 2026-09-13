@@ -27,7 +27,7 @@ curl -fsSL https://www.getvotura.de/pi/install.sh | sudo bash
 Oder aus dem Projekt heraus, wenn kein Netz zur Website besteht:
 
 ```bash
-sudo ./pi/install.sh --paket /pfad/zu/votura-saal-1.1.0-arm64.tar.gz
+sudo ./pi/install.sh --paket /pfad/zu/votura-saal-1.2.0-arm64.tar.gz
 ```
 
 Das Skript

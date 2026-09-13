@@ -125,3 +125,33 @@ describe('Die Linux-Pakete', () => {
     }
   })
 })
+
+describe('Das Verzeichnis für den Raspberry Pi Imager', () => {
+  const erzeuger = lies('tools/os-list.mjs')
+
+  it('nennt nur Geräte, die es auch tragen', () => {
+    /* Pi 3 fehlt mit Absicht: kein Electron für armv7, und Chromium auf 1 GB
+       RAM ist für eine Wand, die stundenlang läuft, zu knapp. */
+    expect(erzeuger).toContain("'pi4-64bit'")
+    expect(erzeuger).toContain("'pi5-64bit'")
+    expect(erzeuger).not.toContain('pi3')
+  })
+
+  it('rechnet Größe und Prüfsumme des ausgepackten Abbilds', () => {
+    /*
+     * Der Imager prüft die geschriebene Karte damit gegen. Falsche Werte
+     * fallen erst am Ende eines langen Schreibvorgangs auf — und dann steht
+     * jemand mit einer halben Stunde Wartezeit und einer unbrauchbaren Karte
+     * da.
+     */
+    expect(erzeuger).toContain('extract_size')
+    expect(erzeuger).toContain('extract_sha256')
+    expect(erzeuger).toContain('image_download_size')
+  })
+
+  it('überspringt die Erstschritte beim ersten Start', () => {
+    /* Es gibt keinen Desktop, und die Fragen nach Sprache und Benutzer
+       beantwortet im Saal niemand. */
+    expect(erzeuger).toContain("init_format: 'none'")
+  })
+})
