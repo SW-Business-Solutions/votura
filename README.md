@@ -343,6 +343,8 @@ Projektionsserver spricht einfaches HTTP.
   Sprachmodell kommt von dort. Deshalb bleibt sie klein und muss nicht mitgepflegt werden.
 - **Sie wartet, statt schwarz zu bleiben.** Läuft der Hauptrechner noch nicht, sagt sie, worauf
   sie wartet, und versucht es alle vier Sekunden erneut — der Regelfall beim Aufbauen.
+- **Zurück in die Einrichtung: `Strg + Umschalt + E`.** Im Vollbild ist das der einzige Weg zurück,
+  deshalb ist er an jedem Fenster fest verankert und steht zusätzlich im Fenstertitel.
 
 Gebaut wird sie aus derselben Quelle (`npm run dist:saal`): Sie zeigt die Seiten des Hauptrechners
 an, und zwei getrennte Projekte liefen unweigerlich auseinander.
