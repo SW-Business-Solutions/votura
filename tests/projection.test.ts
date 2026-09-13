@@ -13,6 +13,7 @@ import {
   projectionResultColumns,
   projectionResultPageCount,
   projectionResultPageSize,
+  pausenende,
   PROJECTION_RESULT_ROWS_PER_COLUMN,
   type ProjectionCandidate
 } from '../src/shared/projection'
@@ -113,5 +114,35 @@ describe('Aufteilung der Ergebnisliste', () => {
   it('kommt bei kurzen Ergebnissen ohne Blaettern aus', () => {
     expect(projectionResultPageCount(6)).toBe(1)
     expect(projectionResultPageCount(0)).toBe(1)
+  })
+})
+
+describe('Pause bis zu einer festen Uhrzeit', () => {
+  /*
+   * „Weiter um 12:30" bleibt richtig, auch wenn zwischen Ansage und Anzeigen
+   * noch Minuten vergehen — eine Dauer nicht.
+   */
+  it('rechnet die Uhrzeit in einen Zeitpunkt um', () => {
+    const gleich = new Date(Date.now() + 30 * 60_000)
+    const uhrzeit = `${String(gleich.getHours()).padStart(2, '0')}:${String(gleich.getMinutes()).padStart(2, '0')}`
+    const ende = pausenende(uhrzeit)
+    expect(ende).toBeDefined()
+    const abstand = new Date(ende as string).getTime() - Date.now()
+    expect(abstand).toBeGreaterThan(25 * 60_000)
+    expect(abstand).toBeLessThan(35 * 60_000)
+  })
+
+  /* Eine Versammlung kann über Mitternacht gehen; eine Pause, die sofort
+     abgelaufen ist, wäre keine. */
+  it('meint den nächsten Tag, wenn die Uhrzeit vorbei ist', () => {
+    const vorbei = new Date(Date.now() - 60 * 60_000)
+    const uhrzeit = `${String(vorbei.getHours()).padStart(2, '0')}:${String(vorbei.getMinutes()).padStart(2, '0')}`
+    const ende = pausenende(uhrzeit)
+    expect(new Date(ende as string).getTime()).toBeGreaterThan(Date.now())
+  })
+
+  it('weist unsinnige Angaben ab', () => {
+    expect(pausenende('25:00')).toBeUndefined()
+    expect(pausenende('halb drei')).toBeUndefined()
   })
 })

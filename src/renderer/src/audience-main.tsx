@@ -93,13 +93,22 @@ function AudienceApp(): React.JSX.Element {
   const [page, setPage] = useState(0)
   useEffect(() => setPage(state.candidatePage), [state.candidatePage, state.round?.id, state.mode])
   useEffect(() => {
+    /*
+     * Die Sperre hält auch das Blättern an.
+     *
+     * Sie heißt „kein automatisches Umschalten" — und für den Saal ist es
+     * dasselbe, ob die Ansicht wechselt oder die Seite darin. Wer während der
+     * Auszählung auf eine bestimmte Seite zeigt, will nicht, dass sie nach
+     * acht Sekunden weiterspringt.
+     */
+    if (state.locked) return
     if (state.candidatePageCount <= 1 || state.candidatePageIntervalSeconds <= 0) return
     const timer = window.setInterval(
       () => setPage((current) => (current + 1) % state.candidatePageCount),
       state.candidatePageIntervalSeconds * 1000
     )
     return () => window.clearInterval(timer)
-  }, [state.candidatePageCount, state.candidatePageIntervalSeconds])
+  }, [state.candidatePageCount, state.candidatePageIntervalSeconds, state.locked])
 
   /*
    * Zwei Wege zur selben Datei.

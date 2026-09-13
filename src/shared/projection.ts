@@ -390,3 +390,29 @@ export const EMPTY_PROJECTION_STATE: ProjectionState = {
   locked: false,
   updatedAt: '1970-01-01T00:00:00.000Z'
 }
+
+/**
+ * Rechnet eine Uhrzeit "HH:MM" in den Zeitpunkt um, zu dem die Pause endet.
+ *
+ * Warum überhaupt eine Uhrzeit und nicht nur eine Dauer: „Weiter um 12:30"
+ * bleibt richtig, auch wenn zwischen Ansage und Anzeigen noch fünf Minuten
+ * vergehen — eine Dauer verschiebt sich dann mit.
+ *
+ * Liegt die Uhrzeit heute schon hinter uns, ist der nächste Tag gemeint: Eine
+ * Versammlung kann über Mitternacht gehen, und eine Pause, die im selben
+ * Augenblick abgelaufen ist, wäre keine.
+ *
+ * Gibt `undefined` bei unsinnigen Angaben zurück — dann läuft die Pause ohne
+ * Countdown, statt mit einer geratenen Zeit.
+ */
+export function pausenende(uhrzeit: string, jetzt = new Date()): IsoDateTime | undefined {
+  const treffer = /^(\d{1,2}):(\d{2})$/.exec(uhrzeit.trim())
+  if (!treffer) return undefined
+  const stunde = Number(treffer[1])
+  const minute = Number(treffer[2])
+  if (stunde > 23 || minute > 59) return undefined
+  const ziel = new Date(jetzt)
+  ziel.setHours(stunde, minute, 0, 0)
+  if (ziel.getTime() <= jetzt.getTime()) ziel.setDate(ziel.getDate() + 1)
+  return ziel.toISOString()
+}

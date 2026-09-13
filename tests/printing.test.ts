@@ -380,6 +380,75 @@ describe('Ergebnisbon', () => {
     expect(bon()).toContain('Wahlprotokoll')
   })
 
+  /*
+   * Bei einer Delegiertenwahl ist die Reihenfolge das Ergebnis: Wer ist
+   * Delegierter, wer Ersatz, in welcher Folge wird nachgerückt. Der Bon muss
+   * sie deshalb in der Rangfolge zeigen, nicht in der Eingabereihenfolge.
+   */
+  it('druckt die Akzeptanzwahl in der Rangfolge, nicht in der Eingabereihenfolge', () => {
+    const akzeptanz: ElectionResult = {
+      ...ergebnis,
+      resultData: {
+        candidates: [
+          { candidateId: 'c1', name: 'Nachzuegler', yes: 40, no: 30, abstain: 1 },
+          { candidateId: 'c2', name: 'Spitze', yes: 96, no: 14, abstain: 7 },
+          { candidateId: 'c3', name: 'Abgelehnt', yes: 12, no: 80, abstain: 2 }
+        ]
+      },
+      electedCandidateIds: ['c2', 'c1']
+    }
+    const ops = buildResultSlipOps(
+      {
+        organization: event.organization,
+        eventTitle: event.title,
+        date: event.date,
+        round: round({ seats: 2, maxVotes: null, procedure: 'acceptance_group' }),
+        result: akzeptanz,
+        electedNames: ['Spitze', 'Nachzuegler'],
+        operatorName: 'Wahlleitung',
+        printedAt: '2026-09-13T09:05:00.000Z'
+      },
+      printer
+    )
+    const zeilen = renderPreviewLines(ops, printer.charsPerLine)
+    const text = zeilen.join('\n')
+    expect(text.indexOf('Spitze')).toBeLessThan(text.indexOf('Nachzuegler'))
+    /* Wer mehr Nein als Ja hat, steht hinter der Trennlinie — auch wenn ein
+       Platz frei bliebe. */
+    expect(text.indexOf('NICHT GEWÄHLT')).toBeLessThan(text.indexOf('Abgelehnt'))
+  })
+
+  /* Trennt kein Kriterium mehr, muss das auf dem Papier stehen — sonst sieht
+     eine geratene Reihenfolge aus wie eine entschiedene. */
+  it('weist einen offenen Rang aus, statt ihn zu verschweigen', () => {
+    const gleichstand: ElectionResult = {
+      ...ergebnis,
+      resultData: {
+        candidates: [
+          { candidateId: 'c1', name: 'Erste', yes: 50, no: 12, abstain: 0 },
+          { candidateId: 'c2', name: 'Zweite', yes: 50, no: 12, abstain: 0 }
+        ]
+      },
+      electedCandidateIds: ['c1']
+    }
+    const ops = buildResultSlipOps(
+      {
+        organization: event.organization,
+        eventTitle: event.title,
+        date: event.date,
+        round: round({ seats: 1, maxVotes: null, procedure: 'acceptance_group' }),
+        result: gleichstand,
+        electedNames: ['Erste'],
+        operatorName: 'Wahlleitung',
+        printedAt: '2026-09-13T09:05:00.000Z'
+      },
+      printer
+    )
+    expect(renderPreviewLines(ops, printer.charsPerLine).join('\n')).toContain(
+      'Rang nicht entschieden'
+    )
+  })
+
   it('gibt bei einer Feststellung ohne Auszaehlung den Wortlaut wieder', () => {
     const text = bon({ countingMode: 'declared', declaration: 'Einstimmig angenommen' })
     expect(text).toContain('Einstimmig angenommen')

@@ -158,38 +158,100 @@ export interface RankedCandidate extends CandidateResult {
   withinSeats: boolean
   /** Stimmengleich mit einem anderen Kandidaten am Blockende (Wahlformen §18). */
   tiedAtCutoff: boolean
+  /**
+   * Nach allen Kriterien gleichauf mit mindestens einem anderen.
+   *
+   * Bei einer Delegiertenwahl bestimmt die Reihenfolge, wer Delegierter und
+   * wer Ersatzdelegierter wird — und in welcher Folge nachrückt. Bleibt der
+   * Rang ungeklärt, muss die Versammlung entscheiden: Losentscheid, Verzicht
+   * auf den höheren Platz, Stichwahl. Die Anwendung sortiert dann **nicht**
+   * heimlich nach dem Namen, sondern sagt, dass hier etwas offen ist.
+   */
+  tied: boolean
+  /**
+   * Erfüllt die Bedingung des Verfahrens.
+   *
+   * Bei der Akzeptanzwahl heißt das: mehr Ja- als Nein-Stimmen. Wer sie nicht
+   * erfüllt, steht auch dann nicht auf einem Platz, wenn noch welche frei
+   * sind.
+   */
+  qualified: boolean
 }
 
 /**
- * Sortiert Kandidaten nach Stimmen (bzw. Ja-Stimmen) und markiert die Grenze
- * der zu besetzenden Plätze. Das ist ein VORSCHLAG, keine Feststellung.
+ * Vergleicht zwei Ergebnisse nach den Regeln des Verfahrens.
+ *
+ * Beim Ankreuzverfahren zählt allein die Stimmenzahl. Bei der Akzeptanzwahl
+ * zuerst die Ja-Stimmen und bei Gleichstand die **geringere** Zahl an
+ * Nein-Stimmen: Wer bei gleicher Zustimmung weniger Ablehnung auf sich zieht,
+ * hat den größeren Rückhalt. Enthaltungen bleiben außen vor — sie sind weder
+ * Zustimmung noch Ablehnung.
+ *
+ * Gibt 0 zurück, wenn kein Kriterium mehr trennt. Dann ist der Rang offen und
+ * die Versammlung am Zug.
  */
-export function rankCandidates(candidates: CandidateResult[], seats: number): RankedCandidate[] {
-  const score = (candidate: CandidateResult): number => candidate.votes ?? candidate.yes ?? 0
+export function compareResults(a: CandidateResult, b: CandidateResult): number {
+  const akzeptanz = a.yes !== undefined || b.yes !== undefined
+  if (akzeptanz) {
+    const ja = (b.yes ?? 0) - (a.yes ?? 0)
+    if (ja !== 0) return ja
+    return (a.no ?? 0) - (b.no ?? 0)
+  }
+  return (b.votes ?? 0) - (a.votes ?? 0)
+}
+
+/**
+ * Sortiert Kandidaten nach den Regeln des Verfahrens und markiert die Grenze
+ * der zu besetzenden Plätze. Das ist ein VORSCHLAG, keine Feststellung.
+ *
+ * `acceptance` schaltet die Bedingung „mehr Ja als Nein" scharf: Wer sie nicht
+ * erfüllt, landet hinter allen anderen — auch bei hoher Ja-Zahl. Ohne die
+ * Angabe wird sie aus den Daten erschlossen.
+ */
+export function rankCandidates(
+  candidates: CandidateResult[],
+  seats: number,
+  options: { acceptance?: boolean } = {}
+): RankedCandidate[] {
+  const akzeptanz = options.acceptance ?? candidates.some((candidate) => candidate.yes !== undefined)
+  const erfuellt = (candidate: CandidateResult): boolean =>
+    akzeptanz ? acceptanceQualified(candidate) : true
+
   const sorted = [...candidates].sort((a, b) => {
-    const diff = score(b) - score(a)
-    return diff !== 0 ? diff : a.name.localeCompare(b.name, 'de-DE')
+    /* Wer die Bedingung nicht erfüllt, steht hinten — unabhängig von Zahlen. */
+    if (erfuellt(a) !== erfuellt(b)) return erfuellt(a) ? -1 : 1
+    const nachRegel = compareResults(a, b)
+    if (nachRegel !== 0) return nachRegel
+    /*
+     * Bleibt es gleich, wird nach Namen sortiert — nur damit die Liste stabil
+     * ist, nicht als Entscheidung. Dass hier nichts entschieden wurde, steht
+     * als `tied` an beiden Einträgen.
+     */
+    return a.name.localeCompare(b.name, 'de-DE')
   })
 
-  const cutoffScore = sorted.length >= seats && seats > 0 ? score(sorted[seats - 1]) : undefined
-  const tiedCount =
-    cutoffScore === undefined ? 0 : sorted.filter((candidate) => score(candidate) === cutoffScore).length
-  const tieCrossesCutoff =
-    cutoffScore !== undefined && tiedCount > 1 && sorted.length > seats && score(sorted[seats]) === cutoffScore
+  const gleichauf = (a: CandidateResult, b: CandidateResult): boolean =>
+    erfuellt(a) === erfuellt(b) && compareResults(a, b) === 0
+
+  /* Plätze bekommt nur, wer die Bedingung erfüllt. */
+  const plaetze = Math.min(seats, sorted.filter(erfuellt).length)
 
   let rank = 0
-  let previousScore: number | undefined
   return sorted.map((candidate, index) => {
-    const value = score(candidate)
-    if (value !== previousScore) {
-      rank = index + 1
-      previousScore = value
-    }
+    /* Gleichauf heißt: derselbe Rang wie der Vordermann. */
+    if (index === 0 || !gleichauf(sorted[index - 1], candidate)) rank = index + 1
+    const tied =
+      (index > 0 && gleichauf(sorted[index - 1], candidate)) ||
+      (index + 1 < sorted.length && gleichauf(sorted[index + 1], candidate))
     return {
       ...candidate,
       rank,
-      withinSeats: index < seats,
-      tiedAtCutoff: tieCrossesCutoff && value === cutoffScore
+      withinSeats: index < plaetze,
+      /* An der Blockgrenze wiegt ein offener Rang am schwersten: Dort
+         entscheidet er über gewählt oder nicht gewählt. */
+      tiedAtCutoff: tied && (index === plaetze - 1 || index === plaetze),
+      tied,
+      qualified: erfuellt(candidate)
     }
   })
 }

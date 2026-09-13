@@ -132,6 +132,72 @@ describe('Rangfolge und Feststellungsvorschlag', () => {
     expect(ranked.filter((entry) => entry.tiedAtCutoff)).toHaveLength(2)
   })
 
+  /*
+   * Bei der Akzeptanzwahl bestimmt die Reihenfolge, wer Delegierter und wer
+   * Ersatz wird — und in welcher Folge nachgerückt wird. Sie muss deshalb
+   * denselben Regeln folgen wie die Feststellung selbst.
+   */
+  it('sortiert die Akzeptanzwahl nach Ja-Stimmen', () => {
+    const ranked = rankCandidates(
+      [
+        { candidateId: 'a', name: 'A', yes: 40, no: 10, abstain: 2 },
+        { candidateId: 'b', name: 'B', yes: 55, no: 30, abstain: 1 },
+        { candidateId: 'c', name: 'C', yes: 48, no: 4, abstain: 0 }
+      ],
+      3
+    )
+    expect(ranked.map((entry) => entry.name)).toEqual(['B', 'C', 'A'])
+  })
+
+  /* Wer bei gleicher Zustimmung weniger Ablehnung auf sich zieht, hat den
+     größeren Rückhalt. */
+  it('entscheidet bei gleicher Ja-Zahl über die geringere Nein-Zahl', () => {
+    const ranked = rankCandidates(
+      [
+        { candidateId: 'a', name: 'A', yes: 50, no: 20 },
+        { candidateId: 'b', name: 'B', yes: 50, no: 8 }
+      ],
+      2
+    )
+    expect(ranked.map((entry) => entry.name)).toEqual(['B', 'A'])
+    expect(ranked.every((entry) => entry.tied)).toBe(false)
+  })
+
+  /* Trennt kein Kriterium mehr, wird der Rang NICHT heimlich nach dem Namen
+     vergeben — die Versammlung muss entscheiden. */
+  it('meldet einen offenen Rang, statt nach Namen zu sortieren', () => {
+    const ranked = rankCandidates(
+      [
+        { candidateId: 'a', name: 'A', yes: 50, no: 12 },
+        { candidateId: 'b', name: 'B', yes: 50, no: 12 },
+        { candidateId: 'c', name: 'C', yes: 30, no: 5 }
+      ],
+      3
+    )
+    expect(ranked[0].tied).toBe(true)
+    expect(ranked[1].tied).toBe(true)
+    expect(ranked[2].tied).toBe(false)
+    /* Gleichauf heißt: derselbe Rang, nicht 1 und 2. */
+    expect(ranked[0].rank).toBe(1)
+    expect(ranked[1].rank).toBe(1)
+    expect(ranked[2].rank).toBe(3)
+  })
+
+  /* Mehr Nein als Ja heißt nicht gewählt — auch wenn ein Platz frei bliebe. */
+  it('stellt Bewerber ohne Mehrheit hinten an, auch bei freien Plätzen', () => {
+    const ranked = rankCandidates(
+      [
+        { candidateId: 'a', name: 'A', yes: 10, no: 80 },
+        { candidateId: 'b', name: 'B', yes: 30, no: 12 }
+      ],
+      5
+    )
+    expect(ranked.map((entry) => entry.name)).toEqual(['B', 'A'])
+    expect(ranked[0].withinSeats).toBe(true)
+    expect(ranked[1].withinSeats).toBe(false)
+    expect(ranked[1].qualified).toBe(false)
+  })
+
   it('schlaegt bei Stimmengleichheit keine automatische Wahl vor', () => {
     const suggestion = suggestDecision(
       { procedure: 'group_preprinted', seats: 2 },

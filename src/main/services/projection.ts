@@ -13,6 +13,7 @@ import {
   EMPTY_PROJECTION_STATE,
   PROJECTION_MODE_LABELS,
   paginateCandidates,
+  pausenende,
   projectionPageCount,
   projectionResultPageCount,
   type ProjectionCandidate,
@@ -302,6 +303,16 @@ export interface SetModeInput {
   showAll?: boolean
   /** Dauer einer Pause in Minuten; erzeugt den Countdown auf dem Beamer. */
   breakMinutes?: number
+  /**
+   * Feste Uhrzeit, zu der es weitergeht — als "HH:MM" nach der Uhr dieses
+   * Rechners.
+   *
+   * Bequemer als eine Dauer, sobald die Pause angesagt ist: „weiter um 12:30"
+   * bleibt richtig, auch wenn zwischen Ansage und Anzeigen noch fünf Minuten
+   * vergehen. Liegt die Zeit schon in der Vergangenheit, ist der morgige Tag
+   * gemeint — eine Versammlung kann über Mitternacht gehen.
+   */
+  breakUntilTime?: string
   /** Welche Präsentation gezeigt wird (nur im Modus 'presentation'). */
   presentationId?: UUID
   /** Welches Video gezeigt wird (nur im Modus 'video'). */
@@ -374,7 +385,9 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
     message: input.message ?? (input.mode === 'custom_message' ? state.message : undefined),
     agenda,
     breakUntil:
-      input.mode === 'break' && input.breakMinutes && input.breakMinutes > 0
+      input.mode === 'break' && input.breakUntilTime
+        ? pausenende(input.breakUntilTime)
+        : input.mode === 'break' && input.breakMinutes && input.breakMinutes > 0
         ? new Date(Date.now() + input.breakMinutes * 60_000).toISOString()
         : input.mode === 'break'
           ? state.breakUntil
@@ -640,6 +653,21 @@ export function reportPresentationState(slide: number, slideCount: number): Proj
     presentation: { ...state.presentation, slide: sicher, slideCount: gerundet },
     updatedAt: new Date().toISOString()
   }
+  broadcast()
+  return state
+}
+
+/**
+ * Takt des automatischen Seitenwechsels; 0 hält ihn an.
+ *
+ * **Ohne Prüfeintrag**: eine Anzeigeeinstellung, keine Wahlhandlung.
+ */
+export function setCandidatePageInterval(seconds: number): ProjectionState {
+  if (!Number.isFinite(seconds)) return state
+  const sicher = Math.max(0, Math.min(Math.round(seconds), 300))
+  if (sicher === state.candidatePageIntervalSeconds) return state
+  state = { ...state, candidatePageIntervalSeconds: sicher, updatedAt: new Date().toISOString() }
+  persist()
   broadcast()
   return state
 }
