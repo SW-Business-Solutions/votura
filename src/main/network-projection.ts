@@ -21,6 +21,8 @@ import { getPresentation, presentationFileFor } from './services/presentations'
 import { getVideo, videoFileFor } from './services/videos'
 import { getProjectionState } from './services/projection'
 import { getPrompterView } from './services/prompter'
+import { sprachmodellDatei } from './services/sprachmodell'
+import { SPRACHMODELL_PFAD } from '@shared/sprachmodell'
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -242,6 +244,29 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       return
     }
     serveFile(response, join(rendererRoot(), 'teleprompter.html'))
+    return
+  }
+
+  /*
+   * Das Sprachmodell für ein Gerät am Pult.
+   *
+   * Die Begleitanwendung zeigt die Prompterseite dieses Servers an; das
+   * Modell muss dann von hier kommen und nicht aus ihrem eigenen Paket. So
+   * bleibt sie klein, und es gibt nur eine Stelle, an der ein größeres Modell
+   * hinterlegt wird — den Hauptrechner.
+   */
+  if (url.pathname === SPRACHMODELL_PFAD) {
+    const modell = sprachmodellDatei()
+    if (!modell) {
+      deny(response, 404, 'Kein Sprachmodell hinterlegt.')
+      return
+    }
+    response.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(statSync(modell.pfad).size),
+      'Cache-Control': 'no-store'
+    })
+    createReadStream(modell.pfad).pipe(response)
     return
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "votura",
   "productName": "Votura",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Software für die Mitgliederversammlung: Wahlgänge, Stimmzettel, Beamer und Pult — vollständig offline",
   "author": "Steven Weissheimer",
   "license": "UNLICENSED",
@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "sprachmodell": "node tools/sprachmodell.mjs",
     "dist:win": "node tools/sprachmodell.mjs && electron-vite build && electron-builder --win --config electron-builder.yml && node tools/pruefsummen.mjs",
-    "dist:dir": "electron-vite build && electron-builder --dir --config electron-builder.yml"
+    "dist:dir": "electron-vite build && electron-builder --dir --config electron-builder.yml",
+    "dist:saal": "electron-vite build && electron-builder --win --config electron-builder-saal.yml"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

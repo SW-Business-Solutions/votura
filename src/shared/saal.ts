@@ -1,0 +1,106 @@
+/**
+ * Die Begleitanwendung: was sie mit dem Hauptrechner austauscht.
+ *
+ * ## Warum es sie gibt
+ *
+ * Eine Bühne oder ein Pult im Saal lässt sich auch mit einem Browser
+ * anzeigen — solange nur angezeigt wird. Sobald ein Mikrofon dazukommt, ist
+ * Schluss: `getUserMedia` verlangt eine sichere Herkunft, und der
+ * Projektionsserver spricht einfaches HTTP im Saalnetz. Eine eigene
+ * Anwendung kann diese eine Herkunft als vertrauenswürdig führen — sie hat
+ * sie ja selbst gewählt — und damit fällt die Beschränkung weg.
+ *
+ * Dazu kommt, was ein Browser im Saal ohnehin nicht gut kann: beim Start
+ * selbst den Hauptrechner finden, ohne dass jemand eine Adresse abtippt.
+ *
+ * ## Der Suchruf
+ *
+ * Ein Ruf ins Netz, eine Antwort zurück — mehr nicht. Kein mDNS, kein
+ * Dienstverzeichnis: Beides brächte eine Abhängigkeit und ein zweites
+ * Protokoll mit, das im Saal genauso ausfallen kann. Ein Datagramm an alle
+ * und die Antworten einsammeln ist in dreißig Zeilen erklärt und funktioniert
+ * in jedem flachen Netz — und ein Saalnetz ist immer flach.
+ */
+
+/** Port des Suchrufs. Bewusst neben dem des Projektionsservers. */
+export const SUCHRUF_PORT = 8478
+
+/** Was gerufen wird. Kurz, damit ein Fehlläufer sofort erkennbar ist. */
+export const SUCHRUF = 'VOTURA-SUCHE/1'
+
+/**
+ * Was der Hauptrechner antwortet.
+ *
+ * Bewusst ohne Zugriffstoken: Wer den Ruf hört, ist im selben Netz, mehr
+ * nicht. Das Token gehört zu den Geräten, die es bekommen sollen — es hier
+ * mitzuschicken hieße, es an jeden zu verteilen, der fragt. Gesagt wird nur,
+ * **ob** eines nötig ist.
+ */
+export interface SaalAntwort {
+  votura: typeof SUCHRUF
+  /** Name der Versammlung, damit zwei Rechner im Haus unterscheidbar sind. */
+  name: string
+  /** Port des Projektionsservers. */
+  port: number
+  /** Fassung des Hauptrechners — bei grobem Unterschied wird gewarnt. */
+  version: string
+  /** Braucht es ein Zugriffstoken? */
+  tokenNoetig: boolean
+  /** Namen der Bühnen, damit die Begleitanwendung sie zur Wahl stellen kann. */
+  buehnen: { id: number; name: string }[]
+  /** Darf ein Gerät im Netz den Prompter bedienen? */
+  prompterBedienung: boolean
+}
+
+/** Ein gefundener Hauptrechner samt der Adresse, unter der er antwortete. */
+export interface SaalFund extends SaalAntwort {
+  adresse: string
+}
+
+/** Was die Begleitanwendung sein soll. */
+export type SaalRolle = { art: 'buehne'; nummer: number } | { art: 'prompter' }
+
+/** Was sie sich merkt, damit sie es beim nächsten Start nicht wieder fragt. */
+export interface SaalEinstellung {
+  /** Grundadresse des Hauptrechners, etwa `http://192.168.1.5:8477`. */
+  master: string
+  token: string
+  rolle: SaalRolle
+  /** Name der Versammlung beim letzten erfolgreichen Verbinden. */
+  name?: string
+}
+
+/** Prüft, ob eine Antwort aus dem Netz wirklich von Votura stammt. */
+export function istSaalAntwort(wert: unknown): wert is SaalAntwort {
+  if (typeof wert !== 'object' || wert === null) return false
+  const kandidat = wert as Partial<SaalAntwort>
+  return (
+    kandidat.votura === SUCHRUF &&
+    typeof kandidat.name === 'string' &&
+    typeof kandidat.port === 'number' &&
+    Array.isArray(kandidat.buehnen)
+  )
+}
+
+/**
+ * Die Adresse, die eine Rolle anzeigen soll.
+ *
+ * Sie zeigt auf den Projektionsserver des Hauptrechners — dieselben Seiten,
+ * die auch ein Browser bekäme. Die Begleitanwendung baut nichts nach; sie
+ * sorgt nur dafür, dass diese Seiten alles dürfen, was sie am Pult brauchen.
+ */
+export function rollenAdresse(einstellung: SaalEinstellung): string {
+  const basis = einstellung.master.replace(/\/+$/, '')
+  const token = einstellung.token ? `&t=${encodeURIComponent(einstellung.token)}` : ''
+  if (einstellung.rolle.art === 'prompter') {
+    return `${basis}/prompter${einstellung.token ? `?t=${encodeURIComponent(einstellung.token)}` : ''}`
+  }
+  return `${basis}/?buehne=${einstellung.rolle.nummer}${token}`
+}
+
+/** Klartext einer Rolle — für Auswahl, Fenstertitel und Meldungen. */
+export function rollenName(rolle: SaalRolle, buehnen: { id: number; name: string }[] = []): string {
+  if (rolle.art === 'prompter') return 'Prompter am Pult'
+  const treffer = buehnen.find((buehne) => buehne.id === rolle.nummer)
+  return treffer ? treffer.name : `Bühne ${rolle.nummer}`
+}

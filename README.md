@@ -34,7 +34,8 @@ Gesprochenen folgt.
 | Teleprompter | Reden als Markdown, eigener Netzendpunkt, Spiegelung, Mitlaufen nach Gehör |
 | Ergebnis | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
-| Installation | Windows-Installer (NSIS) und portable Fassung |
+| Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst, wird Bühne oder Pult |
+| Installation | Windows-Installer (NSIS) und portable Fassung, je für Votura und Votura Saal |
 
 ## Herunterladen
 
@@ -322,6 +323,29 @@ im eigenen Fenster oder auf einem beliebigen Gerät über einen **eigenen Netzen
   in den Einstellungen darüberlegen.
 
 ![Bedienung des Prompters](docs/screenshots/25-prompter-bedienung.png)
+
+## Votura Saal — die Begleitanwendung
+
+Eine Bühne oder das Pult lässt sich mit jedem Browser im Saalnetz anzeigen. Sobald aber ein
+**Mikrofon** dazukommt, ist Schluss: `getUserMedia` verlangt eine sichere Herkunft, und der
+Projektionsserver spricht einfaches HTTP.
+
+**Votura Saal** löst das — eine eigene, kleine Anwendung für die Geräte im Raum:
+
+- **Sie findet den Hauptrechner selbst.** Beim Start ruft sie ins Netz; wer antwortet, steht zur
+  Auswahl, mit Namen der Versammlung, Fassung und Bühnen. Niemand tippt eine IP-Adresse ab. Geht
+  der Ruf nicht durch, bleibt das Feld für die Adresse von Hand.
+- **Sie fragt, was sie sein soll:** Bühne 1 … 4 oder Prompter am Pult.
+- **Sie führt genau diese eine Adresse als vertrauenswürdig** — damit steht dem Prompter das
+  Mikrofon zur Verfügung und das Mitlaufen nach Gehör läuft auch auf einem Gerät im Saal. Die
+  Zusage gilt einem Rechner, nicht dem Netz, und nur solange sie eingestellt ist.
+- **Sie baut nichts nach.** Alles, was zu sehen ist, liefert der Hauptrechner; auch das
+  Sprachmodell kommt von dort. Deshalb bleibt sie klein und muss nicht mitgepflegt werden.
+- **Sie wartet, statt schwarz zu bleiben.** Läuft der Hauptrechner noch nicht, sagt sie, worauf
+  sie wartet, und versucht es alle vier Sekunden erneut — der Regelfall beim Aufbauen.
+
+Gebaut wird sie aus derselben Quelle (`npm run dist:saal`): Sie zeigt die Seiten des Hauptrechners
+an, und zwei getrennte Projekte liefen unweigerlich auseinander.
 
 ## Präsentationen
 

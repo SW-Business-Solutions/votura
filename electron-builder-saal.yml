@@ -1,0 +1,58 @@
+# Paketierung der Begleitanwendung „Votura Saal".
+#
+# Dieselbe Quelle, ein anderer Einstiegspunkt: `out/main/saal.js` statt
+# `out/main/index.js`. Beides aus einem Repository zu bauen ist keine
+# Bequemlichkeit, sondern Notwendigkeit — die Begleitanwendung zeigt die
+# Seiten des Hauptrechners an, und beide müssen dieselben Datenstrukturen
+# kennen. Zwei Repositories liefen unweigerlich auseinander.
+#
+# Das Sprachmodell fehlt hier bewusst: Die Begleitanwendung holt es über das
+# Netz vom Hauptrechner. So bleibt sie klein genug, um sie auf ein Tablet oder
+# einen alten Saalrechner zu bringen, und ein größeres Modell wird an genau
+# einer Stelle hinterlegt.
+appId: de.votura.saal
+productName: Votura Saal
+copyright: Copyright © 2026
+
+extraMetadata:
+  main: out/main/saal.js
+  name: votura-saal
+  productName: Votura Saal
+
+directories:
+  output: release-saal
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+extraResources:
+  - from: build/icon.png
+    to: build/icon.png
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: Votura-Saal-${version}-${arch}-Setup.${ext}
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Votura Saal
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - de_DE
+  language: '1031'
+
+portable:
+  artifactName: Votura-Saal-${version}-${arch}-portable.${ext}

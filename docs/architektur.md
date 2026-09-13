@@ -167,6 +167,36 @@ Bedienung ──► IPC prompter.* ──► prompter.ts   PrompterViewState
 - **Der Text wandert im Zustand mit.** Anders als Foliensatz und Video ist er klein, und die
   Ansicht am Pult soll nichts nachladen müssen.
 
+## Votura Saal — die Begleitanwendung
+
+Zweiter Einstiegspunkt (`src/saal/index.ts`) aus **derselben Quelle**, eigenes Paket
+(`electron-builder-saal.yml`, `extraMetadata.main`). Sie zeigt die Seiten des Hauptrechners an und
+baut nichts nach — zwei getrennte Projekte liefen bei der ersten Änderung an einem DTO
+auseinander.
+
+```
+Saalgerät                                  Hauptrechner
+  Suchruf  ──UDP 8478──►  „VOTURA-SUCHE/1"
+           ◄──────────── { Name, Port, Bühnen, tokenNoetig }
+  Anzeige  ──HTTP 8477──►  /?buehne=2   bzw.  /prompter
+                            /sprachmodell, /api/prompter/*
+```
+
+- **Warum es sie gibt:** `getUserMedia` verlangt eine sichere Herkunft; der Projektionsserver
+  spricht HTTP. Die Anwendung führt die **eine** eingetragene Adresse als sicher
+  (`unsafely-treat-insecure-origin-as-secure`) — eine bewusste Zusage an einen Rechner, nicht an
+  das Netz. Damit steht dem Prompter am Pult das Mikrofon zur Verfügung.
+- **Warum ein Neustart nach der Einrichtung:** Diese Zusage muss vor dem Start von Chromium
+  feststehen. Einmal sichtbar neu starten ist ehrlicher, als eine halbe Sitzung mit einem Mikrofon
+  zu verbringen, das nicht geht.
+- **Warum kein mDNS:** Ein Ruf ins Netz und die Antworten einsammeln ist in dreißig Zeilen erklärt
+  und trägt in jedem flachen Netz — und ein Saalnetz ist immer flach. Ein Dienstverzeichnis brächte
+  eine Abhängigkeit und ein zweites Protokoll, das genauso ausfallen kann.
+- **Warum kein Token in der Antwort:** Wer den Ruf hört, ist im selben Netz, mehr nicht. Es
+  mitzuschicken hieße, es an jeden zu verteilen, der fragt. Gesagt wird nur, **ob** eines nötig ist.
+- **Rechte:** Mikrofon nur für die Rolle *Prompter* und nur gegenüber der eingetragenen Herkunft;
+  keine Navigation nach außen, keine neuen Fenster.
+
 ## Ergebnis, Rangfolge und Gleichstand
 
 Die Rangfolge entsteht in `rankCandidates()` (`src/shared/result.ts`) — als reine Funktion, damit

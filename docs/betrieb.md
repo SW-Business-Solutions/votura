@@ -161,6 +161,28 @@ gesprochen wird. Unter *Prompter → Lauf* die Laufart **Nach Stimme** wählen.
 Passt es einmal nicht, hilft **Von Hand**: Der Text bewegt sich dann nur auf Tastendruck — bei
 einer Rede mit vielen Zwischenrufen oft die ruhigere Wahl.
 
+## Geräte im Saal: Votura Saal
+
+Für Bühnen und das Pult gibt es eine eigene kleine Anwendung. Sie muss nicht eingerichtet werden —
+sie fragt.
+
+1. **Netzwerkansicht am Hauptrechner einschalten** (Einstellungen → Beamer). Ohne sie antwortet er
+   nicht auf den Suchruf.
+2. **Votura Saal auf dem Gerät starten.** Beim ersten Mal erscheint die Einrichtung: Sie zeigt die
+   gefundenen Hauptrechner mit Namen der Versammlung, Fassung und Zahl der Bühnen.
+3. **Rolle wählen:** eine der Bühnen oder *Prompter am Pult*.
+4. **Token eintragen,** falls der Hauptrechner eines verlangt. Die Einrichtung sagt es.
+5. **Übernehmen.** Die Anwendung prüft die Angaben, startet einmal neu und zeigt danach ihre Seite —
+   bei einem einzelnen Bildschirm im Vollbild.
+
+- **Zurück zur Einrichtung:** **Strg + Umschalt + E** auf dem Gerät.
+- **Der Hauptrechner läuft noch nicht?** Das Gerät sagt, worauf es wartet, und versucht es alle vier
+  Sekunden erneut. Beim Aufbauen ist das der Normalfall — einfach stehen lassen.
+- **Mikrofon:** Nur die Rolle *Prompter* darf eines anfragen, und nur gegenüber dem eingetragenen
+  Hauptrechner. Damit läuft das Mitlaufen nach Gehör auch auf einem Gerät am Pult — im Browser geht
+  es nicht.
+- **Das Sprachmodell** kommt über das Netz vom Hauptrechner; auf dem Saalgerät ist keines nötig.
+
 ## Rangliste bei mehreren Plätzen
 
 Im Reiter *Ergebnis* steht unter der Feststellung die **Rangliste**: erst die Gewählten in ihrer
