@@ -454,7 +454,15 @@ export interface Api {
     /** Feste Uhrzeit "HH:MM", zu der es weitergeht — statt einer Dauer. */
     breakUntilTime?: string
     /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
-    speaker?: { name: string; note?: string; seconds?: number }
+    speaker?: {
+      name: string
+      note?: string
+      seconds?: number
+      /** Wer danach an der Reihe ist, in Reihenfolge. */
+      upcoming?: string[]
+      /** Wie viele davon der Beamer zeigt; 0 blendet die Vorschau aus. */
+      upcomingShown?: number
+    }
     presentationId?: UUID
     videoId?: UUID
   }) => Promise<ProjectionState>
@@ -465,6 +473,8 @@ export interface Api {
   'projection.setSpeakerPaused': (paused: boolean) => Promise<ProjectionState>
   /** Verlängert oder kürzt die laufende Redezeit um Sekunden. */
   'projection.addSpeakerSeconds': (seconds: number) => Promise<ProjectionState>
+  /** Ruft die nächste Person der Reihe auf; die Uhr beginnt von vorn. */
+  'projection.nextSpeaker': () => Promise<ProjectionState>
   'projection.setLocked': (locked: boolean) => Promise<ProjectionState>
   'projection.history': () => Promise<ProjectionHistoryEntry[]>
   'projection.displays': () => Promise<DisplayInfo[]>

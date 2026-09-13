@@ -493,7 +493,15 @@ try {
   await sitzung.auswerten(`(async () => {
     await window.votura.invoke('projection.setMode', {
       mode: 'speaker',
-      speaker: { name: 'Clara Fenske', note: 'Bewerbung um den Vorsitz', seconds: 180 }
+      speaker: {
+        name: 'Clara Fenske',
+        note: 'Bewerbung um den Vorsitz',
+        seconds: 180,
+        /* Die Reihe entsteht sonst aus der Kandidatenliste; hier wird sie
+           genannt, damit die Aufnahme sie zeigt. */
+        upcoming: ['Paul Marquardt', 'Nina Lorenz', 'Ruben Thiele', 'Sophie Vogt', 'David Ohlsen'],
+        upcomingShown: 4
+      }
     })
     return true
   })()`)

@@ -22,6 +22,7 @@ import {
   projectionResultPageSize,
   redezeitRest,
   redezeitText,
+  REDNER_VORSCHAU,
   type ProjectionCandidate,
   type ProjectionState
 } from '@shared/projection'
@@ -505,6 +506,7 @@ function renderMode(state: ProjectionState): JSX.Element {
           <div className="projection-title">{state.speaker.name}</div>
           {state.speaker.note && <div className="projection-note">{state.speaker.note}</div>}
           <Redezeit speaker={state.speaker} />
+          <NaechsteRedner speaker={state.speaker} />
         </>
       ) : (
         <div className="projection-status">VORSTELLUNG</div>
@@ -671,6 +673,36 @@ function Redezeit({ speaker }: { speaker: NonNullable<ProjectionState['speaker']
           />
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Wer als Nächstes an der Reihe ist.
+ *
+ * Damit sich die Folgenden schon in Stellung bringen können, statt erst beim
+ * Aufruf loszugehen — auf einer Versammlung kostet jeder Weg zum Pult Zeit,
+ * und die Reihenfolge ist ohnehin die des Stimmzettels.
+ *
+ * Wie viele gezeigt werden, ist eingestellt: Bei kurzen Vorstellungen genügen
+ * zwei, bei langen Wegen helfen sechs.
+ */
+function NaechsteRedner({
+  speaker
+}: {
+  speaker: NonNullable<ProjectionState['speaker']>
+}): JSX.Element | null {
+  const anzahl = speaker.upcomingShown ?? REDNER_VORSCHAU
+  const naechste = (speaker.upcoming ?? []).slice(0, anzahl)
+  if (anzahl <= 0 || naechste.length === 0) return null
+  return (
+    <div className="projection-naechste">
+      <div className="projection-naechste-titel">Als Nächstes</div>
+      <ol>
+        {naechste.map((name) => (
+          <li key={name}>{name}</li>
+        ))}
+      </ol>
     </div>
   )
 }

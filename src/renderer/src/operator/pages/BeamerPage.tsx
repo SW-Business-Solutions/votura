@@ -4,7 +4,13 @@
  */
 import { useEffect, useState } from 'react'
 import type { NetworkProjectionStatus } from '@shared/ipc'
-import { PROJECTION_MODE_LABELS, type ProjectionHistoryEntry, type ProjectionMode } from '@shared/projection'
+import {
+  PROJECTION_MODE_LABELS,
+  REDNER_VORSCHAU,
+  REDNER_VORSCHAU_MAX,
+  type ProjectionHistoryEntry,
+  type ProjectionMode
+} from '@shared/projection'
 import { formatTimeDe } from '@shared/format'
 import { api } from '../../lib/api'
 import { ProjectionScreen } from '../../projection/ProjectionScreen'
@@ -69,6 +75,8 @@ export function BeamerPage(): React.JSX.Element {
   const [bewerber, setBewerber] = useState<{ id: string; name: string }[]>([])
   const [rednerZusatz, setRednerZusatz] = useState('')
   const [redezeit, setRedezeit] = useState(3)
+  /* Wie viele der Folgenden der Beamer zeigt. */
+  const [vorschau, setVorschau] = useState(REDNER_VORSCHAU)
 
   useEffect(() => {
     if (!roundId) {
@@ -377,6 +385,16 @@ export function BeamerPage(): React.JSX.Element {
                   <NumberInput value={redezeit} min={0} max={120} onChange={setRedezeit} />
                 </Field>
               </div>
+              <div style={{ width: 150 }}>
+                <Field label="Nächste zeigen" hint="0 = keine Vorschau">
+                  <NumberInput
+                    value={vorschau}
+                    min={0}
+                    max={REDNER_VORSCHAU_MAX}
+                    onChange={setVorschau}
+                  />
+                </Field>
+              </div>
             </div>
             {bewerber.length > 0 && (
               /* Nicht jede Vorstellung ist die eines Bewerbers — ein Gast, ein
@@ -400,15 +418,25 @@ export function BeamerPage(): React.JSX.Element {
               <button
                 className="primary"
                 disabled={!rednerName.trim()}
-                onClick={() =>
+                onClick={() => {
+                  /*
+                   * Die Reihe ergibt sich von selbst: Vorgestellt wird in der
+                   * Reihenfolge des Stimmzettels, und die steht in der
+                   * Kandidatenliste. Niemand muss eine Warteliste pflegen.
+                   */
+                  const stelle = bewerber.findIndex((b) => b.name === rednerName.trim())
+                  const folgende =
+                    stelle >= 0 ? bewerber.slice(stelle + 1).map((b) => b.name) : []
                   void setMode('speaker', {
                     speaker: {
                       name: rednerName.trim(),
                       note: rednerZusatz.trim() || undefined,
-                      seconds: redezeit > 0 ? redezeit * 60 : undefined
+                      seconds: redezeit > 0 ? redezeit * 60 : undefined,
+                      upcoming: folgende,
+                      upcomingShown: vorschau
                     }
                   })
-                }
+                }}
               >
                 Vorstellung anzeigen
               </button>
@@ -416,6 +444,21 @@ export function BeamerPage(): React.JSX.Element {
             {projection.mode === 'speaker' && projection.speaker && (
               <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 8 }}>
                 <span className="hint">Läuft: {projection.speaker.name}</span>
+                <button
+                  className="primary"
+                  disabled={(projection.speaker.upcoming ?? []).length === 0}
+                  title={
+                    (projection.speaker.upcoming ?? [])[0]
+                      ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
+                      : 'Niemand mehr in der Reihe'
+                  }
+                  onClick={() => void api('projection.nextSpeaker').catch(app.reportError)}
+                >
+                  Nächster{' '}
+                  {(projection.speaker.upcoming ?? [])[0]
+                    ? `— ${(projection.speaker.upcoming ?? [])[0]}`
+                    : ''}
+                </button>
                 <button
                   onClick={() =>
                     void api(

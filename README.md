@@ -191,6 +191,12 @@ müssen.
 Ist ein Bezugswahlgang gewählt, stehen dessen Bewerber zur Auswahl — abtippen entfällt. Für Gast,
 Bericht oder Grußwort gibt es daneben ein freies Feld.
 
+**Wer als Nächstes drankommt, steht mit auf der Folie.** Die Reihe ergibt sich aus der
+Kandidatenliste, denn vorgestellt wird in der Reihenfolge des Stimmzettels — eine Warteliste zu
+pflegen erübrigt sich. Wie viele Namen zu sehen sind, ist einstellbar; *Nächster* ruft die nächste
+Person auf, die Reihe rückt nach und die Uhr beginnt von vorn. So bringen sich die Folgenden schon
+in Stellung, statt erst beim Aufruf loszugehen.
+
 Während der Vorstellung: **Anhalten/Weiter** für eine Zwischenfrage, **±1 Min.** für den üblichen
 Zuruf, **±10 s** zum Nachjustieren kurz vor Schluss. Redezeit 0 zeigt nur den Namen, ohne Uhr.
 

@@ -15,6 +15,7 @@ import {
   paginateCandidates,
   pausenende,
   redezeitRest,
+  REDNER_VORSCHAU_MAX,
   projectionPageCount,
   projectionResultPageCount,
   type ProjectionCandidate,
@@ -323,7 +324,15 @@ export interface SetModeInput {
   /** Welches Video gezeigt wird (nur im Modus 'video'). */
   videoId?: UUID
   /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
-  speaker?: { name: string; note?: string; seconds?: number }
+  speaker?: {
+    name: string
+    note?: string
+    seconds?: number
+    /** Wer danach an der Reihe ist, in Reihenfolge. */
+    upcoming?: string[]
+    /** Wie viele davon der Beamer zeigt; 0 blendet die Vorschau aus. */
+    upcomingShown?: number
+  }
 }
 
 export function setProjection(input: SetModeInput, options: { audit?: boolean } = {}): ProjectionState {
@@ -534,20 +543,54 @@ function seitenZahlFuer(
   }
 }
 
-function rednerFuer(
-  eingabe?: { name: string; note?: string; seconds?: number }
-): ProjectionSpeaker | undefined {
+function rednerFuer(eingabe?: SetModeInput['speaker']): ProjectionSpeaker | undefined {
   const name = eingabe?.name?.trim()
   if (!name) return undefined
   const sekunden = eingabe?.seconds && eingabe.seconds > 0 ? Math.round(eingabe.seconds) : undefined
+  const warteliste = (eingabe?.upcoming ?? []).map((eintrag) => eintrag.trim()).filter(Boolean)
   return {
     name,
     note: eingabe?.note?.trim() || undefined,
     /* Ohne Zeitangabe wird nur der Name gezeigt — nicht jede Vorstellung ist
        begrenzt. */
     until: sekunden ? new Date(Date.now() + sekunden * 1000).toISOString() : undefined,
-    totalSeconds: sekunden
+    totalSeconds: sekunden,
+    ...(warteliste.length ? { upcoming: warteliste } : {}),
+    ...(eingabe?.upcomingShown !== undefined
+      ? { upcomingShown: Math.max(0, Math.min(Math.round(eingabe.upcomingShown), REDNER_VORSCHAU_MAX)) }
+      : {})
   }
+}
+
+/**
+ * Ruft die nächste Person auf.
+ *
+ * Die Uhr beginnt von vorn mit derselben zugestandenen Zeit — das ist der
+ * Regelfall bei einer Reihe von Vorstellungen. Eine abweichende Zeit wird
+ * anschließend über ±1 Minute oder ±10 Sekunden gesetzt.
+ *
+ * **Ohne Prüfeintrag** wie die übrige Anzeigesteuerung.
+ */
+export function nextSpeaker(): ProjectionState {
+  if (state.mode !== 'speaker' || !state.speaker) return state
+  const [naechster, ...rest] = state.speaker.upcoming ?? []
+  if (!naechster) return state
+  const sekunden = state.speaker.totalSeconds
+  state = {
+    ...state,
+    speaker: {
+      name: naechster,
+      /* Der Zusatz gehörte zur vorigen Person und wird nicht mitgeschleppt. */
+      note: undefined,
+      until: sekunden ? new Date(Date.now() + sekunden * 1000).toISOString() : undefined,
+      totalSeconds: sekunden,
+      upcomingShown: state.speaker.upcomingShown,
+      ...(rest.length ? { upcoming: rest } : {})
+    },
+    updatedAt: new Date().toISOString()
+  }
+  broadcast()
+  return state
 }
 
 /**
