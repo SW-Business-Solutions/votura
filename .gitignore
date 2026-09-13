@@ -1,6 +1,8 @@
 node_modules/
 out/
 release/
+# Die Begleitanwendung entsteht in einem eigenen Lauf und eigenem Ordner.
+release-saal/
 dist/
 *.log
 .DS_Store
