@@ -40,9 +40,7 @@ export function PreflightPage(): React.JSX.Element {
         </button>
       </div>
 
-      <div
-        className={`notice ${failures > 0 ? 'error' : warnings > 0 ? 'warn' : 'ok'}`}
-      >
+      <div className={`notice ${failures > 0 ? 'error' : warnings > 0 ? 'warn' : 'ok'}`}>
         {failures > 0
           ? `${failures} Punkt(e) müssen behoben werden.`
           : warnings > 0
@@ -55,11 +53,17 @@ export function PreflightPage(): React.JSX.Element {
           <tbody>
             {items.map((item) => (
               <tr key={item.key}>
-                <td style={{ width: 120 }}>
+                <td className="col-schmal">
                   <span
                     className={`badge ${item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : item.status === 'fail' ? 'danger' : ''}`}
                   >
-                    {item.status === 'ok' ? 'in Ordnung' : item.status === 'warn' ? 'Hinweis' : item.status === 'fail' ? 'Fehler' : 'unbekannt'}
+                    {item.status === 'ok'
+                      ? 'in Ordnung'
+                      : item.status === 'warn'
+                        ? 'Hinweis'
+                        : item.status === 'fail'
+                          ? 'Fehler'
+                          : 'unbekannt'}
                   </span>
                 </td>
                 <td>

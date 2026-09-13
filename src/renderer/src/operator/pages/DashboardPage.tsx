@@ -32,7 +32,9 @@ export function DashboardPage(): React.JSX.Element {
     )
   }
 
-  const openRounds = app.rounds.filter((round) => round.status !== 'completed' && round.status !== 'cancelled')
+  const openRounds = app.rounds.filter(
+    (round) => round.status !== 'completed' && round.status !== 'cancelled'
+  )
   const current = openRounds[openRounds.length - 1]
   const completed = app.rounds.filter((round) => round.status === 'completed')
 
@@ -69,7 +71,7 @@ export function DashboardPage(): React.JSX.Element {
           title={`Aktueller Wahlgang ${current.roundLabel} – ${current.title}`}
           actions={<StatusBadge status={current.status} />}
         >
-          <div className="grid cols-3" style={{ marginBottom: 14 }}>
+          <div className="grid cols-3 mb-3">
             <Kpi label="Kandidaten / Optionen" value={current.candidateCount} />
             <Kpi label="Positionen" value={current.seats} />
             <Kpi
@@ -90,14 +92,14 @@ export function DashboardPage(): React.JSX.Element {
               <span className="badge accent">{current.accounting.printed} gedruckt</span>
             )}
           </div>
-          <div className="row" style={{ marginTop: 16 }}>
+          <div className="row mt-4">
             <button className="big" onClick={() => navigate(`round/${current.id}/candidates`)}>
               Kandidaten
             </button>
             <button className="big" onClick={() => navigate(`round/${current.id}/ballot`)}>
               Wahlzettel
             </button>
-            <button className="big primary" onClick={() => navigate(`round/${current.id}/print`)}>
+            <button className="primary big" onClick={() => navigate(`round/${current.id}/print`)}>
               Drucken
             </button>
             <button className="big" onClick={() => navigate(`round/${current.id}/result`)}>
@@ -147,9 +149,7 @@ export function DashboardPage(): React.JSX.Element {
                   <td className="num">{round.candidateCount}</td>
                   <td>
                     <span
-                      className={`badge ${
-                        round.approvedVersion === round.ballotVersion ? 'ok' : 'warn'
-                      }`}
+                      className={`badge ${round.approvedVersion === round.ballotVersion ? 'ok' : 'warn'}`}
                       title={
                         round.approvedVersion === round.ballotVersion
                           ? 'Diese Fassung ist freigegeben'

@@ -20,17 +20,10 @@
  * Pfeiltasten längst vergeben — sie bewegen sich durch Kandidatenlisten. Hier
  * gehören sie dem Vortrag, und das Fenster nimmt sie, sobald es vorn liegt.
  */
-import { StrictMode, useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { StrictMode, useCallback, useEffect, useState, type JSX } from 'react'
 import { createRoot } from 'react-dom/client'
-import {
-  PRESENTATION_CHANNEL,
-  isPresentationReport,
-  presentationKind,
-  presentationUrl,
-  type PresentationCommand,
-  type PresentationKind
-} from '@shared/presentation'
-import { PdfFrame } from './projection/PdfFrame'
+import { presentationKind, presentationUrl } from '@shared/presentation'
+import { FolienVorschau } from './prompter/FolienVorschau'
 import {
   BUEHNE_VORGABE,
   EMPTY_PROJECTION_STATE,
@@ -44,9 +37,9 @@ interface PrompterBridge {
   getInitialState(stage?: number): Promise<ProjectionState>
   getStages(): Promise<{ buehnen: Buehne[]; zustaende: Record<number, ProjectionState> }>
   onStateChange(callback: (nachricht: { buehne: number; state: ProjectionState }) => void): () => void
-  goto(slide: number, stage?: number): void
+  goto(slide: number, stage?: number | number[]): void
   setStage(stage: number): void
-  report(slide: number, slideCount: number, stage?: number): void
+  report(slide: number, slideCount: number, stage?: number | number[]): void
   onBeamerSize(callback: (size: { width: number; height: number }) => void): () => void
 }
 
@@ -54,151 +47,6 @@ declare global {
   interface Window {
     prompter?: PrompterBridge
   }
-}
-
-/**
- * Eine Folienvorschau: derselbe Foliensatz, auf eine feste Folie gestellt.
- *
- * ## Warum beide Vorschauen dieselbe Fläche bekommen
- *
- * Ein Foliensatz richtet sich nach der Größe seines Fensters — er bricht um,
- * verteilt neu, blendet aus. Bekäme die kleinere Vorschau einfach ein
- * schmaleres Fenster, sähe sie nicht aus wie eine verkleinerte Folie, sondern
- * wie eine **andere**: umgebrochene Überschriften, verschobene Kästen,
- * abgeschnittener Text.
- *
- * Beide Rahmen rechnen deshalb mit der Größe des **Beamerfensters** und
- * werden anschließend auf ihre Kachel geschrumpft. Der Maßstab wird gemessen
- * und nicht gerechnet: `transform: scale()` verlangt eine reine Zahl, die sich
- * in CSS nicht aus einer Breite ableiten lässt.
- */
-function Vorschau({
-  presentationId,
-  art,
-  slide,
-  beamer,
-  gross,
-  onReport
-}: {
-  presentationId: string
-  art: PresentationKind
-  slide: number
-  beamer: { width: number; height: number }
-  gross?: boolean
-  onReport?: (slide: number, slideCount: number) => void
-}): JSX.Element {
-  const kachel = useRef<HTMLDivElement>(null)
-  const rahmen = useRef<HTMLIFrameElement>(null)
-  const [bereit, setBereit] = useState(false)
-  const [massstab, setMassstab] = useState(0)
-
-  /* Beim Wechsel des Foliensatzes laedt der Rahmen neu und meldet sich erst
-     danach wieder als bereit. */
-  useEffect(() => setBereit(false), [presentationId])
-
-  /* Der Maßstab folgt der Kachel — auch wenn das Fenster gezogen wird. */
-  useEffect(() => {
-    const element = kachel.current
-    if (!element) return
-    const messen = (): void => {
-      const breite = element.clientWidth
-      const hoehe = element.clientHeight
-      if (breite <= 0 || hoehe <= 0) return
-      setMassstab(Math.min(breite / beamer.width, hoehe / beamer.height))
-    }
-    messen()
-    const beobachter = new ResizeObserver(messen)
-    beobachter.observe(element)
-    return () => beobachter.disconnect()
-  }, [beamer.width, beamer.height])
-
-  /* Folienwechsel hineinreichen. */
-  useEffect(() => {
-    if (!bereit) return
-    const fenster = rahmen.current?.contentWindow
-    if (!fenster) return
-    const befehl: PresentationCommand = {
-      votura: PRESENTATION_CHANNEL,
-      type: 'goto',
-      slide
-    }
-    fenster.postMessage(befehl, '*')
-  }, [slide, bereit])
-
-  /*
-   * Was der Foliensatz über sich meldet, weiterreichen.
-   *
-   * Nur die große Vorschau tut das: Die kleine steht eine Folie weiter, ihre
-   * Meldung wuerde den Stand vorspulen.
-   */
-  useEffect(() => {
-    if (!onReport) return
-    function empfange(event: MessageEvent): void {
-      if (event.source !== rahmen.current?.contentWindow) return
-      if (!isPresentationReport(event.data)) return
-      onReport?.(event.data.slide, event.data.slideCount)
-    }
-    window.addEventListener('message', empfange)
-    return () => window.removeEventListener('message', empfange)
-  }, [onReport])
-
-  return (
-    <div className={`prompter-vorschau${gross ? ' gross' : ''}`} ref={kachel}>
-      <div
-        className="prompter-vorschau-flaeche"
-        style={{
-          width: `${beamer.width * massstab}px`,
-          height: `${beamer.height * massstab}px`
-        }}
-      >
-        {art === 'pdf' ? (
-          /* Ein PDF steuert sich nicht selbst; die Vorschau zeichnet die Seite
-             mit denselben Mitteln wie der Beamer. */
-          <div
-            style={{
-              width: `${beamer.width}px`,
-              height: `${beamer.height}px`,
-              transform: `scale(${massstab})`,
-              transformOrigin: 'top left',
-              position: 'absolute',
-              top: 0,
-              left: 0
-            }}
-          >
-            <PdfFrame
-              src={presentationUrl(presentationId, 'pdf')}
-              slide={slide}
-              /* Nur die große Vorschau meldet: Die kleine steht eine Seite
-                 weiter und würde den Stand vorspulen. */
-              onReport={onReport}
-            />
-          </div>
-        ) : (
-          <iframe
-            ref={rahmen}
-            src={presentationUrl(presentationId, 'html')}
-            sandbox="allow-scripts"
-            title={gross ? 'Aktuelle Folie' : 'Nächste Folie'}
-            tabIndex={-1}
-            onLoad={() => setBereit(true)}
-            style={{
-              width: `${beamer.width}px`,
-              height: `${beamer.height}px`,
-              transform: `scale(${massstab})`
-            }}
-          />
-        )}
-        {/*
-          Eine durchsichtige Fläche über dem Rahmen.
-
-          Ohne sie landet ein Klick **im** Foliensatz — der hat eigene
-          Schaltflächen, und ein versehentlicher Treffer brächte die Vorschau
-          aus dem Tritt, ohne dass der Beamer folgte.
-        */}
-        <div className="prompter-vorschau-schild" />
-      </div>
-    </div>
-  )
 }
 
 function Uhr(): JSX.Element {
@@ -228,28 +76,39 @@ function Stoppuhr({ seit }: { seit: number }): JSX.Element {
 }
 
 /**
- * Auf welcher Bühne läuft ein Foliensatz?
+ * Auf welchen Bühnen läuft ein Foliensatz?
  *
  * Die Vortragssteuerung soll niemand einstellen müssen: Wird eine
- * Präsentation aufgerufen, folgt sie ihr. Laufen zwei zugleich — selten, aber
- * möglich —, gilt die niedrigste Bühne, und die Auswahl im Kopf des Fensters
- * bleibt für den Rest.
+ * Präsentation aufgerufen, folgt sie ihr — und zwar **allen** Wänden, die sie
+ * zeigen. Läuft derselbe Foliensatz auf zwei Bühnen, muss ein Tastendruck
+ * beide weiterschalten; sonst stehen sie nach der ersten Folie auseinander.
  */
-function buehneMitFoliensatz(
-  zustaende: Record<number, ProjectionState>,
-  buehnen: Buehne[]
-): number | undefined {
-  return buehnen
+function buehnenMitFoliensatz(zustaende: Record<number, ProjectionState>, buehnen: Buehne[]): number[] {
+  const mitFolien = buehnen
     .map((stage) => stage.id)
     .sort((a, b) => a - b)
-    .find((id) => zustaende[id]?.mode === 'presentation' && zustaende[id]?.presentation)
+    .filter((id) => zustaende[id]?.mode === 'presentation' && zustaende[id]?.presentation)
+  /*
+   * Nur Bühnen mit **demselben** Dokument.
+   *
+   * Liegen zwei verschiedene Foliensätze auf zwei Wänden, wäre eine
+   * gemeinsame Foliennummer sinnlos: Folie 7 des einen hat mit Folie 7 des
+   * anderen nichts zu tun. Dann bleibt es bei der ersten, und die Auswahl im
+   * Fuß entscheidet über den Rest.
+   */
+  const erste = mitFolien[0]
+  if (erste === undefined) return []
+  const dokument = zustaende[erste]?.presentation?.id
+  return mitFolien.filter((id) => zustaende[id]?.presentation?.id === dokument)
 }
 
 function PrompterApp(): JSX.Element {
   const [buehnen, setBuehnen] = useState<Buehne[]>([{ ...BUEHNE_VORGABE }])
   const [zustaende, setZustaende] = useState<Record<number, ProjectionState>>({})
-  /* Von Hand gewählt schlägt automatisch — aber nur, solange dort etwas
-     läuft. */
+  /*
+   * Von Hand gewählt schlägt automatisch — aber nur, solange dort etwas läuft.
+   * `null` heißt „alle, auf denen der Foliensatz liegt".
+   */
   const [gewaehlt, setGewaehlt] = useState<number | null>(null)
   const [seit, setSeit] = useState(() => Date.now())
   /* Bis der Hauptprozess die wirkliche Größe meldet, gilt das gängige
@@ -273,11 +132,15 @@ function PrompterApp(): JSX.Element {
     }
   }, [])
 
-  const automatisch = buehneMitFoliensatz(zustaende, buehnen)
-  const buehne =
+  const laufende = buehnenMitFoliensatz(zustaende, buehnen)
+  /* Worauf geblättert wird: die eine gewählte Bühne, sonst alle laufenden. */
+  const ziel =
     gewaehlt !== null && zustaende[gewaehlt]?.mode === 'presentation'
-      ? gewaehlt
-      : (automatisch ?? gewaehlt ?? HAUPTBUEHNE)
+      ? [gewaehlt]
+      : laufende.length > 0
+        ? laufende
+        : [gewaehlt ?? HAUPTBUEHNE]
+  const buehne = ziel[0]
   const state = zustaende[buehne] ?? EMPTY_PROJECTION_STATE
 
   /* Der Hauptprozess misst die Größe des Beamerfensters dieser Bühne. */
@@ -291,11 +154,12 @@ function PrompterApp(): JSX.Element {
    * Ohne diesen Weg bliebe die Gesamtzahl unbekannt, und die Steuerung zählte
    * über das Ende des Vortrags hinaus weiter.
    */
+  const zielSchluessel = ziel.join(',')
   const melde = useCallback(
     (folie: number, anzahl: number) => {
-      window.prompter?.report(folie, anzahl, buehne)
+      window.prompter?.report(folie, anzahl, zielSchluessel.split(',').map(Number))
     },
-    [buehne]
+    [zielSchluessel]
   )
 
   const praesentation = state.presentation
@@ -309,12 +173,12 @@ function PrompterApp(): JSX.Element {
   }, [praesentation?.id])
 
   const springe = useCallback(
-    (ziel: number) => {
+    (folie: number) => {
       if (!laeuft) return
       const grenze = anzahl ?? Number.MAX_SAFE_INTEGER
-      window.prompter?.goto(Math.max(1, Math.min(ziel, grenze)), buehne)
+      window.prompter?.goto(Math.max(1, Math.min(folie, grenze)), zielSchluessel.split(',').map(Number))
     },
-    [laeuft, anzahl, buehne]
+    [laeuft, anzahl, zielSchluessel]
   )
 
   const weiter = useCallback(() => springe(folie + 1), [springe, folie])
@@ -377,8 +241,9 @@ function PrompterApp(): JSX.Element {
       <div className="prompter-buehne">
         <section className="prompter-jetzt">
           <h2>Auf dem Beamer</h2>
-          <Vorschau
+          <FolienVorschau
             presentationId={praesentation!.id}
+            quelle={presentationUrl(praesentation!.id, presentationKind(praesentation!))}
             art={presentationKind(praesentation!)}
             slide={folie}
             beamer={beamer}
@@ -391,8 +256,9 @@ function PrompterApp(): JSX.Element {
           {letzte ? (
             <div className="prompter-ende">Letzte Folie</div>
           ) : (
-            <Vorschau
+            <FolienVorschau
               presentationId={praesentation!.id}
+              quelle={presentationUrl(praesentation!.id, presentationKind(praesentation!))}
               art={presentationKind(praesentation!)}
               slide={folie + 1}
               beamer={beamer}
@@ -411,13 +277,20 @@ function PrompterApp(): JSX.Element {
           {buehnen.length > 1 && (
             <select
               className="prompter-buehnenwahl"
-              value={buehne}
-              title="Welche Bühne diese Steuerung bedient"
-              onChange={(event) => setGewaehlt(Number(event.target.value))}
+              value={gewaehlt === null ? 'alle' : String(gewaehlt)}
+              title="Welche Bühnen diese Steuerung blättert"
+              onChange={(event) =>
+                setGewaehlt(event.target.value === 'alle' ? null : Number(event.target.value))
+              }
             >
+              {/* Vorgabe: alle Wände, auf denen der Foliensatz liegt. Nur so
+                  bleiben zwei Beamer beim Blättern beieinander. */}
+              <option value="alle">
+                {laufende.length > 1 ? `Alle ${laufende.length} mit Foliensatz` : 'Alle mit Foliensatz'}
+              </option>
               {buehnen.map((stage) => (
                 <option key={stage.id} value={stage.id}>
-                  {stage.name}
+                  nur {stage.name}
                 </option>
               ))}
             </select>

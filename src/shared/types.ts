@@ -657,14 +657,7 @@ export interface ElectionResult {
    * Öffentlich angezeigte Feststellung (Beamer §74). Stammt IMMER aus der
    * Entscheidung der Wahlleitung, nie aus einer automatischen Berechnung.
    */
-  finalDecision?:
-    | 'elected'
-    | 'not_elected'
-    | 'runoff'
-    | 'accepted'
-    | 'rejected'
-    | 'tie'
-    | 'manual'
+  finalDecision?: 'elected' | 'not_elected' | 'runoff' | 'accepted' | 'rejected' | 'tie' | 'manual'
   /** IDs der als gewählt festgestellten Kandidaten. */
   electedCandidateIds?: UUID[]
   /** Dokumentierter Losentscheid (Wahlformen §32). */

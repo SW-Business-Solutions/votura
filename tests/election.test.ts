@@ -18,7 +18,10 @@ import { pruefsummeAus, pruefsummeAusListe } from '../src/main/services/update-i
 import type { BallotTemplateConfig, Candidate, ElectionRound } from '../src/shared/types'
 
 function template(overrides: Partial<BallotTemplateConfig> = {}): BallotTemplateConfig {
-  return { ...defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 14 }), ...overrides }
+  return {
+    ...defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 14 }),
+    ...overrides
+  }
 }
 
 function candidate(name: string, overrides: Partial<Candidate> = {}): Candidate {
@@ -102,10 +105,9 @@ describe('Validierung der Wahlgangparameter', () => {
   })
 
   it('verhindert mehrere Positionen bei Einzelwahl', () => {
-    const issues = validateRoundSetup(
-      { ...base, procedure: 'single_candidate', seats: 3, maxVotes: 1 },
-      [candidate('Max Mustermann')]
-    )
+    const issues = validateRoundSetup({ ...base, procedure: 'single_candidate', seats: 3, maxVotes: 1 }, [
+      candidate('Max Mustermann')
+    ])
     expect(issues.some((issue) => issue.field === 'seats' && issue.level === 'error')).toBe(true)
   })
 
@@ -234,9 +236,9 @@ describe('Standardvorlagen', () => {
   })
 
   it('aktiviert Kandidatennummern erst ab zehn Eintraegen', () => {
-    expect(defaultTemplateFor('group_preprinted', { seats: 2, maxVotes: 2, entryCount: 5 }).showCandidateNumbers).toBe(
-      false
-    )
+    expect(
+      defaultTemplateFor('group_preprinted', { seats: 2, maxVotes: 2, entryCount: 5 }).showCandidateNumbers
+    ).toBe(false)
     expect(
       defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 14 }).showCandidateNumbers
     ).toBe(true)
@@ -309,11 +311,9 @@ describe('Pruefsummen fuer das Einspielen', () => {
   })
 
   it('liest die Pruefsumme der portablen Fassung aus der Liste', () => {
-    const liste = [
-      'BBBB==  Votura-0.4.0-x64-portable.exe',
-      'AAAA==  Votura-0.4.0-x64-Setup.exe',
-      ''
-    ].join('\n')
+    const liste = ['BBBB==  Votura-0.4.0-x64-portable.exe', 'AAAA==  Votura-0.4.0-x64-Setup.exe', ''].join(
+      '\n'
+    )
     expect(pruefsummeAusListe(liste, 'Votura-0.4.0-x64-portable.exe')).toBe('BBBB==')
     expect(pruefsummeAusListe(liste, 'Votura-0.4.0-x64-Setup.exe')).toBe('AAAA==')
     expect(pruefsummeAusListe(liste, 'fremd.exe')).toBeUndefined()

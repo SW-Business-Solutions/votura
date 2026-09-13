@@ -29,10 +29,7 @@ export function expectedInBox(accounting: BallotAccounting): number {
   return accounting.issued - accounting.returnedSpoiled
 }
 
-export function checkAccounting(
-  accounting: BallotAccounting,
-  eligibleVoters?: number
-): AccountingCheck[] {
+export function checkAccounting(accounting: BallotAccounting, eligibleVoters?: number): AccountingCheck[] {
   const checks: AccountingCheck[] = []
   const available = availableBallots(accounting)
   const expected = expectedInBox(accounting)

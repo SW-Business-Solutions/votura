@@ -392,7 +392,8 @@ export function buildProtocolSlipOps(
   ops.push(text('KEIN STIMMZETTEL', { align: 'center', bold: true, invert: true }))
   ops.push(text(ruler(width, '='), { align: 'center' }))
   ops.push(feed(1))
-  for (const line of wrapText(input.organization, width)) ops.push(text(line, { align: 'center', bold: true }))
+  for (const line of wrapText(input.organization, width))
+    ops.push(text(line, { align: 'center', bold: true }))
   for (const line of wrapText(input.eventTitle, width)) ops.push(text(line, { align: 'center' }))
   ops.push(text(formatDateDe(input.date), { align: 'center' }))
   ops.push(feed(1))
@@ -453,7 +454,8 @@ export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfi
   ops.push(text(ruler(width, '='), { align: 'center' }))
   ops.push(feed(1))
 
-  for (const line of wrapText(input.organization, width)) ops.push(text(line, { align: 'center', bold: true }))
+  for (const line of wrapText(input.organization, width))
+    ops.push(text(line, { align: 'center', bold: true }))
   for (const line of wrapText(input.eventTitle, width)) ops.push(text(line, { align: 'center' }))
   ops.push(text(formatDateDe(input.date), { align: 'center' }))
   ops.push(feed(1))
@@ -506,9 +508,7 @@ export function buildResultSlipOps(input: ResultSlipInput, printer: PrinterConfi
         }
         const zeichen = eintrag.tied ? '=' : eintrag.withinSeats ? '*' : ' '
         const name = `${zeichen}${String(eintrag.rank).padStart(2, '0')} ${eintrag.name}`
-        ops.push(
-          text(zweiSpalten(name, String(eintrag.votes ?? 0), width), { bold: eintrag.withinSeats })
-        )
+        ops.push(text(zweiSpalten(name, String(eintrag.votes ?? 0), width), { bold: eintrag.withinSeats }))
       }
       if (rangfolge.some((eintrag) => eintrag.tied)) {
         ops.push(feed(1))

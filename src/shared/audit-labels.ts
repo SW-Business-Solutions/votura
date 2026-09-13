@@ -89,6 +89,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'projection.mode_set': 'Anzeige umgeschaltet',
   'projection.theme_changed': 'Erscheinungsbild der Anzeige geändert',
   'projection.stages_saved': 'Bühnen geändert',
+  'speech.imported': 'Rede eingespeist',
+  'speech.created': 'Rede angelegt',
+  'speech.edited': 'Rede bearbeitet',
+  'speech.renamed': 'Rede umbenannt',
+  'speech.deleted': 'Rede entfernt',
+  'speechmodel.installed': 'Sprachmodell hinterlegt',
+  'speechmodel.removed': 'Sprachmodell entfernt',
 
   /* ------------------------------------------------------- Zweites Gerät */
   'remote.session_started': 'Fernzugriff angemeldet',

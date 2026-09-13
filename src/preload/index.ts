@@ -7,6 +7,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ApiMethod, ApiParams, ApiResult, IpcChannels } from '@shared/ipc'
 import type { PrompterWindowState } from '@shared/presentation'
+import type { PrompterViewState } from '@shared/speech'
 import type { AudienceWindowState, ProjectionState } from '@shared/projection'
 import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
@@ -26,7 +27,9 @@ const IPC: IpcChannels = {
   beamerSize: 'wz:beamer-size',
   stagesSnapshot: 'wz:stages-snapshot',
   audienceVideoReport: 'wz:audience-video-report',
-  prompterState: 'wz:prompter-state'
+  prompterState: 'wz:prompter-state',
+  prompterView: 'wz:prompter-view',
+  teleprompterState: 'wz:teleprompter-state'
 }
 
 type IpcAnswer<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -57,6 +60,10 @@ const bridge = {
     subscribe<{ level: 'info' | 'warning' | 'error'; message: string }>(IPC.notice, listener),
   onUpdateProgress: (listener: (progress: UpdateProgress) => void) =>
     subscribe<UpdateProgress>(IPC.updateProgress, listener),
+  onPrompterView: (listener: (state: PrompterViewState) => void) =>
+    subscribe<PrompterViewState>(IPC.prompterView, listener),
+  onTeleprompterState: (listener: (state: PrompterWindowState) => void) =>
+    subscribe<PrompterWindowState>(IPC.teleprompterState, listener),
   onPrompterState: (listener: (state: PrompterWindowState) => void) =>
     subscribe<PrompterWindowState>(IPC.prompterState, listener)
 }

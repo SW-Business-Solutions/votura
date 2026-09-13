@@ -21,7 +21,8 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),
           audience: resolve(__dirname, 'src/preload/audience.ts'),
-          prompter: resolve(__dirname, 'src/preload/prompter.ts')
+          prompter: resolve(__dirname, 'src/preload/prompter.ts'),
+          teleprompter: resolve(__dirname, 'src/preload/teleprompter.ts')
         },
         output: { format: 'cjs', entryFileNames: '[name].js' }
       }
@@ -37,7 +38,8 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
           audience: resolve(__dirname, 'src/renderer/audience.html'),
-          prompter: resolve(__dirname, 'src/renderer/prompter.html')
+          prompter: resolve(__dirname, 'src/renderer/prompter.html'),
+          teleprompter: resolve(__dirname, 'src/renderer/teleprompter.html')
         }
       }
     },

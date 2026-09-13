@@ -7,7 +7,14 @@
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
-import { ROLE_PERMISSIONS, type Permission, type Role, type Session, type User, type UUID } from '@shared/types'
+import {
+  ROLE_PERMISSIONS,
+  type Permission,
+  type Role,
+  type Session,
+  type User,
+  type UUID
+} from '@shared/types'
 import { db } from '../db'
 import { optionalString, toBool } from '../db/driver'
 import { appendAudit } from './audit'
@@ -70,10 +77,7 @@ export function userCount(): number {
 }
 
 export function listUsers(): User[] {
-  return db()
-    .prepare(`SELECT * FROM users ORDER BY username`)
-    .all<UserRow>()
-    .map(mapUser)
+  return db().prepare(`SELECT * FROM users ORDER BY username`).all<UserRow>().map(mapUser)
 }
 
 export function createUser(input: {
@@ -94,7 +98,14 @@ export function createUser(input: {
       `INSERT INTO users (id, username, display_name, password_hash, role, active, created_at)
        VALUES (?, ?, ?, ?, ?, 1, ?)`
     )
-    .run(id, username, input.displayName.trim() || username, hashSecret(input.password), input.role, new Date().toISOString())
+    .run(
+      id,
+      username,
+      input.displayName.trim() || username,
+      hashSecret(input.password),
+      input.role,
+      new Date().toISOString()
+    )
 
   const user = getUser(id)
   appendAudit({
@@ -127,7 +138,9 @@ export function updateUser(input: {
     db().prepare(`UPDATE users SET role = ? WHERE id = ?`).run(input.role, input.id)
   }
   if (input.active !== undefined) {
-    db().prepare(`UPDATE users SET active = ? WHERE id = ?`).run(input.active ? 1 : 0, input.id)
+    db()
+      .prepare(`UPDATE users SET active = ? WHERE id = ?`)
+      .run(input.active ? 1 : 0, input.id)
   }
   if (input.password !== undefined) {
     if (input.password.length < 8) throw new Error('Das Passwort muss mindestens 8 Zeichen haben.')
@@ -156,7 +169,9 @@ export function setPrintPin(userId: UUID, pin: string): void {
 }
 
 export function verifyPrintPin(userId: UUID, pin: string): boolean {
-  const row = db().prepare(`SELECT print_pin_hash FROM users WHERE id = ?`).get<{ print_pin_hash: string | null }>(userId)
+  const row = db()
+    .prepare(`SELECT print_pin_hash FROM users WHERE id = ?`)
+    .get<{ print_pin_hash: string | null }>(userId)
   if (!row?.print_pin_hash) return false
   return verifySecret(pin, row.print_pin_hash)
 }

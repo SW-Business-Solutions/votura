@@ -29,11 +29,7 @@ describe('Projektionsmodus', () => {
   })
 
   it('führt jede Präsentations-Aktion im Prüfpfad mit Klartext', () => {
-    for (const aktion of [
-      'presentation.imported',
-      'presentation.renamed',
-      'presentation.deleted'
-    ]) {
+    for (const aktion of ['presentation.imported', 'presentation.renamed', 'presentation.deleted']) {
       expect(AUDIT_ACTION_LABELS[aktion], aktion).toBeTruthy()
     }
   })
@@ -50,9 +46,7 @@ describe('Vertrag mit dem Dokument', () => {
     /* In einem Fenster schicken auch andere Quellen Nachrichten. Ohne die
        Absenderkennung würde jede davon als Folienwechsel gelesen. */
     expect(isPresentationReport({ type: 'state', slide: 3, slideCount: 24 })).toBe(false)
-    expect(isPresentationReport({ votura: 'fremd', type: 'state', slide: 3, slideCount: 24 })).toBe(
-      false
-    )
+    expect(isPresentationReport({ votura: 'fremd', type: 'state', slide: 3, slideCount: 24 })).toBe(false)
     expect(isPresentationReport({ votura: PRESENTATION_CHANNEL, type: 'goto', slide: 3 })).toBe(false)
     expect(isPresentationReport(null)).toBe(false)
     expect(isPresentationReport('state')).toBe(false)

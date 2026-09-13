@@ -1,5 +1,10 @@
 # Betriebshandbuch
 
+Votura ist die **Software für die Mitgliederversammlung**: Wahlgänge und Stimmzettel, die Anzeige
+im Saal und das Pult vorn. Dieses Handbuch geht den Abend der Reihe nach durch — vorbereiten,
+durchführen, nachbereiten. Wer nur einen Wahlgang durchbringen muss, liest die ersten vier
+Abschnitte; alles Weitere steht dort, wo es gebraucht wird.
+
 ## Vor der Versammlung
 
 1. **Installieren:** `Votura-<version>-x64-Setup.exe` ausführen (keine Administratorrechte
@@ -115,6 +120,46 @@ darunter gilt für die dort gewählte Bühne.
   lässt sich nicht abbauen.
 - **Die Vortragssteuerung** folgt der Bühne, auf der ein Foliensatz läuft. Laufen zwei, wählt die
   Liste im Fuß des Fensters.
+
+## Teleprompter
+
+*Prompter* (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
+
+- **Rede ablegen:** *Rede einspeisen* holt eine Markdown-Datei (.md/.txt); *Neu anlegen* öffnet ein
+  leeres Blatt. Der Editor darunter speichert mit **Strg+S**; liegt die Rede gerade am Pult,
+  bekommt sie den neuen Text, ohne an den Anfang zu springen.
+- **Auflegen:** Die Rede steht dann am Pult, angehalten und am Anfang.
+- **Starten/Anhalten:** in der Bedienung, am Prompterfenster oder mit der **Leertaste** am Pult.
+  Pfeile springen zeilenweise, Bild auf/ab in Achterschritten, **Pos1** zurück an den Anfang.
+- **Tempo** in Zeilen je Minute. 90 bis 120 passen zu ruhigem Vortragen; mit `+` und `−` am Pult
+  nachjustieren. Verstellen unterbricht den Lauf nicht — die Stelle bleibt.
+- **Spiegel:** *Seitenverkehrt* für die Glasscheibe vor dem Objektiv, *Über Kopf* für ein Gerät,
+  das umgedreht darunter hängt. Beides einzeln, weil beide Aufbauten vorkommen.
+- **Am Pult im Browser:** Netzwerkansicht einschalten (Beamer → Ausgabe & Netz), dann die Adresse
+  mit `/prompter` am Endgerät öffnen. Diese Ansicht zeigt nur an; gesteuert wird vom Board.
+- **Redezeit übernehmen:** Läuft auf einer Bühne eine Vorstellung mit Uhr, holt ein Klick dieselbe
+  Uhr an das Pult — der Saal und die vortragende Person sehen dann dieselbe Zahl.
+
+## Mitlaufen nach Gehör
+
+Statt gleichmäßig zu rollen, kann der Prompter mithören und die Stelle dorthin setzen, wo gerade
+gesprochen wird. Unter *Prompter → Lauf* die Laufart **Nach Stimme** wählen.
+
+- **Nur im Prompterfenster am Hauptrechner.** Ein Browser im Saalnetz bekommt kein Mikrofon —
+  das ist eine Regel des Browsers, keine Einstellung.
+- **Nichts wird aufgenommen.** Der Ton geht in die Erkennung und ist danach weg; nach außen wandert
+  allein die Stelle im Text. Es gibt keinen Puffer, keine Datei, keinen Weg ins Netz.
+- **Ein Sprachmodell muss hinterlegt sein.** Ein kleines deutsches liegt bei; unter
+  *Einstellungen → Beamer → Sprachmodell* steht, welches gilt. Für halligen Saal oder starken
+  Dialekt lässt sich dort ein größeres darüberlegen (Archiv von `alphacephei.com/vosk/models`).
+- **Beim ersten Mal dauert es.** Das Modell wird einmalig entpackt; danach liegt es bereit und der
+  Prompter ist in Sekunden da. Vor der Versammlung einmal ausprobieren.
+- **Die Erkennung muss nicht gut sein.** Der Text steht ja schon da — gesucht wird nur die Stelle
+  darin. Wenige halbwegs erkannte Wörter genügen; gesucht wird in einem Fenster um die aktuelle
+  Stelle, damit eine wiederkehrende Formel nicht an den Anfang zurückspringt.
+
+Passt es einmal nicht, hilft **Von Hand**: Der Text bewegt sich dann nur auf Tastendruck — bei
+einer Rede mit vielen Zwischenrufen oft die ruhigere Wahl.
 
 ## Rangliste bei mehreren Plätzen
 

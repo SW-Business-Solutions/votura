@@ -56,7 +56,7 @@ describe('Stimmzettelbilanz', () => {
   it('schaetzt den Papierverbrauch', () => {
     const usage = estimatePaperUsage(40, 126)
     expect(usage.millimetersPerBallot).toBeGreaterThan(100)
-    expect(usage.totalMeters).toBeCloseTo((40 * 3.5 + 15) * 126 / 1000, 5)
+    expect(usage.totalMeters).toBeCloseTo(((40 * 3.5 + 15) * 126) / 1000, 5)
   })
 })
 
@@ -64,11 +64,15 @@ describe('Ergebnisvalidierung', () => {
   const base = { procedure: 'group_preprinted' as const, seats: 8, maxVotes: 8, positions: [] }
 
   it('verlangt, dass gültig + ungültig die abgegebenen ergeben', () => {
-    const issues = validateResult(base, { candidates: [] }, {
-      ballotsCast: 119,
-      validBallots: 100,
-      invalidBallots: 2
-    })
+    const issues = validateResult(
+      base,
+      { candidates: [] },
+      {
+        ballotsCast: 119,
+        validBallots: 100,
+        invalidBallots: 2
+      }
+    )
     expect(issues.some((issue) => issue.level === 'error')).toBe(true)
   })
 
@@ -79,11 +83,11 @@ describe('Ergebnisvalidierung', () => {
         { candidateId: 'b', name: 'B', votes: 90 }
       ]
     }
-    const issues = validateResult(
-      { ...base, seats: 1, maxVotes: 1 },
-      data,
-      { ballotsCast: 100, validBallots: 100, invalidBallots: 0 }
-    )
+    const issues = validateResult({ ...base, seats: 1, maxVotes: 1 }, data, {
+      ballotsCast: 100,
+      validBallots: 100,
+      invalidBallots: 0
+    })
     expect(issues.some((issue) => issue.level === 'error')).toBe(true)
   })
 

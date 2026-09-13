@@ -90,9 +90,7 @@ export function appendAudit(input: AuditInput): AuditEntry {
       entryHash
     )
 
-  const row = db()
-    .prepare(`SELECT * FROM audit WHERE id = ?`)
-    .get<AuditRow>(id)
+  const row = db().prepare(`SELECT * FROM audit WHERE id = ?`).get<AuditRow>(id)
   return mapAudit(row as AuditRow)
 }
 

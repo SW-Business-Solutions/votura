@@ -1,0 +1,66 @@
+/*
+ * Stile der Folienvorschau.
+ *
+ * Sie liegen bei der Komponente und nicht in einem Seitenstylesheet: Die
+ * Vorschau wird von der Vortragssteuerung **und** vom Teleprompter benutzt.
+ * Lag sie nur bei der einen Seite, blieb die andere schwarz — genau das ist
+ * passiert. Wer den Baustein einbindet, bekommt jetzt auch sein Aussehen.
+ *
+ * Die Farben kommen aus eigenen Variablen mit Rückfallwert, damit die
+ * Vorschau auch auf einer Seite trägt, die die Prompterfarben nicht kennt.
+ */
+.prompter-vorschau {
+  --vorschau-linie: var(--prompter-linie, #2b313a);
+  --vorschau-akzent: var(--prompter-akzent, #4d9bff);
+}
+
+/* ------------------------------------------------------- Vorschau ---- */
+
+/*
+ * Beide Vorschauen zeigen denselben Foliensatz im selben Format.
+ *
+ * Der Kasten ist nur der verfügbare Platz; darin sitzt die eigentliche
+ * Fläche im Seitenverhältnis des Beamers, mittig und so groß wie möglich.
+ * Der Rahmen darin misst immer 1920 x 1080 und wird über `transform` auf
+ * diese Fläche geschrumpft — so rechnet der Foliensatz links wie rechts mit
+ * derselben Fenstergröße und bricht identisch um. Ohne das wäre die kleinere
+ * Vorschau kein verkleinertes Abbild, sondern ein anderes Layout.
+ */
+.prompter-vorschau {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Größe und Maßstab kommen gemessen aus der Komponente: Sie richten sich nach
+   dem Beamerfenster, das CSS allein nicht kennt. */
+.prompter-vorschau-flaeche {
+  position: relative;
+  background: #000;
+  border: 1px solid var(--vorschau-linie);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.prompter-vorschau.gross .prompter-vorschau-flaeche {
+  border-color: var(--vorschau-akzent);
+}
+
+.prompter-vorschau iframe {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: top left;
+}
+
+/* Fängt Klicks ab, die sonst im fremden Foliensatz landen würden. */
+.prompter-vorschau-schild {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  cursor: default;
+}

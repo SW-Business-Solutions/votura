@@ -106,7 +106,9 @@ export function saveResult(input: ResultInput): ElectionResult {
     })
     const errors = issues.filter((issue) => issue.level === 'error')
     if (errors.length > 0) {
-      throw new Error(`Das Ergebnis ist nicht plausibel:\n- ${errors.map((issue) => issue.message).join('\n- ')}`)
+      throw new Error(
+        `Das Ergebnis ist nicht plausibel:\n- ${errors.map((issue) => issue.message).join('\n- ')}`
+      )
     }
   }
 
@@ -243,7 +245,8 @@ export function confirmResult(roundId: UUID, pin?: string): ElectionResult {
  */
 export function reopenResult(roundId: UUID, reason: string): ElectionResult {
   const session = requirePermission('result.confirm')
-  if (!reason.trim()) throw new Error('Für die Korrektur eines bestätigten Ergebnisses ist eine Begründung nötig.')
+  if (!reason.trim())
+    throw new Error('Für die Korrektur eines bestätigten Ergebnisses ist eine Begründung nötig.')
   const result = getResult(roundId)
   if (!result) throw new Error('Es ist kein Ergebnis erfasst.')
   const round = getRound(roundId)
@@ -251,7 +254,11 @@ export function reopenResult(roundId: UUID, reason: string): ElectionResult {
     throw new Error('Der Wahlgang ist abgeschlossen. Korrekturen sind nur als Notfallkorrektur möglich.')
   }
 
-  db().prepare(`UPDATE results SET confirmed_at = NULL, verified_by = NULL, verified_by_name = NULL WHERE round_id = ?`).run(roundId)
+  db()
+    .prepare(
+      `UPDATE results SET confirmed_at = NULL, verified_by = NULL, verified_by_name = NULL WHERE round_id = ?`
+    )
+    .run(roundId)
   appendAudit({
     action: 'result.reopened',
     userId: session.user.id,
@@ -288,9 +295,13 @@ export function emergencyReopen(roundId: UUID, reason: string): ElectionRound {
   }
   const result = getResult(roundId)
 
-  db().prepare(`UPDATE rounds SET status = 'counting', row_version = row_version + 1 WHERE id = ?`).run(roundId)
   db()
-    .prepare(`UPDATE results SET confirmed_at = NULL, verified_by = NULL, verified_by_name = NULL WHERE round_id = ?`)
+    .prepare(`UPDATE rounds SET status = 'counting', row_version = row_version + 1 WHERE id = ?`)
+    .run(roundId)
+  db()
+    .prepare(
+      `UPDATE results SET confirmed_at = NULL, verified_by = NULL, verified_by_name = NULL WHERE round_id = ?`
+    )
     .run(roundId)
 
   appendAudit({

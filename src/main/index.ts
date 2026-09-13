@@ -2,14 +2,20 @@ import { app, BrowserWindow, dialog, Menu, protocol, session } from 'electron'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { readFile } from 'node:fs/promises'
+import { extname, join, resolve } from 'node:path'
 import { PRESENTATION_SCHEME, presentationKind } from '@shared/presentation'
 import { VIDEO_SCHEME } from '@shared/video'
+import { PULT_SCHEME } from '@shared/speech'
 import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
 import { initLogger, logger } from './logger'
 import { checkOnStartIfEnabled } from './services/updates'
+import { onPrompterViewChanged } from './services/prompter'
+import { sprachmodellDatei } from './services/sprachmodell'
+import { setPrompterNetzBedienung } from './services/prompter'
 import {
+  broadcastPrompter,
   broadcastProjection,
   networkStatus,
   setRemoteDispatcher,
@@ -29,6 +35,8 @@ import {
   getOperatorWindow,
   onAudienceStateChanged,
   onPrompterStateChanged,
+  onTeleprompterStateChanged,
+  sendToTeleprompter,
   sendToAudience,
   sendToOperator,
   sendToPrompter,
@@ -77,8 +85,107 @@ protocol.registerSchemesAsPrivileged([
    * Chromium die Antwort als ein Stück und spielt das Video erst ab, wenn es
    * vollständig da ist. Ein Film von 300 MB stünde dann minutenlang schwarz.
    */
-  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }
+  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } },
+  /*
+   * Die Prompterseite braucht eine **echte Herkunft**.
+   *
+   * Unter `file://` verweigert Chromium Web Worker — und die Spracherkennung
+   * läuft in einem. Als `standard` und `secure` angemeldet, verhält sich das
+   * Schema wie eine Webseite: Worker, WebAssembly und Mikrofonzugriff sind
+   * möglich, ohne dass ein Server laufen müsste.
+   */
+  {
+    scheme: PULT_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
 ])
+
+/**
+ * Die gebaute Oberfläche unter eigenem Schema.
+ *
+ * Ausgeliefert wird ausschließlich der Ordner mit den gebauten Dateien; ein
+ * Pfad, der aus ihm herausführt, wird abgewiesen. Damit ist dieses Schema
+ * kein Fenster ins Dateisystem, sondern nur eine andere Adresse für das, was
+ * ohnehin im Programm steckt.
+ */
+/**
+ * Die Richtlinie der Prompterseite — eine Spur weiter als die der Anwendung.
+ *
+ * `unsafe-eval` steht hier, und nur hier. Die Spracherkennung erzeugt zur
+ * Laufzeit Funktionen (`new Function`), wie es Emscripten-Anbindungen tun;
+ * ohne diese Erlaubnis stirbt ihr Worker still, und am Pult stünde für immer
+ * „wird geladen". Alles Übrige bleibt streng: `default-src 'self'`,
+ * `connect-src` nur auf die eigene Herkunft, kein Weg ins Netz, keine fremden
+ * Quellen. Und die Seite selbst kann wenig: Sie zeigt einen Text und darf
+ * sieben Prompterbefehle auslösen — an Wahldaten kommt sie nicht heran.
+ */
+const PULT_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  `connect-src 'self' blob: ${PRESENTATION_SCHEME}:`,
+  `frame-src ${PRESENTATION_SCHEME}:`,
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'"
+].join('; ')
+
+function registerPultProtocol(): void {
+  const wurzel = resolve(join(__dirname, '../renderer'))
+  const typen: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.wasm': 'application/wasm',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.woff2': 'font/woff2'
+  }
+  protocol.handle(PULT_SCHEME, async (request) => {
+    const pfad = new URL(request.url).pathname
+    /*
+     * Das Sprachmodell kommt nicht aus dem Oberflächenordner.
+     *
+     * Es liegt entweder in den Programmressourcen oder im Benutzerordner —
+     * und wird als eine Datei ausgeliefert, die die Erkennung selbst
+     * auspackt. Eine eigene Adresse dafür ist ehrlicher als ein Pfad, der
+     * scheinbar in den Oberflächenordner zeigt.
+     */
+    if (pfad === '/sprachmodell') {
+      const modell = sprachmodellDatei()
+      if (!modell) return new Response('Kein Sprachmodell hinterlegt.', { status: 404 })
+      return new Response(Readable.toWeb(createReadStream(modell.pfad)) as ReadableStream, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(statSync(modell.pfad).size),
+          'Cache-Control': 'no-store'
+        }
+      })
+    }
+    const datei = resolve(join(wurzel, decodeURIComponent(pfad)))
+    if (!datei.startsWith(wurzel)) return new Response('Zugriff verweigert.', { status: 403 })
+    if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
+    const endung = extname(datei).toLowerCase()
+    return new Response(await readFile(datei), {
+      headers: {
+        'Content-Type': typen[endung] ?? 'application/octet-stream',
+        ...(endung === '.html' ? { 'Content-Security-Policy': PULT_CSP } : {})
+      }
+    })
+  })
+}
 
 function registerPresentationProtocol(): void {
   protocol.handle(PRESENTATION_SCHEME, async () => {
@@ -90,8 +197,7 @@ function registerPresentationProtocol(): void {
     if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
     /* Ein PDF muss als PDF ausgeliefert werden — sonst versucht der Rahmen,
        Binärdaten als HTML zu lesen. */
-    const typ =
-      presentationKind(eintrag) === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8'
+    const typ = presentationKind(eintrag) === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8'
     return new Response(await readFile(datei), {
       headers: {
         'Content-Type': typ,
@@ -166,10 +272,31 @@ function hardenSecurity(): void {
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
   })
 
-  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+  /*
+   * Rechte: grundsätzlich nichts — mit **einer** Ausnahme.
+   *
+   * Der Teleprompter darf das Mikrofon anfragen, und nur er: Damit hört er
+   * mit, wo im Manuskript gerade gesprochen wird. Aufgenommen wird nichts,
+   * der Ton verlässt das Gerät nicht, und die Erkennung läuft an Ort und
+   * Stelle. Erkennbar ist das Fenster an seinem eigenen Schema — kein anderes
+   * lädt von dort, und eine Präsentation im Rahmen erst recht nicht.
+   */
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+    const vomPult = contents.getURL().startsWith(`${PULT_SCHEME}://`)
+    callback(vomPult && permission === 'media')
+  })
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft) => {
+    return herkunft.startsWith(`${PULT_SCHEME}://`) && permission === 'media'
+  })
 
   // Strenge CSP: alles aus dem Paket, nichts aus dem Netz.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    /* Die Prompterseite bringt ihre eigene Richtlinie mit (siehe PULT_CSP) —
+       hier würde sie sonst überschrieben. */
+    if (details.url.startsWith(`${PULT_SCHEME}://`)) {
+      callback({ responseHeaders: details.responseHeaders })
+      return
+    }
     const isDev = Boolean(process.env.ELECTRON_RENDERER_URL)
     /*
      * Die eingespeiste Präsentation bekommt ihre **eigene** Richtlinie.
@@ -204,14 +331,34 @@ function hardenSecurity(): void {
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +
-        ": blob:"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' " +
+        ': blob:'
+      : /*
+         * `worker-src 'self' blob:` ist für den Prompter da.
+         *
+         * Die Spracherkennung bringt ihren Worker als eingebettetes Skript mit
+         * und startet ihn über eine `blob:`-Adresse. Ohne diese Erlaubnis
+         * bricht Chromium das ab — ohne Fehlermeldung, die irgendwo ankäme.
+         * Nachgeladen wird damit nichts: `blob:` sind Daten aus dem eigenen
+         * Paket, kein Weg ins Netz.
+         */
+        /*
+         * `wasm-unsafe-eval` ist ausschließlich für die Spracherkennung da.
+         *
+         * Sie bringt ihren Rechenteil als WebAssembly mit, und Chromium
+         * verweigert dessen Übersetzung, sobald eine Richtlinie gesetzt ist —
+         * ohne Fehlermeldung, die irgendwo ankäme: Der Worker stirbt still,
+         * und am Pult steht für immer „wird geladen". Die Erlaubnis gilt nur
+         * WebAssembly; `eval` von JavaScript-Text bleibt verboten, und
+         * geladen wird weiterhin nichts aus dem Netz.
+         */
+        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; child-src 'self' blob:; " +
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: " +
         PRESENTATION_SCHEME +
         ": ; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src " +
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +
-        ": blob:"
+        ': blob:'
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -252,8 +399,13 @@ async function bootstrap(): Promise<void> {
   }
 
   restoreProjection()
+  /* Beim Start dasselbe wie beim Speichern: Der Prompter soll von Anfang an
+     wissen, ob ein Gerät im Saal bedienen darf. */
+  const netz = getNetworkProjection()
+  setPrompterNetzBedienung(netz.enabled && netz.allowPrompterControl)
   registerPresentationProtocol()
   registerVideoProtocol()
+  registerPultProtocol()
   registerIpc()
   // Der Fernzugriff nutzt dieselbe API wie das Hauptfenster.
   setRemoteDispatcher((method, args) => callApi(method, args))
@@ -271,10 +423,23 @@ async function bootstrap(): Promise<void> {
     sendToOperator(IPC.projectionState, { buehne, state })
     sendToAudience(buehne, IPC.projectionState, { buehne, state })
     sendToPrompter(IPC.projectionState, { buehne, state })
+    sendToTeleprompter(IPC.projectionState, { buehne, state })
     broadcastProjection(buehne, state)
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))
   onPrompterStateChanged((state) => sendToOperator(IPC.prompterState, state))
+  /*
+   * Der Prompter geht seinen eigenen Weg.
+   *
+   * Er hängt nicht am Projektionszustand: Was am Pult steht, ist nicht das,
+   * was an der Wand steht — und soll es auch nie versehentlich werden.
+   */
+  onPrompterViewChanged((view) => {
+    sendToOperator(IPC.prompterView, view)
+    sendToTeleprompter(IPC.prompterView, view)
+    broadcastPrompter(view)
+  })
+  onTeleprompterStateChanged((state) => sendToOperator(IPC.teleprompterState, state))
   onSessionChanged((currentSession) => sendToOperator(IPC.sessionChanged, currentSession))
 
   const network = getNetworkProjection()

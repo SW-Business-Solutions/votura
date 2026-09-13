@@ -19,6 +19,24 @@
   --danger: #f85149;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   --radius: 10px;
+
+  /*
+   * Abstände als Leiter.
+   *
+   * Vorher standen neun verschiedene Werte im Code — 4, 6, 8, 10, 12, 14, 16,
+   * 18 und einmal −4 —, jeder für sich plausibel, zusammen eine Unruhe, die
+   * man nicht benennen kann. Fünf Stufen reichen; wer eine sechste braucht,
+   * hat meistens ein Layoutproblem und kein Abstandsproblem.
+   */
+  --abstand-1: 4px;
+  --abstand-2: 8px;
+  --abstand-3: 12px;
+  --abstand-4: 16px;
+  --abstand-5: 24px;
+
+  /* Eine Knopfhöhe für alles, was nebeneinander steht. */
+  --knopf-hoehe: 40px;
+  --knopf-hoehe-gross: 52px;
   color-scheme: dark;
 }
 
@@ -50,7 +68,12 @@ body,
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    Arial,
+    sans-serif;
   font-size: 15px;
   background: var(--bg);
   color: var(--text);
@@ -291,6 +314,14 @@ p {
 
 /* ---------------------------------------------------------------- Elemente */
 
+/*
+ * Eine Höhe für alle Knöpfe einer Reihe.
+ *
+ * Die Höhe kam vorher allein aus dem Innenabstand — ein Knopf mit „‹" war
+ * dadurch niedriger als einer mit „Wahlgang abschließen", und nebeneinander
+ * fluchtete nichts. `min-height` setzt den Boden; der Innenabstand bestimmt
+ * nur noch die Breite.
+ */
 button,
 .button {
   font: inherit;
@@ -299,11 +330,13 @@ button,
   border: 1px solid var(--border-strong);
   background: var(--bg-input);
   color: var(--text);
-  padding: 10px 16px;
+  min-height: var(--knopf-hoehe);
+  padding: 8px 16px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: var(--abstand-2);
 }
 button:hover:not(:disabled) {
   border-color: var(--accent);
@@ -325,8 +358,27 @@ button.danger {
 button.ghost {
   background: transparent;
 }
+
+/*
+ * Zurückhaltend **und** warnend.
+ *
+ * `ghost` nimmt den Grund weg, `danger` hatte die weiße Schrift gesetzt — im
+ * hellen Design stand damit Weiß auf Weiß. Ein zurückhaltender Warnknopf
+ * trägt die Warnfarbe in Schrift und Rand, nicht in der Fläche.
+ */
+button.ghost.danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.ghost.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: var(--danger);
+}
 button.big {
-  padding: 16px 22px;
+  min-height: var(--knopf-hoehe-gross);
+  padding: 12px 22px;
   font-size: 17px;
 }
 button.wide {
@@ -860,4 +912,272 @@ button.mini {
 
 .buehnen-vorschau-marke .hint {
   margin: 0;
+}
+
+/*
+ * Die Kacheln des Masters sind anklickbar.
+ *
+ * Ein Klick hakt eine Bühne an; dann trifft jede Schaltung nur noch die
+ * angehakten. Nichts angehakt heißt „alle" — wer im Master steht, meint im
+ * Zweifel die ganze Versammlung, und ein Knopf, der dann nichts täte, wäre
+ * eine Falle.
+ */
+button.buehnen-vorschau {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  min-height: 0;
+}
+
+button.buehnen-vorschau:hover {
+  border-color: var(--border, #2b313a);
+}
+
+button.buehnen-vorschau.gewaehlt {
+  border-color: var(--accent, #4d9bff);
+  background: color-mix(in srgb, var(--accent, #4d9bff) 10%, transparent);
+}
+
+/* Nicht betroffene Bühnen treten zurück, statt zu verschwinden. */
+button.buehnen-vorschau.beiseite {
+  opacity: 0.45;
+}
+
+.buehnen-vorschau-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.buehnen-haken {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border, #2b313a);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.buehnen-haken.an {
+  background: var(--accent, #4d9bff);
+  border-color: var(--accent, #4d9bff);
+  color: #fff;
+}
+
+.buehnen-auswahl-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.buehnen-auswahl-zeile .hint {
+  margin: 0;
+}
+
+/*
+ * Editor für Reden.
+ *
+ * Groß, ruhig, ohne Zierrat: Hier steht ein Text, der gleich vorgelesen wird,
+ * und die einzige Formatierung, die zählt, sind Absätze.
+ */
+.rede-editor {
+  width: 100%;
+  min-height: 320px;
+  margin: 10px 0;
+  padding: 12px 14px;
+  font-family: 'Cascadia Mono', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* Wie weit die Rede gelaufen ist. */
+.prompter-stand-balken {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2, #1a1f26);
+  overflow: hidden;
+}
+
+.prompter-stand-fuellung {
+  height: 100%;
+  background: var(--accent, #4d9bff);
+  transition: width 0.4s linear;
+}
+
+/* Ein Tabelleneintrag, der gerade dran ist. */
+tr.hervorgehoben > td {
+  background: color-mix(in srgb, var(--accent, #4d9bff) 10%, transparent);
+}
+
+/* Ein Knopf, der wie ein Verweis aussieht — für Namen in Listen. */
+button.linkartig {
+  padding: 0;
+  min-height: 0;
+  background: none;
+  border: none;
+  color: var(--accent, #4d9bff);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.linkartig:hover {
+  text-decoration: underline;
+}
+
+/* Lauf des Prompters: Start, Feinsprung und Anfang auf einer Fluchtlinie. */
+.prompter-lauf-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Die Knöpfe einer Redenzeile bleiben zusammen und rechtsbündig. */
+td.rede-knoepfe {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- Hilfsklassen */
+
+/*
+ * Wiederkehrende Kleinigkeiten, die vorher als `style={{ … }}` im Code
+ * standen — rund 190-mal, mit elf verschiedenen Breiten und neun Abständen.
+ * Als Klasse steht der Wert an einer Stelle und ist beim nächsten Mal wieder
+ * derselbe.
+ */
+
+/* Ein Feld, das sich den freien Platz einer Zeile teilt. */
+.col {
+  flex: 1;
+  min-width: 0;
+}
+
+.col-2 {
+  flex: 2;
+  min-width: 0;
+}
+
+/* Feste Spaltenbreiten für Zahlenfelder — drei Stufen statt elf. */
+.col-schmal {
+  width: 110px;
+  flex: none;
+}
+
+.col-mittel {
+  width: 150px;
+  flex: none;
+}
+
+.col-breit {
+  width: 200px;
+  flex: none;
+}
+
+.mt-1 {
+  margin-top: var(--abstand-1);
+}
+.mt-2 {
+  margin-top: var(--abstand-2);
+}
+.mt-3 {
+  margin-top: var(--abstand-3);
+}
+.mt-4 {
+  margin-top: var(--abstand-4);
+}
+.mb-2 {
+  margin-bottom: var(--abstand-2);
+}
+.mb-3 {
+  margin-bottom: var(--abstand-3);
+}
+
+/* Ein Merkzeichen hinter Text — vorher achtmal `style={{ marginLeft: 8 }}`. */
+.badge-nach {
+  margin-left: var(--abstand-2);
+}
+
+/* Eine Tabellenzelle mit Zeitstempel bricht nicht um. */
+td.zeitstempel,
+th.zeitstempel {
+  white-space: nowrap;
+}
+
+td.zahl,
+th.zahl {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/*
+ * Ein Hinweis als Absatz erbt sonst den Absatzabstand und steht damit tiefer
+ * als derselbe Hinweis in einem `div`. Zweimal wurde das im Stylesheet
+ * nachträglich repariert; hier ist die Ursache.
+ */
+p.hint {
+  margin-bottom: 0;
+}
+
+/* Ein einzelnes Kästchen ohne Beschriftung — etwa in einer Listenzeile. */
+input.haken[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/*
+ * Eine Zeile mit den Knöpfen unter dem Eintrag.
+ *
+ * Neben vier Spalten gedrängt wurden die Knöpfe schmal und rückten an den
+ * Rand. Darunter haben sie ihre Breite — und liegen dort, wo der Blick nach
+ * dem Lesen des Namens ohnehin ankommt. Der fehlende Trennstrich zur Zeile
+ * darüber hält beides als **einen** Eintrag zusammen.
+ */
+tr.aktionen > td {
+  border-top: none;
+  padding-top: 0;
+  padding-bottom: var(--abstand-3);
+}
+
+tr.aktionen.active > td {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/*
+ * Ein Schalter, der zu einer einzelnen Schaltfläche darüber gehört.
+ *
+ * Zwischen gleichrangigen Knöpfen sieht ein Haken wie eine allgemeine
+ * Einstellung aus. Eingerückt und mit einer Marke davor ist erkennbar, worauf
+ * er sich bezieht.
+ */
+.beamer-nebenschalter {
+  margin-top: var(--abstand-3);
+  padding-left: var(--abstand-3);
+  border-left: 2px solid var(--border);
+}
+
+.beamer-nebenschalter-marke {
+  display: block;
+  margin-bottom: var(--abstand-1);
+  font-size: 13px;
+  color: var(--text-muted);
 }

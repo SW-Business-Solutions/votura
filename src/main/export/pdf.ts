@@ -27,11 +27,7 @@ export async function htmlToPdf(html: string, target: string, landscape = false)
 }
 
 export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 /** Gemeinsames Grundlayout aller PDF-Ausgaben: schwarz auf weiß, gut lesbar. */

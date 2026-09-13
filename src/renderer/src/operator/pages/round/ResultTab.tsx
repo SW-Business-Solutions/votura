@@ -185,9 +185,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   const roundClosed = round.status === 'completed' || round.status === 'cancelled'
 
   const setRow = (candidateId: string, patch: Partial<CandidateResult>): void => {
-    setRows((current) =>
-      current.map((row) => (row.candidateId === candidateId ? { ...row, ...patch } : row))
-    )
+    setRows((current) => current.map((row) => (row.candidateId === candidateId ? { ...row, ...patch } : row)))
   }
 
   /*
@@ -249,10 +247,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     const gruppe = ranked.filter((kandidat) => kandidat.tieGroup === eintrag.tieGroup)
     const innen = gruppe.findIndex((kandidat) => kandidat.candidateId === eintrag.candidateId)
     const neueGruppe = gruppe.map((kandidat) => kandidat.candidateId)
-    ;[neueGruppe[innen], neueGruppe[innen + richtung]] = [
-      neueGruppe[innen + richtung],
-      neueGruppe[innen]
-    ]
+    ;[neueGruppe[innen], neueGruppe[innen + richtung]] = [neueGruppe[innen + richtung], neueGruppe[innen]]
 
     /* Frühere Entscheidungen zu anderen Gruppen bleiben stehen. */
     const andere = rankOrder.filter((id) => !neueGruppe.includes(id))
@@ -364,17 +359,17 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             </div>
           ) : (
             <div className="row">
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Abgegebene Stimmzettel">
                   <NumberInput value={ballotsCast} disabled={confirmed} onChange={setBallotsCast} />
                 </Field>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Ungültige Stimmzettel">
                   <NumberInput value={invalidBallots} disabled={confirmed} onChange={setInvalidBallots} />
                 </Field>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Gültig (berechnet)">
                   <input value={validBallots} readOnly />
                 </Field>
@@ -385,19 +380,23 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
           {kind === 'global_only' && countingMode === 'counted' && (
             <>
               <div className="row">
-                <div style={{ flex: 1 }}>
+                <div className="col">
                   <Field label="Ja">
                     <NumberInput value={globalYes} disabled={confirmed} onChange={setGlobalYes} />
                   </Field>
                 </div>
-                <div style={{ flex: 1 }}>
+                <div className="col">
                   <Field label="Nein">
                     <NumberInput value={globalNo} disabled={confirmed} onChange={setGlobalNo} />
                   </Field>
                 </div>
-                <div style={{ flex: 1 }}>
+                <div className="col">
                   <Field label="Enthaltung">
-                    <NumberInput value={globalAbstentions} disabled={confirmed} onChange={setGlobalAbstentions} />
+                    <NumberInput
+                      value={globalAbstentions}
+                      disabled={confirmed}
+                      onChange={setGlobalAbstentions}
+                    />
                   </Field>
                 </div>
               </div>
@@ -431,7 +430,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                   <tr key={row.candidateId}>
                     <td>{row.name}</td>
                     {kind === 'votes' ? (
-                      <td className="num" style={{ width: 130 }}>
+                      <td className="num col-mittel">
                         <NumberInput
                           value={row.votes ?? 0}
                           disabled={confirmed}
@@ -440,28 +439,28 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                       </td>
                     ) : (
                       <>
-                        <td style={{ width: 110 }}>
+                        <td className="col-schmal">
                           <NumberInput
                             value={row.yes ?? 0}
                             disabled={confirmed}
                             onChange={(value) => setRow(row.candidateId, { yes: value })}
                           />
                         </td>
-                        <td style={{ width: 110 }}>
+                        <td className="col-schmal">
                           <NumberInput
                             value={row.no ?? 0}
                             disabled={confirmed}
                             onChange={(value) => setRow(row.candidateId, { no: value })}
                           />
                         </td>
-                        <td style={{ width: 110 }}>
+                        <td className="col-schmal">
                           <NumberInput
                             value={row.abstain ?? 0}
                             disabled={confirmed}
                             onChange={(value) => setRow(row.candidateId, { abstain: value })}
                           />
                         </td>
-                        <td style={{ width: 110 }}>
+                        <td className="col-schmal">
                           <NumberInput
                             value={row.invalidVotes ?? 0}
                             disabled={confirmed}
@@ -477,15 +476,19 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
           )}
 
           {kind === 'votes' && countingMode === 'counted' && (
-            <div className="row" style={{ marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
+            <div className="row mt-3">
+              <div className="col">
                 <Field label="Nein (gesamt)">
                   <NumberInput value={globalNo} disabled={confirmed} onChange={setGlobalNo} />
                 </Field>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Enthaltung (gesamt)">
-                  <NumberInput value={globalAbstentions} disabled={confirmed} onChange={setGlobalAbstentions} />
+                  <NumberInput
+                    value={globalAbstentions}
+                    disabled={confirmed}
+                    onChange={setGlobalAbstentions}
+                  />
                 </Field>
               </div>
             </div>
@@ -498,9 +501,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
           <button
             className="primary big"
             disabled={
-              confirmed ||
-              !app.can('result.enter') ||
-              (countingMode === 'declared' && !declaration.trim())
+              confirmed || !app.can('result.enter') || (countingMode === 'declared' && !declaration.trim())
             }
             onClick={() => void save()}
           >
@@ -511,8 +512,8 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
         <Card title="Prüfung">
           {countingMode === 'declared' ? (
             <div className="notice">
-              Ohne Auszählung gibt es keine Zahlen zu prüfen. Im Protokoll wird ausdrücklich vermerkt, dass das
-              Ergebnis ohne Auszählung festgestellt wurde.
+              Ohne Auszählung gibt es keine Zahlen zu prüfen. Im Protokoll wird ausdrücklich vermerkt, dass
+              das Ergebnis ohne Auszählung festgestellt wurde.
             </div>
           ) : issues.length === 0 && plausibility.every((check) => check.level === 'ok') ? (
             <div className="notice ok">Ergebnis und Stimmzettelbilanz sind schlüssig.</div>
@@ -619,20 +620,12 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                           ? `${candidate.yes ?? 0} Ja / ${candidate.no ?? 0} Nein`
                           : (candidate.votes ?? candidate.yes ?? 0)}
                         {profile.perCandidateChoice && !acceptanceQualified(candidate) && (
-                          <span className="badge warn" style={{ marginLeft: 8 }}>
-                            nicht mehr Ja als Nein
-                          </span>
+                          <span className="badge warn badge-nach">nicht mehr Ja als Nein</span>
                         )}
                         {candidate.tiedAtCutoff ? (
-                          <span className="badge warn" style={{ marginLeft: 8 }}>
-                            Gleichstand an der Grenze
-                          </span>
+                          <span className="badge warn badge-nach">Gleichstand an der Grenze</span>
                         ) : (
-                          candidate.tied && (
-                            <span className="badge" style={{ marginLeft: 8 }}>
-                              Rang offen
-                            </span>
-                          )
+                          candidate.tied && <span className="badge badge-nach">Rang offen</span>
                         )}
                       </>
                     }
@@ -642,7 +635,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
               {/* Niemand ist mit null Stimmen gewählt – das fällt in einer
                   langen Liste sonst niemandem auf. */}
               {electedWithoutVotes.length > 0 && (
-                <div className="notice warn" style={{ marginBottom: 12 }}>
+                <div className="notice warn mb-3">
                   {electedWithoutVotes.length === 1
                     ? '1 als gewählt markierte Person hat keine einzige Stimme erhalten.'
                     : `${electedWithoutVotes.length} als gewählt markierte Personen haben keine einzige Stimme erhalten.`}{' '}
@@ -653,7 +646,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                   hat (Wahlformen §12). Eine Feststellung darüber hinaus ist
                   möglich, muss der Wahlleitung aber auffallen. */}
               {electedWithoutMajority.length > 0 && (
-                <div className="notice warn" style={{ marginBottom: 12 }}>
+                <div className="notice warn mb-3">
                   {electedWithoutMajority.length === 1
                     ? `„${electedWithoutMajority[0].name}“ ist als gewählt markiert, hat aber nicht mehr Ja- als Nein-Stimmen (${electedWithoutMajority[0].yes ?? 0} zu ${electedWithoutMajority[0].no ?? 0}).`
                     : `${electedWithoutMajority.length} als gewählt markierte Personen haben nicht mehr Ja- als Nein-Stimmen.`}{' '}
@@ -663,35 +656,45 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             </>
           )}
 
-          <Field label="Losentscheid dokumentieren (optional)" hint="Ein Losentscheid ist kein Wahlgang mit Stimmzettel. Hier gehört auch hinein, wenn ein Gleichstand anders aufgelöst wurde — etwa durch Verzicht auf den höheren Platz.">
-            <input value={lotDecision} disabled={confirmed} onChange={(e) => setLotDecision(e.target.value)} />
+          <Field
+            label="Losentscheid dokumentieren (optional)"
+            hint="Ein Losentscheid ist kein Wahlgang mit Stimmzettel. Hier gehört auch hinein, wenn ein Gleichstand anders aufgelöst wurde — etwa durch Verzicht auf den höheren Platz."
+          >
+            <input
+              value={lotDecision}
+              disabled={confirmed}
+              onChange={(e) => setLotDecision(e.target.value)}
+            />
           </Field>
 
           {/* Die Feststellung wird hier geändert, gespeichert wird sie mit den
               Zahlen zusammen — deshalb steht der Knopf auch in dieser Karte. */}
           {!confirmed && dirty && (
-            <div className="notice warn" style={{ marginBottom: 12 }}>
+            <div className="notice warn mb-3">
               Diese Feststellung ist noch nicht gespeichert. Ohne Speichern wird beim Veröffentlichen der
               zuletzt gespeicherte Stand angezeigt.
             </div>
           )}
 
+          {/* Speichern und Bestätigen gehören in eine Reihe: Es ist derselbe
+              Arbeitsschritt in zwei Stufen, und zwei Reihen ließen einen
+              Zwischenraum, in dem nichts steht. */}
           <div className="row">
             {!confirmed && (
               <button
+                className="big"
                 disabled={!app.can('result.enter') || !dirty}
                 onClick={() => void save()}
               >
                 Feststellung speichern
               </button>
             )}
-          </div>
-
-          <div className="row">
             {!confirmed ? (
               <button
                 className="primary big"
-                disabled={!detail.result || !app.can('result.confirm') || issues.some((i) => i.level === 'error')}
+                disabled={
+                  !detail.result || !app.can('result.confirm') || issues.some((i) => i.level === 'error')
+                }
                 onClick={() => setShowConfirm(true)}
               >
                 Ergebnis bestätigen und veröffentlichen
@@ -700,7 +703,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
               /* Ein abgeschlossener Wahlgang lässt sich auf dem normalen Weg
                  nicht mehr öffnen — dafür gibt es die Notfallkorrektur. */
               <button
-                className="big danger"
+                className="danger big"
                 disabled={!app.can('system.manage')}
                 title={
                   app.can('system.manage')
@@ -718,7 +721,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             )}
           </div>
           {confirmed && roundClosed && (
-            <div className="notice warn" style={{ marginTop: 12 }}>
+            <div className="notice warn mt-3">
               Der Wahlgang ist abgeschlossen. Eine Berichtigung ist nur noch als Notfallkorrektur möglich:
               Status und Bestätigung werden mit Begründung zurückgenommen, der bisherige Stand bleibt im
               Audit-Trail erhalten.
@@ -727,13 +730,13 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
         </Card>
 
         {/*
-          * Die Rangliste als eigene Ansicht.
-          *
-          * Bei einer Delegiertenwahl ist sie das Ergebnis: Wer ist Delegierter,
-          * wer Ersatz, in welcher Reihenfolge wird nachgerückt. Aus der
-          * Ankreuzliste darüber lässt sich das ablesen, aber sie ist zum
-          * Festlegen da, nicht zum Vorlesen.
-          */}
+         * Die Rangliste als eigene Ansicht.
+         *
+         * Bei einer Delegiertenwahl ist sie das Ergebnis: Wer ist Delegierter,
+         * wer Ersatz, in welcher Reihenfolge wird nachgerückt. Aus der
+         * Ankreuzliste darüber lässt sich das ablesen, aber sie ist zum
+         * Festlegen da, nicht zum Vorlesen.
+         */}
         {profile.entryKind !== 'none' && ranked.length > 0 && (
           <Card title="Rangliste">
             <table className="rangliste">
@@ -756,18 +759,13 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                           {candidate.name}
                           {candidate.tied && (
                             <>
-                              <span className="badge warn" style={{ marginLeft: 8 }}>
-                                Rang offen
-                              </span>
+                              <span className="badge warn badge-nach">Rang offen</span>
                               {/* Die Versammlung hat entschieden — hier wird
                                   eingereiht. Die Zahlen bleiben unberührt;
                                   festgehalten wird nur die Reihenfolge. */}
                               <button
-                                className="mini"
-                                style={{ marginLeft: 8 }}
-                                disabled={
-                                  confirmed || ranked[index - 1]?.tieGroup !== candidate.tieGroup
-                                }
+                                className="mini badge-nach"
+                                disabled={confirmed || ranked[index - 1]?.tieGroup !== candidate.tieGroup}
                                 title="Einen Platz nach oben"
                                 onClick={() => verschiebe(index, -1)}
                               >
@@ -775,9 +773,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                               </button>
                               <button
                                 className="mini"
-                                disabled={
-                                  confirmed || ranked[index + 1]?.tieGroup !== candidate.tieGroup
-                                }
+                                disabled={confirmed || ranked[index + 1]?.tieGroup !== candidate.tieGroup}
                                 title="Einen Platz nach unten"
                                 onClick={() => verschiebe(index, 1)}
                               >
@@ -797,36 +793,35 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
                 })}
               </tbody>
             </table>
-            <div className="hint" style={{ marginTop: 8 }}>
+            <div className="hint mt-2">
               {profile.perCandidateChoice
                 ? 'Sortiert nach Ja-Stimmen; bei Gleichstand entscheidet die geringere Zahl an Nein-Stimmen. Zahlen: Ja / Nein / Enthaltung.'
                 : 'Sortiert nach Stimmen.'}{' '}
               Die Reihenfolge ist ein Vorschlag — festgestellt wird sie von der Wahlleitung.
             </div>
             {ranked.some((candidate) => candidate.tied) ? (
-              <div className="notice warn" style={{ marginTop: 8 }}>
-                Bei mindestens zwei Bewerbern trennt kein Kriterium mehr. Die Versammlung muss
-                entscheiden. Üblich sind — und so steht es in den meisten Wahlordnungen — zuerst
-                eine <strong>Stichwahl</strong> zwischen den Gleichstehenden und, wenn auch die
-                gleich ausgeht, der <strong>Losentscheid</strong>; daneben kommt ein{' '}
-                <strong>Verzicht</strong> auf den höheren Platz in Betracht.
+              <div className="notice warn mt-2">
+                Bei mindestens zwei Bewerbern trennt kein Kriterium mehr. Die Versammlung muss entscheiden.
+                Üblich sind — und so steht es in den meisten Wahlordnungen — zuerst eine{' '}
+                <strong>Stichwahl</strong> zwischen den Gleichstehenden und, wenn auch die gleich ausgeht, der{' '}
+                <strong>Losentscheid</strong>; daneben kommt ein <strong>Verzicht</strong> auf den höheren
+                Platz in Betracht.
                 <br />
-                Für die Stichwahl steht unten <em>Folgewahlgang erzeugen</em> bereit — die
-                Gleichstehenden sind dort schon ausgewählt. Verzicht und Losentscheid tragen Sie
-                mit den Pfeilen ↑ ↓ ein und halten darunter fest, wie es dazu kam.
+                Für die Stichwahl steht unten <em>Folgewahlgang erzeugen</em> bereit — die Gleichstehenden
+                sind dort schon ausgewählt. Verzicht und Losentscheid tragen Sie mit den Pfeilen ↑ ↓ ein und
+                halten darunter fest, wie es dazu kam.
               </div>
             ) : (
               rankOrder.length > 0 && (
-                <div className="notice" style={{ marginTop: 8 }}>
-                  Ein Gleichstand wurde von der Versammlung aufgelöst. Die Reihenfolge steht damit
-                  fest.{' '}
+                <div className="notice mt-2">
+                  Ein Gleichstand wurde von der Versammlung aufgelöst. Die Reihenfolge steht damit fest.{' '}
                   <button className="mini" disabled={confirmed} onClick={() => setRankOrder([])}>
                     Zurücknehmen
                   </button>
                 </div>
               )
             )}
-            <div className="row" style={{ marginTop: 12 }}>
+            <div className="row mt-3">
               <button disabled={!existing || bonLaeuft} onClick={ergebnisDrucken}>
                 {bonLaeuft ? 'Bon wird gedruckt …' : 'Rangliste auf Bon drucken'}
               </button>
@@ -844,16 +839,12 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             <button onClick={() => setShowFollowUp(true)}>Folgewahlgang erzeugen</button>
           </div>
           <div className="hint" style={{ marginTop: 4, marginBottom: 12 }}>
-            Kurzbeleg zum Weitergeben nach vorne — kein Stimmzettel und kein Ersatz für das
-            unterschriebene Wahlprotokoll.
+            Kurzbeleg zum Weitergeben nach vorne — kein Stimmzettel und kein Ersatz für das unterschriebene
+            Wahlprotokoll.
           </div>
           <div className="row">
-            <button onClick={protokollSpeichern}>
-              Wahlprotokoll (PDF) …
-            </button>
-            <button onClick={exportSpeichern}>
-              Vollständiger Export …
-            </button>
+            <button onClick={protokollSpeichern}>Wahlprotokoll (PDF) …</button>
+            <button onClick={exportSpeichern}>Vollständiger Export …</button>
           </div>
         </Card>
       </div>
@@ -955,8 +946,8 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
           title="Ergebnis zur Überprüfung öffnen"
           message={
             <p>
-              Das bestätigte Ergebnis wird zur Korrektur freigegeben. Der bisherige Stand bleibt im Audit-Trail
-              erhalten. Bitte den Beamer waehrenddessen auf eine neutrale Anzeige schalten.
+              Das bestätigte Ergebnis wird zur Korrektur freigegeben. Der bisherige Stand bleibt im
+              Audit-Trail erhalten. Bitte den Beamer waehrenddessen auf eine neutrale Anzeige schalten.
             </p>
           }
           confirmLabel="Öffnen"
@@ -976,9 +967,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
         />
       )}
 
-      {showFollowUp && (
-        <FollowUpDialog detail={detail} onClose={() => setShowFollowUp(false)} />
-      )}
+      {showFollowUp && <FollowUpDialog detail={detail} onClose={() => setShowFollowUp(false)} />}
     </div>
   )
 }
@@ -1011,7 +1000,13 @@ function initialRows(
 }
 
 /** Stichwahl-, Wiederholungs- oder Nachwahl-Assistent (§27, Wahlformen §5/§19/§20). */
-function FollowUpDialog({ detail, onClose }: { detail: TabProps['detail']; onClose: () => void }): React.JSX.Element {
+function FollowUpDialog({
+  detail,
+  onClose
+}: {
+  detail: TabProps['detail']
+  onClose: () => void
+}): React.JSX.Element {
   const app = useApp()
   const round = detail.round
   const result = detail.result
@@ -1081,14 +1076,18 @@ function FollowUpDialog({ detail, onClose }: { detail: TabProps['detail']; onClo
         </select>
       </Field>
       <div className="row">
-        <div style={{ flex: 1 }}>
+        <div className="col">
           <Field label="Zu besetzende Positionen">
             <NumberInput value={seats} min={1} onChange={setSeats} />
           </Field>
         </div>
-        <div style={{ flex: 2 }}>
+        <div className="col-2">
           <Field label="Bezeichnung (optional)">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`${round.title} – Folgewahlgang`} />
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={`${round.title} – Folgewahlgang`}
+            />
           </Field>
         </div>
       </div>

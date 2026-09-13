@@ -97,7 +97,11 @@ describe('Stimmzettel-Erzeugung', () => {
   })
 
   it('erzeugt beim Akzeptanzverfahren Voten je Kandidat', () => {
-    const document = buildBallotDocument(event, round('acceptance_group', { seats: 5, maxVotes: null }), candidates(names))
+    const document = buildBallotDocument(
+      event,
+      round('acceptance_group', { seats: 5, maxVotes: null }),
+      candidates(names)
+    )
     expect(document.sections[0].kind).toBe('per_candidate_choice')
     expect(document.sections[0].candidates).toHaveLength(3)
     expect(document.sections[0].options).toHaveLength(3)
@@ -152,7 +156,9 @@ describe('Stimmzettel-Erzeugung', () => {
 
 describe('Ballot-Hash', () => {
   const hash = (document: ReturnType<typeof buildBallotDocument>): string =>
-    createHash('sha256').update(canonicalJson(ballotHashInput(document))).digest('hex')
+    createHash('sha256')
+      .update(canonicalJson(ballotHashInput(document)))
+      .digest('hex')
 
   it('ist für identische Vorlagen gleich', () => {
     const first = buildBallotDocument(event, round('group_preprinted'), candidates(names))
@@ -162,7 +168,11 @@ describe('Ballot-Hash', () => {
 
   it('aendert sich, sobald ein Kandidat hinzukommt', () => {
     const before = buildBallotDocument(event, round('group_preprinted'), candidates(names))
-    const after = buildBallotDocument(event, round('group_preprinted'), candidates([...names, 'Anna Beispiel']))
+    const after = buildBallotDocument(
+      event,
+      round('group_preprinted'),
+      candidates([...names, 'Anna Beispiel'])
+    )
     expect(hash(before)).not.toBe(hash(after))
   })
 
@@ -176,4 +186,3 @@ describe('Ballot-Hash', () => {
     expect(canonicalJson({ b: 1, a: 2 })).toBe(canonicalJson({ a: 2, b: 1 }))
   })
 })
-

@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { PrompterWindowState } from '@shared/presentation'
 import { HAUPTBUEHNE } from '@shared/projection'
+import { PULT_SCHEME } from '@shared/speech'
 import type { AudienceWindowState, DisplayInfo } from '@shared/projection'
 import { logger } from './logger'
 
@@ -43,18 +44,29 @@ let operatorWindow: BrowserWindow | null = null
 const audienceWindows = new Map<number, BrowserWindow>()
 const audienceDisplays = new Map<number, number>()
 let prompterWindow: BrowserWindow | null = null
+let teleprompterWindow: BrowserWindow | null = null
+let teleprompterStateListener: ((state: PrompterWindowState) => void) | null = null
 let prompterStateListener: ((state: PrompterWindowState) => void) | null = null
 let powerSaveId: number | null = null
 let audienceStateListener: ((state: AudienceWindowState) => void) | null = null
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
-type Seite = 'index' | 'audience' | 'prompter'
+type Seite = 'index' | 'audience' | 'prompter' | 'teleprompter'
 
 function rendererUrl(page: Seite): { url?: string; file?: string } {
   if (process.env.ELECTRON_RENDERER_URL) {
     return { url: `${process.env.ELECTRON_RENDERER_URL}/${page === 'index' ? '' : `${page}.html`}` }
   }
+  /*
+   * Der Teleprompter läuft unter eigenem Schema, nicht unter `file://`.
+   *
+   * Grund ist die Spracherkennung: Chromium verweigert Web Worker auf Seiten
+   * ohne Herkunft. Ein angemeldetes Schema gibt der Seite eine — für alle
+   * anderen Fenster bleibt es beim Laden aus der Datei, dort wird nichts
+   * gebraucht, was eine Herkunft verlangt.
+   */
+  if (page === 'teleprompter') return { url: `${PULT_SCHEME}://pult/teleprompter.html` }
   return { file: join(__dirname, `../renderer/${page}.html`) }
 }
 
@@ -77,7 +89,7 @@ export function createOperatorWindow(): BrowserWindow {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    title: 'Votura – Wahlgangverwaltung',
+    title: 'Votura – Software für die Mitgliederversammlung',
     icon: fensterSymbol(),
     backgroundColor: '#111417',
     webPreferences: {
@@ -319,6 +331,83 @@ export function closePrompterWindow(): PrompterWindowState {
   return prompterState()
 }
 
+/* --------------------------------------------------------- Teleprompter */
+
+export function teleprompterState(): PrompterWindowState {
+  return { open: !!teleprompterWindow && !teleprompterWindow.isDestroyed() }
+}
+
+export function onTeleprompterStateChanged(listener: (state: PrompterWindowState) => void): void {
+  teleprompterStateListener = listener
+}
+
+function emitTeleprompterState(): void {
+  teleprompterStateListener?.(teleprompterState())
+}
+
+/**
+ * Öffnet den Teleprompter am Hauptrechner.
+ *
+ * Ein eigenes Fenster und keine Seite in der Bedienung: Es gehört auf den
+ * Bildschirm vor der vortragenden Person, oft auf einen zweiten Rechner am
+ * Pult — und es lebt von den Pfeiltasten, die in der Bedienung längst
+ * vergeben sind. Ohne Rahmen und ohne Menü, damit nichts vom Text ablenkt.
+ */
+export function openTeleprompterWindow(): PrompterWindowState {
+  if (teleprompterWindow && !teleprompterWindow.isDestroyed()) {
+    teleprompterWindow.focus()
+    return teleprompterState()
+  }
+
+  teleprompterWindow = new BrowserWindow({
+    width: 1100,
+    height: 720,
+    minWidth: 520,
+    minHeight: 360,
+    show: false,
+    autoHideMenuBar: true,
+    title: 'Votura – Teleprompter',
+    icon: fensterSymbol(),
+    backgroundColor: '#000000',
+    webPreferences: {
+      preload: join(__dirname, '../preload/teleprompter.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false
+    }
+  })
+
+  teleprompterWindow.setMenuBarVisibility(false)
+  teleprompterWindow.once('ready-to-show', () => teleprompterWindow?.show())
+  teleprompterWindow.on('closed', () => {
+    teleprompterWindow = null
+    emitTeleprompterState()
+  })
+  teleprompterWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error(`Teleprompter abgestuerzt: ${details.reason}`)
+    emitTeleprompterState()
+  })
+
+  teleprompterWindow.webContents.on('did-finish-load', emitBeamerSize)
+  load(teleprompterWindow, 'teleprompter')
+  emitTeleprompterState()
+  return teleprompterState()
+}
+
+export function closeTeleprompterWindow(): PrompterWindowState {
+  if (teleprompterWindow && !teleprompterWindow.isDestroyed()) teleprompterWindow.destroy()
+  teleprompterWindow = null
+  emitTeleprompterState()
+  return teleprompterState()
+}
+
+export function sendToTeleprompter(channel: string, payload: unknown): void {
+  if (teleprompterWindow && !teleprompterWindow.isDestroyed()) {
+    teleprompterWindow.webContents.send(channel, payload)
+  }
+}
+
 /**
  * Größe der Beamerfläche in Bildpunkten.
  *
@@ -339,7 +428,11 @@ export function beamerContentSize(buehne = prompterBuehne): { width: number; hei
 }
 
 function emitBeamerSize(): void {
-  sendToPrompter(IPC.beamerSize, beamerContentSize())
+  const groesse = beamerContentSize()
+  sendToPrompter(IPC.beamerSize, groesse)
+  /* Der Teleprompter zeigt in der Vortragsansicht dieselbe Folie und muss
+     deshalb mit derselben Fläche rechnen. */
+  sendToTeleprompter(IPC.beamerSize, groesse)
 }
 
 /**

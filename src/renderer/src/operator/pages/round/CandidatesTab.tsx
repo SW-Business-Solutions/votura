@@ -100,7 +100,7 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
           Die Kandidatenliste ist geschlossen. Änderungen sind nur nach ausdrücklichem Entsperren möglich —
           dabei entsteht eine neue Wahlzettelversion, und bereits gedruckte Zettel dürfen nicht mit der neuen
           Version vermischt werden.
-          <div className="row" style={{ marginTop: 10 }}>
+          <div className="row mt-3">
             <button disabled={!app.can('round.unlock')} onClick={() => setConfirmUnlock(true)}>
               Wahlgang entsperren
             </button>
@@ -116,7 +116,7 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
               placeholder="Suchen …"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: 200 }}
+              className="col-breit"
             />
           }
         >
@@ -138,14 +138,17 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
                 >
                   {editable && !search && <span className="grip">⋮⋮</span>}
                   <span style={{ minWidth: 28, color: 'var(--text-muted)' }}>
-                    {candidate.ballotNumber !== undefined ? String(candidate.ballotNumber).padStart(2, '0') : index + 1}
+                    {candidate.ballotNumber !== undefined
+                      ? String(candidate.ballotNumber).padStart(2, '0')
+                      : index + 1}
                   </span>
                   <span style={{ flex: 1, textDecoration: candidate.withdrawn ? 'line-through' : undefined }}>
                     {candidate.displayName}
-                    {candidate.withdrawn && <span className="badge danger" style={{ marginLeft: 8 }}>zurückgezogen</span>}
+                    {candidate.withdrawn && <span className="badge danger badge-nach">zurückgezogen</span>}
                     {candidate.positionId && (
                       <span className="hint">
-                        {round.positions.find((position) => position.id === candidate.positionId)?.title ?? ''}
+                        {round.positions.find((position) => position.id === candidate.positionId)?.title ??
+                          ''}
                       </span>
                     )}
                   </span>
@@ -172,7 +175,9 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
             <Card title="Schnellerfassung">
               <Field
                 label="Ein Eintrag je Zeile"
-                hint={'Unterstützt "Max Mustermann" und "Mustermann, Max"; Einfügen aus der Zwischenablage möglich.'}
+                hint={
+                  'Unterstützt "Max Mustermann" und "Mustermann, Max"; Einfügen aus der Zwischenablage möglich.'
+                }
               >
                 <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} />
               </Field>
@@ -184,7 +189,8 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
 
           <Card title="Reihenfolge">
             <p className="hint">
-              Die gewählte Reihenfolge wird im Audit-Trail festgehalten. Zufall wird nie automatisch verwendet.
+              Die gewählte Reihenfolge wird im Audit-Trail festgehalten. Zufall wird nie automatisch
+              verwendet.
             </p>
             <div className="row">
               {CANDIDATE_ORDER_MODES.map((mode) => (
@@ -201,7 +207,7 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
             {round.orderSeed !== undefined && (
               <div className="hint">Zufalls-Startwert: {round.orderSeed} (reproduzierbar dokumentiert)</div>
             )}
-            <div className="row" style={{ marginTop: 12 }}>
+            <div className="row mt-3">
               <button disabled={!editable} onClick={() => void assignNumbers()}>
                 Kandidatennummern 01…n vergeben
               </button>
@@ -228,7 +234,11 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
                   Kandidatenliste schließen
                 </button>
               ) : (
-                <button className="big" disabled={!app.can('round.unlock')} onClick={() => setConfirmUnlock(true)}>
+                <button
+                  className="big"
+                  disabled={!app.can('round.unlock')}
+                  onClick={() => setConfirmUnlock(true)}
+                >
                   Wahlgang entsperren
                 </button>
               )}
@@ -247,8 +257,11 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
                 Anschließend können Sie die Druckvorschau prüfen und den Stimmzettel freigeben.
               </p>
               <p>
-                <strong>{active.length}</strong> Einträge &middot; <strong>{round.seats}</strong> Positionen &middot;{' '}
-                {round.maxVotes === null ? 'keine feste Stimmenhöchstzahl' : `maximal ${round.maxVotes} Stimmen`}
+                <strong>{active.length}</strong> Einträge &middot; <strong>{round.seats}</strong> Positionen
+                &middot;{' '}
+                {round.maxVotes === null
+                  ? 'keine feste Stimmenhöchstzahl'
+                  : `maximal ${round.maxVotes} Stimmen`}
               </p>
             </>
           }
@@ -273,8 +286,9 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
           message={
             <>
               <p>
-                Dieser Wahlgang {round.approvedVersion === round.ballotVersion ? 'wurde bereits freigegeben' : 'ist gesperrt'}.
-                Das Entsperren wird protokolliert.
+                Dieser Wahlgang{' '}
+                {round.approvedVersion === round.ballotVersion ? 'wurde bereits freigegeben' : 'ist gesperrt'}
+                . Das Entsperren wird protokolliert.
               </p>
               {round.approvedVersion === round.ballotVersion && (
                 <div className="notice warn">
@@ -318,8 +332,8 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
           title="Kandidat zurückziehen"
           message={
             <p>
-              <strong>{withdrawCandidate.displayName}</strong> wird als zurückgezogen markiert. Der Eintrag bleibt
-              zur Nachvollziehbarkeit erhalten und erscheint nicht mehr auf dem Stimmzettel.
+              <strong>{withdrawCandidate.displayName}</strong> wird als zurückgezogen markiert. Der Eintrag
+              bleibt zur Nachvollziehbarkeit erhalten und erscheint nicht mehr auf dem Stimmzettel.
             </p>
           }
           confirmLabel="Zurückziehen"
@@ -395,17 +409,17 @@ function EditCandidateDialog({
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
       </Field>
       <div className="row">
-        <div style={{ flex: 1 }}>
+        <div className="col">
           <Field label="Vorname">
             <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
           </Field>
         </div>
-        <div style={{ flex: 1 }}>
+        <div className="col">
           <Field label="Nachname">
             <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
           </Field>
         </div>
-        <div style={{ width: 130 }}>
+        <div className="col-mittel">
           <Field label="Nummer">
             <NumberInput value={ballotNumber} onChange={setBallotNumber} />
           </Field>

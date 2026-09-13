@@ -4,6 +4,8 @@ import {
   DEFAULT_PROJECTION_THEME,
   LOGO_POSITIONS,
   LOGO_POSITION_LABELS,
+  type ProjectionCandidate,
+  type ProjectionState,
   type ProjectionTheme
 } from '@shared/projection'
 import { api } from '../../lib/api'
@@ -52,10 +54,62 @@ const PRESETS: { name: string; theme: Partial<ProjectionTheme> }[] = [
   }
 ]
 
+/**
+ * Ein Ergebnis, an dem sich alle Farben zeigen: Gewählte in Erfolgsfarbe,
+ * Nichtgewählte in Ablehnung, Zahlen in Hervorhebung, Kopf- und Fußzeile im
+ * Nebenton.
+ */
+const BEISPIEL_KANDIDATEN: ProjectionCandidate[] = [
+  { id: 'a', ballotNumber: 1, displayName: 'Anna Beckmann', votes: 64, elected: true },
+  { id: 'b', ballotNumber: 2, displayName: 'Jonas Kröger', votes: 41, elected: false },
+  { id: 'c', ballotNumber: 3, displayName: 'Miriam Sander', votes: 12, elected: false }
+]
+
+const BEISPIEL: Pick<ProjectionState, 'mode' | 'round' | 'result'> = {
+  mode: 'result',
+  round: {
+    id: 'beispiel',
+    roundNumber: 1,
+    roundLabel: 'Wahlgang 01',
+    roundCode: 'BEISPIEL-WG01',
+    title: 'Wahl des Vorsitzes',
+    procedure: 'single_multiple_candidates',
+    procedureLabel: 'Einzelwahl – mehrere Kandidaten',
+    seats: 1,
+    maxVotes: 1,
+    candidates: BEISPIEL_KANDIDATEN,
+    candidateCount: BEISPIEL_KANDIDATEN.length,
+    status: 'completed'
+  },
+  result: {
+    status: 'confirmed',
+    ballotsCast: 119,
+    validBallots: 117,
+    invalidBallots: 2,
+    candidates: BEISPIEL_KANDIDATEN,
+    showAll: true,
+    finalMessage: 'Erforderliche Mehrheit im ersten Wahlgang erreicht'
+  }
+}
+
 export function ProjectionDesign(): React.JSX.Element {
   const app = useApp()
-  const [theme, setTheme] = useState<ProjectionTheme>(app.settings?.projectionTheme ?? DEFAULT_PROJECTION_THEME)
+  const [theme, setTheme] = useState<ProjectionTheme>(
+    app.settings?.projectionTheme ?? DEFAULT_PROJECTION_THEME
+  )
   const [busy, setBusy] = useState(false)
+
+  /*
+   * Woran sich Farben beurteilen lassen.
+   *
+   * Läuft gerade ein Foliensatz oder ein Film, zeigt die Beameransicht ein
+   * fremdes Dokument oder ein Videobild — von den eingestellten Farben ist
+   * dort nichts zu sehen, und die Vorschau wirkt kaputt. Dann tritt ein
+   * Beispielergebnis an seine Stelle: Es kommt in jeder Versammlung vor und
+   * enthält alle sechs Farben auf einmal.
+   */
+  const zeigtBeispiel = app.projection.mode === 'presentation' || app.projection.mode === 'video'
+  const vorschauZustand = zeigtBeispiel ? { ...app.projection, ...BEISPIEL } : app.projection
 
   useEffect(() => {
     if (app.settings?.projectionTheme) setTheme(app.settings.projectionTheme)
@@ -95,7 +149,7 @@ export function ProjectionDesign(): React.JSX.Element {
               </button>
             ))}
           </div>
-          <div className="grid cols-2" style={{ marginTop: 12 }}>
+          <div className="grid cols-2 mt-3">
             {COLOR_FIELDS.map((entry) => (
               <Field key={entry.key} label={entry.label} hint={entry.hint}>
                 <div className="row">
@@ -108,7 +162,7 @@ export function ProjectionDesign(): React.JSX.Element {
                   <input
                     value={String(theme[entry.key] ?? '')}
                     onChange={(e) => setTheme({ ...theme, [entry.key]: e.target.value })}
-                    style={{ flex: 1 }}
+                    className="col"
                   />
                 </div>
               </Field>
@@ -130,16 +184,16 @@ export function ProjectionDesign(): React.JSX.Element {
             )}
           </div>
           <div className="hint">
-            Das Bild wird in die Konfiguration eingebettet (PNG, JPEG, GIF, WebP oder SVG, maximal 1,5 MB). Es wird
-            nichts aus dem Netz nachgeladen; die Netzwerkansicht zeigt dasselbe Logo.
+            Das Bild wird in die Konfiguration eingebettet (PNG, JPEG, GIF, WebP oder SVG, maximal 1,5 MB). Es
+            wird nichts aus dem Netz nachgeladen; die Netzwerkansicht zeigt dasselbe Logo.
           </div>
           {theme.logo && (
             <div style={{ marginTop: 10, background: theme.background, padding: 12, borderRadius: 8 }}>
               <img src={theme.logo} alt="Logo-Vorschau" style={{ maxHeight: 80, maxWidth: '100%' }} />
             </div>
           )}
-          <div className="row" style={{ marginTop: 12 }}>
-            <div style={{ flex: 1 }}>
+          <div className="row mt-3">
+            <div className="col">
               <Field label="Platzierung">
                 <select
                   value={theme.logoPosition}
@@ -155,7 +209,7 @@ export function ProjectionDesign(): React.JSX.Element {
                 </select>
               </Field>
             </div>
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Höhe (% der Bildhöhe)">
                 <NumberInput
                   value={theme.logoSizePercent}
@@ -165,7 +219,7 @@ export function ProjectionDesign(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Deckkraft (%)" hint="Für das Wasserzeichen niedrig wählen.">
                 <NumberInput
                   value={Math.round(theme.logoOpacity * 100)}
@@ -215,7 +269,7 @@ export function ProjectionDesign(): React.JSX.Element {
 
           <h3>Darstellung</h3>
           <div className="row">
-            <div style={{ width: 180 }}>
+            <div className="col-breit">
               <Field label="Schriftgröße (%)" hint="Wirkt auf die gesamte Anzeige.">
                 <NumberInput
                   value={Math.round(theme.fontScale * 100)}
@@ -225,7 +279,7 @@ export function ProjectionDesign(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ width: 200 }}>
+            <div className="col-breit">
               <Field label="Randabstand (%)" hint="Gegen Overscan bei Projektoren.">
                 <NumberInput
                   value={theme.safeAreaPercent}
@@ -260,11 +314,13 @@ export function ProjectionDesign(): React.JSX.Element {
 
       <Card title="Vorschau">
         <div className="preview-frame">
-          <ProjectionScreen state={{ ...app.projection, theme }} preview />
+          <ProjectionScreen state={{ ...vorschauZustand, theme }} preview />
         </div>
-        <div className="hint" style={{ marginTop: 10 }}>
-          Die Vorschau zeigt den aktuellen Beamerinhalt mit den gewählten Farben. Sie wird erst nach
-          „Übernehmen“ auf dem Beamer wirksam.
+        <div className="hint mt-3">
+          {zeigtBeispiel
+            ? 'Auf dem Beamer läuft gerade ein Foliensatz oder ein Film — daran lassen sich die Farben nicht beurteilen. Gezeigt wird deshalb ein Beispielergebnis.'
+            : 'Die Vorschau zeigt den aktuellen Beamerinhalt mit den gewählten Farben.'}{' '}
+          Sie wird erst nach „Übernehmen“ auf dem Beamer wirksam.
         </div>
       </Card>
     </div>

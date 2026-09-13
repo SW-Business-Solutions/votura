@@ -52,8 +52,8 @@ export function RecoveryDialog(): React.JSX.Element | null {
       actions={<button onClick={() => setDismissed(true)}>Später prüfen</button>}
     >
       <div className="notice warn">
-        Ein Druckauftrag wurde nicht sauber beendet. Es wird bewusst nichts automatisch nachgedruckt.
-        Bitte zählen Sie die tatsächlich ausgegebenen Stimmzettel physisch und tragen Sie die Anzahl ein.
+        Ein Druckauftrag wurde nicht sauber beendet. Es wird bewusst nichts automatisch nachgedruckt. Bitte
+        zählen Sie die tatsächlich ausgegebenen Stimmzettel physisch und tragen Sie die Anzahl ein.
       </div>
 
       {state.unclearBatches.map((batch) => (

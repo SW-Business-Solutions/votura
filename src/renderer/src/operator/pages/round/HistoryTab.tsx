@@ -41,7 +41,7 @@ export function HistoryTab({ detail }: Pick<TabProps, 'detail'>): React.JSX.Elem
             Aktueller Status: <strong>{ROUND_STATUS_LABELS[round.status]}</strong>
           </p>
           {FLOW.map((step) => (
-            <div key={step.status} className="row" style={{ marginBottom: 10 }}>
+            <div key={step.status} className="row mb-3">
               <button
                 className="big"
                 disabled={!canTransition(round.status, step.status)}
@@ -104,7 +104,7 @@ export function HistoryTab({ detail }: Pick<TabProps, 'detail'>): React.JSX.Elem
             <tbody>
               {entries.map((entry) => (
                 <tr key={entry.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatDateTimeDe(entry.timestamp)}</td>
+                  <td className="zeitstempel">{formatDateTimeDe(entry.timestamp)}</td>
                   <td>
                     {entry.action}
                     {entry.reason && <div className="hint">{entry.reason}</div>}

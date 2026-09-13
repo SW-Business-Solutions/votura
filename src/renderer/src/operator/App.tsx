@@ -5,6 +5,7 @@ import { useApp } from './state'
 import { AgendaPage } from './pages/AgendaPage'
 import { AuditPage } from './pages/AuditPage'
 import { BeamerPage } from './pages/BeamerPage'
+import { PrompterPage } from './pages/PrompterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EventPage } from './pages/EventPage'
 import { LoginPage } from './pages/LoginPage'
@@ -24,6 +25,7 @@ export type Route =
   | { name: 'round-new' }
   | { name: 'round'; id: string; tab?: string }
   | { name: 'beamer' }
+  | { name: 'prompter' }
   | { name: 'audit' }
   | { name: 'preflight' }
   | { name: 'settings' }
@@ -40,6 +42,8 @@ function parseHash(): Route {
       return param === 'new' ? { name: 'round-new' } : { name: 'round', id: param, tab }
     case 'beamer':
       return { name: 'beamer' }
+    case 'prompter':
+      return { name: 'prompter' }
     case 'audit':
       return { name: 'audit' }
     case 'preflight':
@@ -81,6 +85,10 @@ export function App(): React.JSX.Element {
         keyEvent.preventDefault()
         navigate('agenda')
       }
+      if (keyEvent.key.toLowerCase() === 'p') {
+        keyEvent.preventDefault()
+        navigate('prompter')
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -101,9 +109,7 @@ export function App(): React.JSX.Element {
     return <LoginPage />
   }
 
-  const activeRound = app.rounds.find(
-    (round) => round.status !== 'completed' && round.status !== 'cancelled'
-  )
+  const activeRound = app.rounds.find((round) => round.status !== 'completed' && round.status !== 'cancelled')
 
   return (
     <div className="app">
@@ -114,10 +120,14 @@ export function App(): React.JSX.Element {
               Design (siehe app.css). */}
           <img className="brand-logo hell" src={logoHell} alt="Votura" />
           <img className="brand-logo dunkel" src={logo} alt="Votura" />
-          <small>Wahlgang- und Stimmzettelverwaltung</small>
+          <small>Software für die Mitgliederversammlung</small>
         </div>
 
-        <NavItem label="Übersicht" active={route.name === 'dashboard'} onClick={() => navigate('dashboard')} />
+        <NavItem
+          label="Übersicht"
+          active={route.name === 'dashboard'}
+          onClick={() => navigate('dashboard')}
+        />
         <NavItem label="Veranstaltung" active={route.name === 'event'} onClick={() => navigate('event')} />
         <NavItem
           label="Tagesordnung"
@@ -143,19 +153,36 @@ export function App(): React.JSX.Element {
                 onClick={() => navigate(`round/${round.id}`)}
                 title={round.title}
               >
-                <span className="nav-round-label">
-                  {round.sequentialNumber > 0 ? round.roundLabel : '–'}
-                </span>
+                <span className="nav-round-label">{round.sequentialNumber > 0 ? round.roundLabel : '–'}</span>
                 <span className="nav-round-title">{round.title}</span>
                 {round.id === activeRound?.id && <span className="nav-round-dot" title="aktuell" />}
               </button>
             ))}
           </div>
         )}
-        <NavItem label="Beamer" active={route.name === 'beamer'} onClick={() => navigate('beamer')} hint="Strg+B" />
+        <NavItem
+          label="Beamer"
+          active={route.name === 'beamer'}
+          onClick={() => navigate('beamer')}
+          hint="Strg+B"
+        />
+        <NavItem
+          label="Prompter"
+          active={route.name === 'prompter'}
+          onClick={() => navigate('prompter')}
+          hint="Strg+P"
+        />
         <NavItem label="Audit-Trail" active={route.name === 'audit'} onClick={() => navigate('audit')} />
-        <NavItem label="Systemcheck" active={route.name === 'preflight'} onClick={() => navigate('preflight')} />
-        <NavItem label="Einstellungen" active={route.name === 'settings'} onClick={() => navigate('settings')} />
+        <NavItem
+          label="Systemcheck"
+          active={route.name === 'preflight'}
+          onClick={() => navigate('preflight')}
+        />
+        <NavItem
+          label="Einstellungen"
+          active={route.name === 'settings'}
+          onClick={() => navigate('settings')}
+        />
 
         <div className="sidebar-footer">
           <div>
@@ -193,6 +220,7 @@ export function App(): React.JSX.Element {
         {route.name === 'round-new' && <RoundWizardPage />}
         {route.name === 'round' && <RoundDetailPage roundId={route.id} tab={route.tab} />}
         {route.name === 'beamer' && <BeamerPage />}
+        {route.name === 'prompter' && <PrompterPage />}
         {route.name === 'audit' && <AuditPage />}
         {route.name === 'preflight' && <PreflightPage />}
         {route.name === 'settings' && <SettingsPage />}

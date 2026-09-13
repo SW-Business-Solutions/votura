@@ -17,6 +17,20 @@ export interface NetworkProjectionConfig {
    * ebenfalls standardmäßig AUS (§51, §70 Phase 3).
    */
   allowRemoteOperator: boolean
+  /**
+   * Darf die Prompteransicht im Netz auch **bedienen**?
+   *
+   * Der Server ist sonst streng lesend (§51). Diese eine Ausnahme betrifft
+   * keine Wahldaten: Sie erlaubt genau die Handgriffe am eigenen Manuskript —
+   * anhalten, weiterlaufen, eine Stelle zurück, Tempo, Schriftgröße. Wer am
+   * Pult steht, hat ein Tablet vor sich und keinen Zugriff auf die Bedienung;
+   * ohne diese Freigabe müsste bei jeder Verhaspelung jemand am Board
+   * einspringen.
+   *
+   * Ebenfalls standardmäßig AUS, unabhängig vom Fernzugriff auf die Bedienung
+   * — und wirksam nur für die Prompterbefehle, für nichts sonst.
+   */
+  allowPrompterControl: boolean
 }
 
 export interface SystemSettings {
@@ -110,7 +124,8 @@ export const DEFAULT_NETWORK_PROJECTION: NetworkProjectionConfig = {
   port: 8477,
   bindAddress: '0.0.0.0',
   token: '',
-  allowRemoteOperator: false
+  allowRemoteOperator: false,
+  allowPrompterControl: false
 }
 
 /*

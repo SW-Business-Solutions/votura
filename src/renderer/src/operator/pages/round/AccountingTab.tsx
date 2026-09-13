@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { availableBallots, checkAccounting, expectedInBox } from '@shared/accounting'
 import { api } from '../../../lib/api'
 import { useApp } from '../../state'
-import { Card, Field, Kpi, NumberInput } from '../../components/ui'
+import { Card, Checkbox, Field, Kpi, NumberInput } from '../../components/ui'
 import type { TabProps } from '../RoundDetailPage'
 
 export function AccountingTab({ detail, reload }: TabProps): React.JSX.Element {
@@ -64,31 +64,28 @@ export function AccountingTab({ detail, reload }: TabProps): React.JSX.Element {
           <NumberInput value={issued} onChange={setIssued} />
         </Field>
         <div className="row">
-          <div style={{ flex: 1 }}>
+          <div className="col">
             <Field label="Ersatzstimmzettel ausgegeben">
               <NumberInput value={replacements} onChange={setReplacements} />
             </Field>
           </div>
-          <div style={{ flex: 1 }}>
+          <div className="col">
             <Field label="Zurückgenommen / vernichtet">
               <NumberInput value={returned} onChange={setReturned} />
             </Field>
           </div>
         </div>
         <div className="row">
-          <div style={{ flex: 1 }}>
+          <div className="col">
             <Field label="Unbenutzte Stimmzettel">
               <NumberInput value={unused} onChange={setUnused} />
             </Field>
           </div>
-          <div style={{ flex: 1 }}>
+          <div className="col">
             <Field label="In der Urne gezählt">
               <NumberInput value={inBox} disabled={!trackBox} onChange={setInBox} />
             </Field>
-            <div className="field-inline">
-              <input type="checkbox" checked={trackBox} onChange={(e) => setTrackBox(e.target.checked)} />
-              <label>Urnenzählung dokumentieren</label>
-            </div>
+            <Checkbox checked={trackBox} onChange={setTrackBox} label="Urnenzählung dokumentieren" />
           </div>
         </div>
         <button className="primary big" disabled={!app.can('accounting.edit')} onClick={() => void save()}>
@@ -100,7 +97,11 @@ export function AccountingTab({ detail, reload }: TabProps): React.JSX.Element {
         <Card title="Rechnerischer Stand">
           <div className="grid cols-3">
             <Kpi label="Gedruckt" value={accounting.printed} />
-            <Kpi label="Fehl-/unklar" value={accounting.printFailures} tone={accounting.printFailures ? 'warn' : undefined} />
+            <Kpi
+              label="Fehl-/unklar"
+              value={accounting.printFailures}
+              tone={accounting.printFailures ? 'warn' : undefined}
+            />
             <Kpi label="Testdrucke" value={accounting.testPrints} />
             <Kpi label="Verfuegbar" value={availableBallots(preview)} />
             <Kpi label="Erwartet in Urne" value={expectedInBox(preview)} />

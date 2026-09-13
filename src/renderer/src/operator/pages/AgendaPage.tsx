@@ -21,9 +21,12 @@ export function AgendaPage(): React.JSX.Element {
   const [insertAt, setInsertAt] = useState<number | undefined>(undefined)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   /* Welcher Punkt wird gerade bearbeitet — und mit welchen Werten? */
-  const [bearbeitet, setBearbeitet] = useState<{ id: string; label: string; title: string; note: string } | null>(
-    null
-  )
+  const [bearbeitet, setBearbeitet] = useState<{
+    id: string
+    label: string
+    title: string
+    note: string
+  } | null>(null)
 
   const load = useCallback(async () => {
     if (!event) return
@@ -146,7 +149,7 @@ export function AgendaPage(): React.JSX.Element {
                     next: items.filter((item) => !item.done)[1]?.title
                   }
                 },
-                app.buehne
+                app.ziel
               ).catch(app.reportError)
             }
           >
@@ -180,7 +183,7 @@ export function AgendaPage(): React.JSX.Element {
                          gehen, ohne Dialog und ohne Sprung an eine andere Stelle. */
                       <div style={{ flex: 1, display: 'grid', gap: 8 }}>
                         <div className="row">
-                          <div style={{ width: 120 }}>
+                          <div className="col-schmal">
                             <Field label="Nummer">
                               <input
                                 value={bearbeitet.label}
@@ -189,7 +192,7 @@ export function AgendaPage(): React.JSX.Element {
                               />
                             </Field>
                           </div>
-                          <div style={{ flex: 1 }}>
+                          <div className="col">
                             <Field label="Bezeichnung">
                               <input
                                 autoFocus
@@ -215,9 +218,8 @@ export function AgendaPage(): React.JSX.Element {
                         </Field>
                         {round && (
                           <div className="hint">
-                            Dieser Punkt gehört zu einem Wahlgang. Die Bezeichnung hier ist die
-                            Überschrift in der Tagesordnung — den Wahlgang selbst benennen Sie in
-                            seinen Einstellungen um.
+                            Dieser Punkt gehört zu einem Wahlgang. Die Bezeichnung hier ist die Überschrift in
+                            der Tagesordnung — den Wahlgang selbst benennen Sie in seinen Einstellungen um.
                           </div>
                         )}
                         <div className="row">
@@ -232,12 +234,14 @@ export function AgendaPage(): React.JSX.Element {
                     ) : (
                       <>
                         <span className="grip">⋮⋮</span>
+                        {/* Die Größe steht im Stylesheet (.field-inline
+                            input) — hier stand sie ein zweites Mal. */}
                         <input
                           type="checkbox"
+                          className="haken"
                           checked={item.done}
                           title="Als erledigt markieren"
                           onChange={() => void toggleDone(item)}
-                          style={{ width: 18, height: 18, flex: 'none' }}
                         />
                         <span style={{ flex: 1, opacity: item.done ? 0.55 : 1 }}>
                           <strong>
@@ -254,10 +258,18 @@ export function AgendaPage(): React.JSX.Element {
                           )}
                           {item.note && <div className="hint">{item.note}</div>}
                         </span>
-                        <button className="ghost" onClick={() => void move(index, index - 1)} title="Nach oben">
+                        <button
+                          className="ghost"
+                          onClick={() => void move(index, index - 1)}
+                          title="Nach oben"
+                        >
                           ↑
                         </button>
-                        <button className="ghost" onClick={() => void move(index, index + 1)} title="Nach unten">
+                        <button
+                          className="ghost"
+                          onClick={() => void move(index, index + 1)}
+                          title="Nach unten"
+                        >
                           ↓
                         </button>
                         <button
@@ -295,12 +307,12 @@ export function AgendaPage(): React.JSX.Element {
         <div>
           <Card title="Punkt hinzufügen">
             <div className="row">
-              <div style={{ width: 130 }}>
+              <div className="col-mittel">
                 <Field label="Nummer">
                   <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="TOP 7" />
                 </Field>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Bezeichnung">
                   <input
                     value={title}

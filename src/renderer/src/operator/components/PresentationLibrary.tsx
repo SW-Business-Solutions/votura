@@ -5,7 +5,7 @@
  * Beamer soll. Der Aufruf schaltet die Projektion um; zurück zum Wahlgang
  * geht es mit jeder anderen Schaltfläche auf dieser Seite.
  */
-import { useEffect, useState, type JSX } from 'react'
+import { Fragment, useEffect, useState, type JSX } from 'react'
 import { presentationKind, type PresentationInfo, type PrompterWindowState } from '@shared/presentation'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
@@ -57,7 +57,7 @@ export function PresentationLibrary(): JSX.Element {
 
   const zeigen = async (id: string): Promise<void> => {
     try {
-      await api('projection.setMode', { mode: 'presentation', presentationId: id }, app.buehne)
+      await api('projection.setMode', { mode: 'presentation', presentationId: id }, app.ziel)
       /*
        * Die Vortragssteuerung öffnet sich mit.
        *
@@ -95,9 +95,7 @@ export function PresentationLibrary(): JSX.Element {
   const prompterUmschalten = async (): Promise<void> => {
     try {
       setPrompter(
-        prompter.open
-          ? await api('presentation.closePrompter')
-          : await api('presentation.openPrompter')
+        prompter.open ? await api('presentation.closePrompter') : await api('presentation.openPrompter')
       )
     } catch (fehler) {
       app.reportError(fehler)
@@ -108,7 +106,7 @@ export function PresentationLibrary(): JSX.Element {
 
   return (
     <Card title="Präsentationen">
-      <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+      <div className="row mb-3">
         <button onClick={() => void einspeisen()} disabled={laeuft}>
           {laeuft ? 'Wird eingespeist …' : 'Präsentation einspeisen (HTML oder PDF)'}
         </button>
@@ -118,63 +116,75 @@ export function PresentationLibrary(): JSX.Element {
       </div>
 
       {liste.length === 0 ? (
-        <p className="muted">
+        <p className="hint">
           Noch nichts eingespeist. Erwartet wird eine <strong>einzelne HTML-Datei</strong>, die alles
-          mitbringt — Schriften, Bilder und Steuerung darin. Sie läuft dann ohne Netz und ohne
-          zweites Programm.
+          mitbringt — Schriften, Bilder und Steuerung darin. Sie läuft dann ohne Netz und ohne zweites
+          Programm.
         </p>
       ) : (
-        <table className="table">
+        <table>
           <thead>
             <tr>
               <th>Präsentation</th>
               <th>Art</th>
               <th>Folien</th>
               <th>Größe</th>
-              <th />
             </tr>
           </thead>
           <tbody>
             {liste.map((eintrag) => {
               const laufend = eintrag.id === laufendeId && projection.mode === 'presentation'
               return (
-                <tr key={eintrag.id} className={laufend ? 'active' : undefined}>
-                  <td>
-                    <strong>{eintrag.title}</strong>
-                    {laufend && <span className="badge accent" style={{ marginLeft: 8 }}>auf dem Beamer</span>}
-                    <div className="muted small">{eintrag.fileName}</div>
-                  </td>
-                  <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
-                  <td>{eintrag.slideCount ?? '–'}</td>
-                  <td>{groesse(eintrag.size)}</td>
-                  <td className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                    <button onClick={() => void zeigen(eintrag.id)} disabled={laufend}>
-                      Auf den Beamer
-                    </button>
-                    <button className="ghost" onClick={() => void umbenennen(eintrag)}>
-                      Umbenennen
-                    </button>
-                    <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
-                      Entfernen
-                    </button>
-                  </td>
-                </tr>
+                /*
+                 * Die Knöpfe stehen unter dem Eintrag, nicht daneben.
+                 *
+                 * Neben vier Spalten gedrängt wurden sie schmal und rückten
+                 * an den Rand; darunter haben sie ihre Breite und liegen dort,
+                 * wo der Blick nach dem Lesen des Namens ohnehin ankommt.
+                 */
+                <Fragment key={eintrag.id}>
+                  <tr className={laufend ? 'active' : undefined}>
+                    <td>
+                      <strong>{eintrag.title}</strong>
+                      {laufend && <span className="badge accent badge-nach">auf dem Beamer</span>}
+                      <div className="hint">{eintrag.fileName}</div>
+                    </td>
+                    <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
+                    <td>{eintrag.slideCount ?? '–'}</td>
+                    <td>{groesse(eintrag.size)}</td>
+                  </tr>
+                  <tr className={`aktionen${laufend ? ' active' : ''}`}>
+                    <td colSpan={4}>
+                      <div className="row">
+                        <button onClick={() => void zeigen(eintrag.id)} disabled={laufend}>
+                          Auf den Beamer
+                        </button>
+                        <button className="ghost" onClick={() => void umbenennen(eintrag)}>
+                          Umbenennen
+                        </button>
+                        <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
+                          Entfernen
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
               )
             })}
           </tbody>
         </table>
       )}
 
-      <p className="muted small" style={{ marginTop: 10 }}>
-        Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder
-        Wahldaten noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet
-        Votura selbst — ohne Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der
-        Netzwerkansicht erscheint in beiden Fällen dieselbe Folie.
+      <p className="muted small mt-3">
+        Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder Wahldaten
+        noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet Votura selbst — ohne
+        Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der Netzwerkansicht erscheint in beiden
+        Fällen dieselbe Folie.
       </p>
       <p className="hint">
         <strong>PowerPoint:</strong> dort über <em>Datei → Exportieren → PDF/XPS erstellen</em>
-        speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu;
-        Animationen und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
+        speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu; Animationen
+        und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
       </p>
     </Card>
   )

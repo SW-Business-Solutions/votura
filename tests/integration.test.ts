@@ -80,7 +80,9 @@ beforeAll(() => {
   auth.login('wahlleitung', 'geheim-1234')
 
   // Für den Test ohne echten Drucker die Dateiausgabe verwenden.
-  const printers = settings.getPrinters().map((printer) => ({ ...printer, enabled: printer.id === 'file-preview' }))
+  const printers = settings
+    .getPrinters()
+    .map((printer) => ({ ...printer, enabled: printer.id === 'file-preview' }))
   settings.savePrinters(printers)
   const config = settings.getConfig()
   settings.saveConfig({
@@ -159,9 +161,9 @@ describe('Vollständige Mitgliederversammlung (Abnahmeszenario)', () => {
 
   it('schließt die Kandidatenliste und gibt den Stimmzettel frei', () => {
     rounds.lockCandidates(roundId)
-    expect(() => candidates.addCandidates(roundId, [{ firstName: 'X', lastName: 'Y', displayName: 'X Y' }])).toThrow(
-      /geschlossen/i
-    )
+    expect(() =>
+      candidates.addCandidates(roundId, [{ firstName: 'X', lastName: 'Y', displayName: 'X Y' }])
+    ).toThrow(/geschlossen/i)
 
     const version = ballots.approveBallot(roundId, CHECKLIST)
     expect(version.version).toBe(1)
@@ -288,7 +290,10 @@ describe('Vollständige Mitgliederversammlung (Abnahmeszenario)', () => {
   })
 
   it('gibt die neue Version frei und archiviert die alte', () => {
-    candidates.updateCandidate({ id: candidates.listCandidates(roundId)[0].id, displayName: 'Max Mustermann jun.' })
+    candidates.updateCandidate({
+      id: candidates.listCandidates(roundId)[0].id,
+      displayName: 'Max Mustermann jun.'
+    })
     rounds.lockCandidates(roundId)
     const version = ballots.approveBallot(roundId, CHECKLIST)
     expect(version.version).toBe(2)
@@ -364,7 +369,9 @@ describe('Vollständige Mitgliederversammlung (Abnahmeszenario)', () => {
     const abgeschlossen = rounds.completeRound(roundId)
     expect(abgeschlossen.status).toBe('completed')
     expect(() => rounds.unlockRound(roundId, 'Nachträglich')).toThrow(/abgeschlossen/i)
-    expect(() => candidates.addCandidates(roundId, [{ firstName: 'A', lastName: 'B', displayName: 'A B' }])).toThrow()
+    expect(() =>
+      candidates.addCandidates(roundId, [{ firstName: 'A', lastName: 'B', displayName: 'A B' }])
+    ).toThrow()
   })
 
   it('führt einen lücken- und manipulationsfreien Audit-Trail', () => {
@@ -463,10 +470,7 @@ describe('Kandidatennummern beim Anhaken', () => {
       { firstName: 'Ida', lastName: 'Eins', displayName: 'Ida Eins' },
       { firstName: 'Jens', lastName: 'Zwei', displayName: 'Jens Zwei' }
     ])
-    expect(candidates.listCandidates(wahlgang.id).map((c) => c.ballotNumber)).toEqual([
-      undefined,
-      undefined
-    ])
+    expect(candidates.listCandidates(wahlgang.id).map((c) => c.ballotNumber)).toEqual([undefined, undefined])
 
     const aktuell = rounds.getRound(wahlgang.id)
     rounds.updateRound({
@@ -692,7 +696,12 @@ describe('Wahlgangkennung vor dem Druck', () => {
     expect(gesperrt.roundCode).toMatch(/^MV28-20261108-WG\d\d$/)
 
     const version = ballots.approveBallot(wahlgang.id, [
-      'round', 'candidates', 'seats', 'maxVotes', 'options', 'roundCode'
+      'round',
+      'candidates',
+      'seats',
+      'maxVotes',
+      'options',
+      'roundCode'
     ])
     expect(version.version).toBe(1)
     expect(rounds.getRound(wahlgang.id).roundCode).toBe(gesperrt.roundCode)
@@ -970,10 +979,7 @@ describe('Bündelung erzeugt tatsächlich jeden Zettel', () => {
     /* Jeder Stimmzettel trägt die Wahlgangkennung genau einmal — ihre Anzahl
        ist damit die Zahl der tatsächlich erzeugten Zettel. */
     const kennung = rounds.getRound(wahlgang.id).roundCode
-    const zettel = neu.reduce(
-      (summe, inhalt) => summe + inhalt.split(`WG: ${kennung}`).length - 1,
-      0
-    )
+    const zettel = neu.reduce((summe, inhalt) => summe + inhalt.split(`WG: ${kennung}`).length - 1, 0)
     expect(zettel).toBe(25)
 
     settings.saveConfig(konfiguration)

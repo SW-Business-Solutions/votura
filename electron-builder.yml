@@ -15,6 +15,15 @@ files:
 extraResources:
   - from: build/icon.png
     to: build/icon.png
+  # Das kleine deutsche Sprachmodell für das Mitlaufen nach Gehör am Pult.
+  # Es liegt nicht im Repository (rund 45 MB, unveränderlich) und wird vor dem
+  # Bauen mit `node tools/sprachmodell.mjs` geholt. Fehlt es, entsteht das
+  # Paket trotzdem — dann bleibt „Nach Stimme" ausgegraut, bis jemand in den
+  # Einstellungen eines hinterlegt.
+  - from: resources/sprachmodell
+    to: sprachmodell
+    filter:
+      - '**/*'
 
 # Kein Update-Server: die Anwendung fragt ausschließlich die öffentlichen
 # Veröffentlichungen des Projekts ab, und nur auf ausdrückliche Anforderung.

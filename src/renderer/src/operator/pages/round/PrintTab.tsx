@@ -33,7 +33,9 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
   const settings = app.settings
   const printers = (settings?.printers ?? []).filter((printer) => printer.enabled)
 
-  const [printerId, setPrinterId] = useState(settings?.config.printing.defaultPrinterId ?? printers[0]?.id ?? '')
+  const [printerId, setPrinterId] = useState(
+    settings?.config.printing.defaultPrinterId ?? printers[0]?.id ?? ''
+  )
   const [copies, setCopies] = useState(0)
   const [reserve, setReserve] = useState(settings?.config.printing.reserveCopies ?? 5)
   const [pin, setPin] = useState('')
@@ -61,7 +63,11 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
 
   const requirePin = settings?.config.security.requirePinForMassPrint ?? true
 
-  const runPrint = async (kind: 'initial' | 'reprint' | 'test', count: number, reason?: string): Promise<void> => {
+  const runPrint = async (
+    kind: 'initial' | 'reprint' | 'test',
+    count: number,
+    reason?: string
+  ): Promise<void> => {
     setBusy(true)
     try {
       const key =
@@ -79,7 +85,10 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
         pin: kind === 'test' ? undefined : pin
       })
       if (result.deduplicated) {
-        app.notify('warning', 'Ein identischer Druckauftrag lief bereits — es wurde bewusst nicht erneut gedruckt.')
+        app.notify(
+          'warning',
+          'Ein identischer Druckauftrag lief bereits — es wurde bewusst nicht erneut gedruckt.'
+        )
       } else {
         app.notify(
           result.submittedCopies === result.requestedCopies ? 'ok' : 'warning',
@@ -140,17 +149,17 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
           <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Stimmberechtigte">
                 <input value={eligible} readOnly />
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Zusatzreserve">
                 <NumberInput value={reserve} onChange={setReserve} />
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Zu drucken">
                 <NumberInput value={copies} min={1} onChange={setCopies} />
               </Field>
@@ -161,7 +170,7 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
             {Math.round(paper.millimetersPerBallot)} mm je Stimmzettel).
           </div>
 
-          <div className="row" style={{ marginTop: 14 }}>
+          <div className="row mt-4">
             <button
               className="primary big"
               disabled={!approved || busy || copies < 1 || !app.can('print.execute')}
@@ -181,7 +190,7 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
 
         {progress && (
           <Card title={`Druckauftrag läuft – ${PRINT_BATCH_STATUS_LABELS[progress.status]}`}>
-            <div className="progress" style={{ marginBottom: 10 }}>
+            <div className="progress mb-3">
               <span
                 style={{
                   width: `${Math.round((progress.submittedCopies / Math.max(1, progress.requestedCopies)) * 100)}%`
@@ -335,7 +344,13 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
                   <td>
                     <span
                       className={`badge ${
-                        batch.status === 'completed' ? 'ok' : batch.status === 'unknown' ? 'warn' : batch.status === 'failed' ? 'danger' : ''
+                        batch.status === 'completed'
+                          ? 'ok'
+                          : batch.status === 'unknown'
+                            ? 'warn'
+                            : batch.status === 'failed'
+                              ? 'danger'
+                              : ''
                       }`}
                     >
                       {PRINT_BATCH_STATUS_LABELS[batch.status]}
@@ -344,7 +359,7 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
                   <td>
                     {batch.operatorName}
                     {(batch.status === 'unknown' || batch.status === 'aborted') && (
-                      <div style={{ marginTop: 6 }}>
+                      <div className="mt-2">
                         <button
                           onClick={() => {
                             setResumeBatch(batch)
@@ -405,13 +420,16 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
             </tbody>
           </table>
           {requirePin && (
-            <Field label="Wahlleiter-PIN" hint="Für den Massendruck ist die PIN erforderlich (Einstellungen).">
+            <Field
+              label="Wahlleiter-PIN"
+              hint="Für den Massendruck ist die PIN erforderlich (Einstellungen)."
+            >
               <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} autoFocus />
             </Field>
           )}
           <div className="notice warn">
-            Der Auftrag wird nicht automatisch wiederholt, falls er abbricht. Sie werden dann aufgefordert, die
-            tatsächlich ausgegebene Menge physisch zu prüfen.
+            Der Auftrag wird nicht automatisch wiederholt, falls er abbricht. Sie werden dann aufgefordert,
+            die tatsächlich ausgegebene Menge physisch zu prüfen.
           </div>
         </Modal>
       )}
@@ -465,11 +483,12 @@ export function PrintTab({ detail, reload }: TabProps): React.JSX.Element {
             <strong>Wann ist der Nachdruck der richtige Weg?</strong>
             <br />
             Es fehlen Zettel, einzelne wurden beschädigt oder es erscheint ein weiterer Stimmberechtigter:
-            Nachdruck derselben Version {round.approvedVersion !== undefined ? `(v${round.approvedVersion})` : ''} —
-            alle Zettel bleiben gleich und tragen dieselbe Kennung.
+            Nachdruck derselben Version{' '}
+            {round.approvedVersion !== undefined ? `(v${round.approvedVersion})` : ''} — alle Zettel bleiben
+            gleich und tragen dieselbe Kennung.
             <br />
-            Ist dagegen der <em>Inhalt</em> falsch (Name, Anzahl, Optionen), muss der Wahlgang entsperrt werden;
-            dabei entsteht eine neue Version, und die Stapel dürfen nicht vermischt werden.
+            Ist dagegen der <em>Inhalt</em> falsch (Name, Anzahl, Optionen), muss der Wahlgang entsperrt
+            werden; dabei entsteht eine neue Version, und die Stapel dürfen nicht vermischt werden.
             <br />
             Wird die Wahl selbst wiederholt, ist es ein eigener Wahlgang mit eigener Kennung — im Reiter
             „Ergebnis“ über „Folgewahlgang erzeugen“.

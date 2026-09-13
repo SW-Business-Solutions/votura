@@ -1,5 +1,9 @@
 # Architektur
 
+Votura verwaltet Wahlgänge und druckt Stimmzettel, bespielt bis zu vier Anzeigeflächen im Saal und
+führt das Pult vorn — alles in einer Anwendung, auf einem Rechner, ohne Netz nach außen. Dieses
+Dokument beschreibt, wie das zusammenhängt und warum es so und nicht anders gebaut ist.
+
 ## Leitgedanke
 
 Die Priorität ist in dieser Reihenfolge: Zuverlässigkeit, Wahlgeheimnis, Nachvollziehbarkeit,
@@ -130,6 +134,38 @@ Bedienoberfläche ──► IPC (…, stage) ──► projection.ts   Map<buehn
 > `require('./chunks/…')`, das Preload lädt dann gar nicht, und die Beameransicht meldet dauerhaft
 > „Verbindung unterbrochen". Reine Typimporte sind erlaubt; ein Test in `tests/buehnen.test.ts`
 > wacht darüber.
+
+## Teleprompter
+
+Ein eigener Dienst (`src/main/services/prompter.ts`), **nicht** Teil des Projektionsdienstes: Der
+Prompter ist keine Bühne. Er zeigt genau das, was das Publikum nicht sehen soll — ein gemeinsamer
+Zustand wäre eine Gelegenheit, beides zu verwechseln. Ein Test wacht darüber, dass der Dienst den
+Projektionsdienst nicht einmal importiert.
+
+```
+Bedienung ──► IPC prompter.* ──► prompter.ts   PrompterViewState
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              ▼                      ▼                      ▼
+      Prompterfenster          Operatoransicht        SSE  /prompter
+      (preload/teleprompter)                          /api/prompter/stream
+```
+
+- **Der Lauf hängt an der Uhr** — `position` (in Zeilenhöhen), `anchoredAt`, `tempo`. Jede Ansicht
+  rechnet ihre Stelle mit `prompterPosition()` selbst aus; ein spät hinzugekommenes Gerät steht
+  sofort richtig. Dieselbe Überlegung wie beim Video.
+- **Zeilenhöhen statt Pixel:** Telefon, Tablet und Pultmonitor haben verschiedene Flächen und
+  Schriftgrößen. In Pixeln stünde jedes woanders im Text.
+- **Verankern vor jeder Tempoänderung.** Wer das Tempo ändert, ohne vorher die aktuelle Stelle
+  festzuhalten, lässt alle Geräte die verstrichene Zeit mit dem *neuen* Tempo neu rechnen — die
+  Rede rutscht dann um Minuten. Änderungen an der reinen Darstellung verankern deshalb bewusst
+  **nicht** und lassen `anchoredAt` unangetastet.
+- **Reden** liegen als Markdown neben der Datenbank (`speeches/`), Verzeichnis als JSON daneben —
+  wie bei Präsentationen und Videos. `redeBloecke()` zerlegt nur, was in einer Rede vorkommt:
+  Überschrift, Absatz, Punkt, Zitat, Atempause. Eine vollständige Markdown-Bibliothek brächte
+  Tabellen, Bilder und HTML mit; nichts davon liest jemand am Pult vor.
+- **Der Text wandert im Zustand mit.** Anders als Foliensatz und Video ist er klein, und die
+  Ansicht am Pult soll nichts nachladen müssen.
 
 ## Ergebnis, Rangfolge und Gleichstand
 

@@ -11,6 +11,7 @@ import {
 } from 'react'
 import type { SystemSettings } from '@shared/config'
 import type { SetupState } from '@shared/ipc'
+import { PROMPTER_VORGABE, type PrompterViewState } from '@shared/speech'
 import {
   ALLE_BUEHNEN,
   BUEHNE_VORGABE,
@@ -18,16 +19,10 @@ import {
   HAUPTBUEHNE,
   type AudienceWindowState,
   type Buehne,
+  type Buehnenwahl,
   type ProjectionState
 } from '@shared/projection'
-import type {
-  ElectionEvent,
-  Permission,
-  PrintProgress,
-  RoundSummary,
-  Session,
-  UUID
-} from '@shared/types'
+import type { ElectionEvent, Permission, PrintProgress, RoundSummary, Session, UUID } from '@shared/types'
 import { api, bridge, errorMessage } from '../lib/api'
 
 export interface Notice {
@@ -54,10 +49,28 @@ interface AppState {
   /** Die bearbeitete Bühne, oder `ALLE_BUEHNEN` für den Master. */
   buehne: number
   setBuehne(id: number): void
+  /**
+   * Im Master angehakte Bühnen.
+   *
+   * Leer heißt „alle" — wer nichts anhakt, meint die ganze Versammlung.
+   * Außerhalb des Masters bedeutungslos.
+   */
+  auswahl: number[]
+  toggleAuswahl(id: number): void
+  setAuswahl(ids: number[]): void
+  /**
+   * Worauf eine Schaltung wirkt — die eine Bühne, alle, oder die angehakten.
+   *
+   * Jede Ansicht, die etwas auf den Beamer bringt, reicht diesen Wert weiter
+   * und muss die Unterscheidung nicht kennen.
+   */
+  ziel: Buehnenwahl
   refreshBuehnen(): Promise<void>
   projection: ProjectionState
   projektionen: Record<number, ProjectionState>
   audience: AudienceWindowState | null
+  /** Der Stand des Teleprompters — eigener Weg, nicht der Projektionszustand. */
+  prompter: PrompterViewState
   beamerfenster: Record<number, AudienceWindowState>
   printProgress: PrintProgress | null
   notices: Notice[]
@@ -85,10 +98,25 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
   const [rounds, setRounds] = useState<RoundSummary[]>([])
   const [buehnen, setBuehnen] = useState<Buehne[]>([{ ...BUEHNE_VORGABE }])
   const [buehne, setBuehne] = useState<number>(HAUPTBUEHNE)
+  const [auswahl, setAuswahl] = useState<number[]>([])
   const [projektionen, setProjektionen] = useState<Record<number, ProjectionState>>({})
   const [audiences, setAudiences] = useState<Record<number, AudienceWindowState>>({})
+  const [prompter, setPrompter] = useState<PrompterViewState>(PROMPTER_VORGABE)
   /* Der Master hat keinen eigenen Zustand — gezeigt wird die Hauptbühne. */
-  const bezug = buehne === ALLE_BUEHNEN ? HAUPTBUEHNE : buehne
+  /*
+   * Die Bühne, deren Zustand die Bedienung anzeigt.
+   *
+   * Dieselbe Regel wie im Hauptprozess (`bezugsbuehne`): Ist die Hauptbühne
+   * betroffen, gilt sie; sonst die erste angehakte. Sonst zeigte die Vorschau
+   * eine Wand, die von der nächsten Schaltung gar nicht getroffen wird.
+   */
+  const bezug =
+    buehne !== ALLE_BUEHNEN
+      ? buehne
+      : auswahl.length === 0 || auswahl.includes(HAUPTBUEHNE)
+        ? HAUPTBUEHNE
+        : auswahl[0]
+  const ziel: Buehnenwahl = buehne === ALLE_BUEHNEN ? (auswahl.length > 0 ? auswahl : ALLE_BUEHNEN) : buehne
   const projection = projektionen[bezug] ?? EMPTY_PROJECTION_STATE
   const audience = audiences[bezug] ?? null
   const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null)
@@ -155,6 +183,9 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
         setEvent(currentEvent)
         setSettings(currentSettings)
         setBuehnen(stages)
+        void api('prompter.view')
+          .then(setPrompter)
+          .catch(() => undefined)
         /* Jede Bühne einmal vollständig holen — danach kommen nur noch
            Wechsel über das Ereignis herein. */
         const zustaende = await Promise.all(
@@ -184,9 +215,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       /* Wurde die bearbeitete Bühne abgebaut, springt die Bedienung zurück
          auf die Hauptbühne, statt ins Leere zu zeigen. */
       setBuehne((current) =>
-        current === ALLE_BUEHNEN || stages.some((stage) => stage.id === current)
-          ? current
-          : HAUPTBUEHNE
+        current === ALLE_BUEHNEN || stages.some((stage) => stage.id === current) ? current : HAUPTBUEHNE
       )
     } catch (error) {
       reportError(error)
@@ -219,20 +248,27 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
 
   useEffect(() => {
     const offProgress = bridge.onPrintProgress(setPrintProgress)
-    const offProjection = bridge.onProjectionState(({ buehne: id, state }) => {
+    const offProjection = bridge.onProjectionState(({ buehne: id, state }) =>
       setProjektionen((current) => ({ ...current, [id]: state }))
-      /* Meldet sich eine Bühne, die diese Oberfläche nicht kennt, hat jemand
-         anders sie angelegt — etwa von einem zweiten Gerät im Netz. */
-      setBuehnen((current) => {
-        if (!current.some((stage) => stage.id === id)) void refreshBuehnen()
-        return current
-      })
-    })
+    )
     const offAudience = bridge.onAudienceState((state) =>
       setAudiences((current) => ({ ...current, [state.buehne]: state }))
     )
+    const offPrompter = bridge.onPrompterView(setPrompter)
     const offSession = bridge.onSessionChanged((next) => {
-      setSession(next)
+      setSession((vorher) => {
+        /*
+         * Kommt eine Sitzung dazu, wird alles nachgeladen.
+         *
+         * Ohne Sitzung holt `refreshAll` weder Veranstaltung noch
+         * Einstellungen — es dürfte sie gar nicht sehen. Meldet sich jemand
+         * später an, etwa nach einem Zeitablauf oder von einem zweiten Gerät,
+         * blieben beide leer, und die Einstellungsseite hinge für immer bei
+         * „wird geladen".
+         */
+        if (!vorher && next) void refreshAll()
+        return next
+      })
       if (!next) notify('warning', 'Die Sitzung wurde beendet. Bitte erneut anmelden.')
     })
     const offNotice = bridge.onNotice((notice) => notify(notice.level, notice.message))
@@ -242,8 +278,26 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       offAudience()
       offSession()
       offNotice()
+      offPrompter()
     }
-  }, [notify, refreshBuehnen])
+  }, [notify, refreshAll])
+
+  /*
+   * Meldet sich eine Bühne, die diese Oberfläche nicht kennt, hat jemand
+   * anders sie angelegt — etwa von einem zweiten Gerät im Netz.
+   *
+   * Das gehört in einen Effekt und **nicht** in die Zustandsfunktion des
+   * Empfängers: Ein `setState` mitten in einer Zustandsfunktion aktualisiert
+   * eine Komponente, während eine andere gerade rechnet. React bricht das ab —
+   * und dann steht die halbe Oberfläche still, ohne dass eine Meldung
+   * erscheint. Genau so hörten die Einstellungen auf zu laden.
+   */
+  useEffect(() => {
+    const unbekannt = Object.keys(projektionen)
+      .map(Number)
+      .some((id) => !buehnen.some((stage) => stage.id === id))
+    if (unbekannt) void refreshBuehnen()
+  }, [projektionen, buehnen, refreshBuehnen])
 
   // Sitzung bei Aktivität verlaengern (§56).
   useEffect(() => {
@@ -277,10 +331,18 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       buehnen,
       buehne,
       setBuehne,
+      auswahl,
+      setAuswahl,
+      ziel,
+      toggleAuswahl: (id) =>
+        setAuswahl((current) =>
+          current.includes(id) ? current.filter((eintrag) => eintrag !== id) : [...current, id]
+        ),
       refreshBuehnen,
       projection,
       projektionen,
       audience,
+      prompter,
       beamerfenster: audiences,
       printProgress,
       notices,
@@ -305,11 +367,14 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       rounds,
       buehnen,
       buehne,
+      auswahl,
+      ziel,
       refreshBuehnen,
       projection,
       projektionen,
       audience,
       audiences,
+      prompter,
       printProgress,
       notices,
       theme,

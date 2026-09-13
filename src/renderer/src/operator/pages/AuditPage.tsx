@@ -73,7 +73,7 @@ export function AuditPage(): React.JSX.Element {
               {visible.map((entry) => (
                 <tr key={entry.id}>
                   <td className="num">{entry.seq}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatDateTimeDe(entry.timestamp)}</td>
+                  <td className="zeitstempel">{formatDateTimeDe(entry.timestamp)}</td>
                   <td>
                     {auditActionLabel(entry.action)}
                     {/* Der technische Schlüssel bleibt sichtbar: Er ist die

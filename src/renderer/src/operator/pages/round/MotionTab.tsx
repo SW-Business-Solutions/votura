@@ -91,7 +91,7 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
         <div className="notice warn">
           Der Antrag ist festgeschrieben. Änderungen sind erst nach ausdrücklichem Entsperren möglich — dabei
           entsteht eine neue Stimmzettelversion.
-          <div className="row" style={{ marginTop: 10 }}>
+          <div className="row mt-3">
             <button disabled={!app.can('round.unlock')} onClick={() => setConfirmUnlock(true)}>
               Wahlgang entsperren
             </button>
@@ -148,12 +148,17 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
             />
           </Field>
           <Field label="Abstimmungsanweisung">
-            <input value={instruction} disabled={!editable} onChange={(e) => setInstruction(e.target.value)} />
+            <input
+              value={instruction}
+              disabled={!editable}
+              onChange={(e) => setInstruction(e.target.value)}
+            />
           </Field>
 
           <h3>Abstimmungsmöglichkeiten</h3>
-          <div className="hint" style={{ marginBottom: 8 }}>
-            Die Enthaltung wird nicht erzwungen — maßgeblich ist die geltende Geschäfts- bzw. Abstimmungsordnung.
+          <div className="hint mb-2">
+            Die Enthaltung wird nicht erzwungen — maßgeblich ist die geltende Geschäfts- bzw.
+            Abstimmungsordnung.
           </div>
           <Checkbox checked={allowYes} disabled={!editable} onChange={setAllowYes} label="JA" />
           <Checkbox checked={allowNo} disabled={!editable} onChange={setAllowNo} label="NEIN" />
@@ -164,7 +169,7 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
             label="ENTHALTUNG"
           />
 
-          <div className="row" style={{ marginTop: 14 }}>
+          <div className="row mt-4">
             <button className="primary big" disabled={!editable || busy} onClick={() => void save()}>
               Antrag speichern
             </button>
@@ -175,8 +180,8 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
           {profile.entryKind === 'options' && (
             <Card title={`Auswahloptionen (${options.length})`}>
               <p className="hint">
-                Dieses Verfahren stellt mehrere Optionen zur Wahl (z. B. konkurrierende Fassungen). Eine Option je
-                Zeile.
+                Dieses Verfahren stellt mehrere Optionen zur Wahl (z. B. konkurrierende Fassungen). Eine
+                Option je Zeile.
               </p>
               {options.length === 0 ? (
                 <EmptyState text="Noch keine Optionen erfasst." />
@@ -185,7 +190,7 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
                   {options.map((option, index) => (
                     <li key={option.id} className="drag-item">
                       <span style={{ minWidth: 24, color: 'var(--text-muted)' }}>{index + 1}</span>
-                      <span style={{ flex: 1 }}>{option.displayName}</span>
+                      <span className="col">{option.displayName}</span>
                     </li>
                   ))}
                 </ul>
@@ -199,7 +204,11 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
                       placeholder={'Fassung A\nFassung B\nFassung C'}
                     />
                   </Field>
-                  <button className="primary" disabled={!optionsText.trim()} onClick={() => void addOptions()}>
+                  <button
+                    className="primary"
+                    disabled={!optionsText.trim()}
+                    onClick={() => void addOptions()}
+                  >
                     Hinzufügen
                   </button>
                 </>
@@ -216,7 +225,9 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
                 </tr>
                 <tr>
                   <th>Stimmzettel</th>
-                  <td>{profile.ballotRequired ? 'geheime Abstimmung mit Stimmzettel' : 'offene Abstimmung'}</td>
+                  <td>
+                    {profile.ballotRequired ? 'geheime Abstimmung mit Stimmzettel' : 'offene Abstimmung'}
+                  </td>
                 </tr>
                 <tr>
                   <th>Kennung</th>
@@ -226,9 +237,13 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
             </table>
 
             {profile.ballotRequired && (
-              <div className="row" style={{ marginTop: 12 }}>
+              <div className="row mt-3">
                 {editable ? (
-                  <button className="primary big" disabled={!title.trim()} onClick={() => setConfirmLock(true)}>
+                  <button
+                    className="primary big"
+                    disabled={!title.trim()}
+                    onClick={() => setConfirmLock(true)}
+                  >
                     Antrag festschreiben
                   </button>
                 ) : (
@@ -240,7 +255,7 @@ export function MotionTab({ detail, reload }: TabProps): React.JSX.Element {
               </div>
             )}
             {!profile.ballotRequired && (
-              <div className="notice" style={{ marginTop: 12 }}>
+              <div className="notice mt-3">
                 Für eine offene Abstimmung wird kein Stimmzettel gedruckt. Erfassen Sie das Ergebnis direkt im
                 Reiter „Ergebnis“.
               </div>

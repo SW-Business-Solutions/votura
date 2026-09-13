@@ -22,7 +22,8 @@ import { HistoryTab } from './round/HistoryTab'
  */
 function tabsFor(round: ElectionRound): { key: string; label: string }[] {
   const profile = profileFor(round.procedure)
-  const isMotion = round.purpose === 'motion' || profile.entryKind === 'options' || round.procedure === 'yes_no_abstain'
+  const isMotion =
+    round.purpose === 'motion' || profile.entryKind === 'options' || round.procedure === 'yes_no_abstain'
 
   const tabs: { key: string; label: string }[] = [
     { key: 'setup', label: 'Grunddaten' },
@@ -127,8 +128,8 @@ export function RoundDetailPage({ roundId, tab }: { roundId: string; tab?: strin
 
       {prepared && (
         <div className="notice">
-          Dieser Punkt ist vorbereitet. Nummer und Wahlgangkennung werden vergeben, sobald Sie ihn starten — bis
-          dahin lässt er sich in der Tagesordnung frei verschieben.
+          Dieser Punkt ist vorbereitet. Nummer und Wahlgangkennung werden vergeben, sobald Sie ihn starten —
+          bis dahin lässt er sich in der Tagesordnung frei verschieben.
         </div>
       )}
 

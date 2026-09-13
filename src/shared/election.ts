@@ -440,7 +440,11 @@ export function validateRoundSetup(
     issues.push({ field: 'title', message: 'Der Wahlgang braucht eine Bezeichnung.', level: 'error' })
   }
   if (round.seats < 1) {
-    issues.push({ field: 'seats', message: 'Es muss mindestens eine Position besetzt werden.', level: 'error' })
+    issues.push({
+      field: 'seats',
+      message: 'Es muss mindestens eine Position besetzt werden.',
+      level: 'error'
+    })
   }
   if (!profile.multiSeat && round.seats !== 1) {
     issues.push({
@@ -467,7 +471,11 @@ export function validateRoundSetup(
     }
     for (const position of round.positions) {
       if (!position.title.trim()) {
-        issues.push({ field: 'positions', message: 'Jede Position braucht eine Bezeichnung.', level: 'error' })
+        issues.push({
+          field: 'positions',
+          message: 'Jede Position braucht eine Bezeichnung.',
+          level: 'error'
+        })
       }
       const assigned = active.filter((c) => c.positionId === position.id)
       if (assigned.length === 0) {
@@ -600,11 +608,9 @@ export function candidatesEditable(status: RoundStatus): boolean {
   return status === 'draft' || status === 'candidate_collection'
 }
 
-export function sortCandidates<T extends Pick<Candidate, 'displayName' | 'lastName' | 'firstName' | 'sortOrder'>>(
-  candidates: T[],
-  mode: CandidateOrderMode,
-  randomSeed?: number
-): T[] {
+export function sortCandidates<
+  T extends Pick<Candidate, 'displayName' | 'lastName' | 'firstName' | 'sortOrder'>
+>(candidates: T[], mode: CandidateOrderMode, randomSeed?: number): T[] {
   const list = [...candidates]
   switch (mode) {
     case 'alphabetical':

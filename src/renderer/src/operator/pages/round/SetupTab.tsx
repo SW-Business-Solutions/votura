@@ -92,8 +92,8 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
         <Card title="Grunddaten">
           {!inVorbereitung && (
             <div className="notice warn">
-              Dieser Wahlgang läuft bereits (Status „{round.status}"). Zweck und Verfahren stehen
-              damit fest; die Bezeichnung lässt sich noch anpassen.
+              Dieser Wahlgang läuft bereits (Status „{round.status}"). Zweck und Verfahren stehen damit fest;
+              die Bezeichnung lässt sich noch anpassen.
             </div>
           )}
           {inVorbereitung && gedruckt > 0 && (
@@ -107,10 +107,7 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
             <input value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
 
-          <Field
-            label="Wahlzweck"
-            hint="Was gewählt wird — das Verfahren folgt daraus nicht automatisch."
-          >
+          <Field label="Wahlzweck" hint="Was gewählt wird — das Verfahren folgt daraus nicht automatisch.">
             <select
               value={purpose}
               disabled={!verfahrenOffen}
@@ -142,7 +139,7 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
           </Field>
 
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Zu besetzende Positionen">
                 <NumberInput
                   value={seats}
@@ -151,7 +148,7 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Stimmen je Stimmzettel" hint="Leer = ohne feste Höchstzahl">
                 <input
                   type="number"
@@ -198,23 +195,22 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
                 Wechsel von „{PROCEDURE_LABELS[round.procedure]}" zu „{PROCEDURE_LABELS[procedure]}"
               </strong>
               <br />
-              Der Stimmzettel wird neu aufgebaut: Höchststimmenzahl und die aufgedruckten Optionen
-              richten sich ab dann nach dem neuen Verfahren. Eine bereits freigegebene Fassung
-              verliert ihre Freigabe und muss erneut geprüft werden.
+              Der Stimmzettel wird neu aufgebaut: Höchststimmenzahl und die aufgedruckten Optionen richten
+              sich ab dann nach dem neuen Verfahren. Eine bereits freigegebene Fassung verliert ihre Freigabe
+              und muss erneut geprüft werden.
               {detail.candidates.length > 0 && profile.entryKind === 'none' && (
                 <>
                   <br />
                   <br />
-                  Achtung: Es sind {detail.candidates.length} Bewerber erfasst, das neue Verfahren
-                  kennt aber keine. Sie bleiben gespeichert, erscheinen aber nicht mehr auf dem
-                  Zettel.
+                  Achtung: Es sind {detail.candidates.length} Bewerber erfasst, das neue Verfahren kennt aber
+                  keine. Sie bleiben gespeichert, erscheinen aber nicht mehr auf dem Zettel.
                 </>
               )}
             </div>
           ) : (
             <p className="hint">
-              Hier ändern Sie, was beim Anlegen festgelegt wurde. Solange nichts gedruckt ist, darf
-              auch das Verfahren noch wechseln — danach nicht mehr.
+              Hier ändern Sie, was beim Anlegen festgelegt wurde. Solange nichts gedruckt ist, darf auch das
+              Verfahren noch wechseln — danach nicht mehr.
             </p>
           )}
 
@@ -232,7 +228,7 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
             </>
           )}
 
-          <table style={{ marginTop: 16 }}>
+          <table className="mt-4">
             <tbody>
               <tr>
                 <th>Status</th>

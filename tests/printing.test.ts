@@ -70,16 +70,18 @@ function round(overrides: Partial<ElectionRound> = {}): ElectionRound {
   }
 }
 
-const candidates: Candidate[] = ['Max Mustermann', 'Erika Musterfrau', 'Peter Beispiel'].map((name, index) => ({
-  id: `c${index}`,
-  electionRoundId: 'r1',
-  firstName: name.split(' ')[0],
-  lastName: name.split(' ')[1],
-  displayName: name,
-  sortOrder: index,
-  withdrawn: false,
-  createdAt: '2026-09-12T16:32:00.000Z'
-}))
+const candidates: Candidate[] = ['Max Mustermann', 'Erika Musterfrau', 'Peter Beispiel'].map(
+  (name, index) => ({
+    id: `c${index}`,
+    electionRoundId: 'r1',
+    firstName: name.split(' ')[0],
+    lastName: name.split(' ')[1],
+    displayName: name,
+    sortOrder: index,
+    withdrawn: false,
+    createdAt: '2026-09-12T16:32:00.000Z'
+  })
+)
 
 describe('ESC/POS-Kodierung', () => {
   it('kodiert deutsche Umlaute in der Druckerzeichentabelle', () => {
@@ -191,7 +193,11 @@ describe('Bon-Layout', () => {
   it('stellt beim Akzeptanzverfahren die Voten kompakt hinter jeden Kandidaten', () => {
     const acceptance = buildBallotDocument(
       event,
-      round({ procedure: 'acceptance_group', maxVotes: null, template: defaultTemplateFor('acceptance_group', { seats: 5, maxVotes: null, entryCount: 3 }) }),
+      round({
+        procedure: 'acceptance_group',
+        maxVotes: null,
+        template: defaultTemplateFor('acceptance_group', { seats: 5, maxVotes: null, entryCount: 3 })
+      }),
       candidates
     )
     const acceptanceText = renderPreviewLines(
@@ -229,11 +235,16 @@ describe('Bon-Layout', () => {
       event,
       round({
         procedure: 'group_blank',
-        template: { ...defaultTemplateFor('group_blank', { seats: 8, maxVotes: 8, entryCount: 0 }), blankLines: 8 }
+        template: {
+          ...defaultTemplateFor('group_blank', { seats: 8, maxVotes: 8, entryCount: 0 }),
+          blankLines: 8
+        }
       }),
       []
     )
-    const blankText = renderPreviewLines(buildBallotOps(blank, printer, config), printer.charsPerLine).join('\n')
+    const blankText = renderPreviewLines(buildBallotOps(blank, printer, config), printer.charsPerLine).join(
+      '\n'
+    )
     expect(blankText).toContain(' 1. ____')
     expect(blankText).toContain(' 8. ____')
   })
@@ -248,7 +259,9 @@ describe('Epson ePOS-XML', () => {
   const xml = opsToEposXml(buildBallotOps(document, printer, config), printer)
 
   it('nutzt das Epson-Schema', () => {
-    expect(xml.startsWith('<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">')).toBe(true)
+    expect(xml.startsWith('<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">')).toBe(
+      true
+    )
   })
 
   it('uebertraegt Kandidaten und Kennung', () => {
@@ -266,7 +279,6 @@ describe('Epson ePOS-XML', () => {
     expect(xml).toContain('<cut type="feed"/>')
   })
 })
-
 
 describe('Wahlverfahren auf dem Stimmzettel', () => {
   it('nennt das Verfahren im Kopf, wenn die Vorlage es vorsieht', () => {
@@ -295,9 +307,9 @@ describe('Wahlverfahren auf dem Stimmzettel', () => {
    */
   it('ergaenzt die Angabe nicht nachtraeglich bei Wahlgaengen ohne das Feld', () => {
     expect(withTemplateDefaults({}, 'group_preprinted').showProcedure).toBe(false)
-    expect(defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 3 }).showProcedure).toBe(
-      true
-    )
+    expect(
+      defaultTemplateFor('group_preprinted', { seats: 8, maxVotes: 8, entryCount: 3 }).showProcedure
+    ).toBe(true)
   })
 })
 
@@ -444,9 +456,7 @@ describe('Ergebnisbon', () => {
       },
       printer
     )
-    expect(renderPreviewLines(ops, printer.charsPerLine).join('\n')).toContain(
-      'Rang nicht entschieden'
-    )
+    expect(renderPreviewLines(ops, printer.charsPerLine).join('\n')).toContain('Rang nicht entschieden')
   })
 
   it('gibt bei einer Feststellung ohne Auszaehlung den Wortlaut wieder', () => {

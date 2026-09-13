@@ -60,7 +60,12 @@ export async function preflight(): Promise<PreflightItem[]> {
 
   const printers = getPrinters().filter((printer) => printer.enabled)
   if (printers.length === 0) {
-    items.push({ key: 'printer', label: 'Drucker konfiguriert', status: 'fail', detail: 'Kein aktiver Drucker.' })
+    items.push({
+      key: 'printer',
+      label: 'Drucker konfiguriert',
+      status: 'fail',
+      detail: 'Kein aktiver Drucker.'
+    })
   } else {
     for (const printer of printers) {
       try {

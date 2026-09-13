@@ -31,8 +31,7 @@ export function canInstallUpdate(): UpdateInstallCheck {
   const event = activeEvent()
   if (event) {
     const offen = listRounds(event.id).filter(
-      (round) =>
-        round.status !== 'completed' && round.status !== 'cancelled' && round.status !== 'draft'
+      (round) => round.status !== 'completed' && round.status !== 'cancelled' && round.status !== 'draft'
     )
     if (offen.length > 0) {
       reasons.push(
@@ -168,9 +167,7 @@ export async function downloadAndInstallUpdate(
 
   const moeglich = canInstallUpdate()
   if (!moeglich.possible) {
-    throw new Error(
-      `Ein Wechsel der Fassung ist jetzt nicht möglich:\n- ${moeglich.reasons.join('\n- ')}`
-    )
+    throw new Error(`Ein Wechsel der Fassung ist jetzt nicht möglich:\n- ${moeglich.reasons.join('\n- ')}`)
   }
 
   const repository = getConfig().updates.repository.trim()
@@ -215,10 +212,7 @@ export async function downloadAndInstallUpdate(
   const latest = assets.find((asset) => asset.name === 'latest.yml')
   if (latest?.browser_download_url) {
     try {
-      erwartet = pruefsummeAus(
-        (await laden(latest.browser_download_url)).toString('utf8'),
-        installer.name
-      )
+      erwartet = pruefsummeAus((await laden(latest.browser_download_url)).toString('utf8'), installer.name)
     } catch {
       erwartet = undefined
     }

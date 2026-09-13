@@ -86,14 +86,7 @@ export interface ProjectionRound {
   status: 'upcoming' | 'ready' | 'open' | 'closed' | 'counting' | 'completed'
 }
 
-export type FinalDecision =
-  | 'elected'
-  | 'not_elected'
-  | 'runoff'
-  | 'accepted'
-  | 'rejected'
-  | 'tie'
-  | 'manual'
+export type FinalDecision = 'elected' | 'not_elected' | 'runoff' | 'accepted' | 'rejected' | 'tie' | 'manual'
 
 export const FINAL_DECISION_LABELS: Record<FinalDecision, string> = {
   elected: 'GEWÄHLT',
@@ -534,6 +527,16 @@ export const HAUPTBUEHNE = 1
  * Fenster und keine Adresse.
  */
 export const ALLE_BUEHNEN = 0
+
+/**
+ * Auf welche Bühnen sich eine Schaltung bezieht.
+ *
+ * Eine Zahl ist eine Bühne, `ALLE_BUEHNEN` sind alle, eine Liste sind genau
+ * diese. Die Liste gibt es, weil „alle" im Saal selten stimmt: Pause auf die
+ * beiden Wände im Saal, im Foyer läuft der Film weiter. Ausgewertet wird sie
+ * an genau einer Stelle im Hauptprozess.
+ */
+export type Buehnenwahl = number | number[]
 
 /**
  * Mehr als das wird unübersichtlich, und jede Bühne kostet ein Fenster oder

@@ -60,7 +60,7 @@ const bridge = {
    * denselben Weg, den auch der Beamer geht. Zwei Quellen für dieselbe
    * Wahrheit liefen sonst irgendwann auseinander.
    */
-  goto: (slide: number, stage = HAUPTBUEHNE): void => {
+  goto: (slide: number, stage: number | number[] = HAUPTBUEHNE): void => {
     ipcRenderer.send(CHANNEL_COMMAND, { slide, stage })
   },
 
@@ -82,7 +82,7 @@ const bridge = {
    * Beameransicht kann sie nicht melden — sie ist rein lesend. Der Prompter
    * laedt denselben Foliensatz und bekommt dieselbe Meldung.
    */
-  report: (slide: number, slideCount: number, stage = HAUPTBUEHNE): void => {
+  report: (slide: number, slideCount: number, stage: number | number[] = HAUPTBUEHNE): void => {
     ipcRenderer.send(CHANNEL_REPORT, { slide, slideCount, stage })
   },
 

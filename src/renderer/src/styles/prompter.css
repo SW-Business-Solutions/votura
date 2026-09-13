@@ -61,57 +61,6 @@
   color: var(--prompter-leise);
 }
 
-/* ------------------------------------------------------- Vorschau ---- */
-
-/*
- * Beide Vorschauen zeigen denselben Foliensatz im selben Format.
- *
- * Der Kasten ist nur der verfügbare Platz; darin sitzt die eigentliche
- * Fläche im Seitenverhältnis des Beamers, mittig und so groß wie möglich.
- * Der Rahmen darin misst immer 1920 x 1080 und wird über `transform` auf
- * diese Fläche geschrumpft — so rechnet der Foliensatz links wie rechts mit
- * derselben Fenstergröße und bricht identisch um. Ohne das wäre die kleinere
- * Vorschau kein verkleinertes Abbild, sondern ein anderes Layout.
- */
-.prompter-vorschau {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-}
-
-/* Größe und Maßstab kommen gemessen aus der Komponente: Sie richten sich nach
-   dem Beamerfenster, das CSS allein nicht kennt. */
-.prompter-vorschau-flaeche {
-  position: relative;
-  background: #000;
-  border: 1px solid var(--prompter-linie);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.prompter-vorschau.gross .prompter-vorschau-flaeche {
-  border-color: var(--prompter-akzent);
-}
-
-.prompter-vorschau iframe {
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  border: 0;
-  transform-origin: top left;
-}
-
-/* Fängt Klicks ab, die sonst im fremden Foliensatz landen würden. */
-.prompter-vorschau-schild {
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  cursor: default;
-}
-
 .prompter-ende {
   flex: 1 1 auto;
   display: flex;
@@ -228,12 +177,27 @@
 }
 
 /* Welche Bühne die Steuerung bedient — nur sichtbar, wenn es mehrere gibt. */
+/*
+ * Welche Bühnen die Steuerung blättert.
+ *
+ * `color-scheme: dark` ist hier das Entscheidende: Ohne die Angabe zeichnet
+ * das Betriebssystem die aufgeklappte Liste hell, während die Schrift vom
+ * dunklen Fenster geerbt wird — hellgrau auf weiß, praktisch unlesbar. Die
+ * Angabe muss am Element stehen, nicht an der Seite: Die Liste ist ein Fenster
+ * des Systems und erbt nichts anderes.
+ */
 .prompter-buehnenwahl {
   margin-left: 10px;
-  padding: 2px 6px;
+  padding: 4px 8px;
   font-size: 13px;
-  color: inherit;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color-scheme: dark;
+  color: var(--prompter-text, #e8e8e8);
+  background: #191d23;
+  border: 1px solid var(--prompter-linie, #2b313a);
   border-radius: 6px;
+}
+
+.prompter-buehnenwahl option {
+  color: var(--prompter-text, #e8e8e8);
+  background: #191d23;
 }

@@ -77,7 +77,16 @@ export function RoundWizardPage(): React.JSX.Element {
       instructionText: instructions.trim() || base.instructionText,
       motionText: motionText.trim() || undefined
     }
-  }, [procedure, seats, maxVotes, unlimitedVotes, parsedCandidates.length, showNumbers, instructions, motionText])
+  }, [
+    procedure,
+    seats,
+    maxVotes,
+    unlimitedVotes,
+    parsedCandidates.length,
+    showNumbers,
+    instructions,
+    motionText
+  ])
 
   const issues = useMemo(
     () =>
@@ -255,7 +264,7 @@ export function RoundWizardPage(): React.JSX.Element {
             ))}
           </div>
           {!profile.ballotRequired && (
-            <div className="notice" style={{ marginTop: 12 }}>
+            <div className="notice mt-3">
               Für eine offene Abstimmung wird kein Stimmzettel erzeugt. Es wird lediglich das Ergebnis
               dokumentiert.
             </div>
@@ -266,7 +275,7 @@ export function RoundWizardPage(): React.JSX.Element {
       {step === 2 && (
         <Card title="Parameter">
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field
                 label="Zu besetzende Positionen"
                 hint={profile.multiSeat ? undefined : 'Dieses Verfahren sieht genau eine Position vor.'}
@@ -282,7 +291,7 @@ export function RoundWizardPage(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Maximale Stimmenzahl">
                 <NumberInput
                   value={maxVotes ?? 0}
@@ -301,12 +310,15 @@ export function RoundWizardPage(): React.JSX.Element {
 
           {(procedure === 'two_stage_stage_2_block' || procedure === 'two_stage_stage_2_single') && (
             <div className="row">
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Erster Listenplatz">
-                  <NumberInput value={seatStart ?? 0} onChange={(value) => setSeatStart(value || undefined)} />
+                  <NumberInput
+                    value={seatStart ?? 0}
+                    onChange={(value) => setSeatStart(value || undefined)}
+                  />
                 </Field>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="col">
                 <Field label="Letzter Listenplatz">
                   <NumberInput value={seatEnd ?? 0} onChange={(value) => setSeatEnd(value || undefined)} />
                 </Field>
@@ -342,9 +354,12 @@ export function RoundWizardPage(): React.JSX.Element {
           </Field>
 
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Kandidatenreihenfolge">
-                <select value={orderMode} onChange={(e) => setOrderMode(e.target.value as CandidateOrderMode)}>
+                <select
+                  value={orderMode}
+                  onChange={(e) => setOrderMode(e.target.value as CandidateOrderMode)}
+                >
                   {CANDIDATE_ORDER_MODES.map((mode) => (
                     <option key={mode} value={mode}>
                       {CANDIDATE_ORDER_LABELS[mode]}
@@ -353,7 +368,7 @@ export function RoundWizardPage(): React.JSX.Element {
                 </select>
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Wahlgangnummer" hint={`Vorschlag: ${roundLabelFor(nextSequential)}`}>
                 <input
                   value={roundLabel}
@@ -378,7 +393,9 @@ export function RoundWizardPage(): React.JSX.Element {
           ) : (
             <Field
               label="Schnellerfassung – ein Eintrag je Zeile"
-              hint={'Unterstützt "Max Mustermann" und "Mustermann, Max". Mehrere Namen können eingefügt werden.'}
+              hint={
+                'Unterstützt "Max Mustermann" und "Mustermann, Max". Mehrere Namen können eingefügt werden.'
+              }
             >
               <textarea
                 value={candidateText}
@@ -443,7 +460,7 @@ export function RoundWizardPage(): React.JSX.Element {
           </table>
 
           {issues.length > 0 && (
-            <div style={{ marginTop: 12 }}>
+            <div className="mt-3">
               {issues.map((issue, index) => (
                 <div key={index} className={`notice ${issue.level === 'error' ? 'error' : 'warn'}`}>
                   {issue.message}
@@ -460,7 +477,10 @@ export function RoundWizardPage(): React.JSX.Element {
       )}
 
       <div className="row">
-        <button disabled={step === 0} onClick={() => setStep((current) => current - 1)}>
+        {/* Eine Reihe, eine Größe: Nebeneinander stehende Knöpfe verschiedener
+            Höhe wirken wie ein Fehler, nicht wie eine Gewichtung. Die
+            Gewichtung macht die Farbe. */}
+        <button className="big" disabled={step === 0} onClick={() => setStep((current) => current - 1)}>
           Zurück
         </button>
         {step < STEPS.length - 1 ? (
@@ -477,7 +497,7 @@ export function RoundWizardPage(): React.JSX.Element {
           </button>
         )}
         <span className="spacer" />
-        <button className="ghost" onClick={() => navigate('dashboard')}>
+        <button className="ghost big" onClick={() => navigate('dashboard')}>
           Abbrechen
         </button>
       </div>
