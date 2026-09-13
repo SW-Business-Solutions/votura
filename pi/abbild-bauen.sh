@@ -165,8 +165,7 @@ cat <<ENDE
   Prüfsumme: $(cat "$ziel.xz.sha256")
 
   Auf eine Karte schreiben:
-    rpi-imager --repo https://getvotura.de/pi/os-list.json
-  oder im Imager „Eigenes Abbild verwenden" und die Datei wählen.
+    Raspberry Pi Imager öffnen, „Eigenes Abbild verwenden", diese Datei wählen.
 
   Der erste Start auf echter Hardware bleibt Pflicht — ein Emulator hat
   keinen Beamerausgang.
