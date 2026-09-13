@@ -1,8 +1,8 @@
 {
   "name": "votura",
   "productName": "Votura",
-  "version": "0.14.0",
-  "description": "Offline-Verwaltung von Wahlgängen und Druck papierbasierter Stimmzettel für Mitgliederversammlungen",
+  "version": "1.0.0",
+  "description": "Software für die Mitgliederversammlung: Wahlgänge, Stimmzettel, Beamer und Pult — vollständig offline",
   "author": "Steven Weissheimer",
   "license": "UNLICENSED",
   "private": true,

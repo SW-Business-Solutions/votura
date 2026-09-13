@@ -5,7 +5,7 @@
  * Beamer soll. Der Aufruf schaltet die Projektion um; zurück zum Wahlgang
  * geht es mit jeder anderen Schaltfläche auf dieser Seite.
  */
-import { useEffect, useState, type JSX } from 'react'
+import { Fragment, useEffect, useState, type JSX } from 'react'
 import { presentationKind, type PresentationInfo, type PrompterWindowState } from '@shared/presentation'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
@@ -129,34 +129,46 @@ export function PresentationLibrary(): JSX.Element {
               <th>Art</th>
               <th>Folien</th>
               <th>Größe</th>
-              <th />
             </tr>
           </thead>
           <tbody>
             {liste.map((eintrag) => {
               const laufend = eintrag.id === laufendeId && projection.mode === 'presentation'
               return (
-                <tr key={eintrag.id} className={laufend ? 'active' : undefined}>
-                  <td>
-                    <strong>{eintrag.title}</strong>
-                    {laufend && <span className="badge accent badge-nach">auf dem Beamer</span>}
-                    <div className="hint">{eintrag.fileName}</div>
-                  </td>
-                  <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
-                  <td>{eintrag.slideCount ?? '–'}</td>
-                  <td>{groesse(eintrag.size)}</td>
-                  <td className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                    <button onClick={() => void zeigen(eintrag.id)} disabled={laufend}>
-                      Auf den Beamer
-                    </button>
-                    <button className="ghost" onClick={() => void umbenennen(eintrag)}>
-                      Umbenennen
-                    </button>
-                    <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
-                      Entfernen
-                    </button>
-                  </td>
-                </tr>
+                /*
+                 * Die Knöpfe stehen unter dem Eintrag, nicht daneben.
+                 *
+                 * Neben vier Spalten gedrängt wurden sie schmal und rückten
+                 * an den Rand; darunter haben sie ihre Breite und liegen dort,
+                 * wo der Blick nach dem Lesen des Namens ohnehin ankommt.
+                 */
+                <Fragment key={eintrag.id}>
+                  <tr className={laufend ? 'active' : undefined}>
+                    <td>
+                      <strong>{eintrag.title}</strong>
+                      {laufend && <span className="badge accent badge-nach">auf dem Beamer</span>}
+                      <div className="hint">{eintrag.fileName}</div>
+                    </td>
+                    <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
+                    <td>{eintrag.slideCount ?? '–'}</td>
+                    <td>{groesse(eintrag.size)}</td>
+                  </tr>
+                  <tr className={`aktionen${laufend ? ' active' : ''}`}>
+                    <td colSpan={4}>
+                      <div className="row">
+                        <button onClick={() => void zeigen(eintrag.id)} disabled={laufend}>
+                          Auf den Beamer
+                        </button>
+                        <button className="ghost" onClick={() => void umbenennen(eintrag)}>
+                          Umbenennen
+                        </button>
+                        <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
+                          Entfernen
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
               )
             })}
           </tbody>

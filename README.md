@@ -4,8 +4,14 @@
 </p>
 
 
-Offline-Desktopanwendung zur Verwaltung von Wahlgängen und zum Druck papierbasierter
-Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederversammlungen.
+**Software für die Mitgliederversammlung.** Wahlgänge, Stimmzettel, Beamer und Pult — vollständig
+offline auf einem Rechner.
+
+Votura begleitet eine Versammlung von der Tagesordnung bis zum Ergebnis an der Wand: Es bereitet
+Wahlgänge vor, druckt die Stimmzettel auf Thermodruckern, führt die Auszählung, stellt das Ergebnis
+fest — und bespielt dabei bis zu vier Anzeigeflächen im Saal mit Kandidatenlisten, Foliensätzen,
+Filmen und Redezeituhren. Wer vorn steht, liest am Teleprompter, der auf Wunsch mithört und dem
+Gesprochenen folgt.
 
 > **Das System ist kein elektronisches Wahlsystem.** Die Stimme existiert ausschließlich auf dem
 > anonymen Papier-Stimmzettel. Die Software kennt Wahlgang, Kandidaten, Stückzahlen und Ergebnis —
@@ -21,9 +27,11 @@ Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederv
 | Plattform | Electron 43 (Chromium + Node 24), React 19, TypeScript |
 | Datenhaltung | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil |
 | Druck | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe |
-| Beamer | Zweites, rein lesendes Fenster + optionale Netzwerkansicht im Browser |
+| Bühnen | Bis zu vier Anzeigeflächen, je eigenes Fenster und eigene Netzadresse, gemeinsam schaltbar |
+| Beamer | Rein lesende Fenster + optionale Netzwerkansicht im Browser |
 | Präsentationen | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster |
 | Video | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr |
+| Teleprompter | Reden als Markdown, eigener Netzendpunkt, Spiegelung, Mitlaufen nach Gehör |
 | Ergebnis | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
 | Installation | Windows-Installer (NSIS) und portable Fassung |
@@ -308,6 +316,10 @@ im eigenen Fenster oder auf einem beliebigen Gerät über einen **eigenen Netzen
   und `−` ändern das Tempo, `M` spiegelt. Dieselben Werte liegen in der Bedienung.
 - **Die Redezeit der Vorstellung** lässt sich auf den Prompter holen — dann sieht die vortragende
   Person dieselbe Uhr wie der Saal.
+- **Mitlaufen nach Gehör** (Laufart *Nach Stimme*): Der Prompter hört mit und setzt die Stelle
+  dorthin, wo gesprochen wird. Vollständig auf dem Gerät — aufgenommen wird nichts, nach außen
+  wandert allein eine Zahl. Ein kleines deutsches Sprachmodell liegt bei; ein größeres lässt sich
+  in den Einstellungen darüberlegen.
 
 ![Bedienung des Prompters](docs/screenshots/25-prompter-bedienung.png)
 

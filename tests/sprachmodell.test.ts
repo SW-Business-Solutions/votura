@@ -87,3 +87,17 @@ describe('Das Modell liegt außerhalb des Repositories', () => {
     expect(werkzeug).toContain('Prüfsumme stimmt nicht')
   })
 })
+
+describe('Der zurückhaltende Warnknopf bleibt lesbar', () => {
+  it('setzt die Warnfarbe in Schrift und Rand, nicht in die Fläche', () => {
+    /*
+     * `ghost` nimmt den Grund weg, `danger` hatte die weiße Schrift gesetzt —
+     * im hellen Design stand damit Weiß auf Weiß. Der Fall braucht eine
+     * eigene Regel, weil beide Klassen zusammen vorkommen.
+     */
+    const stile = lies('src/renderer/src/styles/app.css')
+    expect(stile).toContain('button.ghost.danger')
+    const regel = stile.slice(stile.indexOf('button.ghost.danger {'))
+    expect(regel.slice(0, regel.indexOf('}'))).toContain('color: var(--danger)')
+  })
+})

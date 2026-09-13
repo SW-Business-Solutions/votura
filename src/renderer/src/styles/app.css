@@ -358,6 +358,24 @@ button.danger {
 button.ghost {
   background: transparent;
 }
+
+/*
+ * Zurückhaltend **und** warnend.
+ *
+ * `ghost` nimmt den Grund weg, `danger` hatte die weiße Schrift gesetzt — im
+ * hellen Design stand damit Weiß auf Weiß. Ein zurückhaltender Warnknopf
+ * trägt die Warnfarbe in Schrift und Rand, nicht in der Fläche.
+ */
+button.ghost.danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.ghost.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: var(--danger);
+}
 button.big {
   min-height: var(--knopf-hoehe-gross);
   padding: 12px 22px;
@@ -1124,4 +1142,42 @@ input.haken[type='checkbox'] {
   width: 18px;
   height: 18px;
   flex: none;
+}
+
+/*
+ * Eine Zeile mit den Knöpfen unter dem Eintrag.
+ *
+ * Neben vier Spalten gedrängt wurden die Knöpfe schmal und rückten an den
+ * Rand. Darunter haben sie ihre Breite — und liegen dort, wo der Blick nach
+ * dem Lesen des Namens ohnehin ankommt. Der fehlende Trennstrich zur Zeile
+ * darüber hält beides als **einen** Eintrag zusammen.
+ */
+tr.aktionen > td {
+  border-top: none;
+  padding-top: 0;
+  padding-bottom: var(--abstand-3);
+}
+
+tr.aktionen.active > td {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/*
+ * Ein Schalter, der zu einer einzelnen Schaltfläche darüber gehört.
+ *
+ * Zwischen gleichrangigen Knöpfen sieht ein Haken wie eine allgemeine
+ * Einstellung aus. Eingerückt und mit einer Marke davor ist erkennbar, worauf
+ * er sich bezieht.
+ */
+.beamer-nebenschalter {
+  margin-top: var(--abstand-3);
+  padding-left: var(--abstand-3);
+  border-left: 2px solid var(--border);
+}
+
+.beamer-nebenschalter-marke {
+  display: block;
+  margin-bottom: var(--abstand-1);
+  font-size: 13px;
+  color: var(--text-muted);
 }

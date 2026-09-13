@@ -13,7 +13,7 @@
  * Uhr im Zustand. Das ist die Zahl, an der sich alle Bildschirme ausrichten —
  * und damit die einzige, die für die Bedienung etwas aussagt.
  */
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { Fragment, useEffect, useRef, useState, type JSX } from 'react'
 import type { VideoInfo } from '@shared/video'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
@@ -190,33 +190,40 @@ export function VideoLibrary(): JSX.Element {
               <th>Video</th>
               <th>Länge</th>
               <th>Größe</th>
-              <th />
             </tr>
           </thead>
           <tbody>
             {liste.map((eintrag) => (
-              <tr key={eintrag.id}>
-                <td>
-                  <strong>{eintrag.title}</strong>
-                  {video?.id === eintrag.id && <span className="badge"> auf dem Beamer</span>}
-                  <div className="mono" style={{ opacity: 0.7 }}>
-                    {eintrag.fileName}
-                  </div>
-                </td>
-                <td>{zeit(eintrag.durationSeconds)}</td>
-                <td>{groesse(eintrag.size)}</td>
-                <td>
-                  <div className="row">
-                    <button onClick={() => void zeigen(eintrag.id)} disabled={video?.id === eintrag.id}>
-                      Auf den Beamer
-                    </button>
-                    <button onClick={() => void umbenennen(eintrag)}>Umbenennen</button>
-                    <button className="danger" onClick={() => void entfernen(eintrag)}>
-                      Entfernen
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              /* Wie bei den Präsentationen: Die Knöpfe stehen unter dem
+                 Eintrag, nicht in einer schmalen Spalte daneben. */
+              <Fragment key={eintrag.id}>
+                <tr className={video?.id === eintrag.id ? 'active' : undefined}>
+                  <td>
+                    <strong>{eintrag.title}</strong>
+                    {video?.id === eintrag.id && (
+                      <span className="badge accent badge-nach">auf dem Beamer</span>
+                    )}
+                    <div className="hint">{eintrag.fileName}</div>
+                  </td>
+                  <td>{zeit(eintrag.durationSeconds)}</td>
+                  <td>{groesse(eintrag.size)}</td>
+                </tr>
+                <tr className={`aktionen${video?.id === eintrag.id ? ' active' : ''}`}>
+                  <td colSpan={3}>
+                    <div className="row">
+                      <button onClick={() => void zeigen(eintrag.id)} disabled={video?.id === eintrag.id}>
+                        Auf den Beamer
+                      </button>
+                      <button className="ghost" onClick={() => void umbenennen(eintrag)}>
+                        Umbenennen
+                      </button>
+                      <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
+                        Entfernen
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>

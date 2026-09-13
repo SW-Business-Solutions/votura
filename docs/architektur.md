@@ -1,5 +1,9 @@
 # Architektur
 
+Votura verwaltet Wahlgänge und druckt Stimmzettel, bespielt bis zu vier Anzeigeflächen im Saal und
+führt das Pult vorn — alles in einer Anwendung, auf einem Rechner, ohne Netz nach außen. Dieses
+Dokument beschreibt, wie das zusammenhängt und warum es so und nicht anders gebaut ist.
+
 ## Leitgedanke
 
 Die Priorität ist in dieser Reihenfolge: Zuverlässigkeit, Wahlgeheimnis, Nachvollziehbarkeit,

@@ -454,14 +454,25 @@ export function BeamerPage(): React.JSX.Element {
                 Tagesordnung (aktueller Punkt)
               </button>
             </div>
-            <Checkbox
-              checked={showAll}
-              onChange={(value) => {
-                setShowAll(value)
-                if (projection.mode === 'result') void setMode('result', { showAll: value })
-              }}
-              label="Vollständiges Ergebnis anzeigen – auch nicht gewählte Bewerber mit Stimmenzahl"
-            />
+            {/*
+             * Der Haken gehört zu einem einzigen dieser Knöpfe.
+             *
+             * Zwischen zwölf gleichrangigen Schaltflächen stand er wie eine
+             * allgemeine Einstellung da und war doch nur für „Ergebnis
+             * anzeigen" gedacht. Eingerückt unter der Reihe, mit dem Bezug
+             * im Text, ist er das, was er ist: eine Beigabe zum Ergebnis.
+             */}
+            <div className="beamer-nebenschalter">
+              <span className="beamer-nebenschalter-marke">Zum Ergebnis</span>
+              <Checkbox
+                checked={showAll}
+                onChange={(value) => {
+                  setShowAll(value)
+                  if (projection.mode === 'result') void setMode('result', { showAll: value })
+                }}
+                label="Vollständig anzeigen – auch nicht gewählte Bewerber mit Stimmenzahl"
+              />
+            </div>
           </Card>
         </div>
 

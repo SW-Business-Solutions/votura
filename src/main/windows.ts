@@ -89,7 +89,7 @@ export function createOperatorWindow(): BrowserWindow {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    title: 'Votura – Wahlgangverwaltung',
+    title: 'Votura – Software für die Mitgliederversammlung',
     icon: fensterSymbol(),
     backgroundColor: '#111417',
     webPreferences: {

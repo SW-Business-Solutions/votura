@@ -120,7 +120,7 @@ export function App(): React.JSX.Element {
               Design (siehe app.css). */}
           <img className="brand-logo hell" src={logoHell} alt="Votura" />
           <img className="brand-logo dunkel" src={logo} alt="Votura" />
-          <small>Wahlgang- und Stimmzettelverwaltung</small>
+          <small>Software für die Mitgliederversammlung</small>
         </div>
 
         <NavItem
