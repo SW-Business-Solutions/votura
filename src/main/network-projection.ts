@@ -159,6 +159,32 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
+  /*
+   * Die **einzige** schreibende Stelle dieses Servers.
+   *
+   * Sie bewegt keine Wahldaten, sondern das Manuskript vor der Nase der
+   * vortragenden Person: anhalten, weiterlaufen, eine Stelle zurück, Tempo,
+   * Schriftgröße. Erlaubt ist genau diese Liste — was nicht darin steht, wird
+   * abgewiesen, nicht geprüft. Und das Ganze nur, wenn es ausdrücklich
+   * freigeschaltet wurde (§51).
+   */
+  if (url.pathname === '/api/prompter/control') {
+    if (!config?.allowPrompterControl || !dispatcher) {
+      deny(response, 403, 'Die Bedienung der Prompteransicht ist nicht freigeschaltet.')
+      return
+    }
+    if (request.method !== 'POST') {
+      deny(response, 405, 'Diese Stelle nimmt nur POST an.')
+      return
+    }
+    if (!tokenValid(request, url)) {
+      deny(response, 401, 'Zugriffstoken fehlt oder ist falsch.')
+      return
+    }
+    await handlePrompterControl(request, response, dispatcher)
+    return
+  }
+
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     // Alles Übrige ist ausschließlich lesend.
     deny(response, 405, 'Diese Ansicht ist nur zum Lesen.')
@@ -346,6 +372,62 @@ export function broadcastProjection(buehne: number, state: ProjectionState): voi
     } catch {
       clients.delete(client)
     }
+  }
+}
+
+/**
+ * Was ein Gerät am Pult auslösen darf.
+ *
+ * Bewusst eine Liste und keine Regel: Wer sie erweitern will, muss den Namen
+ * hier hinschreiben und dabei überlegen, ob er wirklich hingehört.
+ */
+const PROMPTER_BEFEHLE = new Set([
+  'prompter.setRunning',
+  'prompter.setPosition',
+  'prompter.nudge',
+  'prompter.setTempo',
+  'prompter.setDarstellung',
+  'prompter.setAnsicht',
+  'prompter.setLaufart'
+])
+
+async function handlePrompterControl(
+  request: IncomingMessage,
+  response: ServerResponse,
+  ruf: RemoteDispatcher
+): Promise<void> {
+  const stuecke: Buffer[] = []
+  let bytes = 0
+  for await (const stueck of request) {
+    bytes += (stueck as Buffer).length
+    /* Ein Befehl ist ein paar Dutzend Zeichen lang; alles darüber ist nichts,
+       was hier ankommen sollte. */
+    if (bytes > 8192) {
+      deny(response, 413, 'Die Anfrage ist zu groß.')
+      return
+    }
+    stuecke.push(stueck as Buffer)
+  }
+  let eingabe: { method?: string; args?: unknown[] }
+  try {
+    eingabe = JSON.parse(Buffer.concat(stuecke).toString('utf8'))
+  } catch {
+    deny(response, 400, 'Die Anfrage ist unlesbar.')
+    return
+  }
+  if (!eingabe.method || !PROMPTER_BEFEHLE.has(eingabe.method)) {
+    deny(response, 403, 'Dieser Befehl ist am Pult nicht erlaubt.')
+    return
+  }
+  try {
+    const daten = await ruf(eingabe.method, Array.isArray(eingabe.args) ? eingabe.args : [])
+    response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+    response.end(JSON.stringify({ ok: true, data: daten }))
+  } catch (fehler) {
+    const text = fehler instanceof Error ? fehler.message : String(fehler)
+    logger.warn(`Prompterbefehl ${eingabe.method}: ${text}`)
+    response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+    response.end(JSON.stringify({ ok: false, error: text }))
   }
 }
 

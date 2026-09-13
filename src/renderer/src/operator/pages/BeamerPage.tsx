@@ -893,6 +893,7 @@ function NetworkSection({
   const [token, setToken] = useState(status.token)
   const [lanWide, setLanWide] = useState(status.bindAddress !== '127.0.0.1')
   const [allowRemoteOperator, setAllowRemoteOperator] = useState(status.allowRemoteOperator)
+  const [allowPrompterControl, setAllowPrompterControl] = useState(status.allowPrompterControl)
 
   const save = async (): Promise<void> => {
     try {
@@ -901,7 +902,8 @@ function NetworkSection({
         port,
         bindAddress: lanWide ? '0.0.0.0' : '127.0.0.1',
         token,
-        allowRemoteOperator
+        allowRemoteOperator,
+        allowPrompterControl
       })
       onChange(next)
       app.notify(next.running ? 'ok' : 'info', next.running ? 'Netzwerkansicht läuft.' : 'Netzwerkansicht deaktiviert.')
@@ -955,6 +957,34 @@ function NetworkSection({
           über ein fremdes oder offenes WLAN darf sie nicht laufen.
         </div>
       )}
+
+      <h3>Bedienung der Prompteransicht</h3>
+      <p className="hint">
+        Die Prompteransicht (<span className="mono">/prompter</span>) zeigt normalerweise nur an. Wer am
+        Pult steht, hat aber oft ein Tablet vor sich und niemanden am Board — dann muss eine
+        Verhaspelung dort zu beheben sein. Freigegeben wird ausschließlich das eigene Manuskript:
+        anhalten, weiterlaufen, eine Stelle zurück, Tempo, Schriftgröße, Umschalten auf die Folien.
+        An Wahldaten kommt diese Freigabe nicht heran.
+      </p>
+      <Checkbox
+        checked={allowPrompterControl}
+        onChange={setAllowPrompterControl}
+        label="Bedienung am Pult über das Netz erlauben"
+      />
+
+      <h3>Bedienung der Prompteransicht</h3>
+      <p className="hint">
+        Die Prompteransicht (<span className="mono">/prompter</span>) zeigt normalerweise nur an. Wer am
+        Pult steht, hat aber oft ein Tablet vor sich und niemanden am Board — dann muss eine Verhaspelung
+        dort zu beheben sein. Freigegeben wird ausschließlich das eigene Manuskript: anhalten,
+        weiterlaufen, eine Stelle zurück, Tempo, Schriftgröße, Umschalten auf die Folien. An Wahldaten
+        kommt diese Freigabe nicht heran; eine Anmeldung braucht sie deshalb auch nicht.
+      </p>
+      <Checkbox
+        checked={allowPrompterControl}
+        onChange={setAllowPrompterControl}
+        label="Bedienung am Pult über das Netz erlauben"
+      />
 
       <div className="row">
         <button className="primary" onClick={() => void save()}>

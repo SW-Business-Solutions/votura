@@ -222,7 +222,22 @@ function hardenSecurity(): void {
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
   })
 
-  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+  /*
+   * Rechte: grundsätzlich nichts — mit **einer** Ausnahme.
+   *
+   * Der Teleprompter darf das Mikrofon anfragen, und nur er: Damit hört er
+   * mit, wo im Manuskript gerade gesprochen wird. Aufgenommen wird nichts,
+   * der Ton verlässt das Gerät nicht, und die Erkennung läuft an Ort und
+   * Stelle. Erkennbar ist das Fenster an seinem eigenen Schema — kein anderes
+   * lädt von dort, und eine Präsentation im Rahmen erst recht nicht.
+   */
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+    const vomPult = contents.getURL().startsWith(`${PULT_SCHEME}://`)
+    callback(vomPult && permission === 'media')
+  })
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft) => {
+    return herkunft.startsWith(`${PULT_SCHEME}://`) && permission === 'media'
+  })
 
   // Strenge CSP: alles aus dem Paket, nichts aus dem Netz.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

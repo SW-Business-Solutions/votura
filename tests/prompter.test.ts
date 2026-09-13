@@ -130,6 +130,26 @@ describe('Der Prompter geht seinen eigenen Weg', () => {
     expect(dienst).not.toContain("from './projection'")
   })
 
+  it('lässt am Pult nur Prompterbefehle zu', () => {
+    /*
+     * Die einzige schreibende Stelle des Projektionsservers. Sie darf das
+     * Manuskript bewegen und sonst nichts — die Liste ist die Grenze.
+     */
+    const server = lies('src/main/network-projection.ts')
+    expect(server).toContain('/api/prompter/control')
+    expect(server).toContain('allowPrompterControl')
+    expect(server).toContain('PROMPTER_BEFEHLE')
+    /* Kein Wahlgang, kein Druck, kein Ergebnis. */
+    const liste = /const PROMPTER_BEFEHLE = new Set\(\[([^\]]*)\]\)/.exec(server)?.[1] ?? ''
+    expect(liste).not.toMatch(/round\.|print\.|result\.|ballot\./)
+    expect(liste.match(/'/g)?.length).toBe(14)
+  })
+
+  it('ist standardmäßig aus', () => {
+    const vorgabe = lies('src/shared/config.ts')
+    expect(vorgabe).toContain('allowPrompterControl: false')
+  })
+
   it('verankert die Stelle, bevor sich das Tempo ändert', () => {
     /* Sonst rechnete jedes Gerät die verstrichene Zeit mit dem neuen Tempo
        neu, und die Rede rutschte um Minuten. */
