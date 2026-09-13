@@ -13,10 +13,13 @@
  */
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ApiMethod, ApiParams, ApiResult, IpcChannels } from '@shared/ipc'
+import type { ProjectionState } from '@shared/projection'
 import type { PrompterViewState } from '@shared/speech'
 
 const CHANNEL_VIEW: IpcChannels['prompterView'] = 'wz:prompter-view'
 const CHANNEL_API: IpcChannels['api'] = 'wz:api'
+const CHANNEL_PROJECTION: IpcChannels['projectionState'] = 'wz:projection-state'
+const CHANNEL_BEAMER_SIZE: IpcChannels['beamerSize'] = 'wz:beamer-size'
 
 type Antwort<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -27,7 +30,12 @@ const ERLAUBT = new Set<string>([
   'prompter.setPosition',
   'prompter.nudge',
   'prompter.setTempo',
-  'prompter.setDarstellung'
+  'prompter.setDarstellung',
+  'prompter.setAnsicht',
+  'prompter.setLaufart',
+  /* Nur lesend, und nur, um die laufenden Folien am Pult zu zeigen. */
+  'projection.state',
+  'projection.buehnen'
 ])
 
 async function rufe<M extends ApiMethod>(method: M, ...args: ApiParams<M>): Promise<ApiResult<M>> {
@@ -43,6 +51,23 @@ const bridge = {
     const handler = (_event: unknown, state: PrompterViewState): void => callback(state)
     ipcRenderer.on(CHANNEL_VIEW, handler)
     return () => ipcRenderer.removeListener(CHANNEL_VIEW, handler)
+  },
+
+  /** Was an der Wand steht — für die Vortragsansicht am Pult. */
+  onProjectionChange: (
+    callback: (nachricht: { buehne: number; state: ProjectionState }) => void
+  ): (() => void) => {
+    const handler = (_event: unknown, nachricht: { buehne: number; state: ProjectionState }): void =>
+      callback(nachricht)
+    ipcRenderer.on(CHANNEL_PROJECTION, handler)
+    return () => ipcRenderer.removeListener(CHANNEL_PROJECTION, handler)
+  },
+
+  /** Größe des Beamerfensters, damit die Folienvorschau im selben Format rechnet. */
+  beamerSize: (callback: (size: { width: number; height: number }) => void): (() => void) => {
+    const handler = (_event: unknown, size: { width: number; height: number }): void => callback(size)
+    ipcRenderer.on(CHANNEL_BEAMER_SIZE, handler)
+    return () => ipcRenderer.removeListener(CHANNEL_BEAMER_SIZE, handler)
   }
 }
 

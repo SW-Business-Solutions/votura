@@ -2,8 +2,10 @@ import { app, BrowserWindow, dialog, Menu, protocol, session } from 'electron'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { readFile } from 'node:fs/promises'
+import { extname, join, resolve } from 'node:path'
 import { PRESENTATION_SCHEME, presentationKind } from '@shared/presentation'
 import { VIDEO_SCHEME } from '@shared/video'
+import { PULT_SCHEME } from '@shared/speech'
 import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
@@ -81,8 +83,58 @@ protocol.registerSchemesAsPrivileged([
    * Chromium die Antwort als ein Stück und spielt das Video erst ab, wenn es
    * vollständig da ist. Ein Film von 300 MB stünde dann minutenlang schwarz.
    */
-  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }
+  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } },
+  /*
+   * Die Prompterseite braucht eine **echte Herkunft**.
+   *
+   * Unter `file://` verweigert Chromium Web Worker — und die Spracherkennung
+   * läuft in einem. Als `standard` und `secure` angemeldet, verhält sich das
+   * Schema wie eine Webseite: Worker, WebAssembly und Mikrofonzugriff sind
+   * möglich, ohne dass ein Server laufen müsste.
+   */
+  {
+    scheme: PULT_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
 ])
+
+/**
+ * Die gebaute Oberfläche unter eigenem Schema.
+ *
+ * Ausgeliefert wird ausschließlich der Ordner mit den gebauten Dateien; ein
+ * Pfad, der aus ihm herausführt, wird abgewiesen. Damit ist dieses Schema
+ * kein Fenster ins Dateisystem, sondern nur eine andere Adresse für das, was
+ * ohnehin im Programm steckt.
+ */
+function registerPultProtocol(): void {
+  const wurzel = resolve(join(__dirname, '../renderer'))
+  const typen: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.wasm': 'application/wasm',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.woff2': 'font/woff2'
+  }
+  protocol.handle(PULT_SCHEME, async (request) => {
+    const pfad = new URL(request.url).pathname
+    const datei = resolve(join(wurzel, decodeURIComponent(pfad)))
+    if (!datei.startsWith(wurzel)) return new Response('Zugriff verweigert.', { status: 403 })
+    if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
+    return new Response(await readFile(datei), {
+      headers: { 'Content-Type': typen[extname(datei).toLowerCase()] ?? 'application/octet-stream' }
+    })
+  })
+}
 
 function registerPresentationProtocol(): void {
   protocol.handle(PRESENTATION_SCHEME, async () => {
@@ -258,6 +310,7 @@ async function bootstrap(): Promise<void> {
   restoreProjection()
   registerPresentationProtocol()
   registerVideoProtocol()
+  registerPultProtocol()
   registerIpc()
   // Der Fernzugriff nutzt dieselbe API wie das Hauptfenster.
   setRemoteDispatcher((method, args) => callApi(method, args))
@@ -275,6 +328,7 @@ async function bootstrap(): Promise<void> {
     sendToOperator(IPC.projectionState, { buehne, state })
     sendToAudience(buehne, IPC.projectionState, { buehne, state })
     sendToPrompter(IPC.projectionState, { buehne, state })
+    sendToTeleprompter(IPC.projectionState, { buehne, state })
     broadcastProjection(buehne, state)
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))

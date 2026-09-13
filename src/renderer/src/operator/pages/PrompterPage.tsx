@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  prompterAmEnde,
   prompterPosition,
   redeDauer,
   redeWoerter,
@@ -108,9 +109,7 @@ export function PrompterPage(): React.JSX.Element {
   const woerterImEntwurf = useMemo(() => redeWoerter(entwurf), [entwurf])
 
   const stelle = prompterPosition(view, jetzt)
-  const zeilenGesamt = view.speech
-    ? Math.max(1, view.speech.markdown.split('\n').filter((zeile) => zeile.trim() !== '').length)
-    : 0
+  const amEnde = prompterAmEnde(view, jetzt)
 
   const prompterAdresse = netz?.running && netz.urls[0]
     ? `${netz.urls[0].split('?')[0].replace(/\/$/, '')}/prompter${netz.token ? `?t=${netz.token}` : ''}`
@@ -300,18 +299,18 @@ export function PrompterPage(): React.JSX.Element {
                     className={view.running ? '' : 'primary'}
                     onClick={() => void rufe(() => api('prompter.setRunning', !view.running))}
                   >
-                    {view.running ? 'Anhalten' : 'Starten'}
+                    {view.running ? 'Anhalten' : amEnde ? 'Von vorn' : 'Starten'}
                   </button>
                   <div className="segmented klein">
                     <button
-                      onClick={() => void rufe(() => api('prompter.nudge', -4))}
-                      title="Vier Zeilen zurück"
+                      onClick={() => void rufe(() => api('prompter.nudge', -12))}
+                      title="Ein Stück zurück"
                     >
                       ↑
                     </button>
                     <button
-                      onClick={() => void rufe(() => api('prompter.nudge', 4))}
-                      title="Vier Zeilen vor"
+                      onClick={() => void rufe(() => api('prompter.nudge', 12))}
+                      title="Ein Stück vor"
                     >
                       ↓
                     </button>
@@ -324,14 +323,53 @@ export function PrompterPage(): React.JSX.Element {
                 <div className="prompter-stand-balken" style={{ marginTop: 12 }}>
                   <div
                     className="prompter-stand-fuellung"
-                    style={{ width: `${Math.min(100, (stelle / zeilenGesamt) * 100)}%` }}
+                    style={{
+                      width: `${view.laenge > 0 ? Math.min(100, (stelle / view.laenge) * 100) : 0}%`
+                    }}
                   />
                 </div>
                 <div className="hint">
-                  Zeile {Math.round(stelle)} von etwa {zeilenGesamt}
+                  Wort {Math.round(stelle)} von {view.laenge}
+                  {amEnde
+                    ? ' — durchgelaufen'
+                    : ` · noch etwa ${mss(((view.laenge - stelle) / view.tempo) * 60)} min`}
                 </div>
 
-                <Field label={`Tempo — ${view.tempo} Zeilen je Minute`}>
+                {/* Was den Text bewegt. „Hand" ist kein Verlegenheitsposten:
+                    Bei einer Rede mit vielen Zwischenrufen ist Blättern von
+                    Hand ruhiger als jede Automatik. */}
+                <Field label="Was den Text bewegt">
+                  <div className="segmented">
+                    {(
+                      [
+                        ['auto', 'Gleichmäßig'],
+                        ['stimme', 'Nach Stimme'],
+                        ['hand', 'Von Hand']
+                      ] as const
+                    ).map(([wert, beschriftung]) => (
+                      <button
+                        key={wert}
+                        className={view.laufart === wert ? 'active' : ''}
+                        onClick={() => void rufe(() => api('prompter.setLaufart', wert))}
+                      >
+                        {beschriftung}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                {view.laufart === 'stimme' && (
+                  <div className="hint">
+                    Der Prompter hört mit und setzt die Stelle dorthin, wo gesprochen wird. Dafür
+                    muss am Pult ein Sprachmodell hinterlegt sein — siehe Einstellungen.
+                  </div>
+                )}
+                {view.laufart === 'hand' && (
+                  <div className="hint">
+                    Der Text bewegt sich nur, wenn hier oder am Pult geblättert wird.
+                  </div>
+                )}
+
+                <Field label={`Tempo — ${view.tempo} Wörter je Minute`}>
                   <input
                     type="range"
                     min={TEMPO_MIN}
@@ -348,6 +386,31 @@ export function PrompterPage(): React.JSX.Element {
                 </button>
               </>
             )}
+          </Card>
+
+          <Card title="Was am Pult zu sehen ist">
+            {/* Wer abliest, braucht den Text; wer frei spricht, die Folien.
+                Ein Wechsel rührt den Lauf nicht an — zurückgeschaltet steht
+                die Rede wieder an derselben Stelle. */}
+            <div className="segmented">
+              <button
+                className={view.ansicht === 'rede' ? 'active' : ''}
+                onClick={() => void rufe(() => api('prompter.setAnsicht', 'rede'))}
+              >
+                Redetext
+              </button>
+              <button
+                className={view.ansicht === 'vortrag' ? 'active' : ''}
+                onClick={() => void rufe(() => api('prompter.setAnsicht', 'vortrag'))}
+              >
+                Laufende Folien
+              </button>
+            </div>
+            <div className="hint">
+              {view.ansicht === 'rede'
+                ? 'Am Pult läuft der Redetext.'
+                : 'Am Pult stehen die Folie an der Wand und die nächste — wie in der Vortragssteuerung.'}
+            </div>
           </Card>
 
           <Card title="Darstellung am Pult">
@@ -421,6 +484,14 @@ export function PrompterPage(): React.JSX.Element {
               checked={view.zeigeUhr}
               onChange={(wert) => void rufe(() => api('prompter.setDarstellung', { zeigeUhr: wert }))}
               label="Restzeit einblenden"
+            />
+            {/* Nicht jede vortragende Person soll die Regler bedienen — und
+                nicht jede will es. Ohne Haken verschwindet die Leiste, und die
+                Tasten am Pult tun nichts. */}
+            <Checkbox
+              checked={view.bedienbar}
+              onChange={(wert) => void rufe(() => api('prompter.setDarstellung', { bedienbar: wert }))}
+              label="Bedienung am Pult erlauben"
             />
           </Card>
 

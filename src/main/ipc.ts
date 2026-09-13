@@ -19,7 +19,9 @@ import {
   loadSpeech,
   nudgePrompter,
   refreshSpeech,
+  setPrompterAnsicht,
   setPrompterDarstellung,
+  setPrompterLaufart,
   setPrompterPosition,
   setPrompterRunning,
   setPrompterTempo,
@@ -685,6 +687,8 @@ const api: Api = {
   'prompter.setTempo': async (tempo) => setPrompterTempo(tempo),
   'prompter.setDarstellung': async (aenderung) => setPrompterDarstellung(aenderung),
   'prompter.setUntil': async (until) => setPrompterUntil(until),
+  'prompter.setAnsicht': async (ansicht) => setPrompterAnsicht(ansicht),
+  'prompter.setLaufart': async (laufart) => setPrompterLaufart(laufart),
   'prompter.openWindow': async () => {
     requirePermission('round.manage')
     return openTeleprompterWindow()

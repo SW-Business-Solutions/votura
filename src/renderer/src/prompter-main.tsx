@@ -20,17 +20,10 @@
  * Pfeiltasten längst vergeben — sie bewegen sich durch Kandidatenlisten. Hier
  * gehören sie dem Vortrag, und das Fenster nimmt sie, sobald es vorn liegt.
  */
-import { StrictMode, useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { StrictMode, useCallback, useEffect, useState, type JSX } from 'react'
 import { createRoot } from 'react-dom/client'
-import {
-  PRESENTATION_CHANNEL,
-  isPresentationReport,
-  presentationKind,
-  presentationUrl,
-  type PresentationCommand,
-  type PresentationKind
-} from '@shared/presentation'
-import { PdfFrame } from './projection/PdfFrame'
+import { presentationKind, presentationUrl } from '@shared/presentation'
+import { FolienVorschau } from './prompter/FolienVorschau'
 import {
   BUEHNE_VORGABE,
   EMPTY_PROJECTION_STATE,
@@ -54,151 +47,6 @@ declare global {
   interface Window {
     prompter?: PrompterBridge
   }
-}
-
-/**
- * Eine Folienvorschau: derselbe Foliensatz, auf eine feste Folie gestellt.
- *
- * ## Warum beide Vorschauen dieselbe Fläche bekommen
- *
- * Ein Foliensatz richtet sich nach der Größe seines Fensters — er bricht um,
- * verteilt neu, blendet aus. Bekäme die kleinere Vorschau einfach ein
- * schmaleres Fenster, sähe sie nicht aus wie eine verkleinerte Folie, sondern
- * wie eine **andere**: umgebrochene Überschriften, verschobene Kästen,
- * abgeschnittener Text.
- *
- * Beide Rahmen rechnen deshalb mit der Größe des **Beamerfensters** und
- * werden anschließend auf ihre Kachel geschrumpft. Der Maßstab wird gemessen
- * und nicht gerechnet: `transform: scale()` verlangt eine reine Zahl, die sich
- * in CSS nicht aus einer Breite ableiten lässt.
- */
-function Vorschau({
-  presentationId,
-  art,
-  slide,
-  beamer,
-  gross,
-  onReport
-}: {
-  presentationId: string
-  art: PresentationKind
-  slide: number
-  beamer: { width: number; height: number }
-  gross?: boolean
-  onReport?: (slide: number, slideCount: number) => void
-}): JSX.Element {
-  const kachel = useRef<HTMLDivElement>(null)
-  const rahmen = useRef<HTMLIFrameElement>(null)
-  const [bereit, setBereit] = useState(false)
-  const [massstab, setMassstab] = useState(0)
-
-  /* Beim Wechsel des Foliensatzes laedt der Rahmen neu und meldet sich erst
-     danach wieder als bereit. */
-  useEffect(() => setBereit(false), [presentationId])
-
-  /* Der Maßstab folgt der Kachel — auch wenn das Fenster gezogen wird. */
-  useEffect(() => {
-    const element = kachel.current
-    if (!element) return
-    const messen = (): void => {
-      const breite = element.clientWidth
-      const hoehe = element.clientHeight
-      if (breite <= 0 || hoehe <= 0) return
-      setMassstab(Math.min(breite / beamer.width, hoehe / beamer.height))
-    }
-    messen()
-    const beobachter = new ResizeObserver(messen)
-    beobachter.observe(element)
-    return () => beobachter.disconnect()
-  }, [beamer.width, beamer.height])
-
-  /* Folienwechsel hineinreichen. */
-  useEffect(() => {
-    if (!bereit) return
-    const fenster = rahmen.current?.contentWindow
-    if (!fenster) return
-    const befehl: PresentationCommand = {
-      votura: PRESENTATION_CHANNEL,
-      type: 'goto',
-      slide
-    }
-    fenster.postMessage(befehl, '*')
-  }, [slide, bereit])
-
-  /*
-   * Was der Foliensatz über sich meldet, weiterreichen.
-   *
-   * Nur die große Vorschau tut das: Die kleine steht eine Folie weiter, ihre
-   * Meldung wuerde den Stand vorspulen.
-   */
-  useEffect(() => {
-    if (!onReport) return
-    function empfange(event: MessageEvent): void {
-      if (event.source !== rahmen.current?.contentWindow) return
-      if (!isPresentationReport(event.data)) return
-      onReport?.(event.data.slide, event.data.slideCount)
-    }
-    window.addEventListener('message', empfange)
-    return () => window.removeEventListener('message', empfange)
-  }, [onReport])
-
-  return (
-    <div className={`prompter-vorschau${gross ? ' gross' : ''}`} ref={kachel}>
-      <div
-        className="prompter-vorschau-flaeche"
-        style={{
-          width: `${beamer.width * massstab}px`,
-          height: `${beamer.height * massstab}px`
-        }}
-      >
-        {art === 'pdf' ? (
-          /* Ein PDF steuert sich nicht selbst; die Vorschau zeichnet die Seite
-             mit denselben Mitteln wie der Beamer. */
-          <div
-            style={{
-              width: `${beamer.width}px`,
-              height: `${beamer.height}px`,
-              transform: `scale(${massstab})`,
-              transformOrigin: 'top left',
-              position: 'absolute',
-              top: 0,
-              left: 0
-            }}
-          >
-            <PdfFrame
-              src={presentationUrl(presentationId, 'pdf')}
-              slide={slide}
-              /* Nur die große Vorschau meldet: Die kleine steht eine Seite
-                 weiter und würde den Stand vorspulen. */
-              onReport={onReport}
-            />
-          </div>
-        ) : (
-          <iframe
-            ref={rahmen}
-            src={presentationUrl(presentationId, 'html')}
-            sandbox="allow-scripts"
-            title={gross ? 'Aktuelle Folie' : 'Nächste Folie'}
-            tabIndex={-1}
-            onLoad={() => setBereit(true)}
-            style={{
-              width: `${beamer.width}px`,
-              height: `${beamer.height}px`,
-              transform: `scale(${massstab})`
-            }}
-          />
-        )}
-        {/*
-          Eine durchsichtige Fläche über dem Rahmen.
-
-          Ohne sie landet ein Klick **im** Foliensatz — der hat eigene
-          Schaltflächen, und ein versehentlicher Treffer brächte die Vorschau
-          aus dem Tritt, ohne dass der Beamer folgte.
-        */}
-        <div className="prompter-vorschau-schild" />
-      </div>
-    </div>
-  )
 }
 
 function Uhr(): JSX.Element {
@@ -399,8 +247,9 @@ function PrompterApp(): JSX.Element {
       <div className="prompter-buehne">
         <section className="prompter-jetzt">
           <h2>Auf dem Beamer</h2>
-          <Vorschau
+          <FolienVorschau
             presentationId={praesentation!.id}
+            quelle={presentationUrl(praesentation!.id, presentationKind(praesentation!))}
             art={presentationKind(praesentation!)}
             slide={folie}
             beamer={beamer}
@@ -413,8 +262,9 @@ function PrompterApp(): JSX.Element {
           {letzte ? (
             <div className="prompter-ende">Letzte Folie</div>
           ) : (
-            <Vorschau
+            <FolienVorschau
               presentationId={praesentation!.id}
+              quelle={presentationUrl(praesentation!.id, presentationKind(praesentation!))}
               art={presentationKind(praesentation!)}
               slide={folie + 1}
               beamer={beamer}

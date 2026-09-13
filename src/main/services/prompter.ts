@@ -12,7 +12,14 @@
  * sich seine Stelle selbst aus. Dieselbe Überlegung wie beim Video.
  */
 import { randomUUID } from 'node:crypto'
-import { prompterPosition, PROMPTER_VORGABE, type PrompterViewState } from '@shared/speech'
+import {
+  prompterPosition,
+  PROMPTER_VORGABE,
+  redeWoerter,
+  type Laufart,
+  type PrompterAnsicht,
+  type PrompterViewState
+} from '@shared/speech'
 import type { UUID } from '@shared/types'
 import { getSpeech } from './speeches'
 
@@ -79,11 +86,12 @@ function setze(aenderung: Partial<PrompterViewState>, verankern = true): Prompte
 
 /** Legt eine Rede auf den Prompter — von vorn, angehalten. */
 export function loadSpeech(id: UUID | undefined): PrompterViewState {
-  if (!id) return setze({ speech: undefined, position: 0, running: false })
+  if (!id) return setze({ speech: undefined, position: 0, laenge: 0, running: false })
   const rede = getSpeech(id)
   if (!rede) throw new Error('Diese Rede gibt es nicht.')
   return setze({
     speech: { id: rede.id, title: rede.title, markdown: rede.markdown },
+    laenge: redeWoerter(rede.markdown),
     position: 0,
     running: false
   })
@@ -100,10 +108,22 @@ export function refreshSpeech(id: UUID): PrompterViewState {
   if (state.speech?.id !== id) return getPrompterView()
   const rede = getSpeech(id)
   if (!rede) return getPrompterView()
-  return setze({ speech: { id: rede.id, title: rede.title, markdown: rede.markdown } })
+  return setze({
+    speech: { id: rede.id, title: rede.title, markdown: rede.markdown },
+    laenge: redeWoerter(rede.markdown)
+  })
 }
 
+/**
+ * Startet oder hält an.
+ *
+ * Ist die Rede durchgelaufen, beginnt „Starten" wieder von vorn. Sonst
+ * passierte gar nichts: Die Stelle steht am Ende, der Lauf zählt nicht
+ * weiter — und am Pult sähe es aus, als sei der Knopf kaputt.
+ */
 export function setPrompterRunning(running: boolean): PrompterViewState {
+  const amEnde = state.laenge > 0 && prompterPosition(state, Date.now()) >= state.laenge
+  if (running && amEnde) return setze({ running: true, position: 0 })
   return setze({ running })
 }
 
@@ -130,9 +150,35 @@ export function setPrompterTempo(tempo: number): PrompterViewState {
  * dass etwas läuft.
  */
 export function setPrompterDarstellung(
-  aenderung: Partial<Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'>>
+  aenderung: Partial<
+    Pick<
+      PrompterViewState,
+      'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr' | 'bedienbar'
+    >
+  >
 ): PrompterViewState {
   return setze(aenderung, false)
+}
+
+/**
+ * Rede oder Vortragsansicht.
+ *
+ * Ein Wechsel rührt den Lauf nicht an: Wer zwischendurch die Folien zeigt und
+ * zurückschaltet, steht wieder an derselben Stelle im Text.
+ */
+export function setPrompterAnsicht(ansicht: PrompterAnsicht): PrompterViewState {
+  return setze({ ansicht }, false)
+}
+
+/**
+ * Was den Text bewegt: Uhr, Stimme oder gar nichts.
+ *
+ * Vorher wird verankert, denn der Wechsel von `auto` auf etwas anderes hält
+ * den Lauf an — ohne Verankern stünde der Text plötzlich dort, wo er zuletzt
+ * verankert wurde, statt dort, wo er gerade ist.
+ */
+export function setPrompterLaufart(laufart: Laufart): PrompterViewState {
+  return setze({ laufart })
 }
 
 /** Die zugestandene Redezeit — dieselbe Uhr, die auch auf dem Beamer läuft. */

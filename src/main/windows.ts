@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { PrompterWindowState } from '@shared/presentation'
 import { HAUPTBUEHNE } from '@shared/projection'
+import { PULT_SCHEME } from '@shared/speech'
 import type { AudienceWindowState, DisplayInfo } from '@shared/projection'
 import { logger } from './logger'
 
@@ -57,6 +58,15 @@ function rendererUrl(page: Seite): { url?: string; file?: string } {
   if (process.env.ELECTRON_RENDERER_URL) {
     return { url: `${process.env.ELECTRON_RENDERER_URL}/${page === 'index' ? '' : `${page}.html`}` }
   }
+  /*
+   * Der Teleprompter läuft unter eigenem Schema, nicht unter `file://`.
+   *
+   * Grund ist die Spracherkennung: Chromium verweigert Web Worker auf Seiten
+   * ohne Herkunft. Ein angemeldetes Schema gibt der Seite eine — für alle
+   * anderen Fenster bleibt es beim Laden aus der Datei, dort wird nichts
+   * gebraucht, was eine Herkunft verlangt.
+   */
+  if (page === 'teleprompter') return { url: `${PULT_SCHEME}://pult/teleprompter.html` }
   return { file: join(__dirname, `../renderer/${page}.html`) }
 }
 
@@ -379,6 +389,7 @@ export function openTeleprompterWindow(): PrompterWindowState {
     emitTeleprompterState()
   })
 
+  teleprompterWindow.webContents.on('did-finish-load', emitBeamerSize)
   load(teleprompterWindow, 'teleprompter')
   emitTeleprompterState()
   return teleprompterState()
@@ -417,7 +428,11 @@ export function beamerContentSize(buehne = prompterBuehne): { width: number; hei
 }
 
 function emitBeamerSize(): void {
-  sendToPrompter(IPC.beamerSize, beamerContentSize())
+  const groesse = beamerContentSize()
+  sendToPrompter(IPC.beamerSize, groesse)
+  /* Der Teleprompter zeigt in der Vortragsansicht dieselbe Folie und muss
+     deshalb mit derselben Fläche rechnen. */
+  sendToTeleprompter(IPC.beamerSize, groesse)
 }
 
 /**

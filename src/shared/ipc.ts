@@ -16,7 +16,13 @@ import type {
 } from './projection'
 import type { Buehnenwahl } from './projection'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
-import type { PrompterViewState, SpeechContent, SpeechInfo } from './speech'
+import type {
+  Laufart,
+  PrompterAnsicht,
+  PrompterViewState,
+  SpeechContent,
+  SpeechInfo
+} from './speech'
 import type { VideoInfo } from './video'
 import type {
   AgendaItem,
@@ -582,11 +588,15 @@ export interface Api {
   'prompter.setTempo': (tempo: number) => Promise<PrompterViewState>
   'prompter.setDarstellung': (
     aenderung: Partial<
-      Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'>
+      Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr' | 'bedienbar'>
     >
   ) => Promise<PrompterViewState>
   /** Übernimmt die Redezeit der laufenden Vorstellung auf den Prompter. */
   'prompter.setUntil': (until?: string) => Promise<PrompterViewState>
+  /** Rede oder Vortragsansicht am Pult. */
+  'prompter.setAnsicht': (ansicht: PrompterAnsicht) => Promise<PrompterViewState>
+  /** Uhr, Stimme oder Handbetrieb. */
+  'prompter.setLaufart': (laufart: Laufart) => Promise<PrompterViewState>
   /** Öffnet das Prompterfenster am Hauptrechner. */
   'prompter.openWindow': () => Promise<PrompterWindowState>
   'prompter.closeWindow': () => Promise<PrompterWindowState>

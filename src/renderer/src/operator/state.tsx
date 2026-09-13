@@ -256,21 +256,27 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
 
   useEffect(() => {
     const offProgress = bridge.onPrintProgress(setPrintProgress)
-    const offProjection = bridge.onProjectionState(({ buehne: id, state }) => {
+    const offProjection = bridge.onProjectionState(({ buehne: id, state }) =>
       setProjektionen((current) => ({ ...current, [id]: state }))
-      /* Meldet sich eine Bühne, die diese Oberfläche nicht kennt, hat jemand
-         anders sie angelegt — etwa von einem zweiten Gerät im Netz. */
-      setBuehnen((current) => {
-        if (!current.some((stage) => stage.id === id)) void refreshBuehnen()
-        return current
-      })
-    })
+    )
     const offAudience = bridge.onAudienceState((state) =>
       setAudiences((current) => ({ ...current, [state.buehne]: state }))
     )
     const offPrompter = bridge.onPrompterView(setPrompter)
     const offSession = bridge.onSessionChanged((next) => {
-      setSession(next)
+      setSession((vorher) => {
+        /*
+         * Kommt eine Sitzung dazu, wird alles nachgeladen.
+         *
+         * Ohne Sitzung holt `refreshAll` weder Veranstaltung noch
+         * Einstellungen — es dürfte sie gar nicht sehen. Meldet sich jemand
+         * später an, etwa nach einem Zeitablauf oder von einem zweiten Gerät,
+         * blieben beide leer, und die Einstellungsseite hinge für immer bei
+         * „wird geladen".
+         */
+        if (!vorher && next) void refreshAll()
+        return next
+      })
       if (!next) notify('warning', 'Die Sitzung wurde beendet. Bitte erneut anmelden.')
     })
     const offNotice = bridge.onNotice((notice) => notify(notice.level, notice.message))
@@ -282,7 +288,24 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       offNotice()
       offPrompter()
     }
-  }, [notify, refreshBuehnen])
+  }, [notify, refreshAll])
+
+  /*
+   * Meldet sich eine Bühne, die diese Oberfläche nicht kennt, hat jemand
+   * anders sie angelegt — etwa von einem zweiten Gerät im Netz.
+   *
+   * Das gehört in einen Effekt und **nicht** in die Zustandsfunktion des
+   * Empfängers: Ein `setState` mitten in einer Zustandsfunktion aktualisiert
+   * eine Komponente, während eine andere gerade rechnet. React bricht das ab —
+   * und dann steht die halbe Oberfläche still, ohne dass eine Meldung
+   * erscheint. Genau so hörten die Einstellungen auf zu laden.
+   */
+  useEffect(() => {
+    const unbekannt = Object.keys(projektionen)
+      .map(Number)
+      .some((id) => !buehnen.some((stage) => stage.id === id))
+    if (unbekannt) void refreshBuehnen()
+  }, [projektionen, buehnen, refreshBuehnen])
 
   // Sitzung bei Aktivität verlaengern (§56).
   useEffect(() => {
