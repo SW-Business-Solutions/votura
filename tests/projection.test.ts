@@ -14,8 +14,10 @@ import {
   projectionResultPageCount,
   projectionResultPageSize,
   pausenende,
+  PROJECTION_MODES,
   PROJECTION_RESULT_ROWS_PER_COLUMN,
-  type ProjectionCandidate
+  type ProjectionCandidate,
+  type ProjectionMode
 } from '../src/shared/projection'
 
 function candidates(count: number): ProjectionCandidate[] {
@@ -144,5 +146,40 @@ describe('Pause bis zu einer festen Uhrzeit', () => {
   it('weist unsinnige Angaben ab', () => {
     expect(pausenende('25:00')).toBeUndefined()
     expect(pausenende('halb drei')).toBeUndefined()
+  })
+})
+
+describe('Seitenzahl je Ansicht', () => {
+  /*
+   * Nur vier Ansichten blättern. Wurde die Zahl für alle berechnet, bot die
+   * Bedienung auch bei „Nächster Wahlgang" ein „Seite 2 von 2" an — für eine
+   * Ansicht ohne Liste. Die Rechnung selbst liegt im Dienst; hier wird die
+   * Regel als Tabelle festgehalten, damit sie beim Ergänzen einer Ansicht
+   * bewusst entschieden wird.
+   */
+  const blaettert: ProjectionMode[] = [
+    'agenda',
+    'candidate_presentation',
+    'runoff_announced',
+    'result'
+  ]
+
+  it('nennt genau die Ansichten, die blättern', () => {
+    const ohne = PROJECTION_MODES.filter((mode) => !blaettert.includes(mode))
+    /* Wer eine Ansicht ergänzt, muss sich hier entscheiden. */
+    expect(ohne).toEqual([
+      'welcome',
+      'upcoming_round',
+      'speaker',
+      'round_ready',
+      'round_open',
+      'round_closed',
+      'counting',
+      'break',
+      'custom_message',
+      'presentation',
+      'video',
+      'session_finished'
+    ])
   })
 })

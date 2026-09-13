@@ -400,14 +400,11 @@ export function setProjection(input: SetModeInput, options: { audit?: boolean } 
           ? state.breakUntil
           : undefined,
     candidatePage: 0,
-    // Im Ergebnis zählt die tatsächlich gezeigte Liste: sie kann kürzer sein
-    // als das Bewerberfeld (nur Gewählte) und blättert nach eigenen Regeln.
-    candidatePageCount:
-      input.mode === 'agenda'
-        ? agendaPages
-        : result?.candidates
-          ? projectionResultPageCount(result.candidates.length)
-          : projectionPageCount(candidateCount),
+    candidatePageCount: seitenZahlFuer(input.mode, {
+      agendaPages,
+      resultCount: result?.candidates?.length,
+      candidateCount
+    }),
     candidatePageIntervalSeconds: state.candidatePageIntervalSeconds,
     locked: state.locked,
     /*
@@ -504,6 +501,36 @@ function praesentationFuer(id?: UUID): ProjectionPresentation | undefined {
     kind: presentationKind(gefunden),
     slide: 1,
     slideCount: gefunden.slideCount
+  }
+}
+
+/**
+ * Wie viele Seiten die Ansicht hat.
+ *
+ * Nur vier Ansichten blättern überhaupt: Tagesordnung, Kandidatenliste,
+ * Stichwahlankündigung und Ergebnis. Wurde die Zahl für alle berechnet, bot
+ * die Bedienung auch bei „Nächster Wahlgang" ein „Seite 2 von 2" an — für eine
+ * Ansicht, die gar keine Liste zeigt. Alles andere hat genau eine Seite.
+ *
+ * Im Ergebnis zählt die tatsächlich gezeigte Liste: Sie kann kürzer sein als
+ * das Bewerberfeld (nur Gewählte) und blättert nach eigenen Regeln.
+ */
+function seitenZahlFuer(
+  mode: ProjectionMode,
+  zahlen: { agendaPages: number; resultCount?: number; candidateCount: number }
+): number {
+  switch (mode) {
+    case 'agenda':
+      return zahlen.agendaPages
+    case 'result':
+      return zahlen.resultCount !== undefined
+        ? projectionResultPageCount(zahlen.resultCount)
+        : projectionPageCount(zahlen.candidateCount)
+    case 'candidate_presentation':
+    case 'runoff_announced':
+      return projectionPageCount(zahlen.candidateCount)
+    default:
+      return 1
   }
 }
 

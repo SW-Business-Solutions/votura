@@ -230,11 +230,13 @@ function demoSkript() {
     await ruf('round.setStatus', { roundId: akzeptanz.id, status: 'open' })
     await ruf('round.setStatus', { roundId: akzeptanz.id, status: 'counting' })
     const feld = (await ruf('round.detail', akzeptanz.id)).candidates
+    /* Plaetze 3 und 4 bewusst gleichauf: Genau dieser Fall — gleiche Ja- und
+       Nein-Zahl — ist der interessante, und die Aufnahmen sollen ihn zeigen. */
     const voten = [
       { yes: 96, no: 14, abstain: 7 },
       { yes: 88, no: 21, abstain: 8 },
       { yes: 81, no: 29, abstain: 7 },
-      { yes: 74, no: 33, abstain: 10 },
+      { yes: 81, no: 29, abstain: 7 },
       { yes: 44, no: 62, abstain: 11 },
       { yes: 39, no: 68, abstain: 10 }
     ]
@@ -254,7 +256,7 @@ function demoSkript() {
           invalidVotes: 0
         }))
       },
-      determination: 'Vier Bewerber mit mehr Ja- als Nein-Stimmen; fünfter Platz bleibt unbesetzt',
+      determination: 'Vier Bewerber mit mehr Ja- als Nein-Stimmen; Rang 3 und 4 stimmengleich',
       finalDecision: 'elected',
       electedCandidateIds: feld.slice(0, 4).map((b) => b.id)
     })
@@ -477,6 +479,35 @@ try {
       await warte(1500)
       await sitzung.aufnehmen(datei)
     }
+
+    /* Die Rangliste — bei einer Delegiertenwahl das eigentliche Ergebnis. */
+    await sitzung.auswerten(
+      "(() => { const k = Array.from(document.querySelectorAll('h2, h3')).find((x) => x.textContent.trim() === 'Rangliste'); if (k) k.scrollIntoView({ block: 'start' }); return true })()"
+    )
+    await warte(900)
+    await sitzung.aufnehmen('21-rangliste')
+  }
+
+  /* ---------------------------------------------------- Vorstellung */
+  console.log('Vorstellung mit Redezeit …')
+  await sitzung.auswerten(`(async () => {
+    await window.votura.invoke('projection.setMode', {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', note: 'Bewerbung um den Vorsitz', seconds: 180 }
+    })
+    return true
+  })()`)
+  await warte(2000)
+  const redepult = (await ziele()).find((z) => z.url.includes('audience'))
+  if (redepult) {
+    const wand = await Sitzung.verbinde(redepult.webSocketDebuggerUrl)
+    await wand.sende('Page.enable')
+    await wand.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1600, height: 900, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(1500)
+    await wand.aufnehmen('22-redezeit')
+    wand.schliessen()
   }
 
   // Beamerfenster, falls geöffnet.

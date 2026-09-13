@@ -60,8 +60,36 @@ export function BeamerPage(): React.JSX.Element {
   const [showRoundContext, setShowRoundContext] = useState(false)
   const [breakMinutes, setBreakMinutes] = useState(10)
   const [rednerName, setRednerName] = useState('')
+  /*
+   * Die Bewerber des Bezugswahlgangs.
+   *
+   * Sie stehen schon in der Anwendung — sie abzutippen wäre Arbeit ohne
+   * Zweck, und ein Tippfehler stünde groß an der Wand.
+   */
+  const [bewerber, setBewerber] = useState<{ id: string; name: string }[]>([])
   const [rednerZusatz, setRednerZusatz] = useState('')
   const [redezeit, setRedezeit] = useState(3)
+
+  useEffect(() => {
+    if (!roundId) {
+      setBewerber([])
+      return
+    }
+    let verworfen = false
+    void api('round.detail', roundId)
+      .then((detail) => {
+        if (verworfen) return
+        setBewerber(
+          detail.candidates
+            .filter((kandidat) => !kandidat.withdrawn)
+            .map((kandidat) => ({ id: kandidat.id, name: kandidat.displayName }))
+        )
+      })
+      .catch(() => setBewerber([]))
+    return () => {
+      verworfen = true
+    }
+  }, [roundId])
   const [pausenart, setPausenart] = useState<'dauer' | 'uhrzeit'>('dauer')
   /* Vorschlag: die nächste halbe Stunde — das ist die häufigste Ansage. */
   const [breakUntil, setBreakUntil] = useState(() => {
@@ -317,23 +345,32 @@ export function BeamerPage(): React.JSX.Element {
           <Card title="Vorstellung mit Redezeit">
             <div className="row">
               <div style={{ flex: 1 }}>
-                <Field label="Wer spricht">
-                  <input
-                    value={rednerName}
-                    onChange={(e) => setRednerName(e.target.value)}
-                    placeholder="Name"
-                    list="votura-bewerber"
-                  />
-                </Field>
-                {/* Vorschläge aus dem Bezugswahlgang: Die Namen stehen schon
-                    in der Anwendung, sie abzutippen wäre Arbeit ohne Zweck. */}
-                <datalist id="votura-bewerber">
-                  {(projection.round?.candidates ?? projection.result?.candidates ?? []).map(
-                    (eintrag) => (
-                      <option key={eintrag.id} value={eintrag.displayName} />
-                    )
-                  )}
-                </datalist>
+                {bewerber.length > 0 ? (
+                  <Field label="Wer spricht" hint="Bewerber des Bezugswahlgangs">
+                    <select
+                      value={bewerber.some((b) => b.name === rednerName) ? rednerName : ''}
+                      onChange={(e) => setRednerName(e.target.value)}
+                    >
+                      <option value="">– auswählen –</option>
+                      {bewerber.map((eintrag) => (
+                        <option key={eintrag.id} value={eintrag.name}>
+                          {eintrag.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : (
+                  <Field
+                    label="Wer spricht"
+                    hint="Ohne Bezugswahlgang gibt es keine Namensliste."
+                  >
+                    <input
+                      value={rednerName}
+                      onChange={(e) => setRednerName(e.target.value)}
+                      placeholder="Name"
+                    />
+                  </Field>
+                )}
               </div>
               <div style={{ width: 130 }}>
                 <Field label="Redezeit (Min.)" hint="0 = ohne Uhr">
@@ -341,6 +378,17 @@ export function BeamerPage(): React.JSX.Element {
                 </Field>
               </div>
             </div>
+            {bewerber.length > 0 && (
+              /* Nicht jede Vorstellung ist die eines Bewerbers — ein Gast, ein
+                 Bericht, eine Grußbotschaft stehen in keiner Kandidatenliste. */
+              <Field label="Oder freier Name" hint="Überschreibt die Auswahl.">
+                <input
+                  value={bewerber.some((b) => b.name === rednerName) ? '' : rednerName}
+                  onChange={(e) => setRednerName(e.target.value)}
+                  placeholder="Gast, Bericht, Grußwort …"
+                />
+              </Field>
+            )}
             <Field label="Zusatz (optional)">
               <input
                 value={rednerZusatz}
@@ -379,12 +427,25 @@ export function BeamerPage(): React.JSX.Element {
                 >
                   {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
                 </button>
-                <button onClick={() => void api('projection.addSpeakerSeconds', 60).catch(app.reportError)}>
-                  +1 Min.
-                </button>
-                <button onClick={() => void api('projection.addSpeakerSeconds', -60).catch(app.reportError)}>
-                  −1 Min.
-                </button>
+                {/* Grob und fein: Eine Minute ist der übliche Zuruf, zehn
+                    Sekunden reichen fürs Nachjustieren kurz vor Schluss. */}
+                {[
+                  ['+1 Min.', 60],
+                  ['−1 Min.', -60],
+                  ['+10 s', 10],
+                  ['−10 s', -10]
+                ].map(([beschriftung, sekunden]) => (
+                  <button
+                    key={beschriftung}
+                    onClick={() =>
+                      void api('projection.addSpeakerSeconds', sekunden as number).catch(
+                        app.reportError
+                      )
+                    }
+                  >
+                    {beschriftung}
+                  </button>
+                ))}
               </div>
             )}
           </Card>

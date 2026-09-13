@@ -24,6 +24,7 @@ Stimmzettel auf Thermodruckern — mit Beamer-/Publikumsansicht für Mitgliederv
 | Beamer | Zweites, rein lesendes Fenster + optionale Netzwerkansicht im Browser |
 | Präsentationen | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster |
 | Video | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr |
+| Ergebnis | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten |
 | Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
 | Installation | Windows-Installer (NSIS) und portable Fassung |
 
@@ -129,6 +130,73 @@ Frage, ob mehrere Sitze zu besetzen sind, und der Vorschlag für die Feststellun
 Zettel steht — `JA`, `NEIN`, `ENTHALTUNG`, Kandidatennummern, Kumulieren, Abstände —, bleibt je
 Wahlgang einstellbar, weil es sich nach der geltenden Wahlordnung richtet und nicht nach der
 Software.
+
+## Ergebnis und Rangliste
+
+Bei mehreren Plätzen ist die **Reihenfolge** das Ergebnis: Wer ist Delegierter, wer Ersatz, in
+welcher Folge wird nachgerückt. Der Reiter *Ergebnis* zeigt sie als eigene Liste — erst die
+Gewählten in ihrer Reihenfolge, dann eine Trennlinie, dann die Nichtgewählten.
+
+Sortiert wird nach den Regeln des Verfahrens:
+
+| Verfahren | Reihenfolge |
+|---|---|
+| Ankreuzen | nach Stimmen |
+| Akzeptanzwahl | zuerst Ja-Stimmen, bei Gleichstand **weniger** Nein-Stimmen |
+
+Wer bei gleicher Zustimmung weniger Ablehnung auf sich zieht, hat den größeren Rückhalt.
+Enthaltungen bleiben außen vor — sie sind weder Zustimmung noch Ablehnung. Wer mehr Nein als Ja
+hat, steht hinter der Trennlinie, auch wenn ein Platz frei bliebe.
+
+### Wenn die Zahlen nicht mehr trennen
+
+Liegen zwei Bewerber in allen Kriterien gleichauf, **rät die Anwendung nicht**. Sie sortiert nicht
+heimlich nach dem Namen, sondern schreibt *Rang offen* an beide Zeilen. Die Versammlung
+entscheidet — und alle drei üblichen Wege sind unterstützt:
+
+1. **Stichwahl** zwischen den Gleichstehenden — über *Folgewahlgang erzeugen*; die
+   Gleichstehenden sind dort vorausgewählt.
+2. **Losentscheid**, wenn auch die gleich ausgeht. So sehen es die meisten Wahlordnungen vor, und
+   so steht es im Bundeswahlgesetz (§ 6: „entscheidet das Los").
+3. **Verzicht** auf den höheren Platz.
+
+Für Verzicht und Losentscheid wird die Entscheidung mit **↑ ↓** eingetragen und im Ergebnis
+festgehalten; das Feld *Losentscheid dokumentieren* nimmt auf, wie es dazu kam. Stehen mehrere
+Gleichstände in einer Liste, bleibt jeder für sich offen, bis über ihn befunden wurde.
+
+Die eingetragene Reihenfolge **hebt niemanden über die Zahlen hinweg** — sie zählt nur dort, wo
+sonst nichts mehr trennt.
+
+![Rangliste mit offenem Rang](docs/screenshots/21-rangliste.png)
+
+<sub><b>Rangliste</b> — Gewählte in ihrer Reihenfolge, darunter die Nichtgewählten. Rang 3 ist offen: Zwei Bewerber liegen in Ja- und Nein-Zahl gleichauf, die Pfeile tragen die Entscheidung der Versammlung ein.</sub>
+
+### Ergebnisbeleg auf dem Bon
+
+*Ergebnis auf Bon drucken* gibt denselben Aufbau auf dem Thermodrucker aus: Wahlbeteiligung,
+Stimmen je Bewerber in der Rangfolge, Trennlinie, Feststellung, Gewählte, Unterschriftszeile. Zum
+sofortigen Weitergeben nach vorne — unübersehbar als **kein Stimmzettel** gekennzeichnet und mit
+dem Hinweis, dass das unterschriebene Wahlprotokoll verbindlich bleibt.
+
+## Vorstellung mit Redezeit
+
+Auf einer Versammlung stellen sich Bewerber nacheinander vor, oft mit begrenzter Zeit. Der Beamer
+zeigt dafür **wer spricht** und **wie lange noch**: Name groß, darunter ein Zusatz wie „Bewerbung
+um den Vorsitz", dazu die verbleibende Zeit mit Balken.
+
+Die letzten dreißig Sekunden werden gelb. Danach zählt die Anzeige **ins Minus weiter** und wird
+rot — wer überzieht, soll es sehen, und die Versammlungsleitung auch, ohne ihn unterbrechen zu
+müssen.
+
+Ist ein Bezugswahlgang gewählt, stehen dessen Bewerber zur Auswahl — abtippen entfällt. Für Gast,
+Bericht oder Grußwort gibt es daneben ein freies Feld.
+
+Während der Vorstellung: **Anhalten/Weiter** für eine Zwischenfrage, **±1 Min.** für den üblichen
+Zuruf, **±10 s** zum Nachjustieren kurz vor Schluss. Redezeit 0 zeigt nur den Namen, ohne Uhr.
+
+![Vorstellung mit Redezeit auf dem Beamer](docs/screenshots/22-redezeit.png)
+
+<sub><b>Vorstellung</b> — Name, Anlass und die verbleibende Redezeit. Die letzten dreißig Sekunden werden gelb, danach zählt die Anzeige rot ins Minus weiter.</sub>
 
 ## Sicherheitszusagen (technisch durchgesetzt)
 

@@ -650,6 +650,13 @@ html {
   align-items: center;
   gap: 2cqh;
   width: 60cqw;
+  /* Der Block ist schmaler als die Fläche und muss sich selbst mittig
+     stellen — sonst hängt die Zahl links, während der Name darüber
+     zentriert steht. Der Inhaltsbereich richtet über `text-align` aus, und
+     das erfasst ein Blockelement nicht: Es braucht `margin-inline: auto`.
+     `align-self` liefe hier ins Leere, weil kein Flex-Container darüber
+     liegt. */
+  margin-inline: auto;
 }
 
 /* Knapp und überzogen sind die beiden Zustände, die auffallen müssen — der

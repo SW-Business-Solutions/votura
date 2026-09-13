@@ -98,6 +98,51 @@ freigegeben ist, stammen die angezeigten Kandidaten aus deren Snapshot — Beame
 zwingend dieselbe Liste. Ergebnisse werden erst nach Bestätigung projiziert; nach einem Neustart
 startet der Beamer neutral, statt ungefragt ein Ergebnis erneut zu zeigen.
 
+## Ergebnis, Rangfolge und Gleichstand
+
+Die Rangfolge entsteht in `rankCandidates()` (`src/shared/result.ts`) — als reine Funktion, damit
+Oberfläche, Bon, Beameransicht und Export **dieselbe** Reihenfolge zeigen und sie sich ohne
+Browser prüfen lässt.
+
+```
+compareResults(a, b)
+  Akzeptanzverfahren → Ja absteigend, bei Gleichstand Nein aufsteigend
+  sonst              → Stimmen absteigend
+  Enthaltungen zählen nie mit
+```
+
+Drei Festlegungen tragen das:
+
+- **Bedingung vor Zahl.** Wer die Bedingung des Verfahrens nicht erfüllt — bei der Akzeptanzwahl
+  „mehr Ja als Nein" —, steht hinter allen anderen, auch bei freien Plätzen und hoher Ja-Zahl.
+- **Offene Ränge werden benannt, nicht geraten.** Trennt kein Kriterium mehr, teilen sich beide
+  denselben Rang und tragen `tied`. Die Sortierung fällt danach zwar auf den Namen zurück, aber
+  nur, damit die Liste stabil bleibt — als Entscheidung gilt das ausdrücklich nicht.
+- **Der Beschluss der Versammlung zählt zuletzt.** `decidedOrder` (im Ergebnis als `rankOrder`,
+  Migration 5) greift erst, wenn `compareResults` nichts mehr hergibt. Eine eingetragene
+  Reihenfolge kann damit niemanden an Bewerbern mit mehr Stimmen vorbeiziehen.
+
+Gleichstehende tragen zusätzlich eine `tieGroup` — den Rang, bei dem ihre Gruppe beginnt. Die
+Bedienung schreibt beim Umreihen **nur diese Gruppe** fest; ohne die Kennung galten bei mehreren
+Gleichständen nach einem Klick alle als entschieden.
+
+## Vorstellung mit Redezeit
+
+Der Modus `speaker` trägt im Zustand einen **Zeitpunkt**, keine Restdauer:
+
+```ts
+speaker: { name, note?, until?, totalSeconds?, pausedSecondsLeft? }
+```
+
+Jedes Gerät rechnet den Rest über `redezeitRest()` selbst aus. Eine heruntergezählte Zahl im
+Zustand müsste mehrmals je Sekunde durch alle SSE-Leitungen, und ein Bildschirm, der später
+dazukommt, hätte keinen Anhalt. Dieselbe Überlegung wie bei der Pause (`breakUntil`) und beim
+Video (`anchoredAt`).
+
+`pausedSecondsLeft` hält die Uhr an, ohne die Vorstellung zu beenden — für eine Zwischenfrage.
+Negative Reste werden **nicht** abgeschnitten: Eine überzogene Redezeit soll sichtbar bleiben,
+nicht bei null stehen.
+
 ## Präsentationen
 
 Zwischen den Wahlgängen wird geredet. Eine eingespeiste **HTML-Präsentation** läuft im selben
