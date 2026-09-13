@@ -28,11 +28,7 @@ import {
   setPrompterTempo,
   setPrompterUntil
 } from './services/prompter'
-import {
-  sprachmodellEinlegen,
-  sprachmodellEntfernen,
-  sprachmodellInfo
-} from './services/sprachmodell'
+import { sprachmodellEinlegen, sprachmodellEntfernen, sprachmodellInfo } from './services/sprachmodell'
 import {
   assignSpeech,
   createSpeech,
@@ -43,11 +39,7 @@ import {
   renameSpeech,
   saveSpeech
 } from './services/speeches'
-import {
-  networkStatus,
-  startNetworkProjection,
-  stopNetworkProjection
-} from './network-projection'
+import { networkStatus, startNetworkProjection, stopNetworkProjection } from './network-projection'
 import { accountingFor, saveAccounting } from './services/accounting'
 import { appendAudit, listAudit, verifyAuditChain } from './services/audit'
 import {
@@ -203,9 +195,7 @@ async function ordnerWaehlen(title: string, vorschlag: string): Promise<string |
 async function dateiZielWaehlen(title: string, vorschlag: string): Promise<string | undefined> {
   const window = getOperatorWindow()
   const options = { title, defaultPath: join(appPaths().exports, vorschlag) }
-  const result = window
-    ? await dialog.showSaveDialog(window, options)
-    : await dialog.showSaveDialog(options)
+  const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
   return result.canceled || !result.filePath ? undefined : result.filePath
 }
 
@@ -523,13 +513,19 @@ const api: Api = {
   /* ---------------------------------------------------------------- Export */
   'export.round': async (input) => {
     if (input.askTarget === false) return exportRound(input.roundId, input.formats)
-    const ordner = await ordnerWaehlen('Vollstaendigen Export speichern unter', roundExportFolderName(input.roundId))
+    const ordner = await ordnerWaehlen(
+      'Vollstaendigen Export speichern unter',
+      roundExportFolderName(input.roundId)
+    )
     if (!ordner) return { path: '', files: [], canceled: true }
     return exportRound(input.roundId, input.formats, ordner)
   },
   'export.event': async (input) => {
     if (input.askTarget === false) return exportEventArchive(input.eventId)
-    const ordner = await ordnerWaehlen('Archiv der Veranstaltung speichern unter', eventArchiveFolderName(input.eventId))
+    const ordner = await ordnerWaehlen(
+      'Archiv der Veranstaltung speichern unter',
+      eventArchiveFolderName(input.eventId)
+    )
     if (!ordner) return { path: '', files: [], canceled: true }
     return exportEventArchive(input.eventId, ordner)
   },
@@ -746,7 +742,9 @@ const api: Api = {
     /* Der Prompter führt die Freigabe mit, damit die Netzansicht ihre Leiste
        zeigen oder weglassen kann. Durchgesetzt wird sie am Server. */
     setPrompterNetzBedienung(saved.enabled && saved.allowPrompterControl)
-    const status = saved.enabled ? await startNetworkProjection(saved) : (await stopNetworkProjection(), networkStatus())
+    const status = saved.enabled
+      ? await startNetworkProjection(saved)
+      : (await stopNetworkProjection(), networkStatus())
     appendAudit({
       action: saved.enabled ? 'projection.network_enabled' : 'projection.network_disabled',
       newValue: { port: saved.port, adresse: saved.bindAddress, tokenGesetzt: Boolean(saved.token) }
@@ -860,9 +858,12 @@ export function registerIpc(): void {
     }
   )
 
-  ipcMain.on(IPC.prompterReport, (_event, input: { slide?: number; slideCount?: number; stage?: Buehnenwahl }) => {
-    if (typeof input?.slide !== 'number' || typeof input?.slideCount !== 'number') return
-    const { slide, slideCount } = input
-    aufBuehnen(input.stage, (buehne) => reportPresentationState(buehne, slide, slideCount))
-  })
+  ipcMain.on(
+    IPC.prompterReport,
+    (_event, input: { slide?: number; slideCount?: number; stage?: Buehnenwahl }) => {
+      if (typeof input?.slide !== 'number' || typeof input?.slideCount !== 'number') return
+      const { slide, slideCount } = input
+      aufBuehnen(input.stage, (buehne) => reportPresentationState(buehne, slide, slideCount))
+    }
+  )
 }

@@ -537,12 +537,12 @@ function TeleprompterApp(): React.JSX.Element {
       </div>
 
       {/*
-        * Die Leiste bleibt kurz.
-        *
-        * Am Pult zählt, was mitten im Satz gebraucht wird: anhalten, ein Stück
-        * zurück, Tempo. Alles Übrige stellt man einmal ein, bevor es losgeht —
-        * das liegt hinter „Einstellungen" und verdeckt den Text nicht.
-        */}
+       * Die Leiste bleibt kurz.
+       *
+       * Am Pult zählt, was mitten im Satz gebraucht wird: anhalten, ein Stück
+       * zurück, Tempo. Alles Übrige stellt man einmal ein, bevor es losgeht —
+       * das liegt hinter „Einstellungen" und verdeckt den Text nicht.
+       */}
       {einstellungenOffen && darfBedienen && (
         <div className="tp-einstellungen">
           <label>
@@ -603,12 +603,12 @@ function TeleprompterApp(): React.JSX.Element {
           </div>
 
           {/*
-            * Spiegelung wirkt nicht auf dieses Fenster.
-            *
-            * Es steht auf einem gewöhnlichen Bildschirm; verkehrt herum wäre es
-            * nur unlesbar. Gemeint ist das Gerät unter der Glasscheibe am Pult —
-            * dort, und nur dort, wird gespiegelt.
-            */}
+           * Spiegelung wirkt nicht auf dieses Fenster.
+           *
+           * Es steht auf einem gewöhnlichen Bildschirm; verkehrt herum wäre es
+           * nur unlesbar. Gemeint ist das Gerät unter der Glasscheibe am Pult —
+           * dort, und nur dort, wird gespiegelt.
+           */}
           <div className="tp-gruppe">
             <span className="tp-marke">{imFenster ? 'Spiegel (Gerät am Pult)' : 'Spiegel'}</span>
             <button

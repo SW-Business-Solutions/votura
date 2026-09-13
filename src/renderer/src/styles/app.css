@@ -19,6 +19,24 @@
   --danger: #f85149;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   --radius: 10px;
+
+  /*
+   * Abstände als Leiter.
+   *
+   * Vorher standen neun verschiedene Werte im Code — 4, 6, 8, 10, 12, 14, 16,
+   * 18 und einmal −4 —, jeder für sich plausibel, zusammen eine Unruhe, die
+   * man nicht benennen kann. Fünf Stufen reichen; wer eine sechste braucht,
+   * hat meistens ein Layoutproblem und kein Abstandsproblem.
+   */
+  --abstand-1: 4px;
+  --abstand-2: 8px;
+  --abstand-3: 12px;
+  --abstand-4: 16px;
+  --abstand-5: 24px;
+
+  /* Eine Knopfhöhe für alles, was nebeneinander steht. */
+  --knopf-hoehe: 40px;
+  --knopf-hoehe-gross: 52px;
   color-scheme: dark;
 }
 
@@ -50,7 +68,12 @@ body,
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    Arial,
+    sans-serif;
   font-size: 15px;
   background: var(--bg);
   color: var(--text);
@@ -291,6 +314,14 @@ p {
 
 /* ---------------------------------------------------------------- Elemente */
 
+/*
+ * Eine Höhe für alle Knöpfe einer Reihe.
+ *
+ * Die Höhe kam vorher allein aus dem Innenabstand — ein Knopf mit „‹" war
+ * dadurch niedriger als einer mit „Wahlgang abschließen", und nebeneinander
+ * fluchtete nichts. `min-height` setzt den Boden; der Innenabstand bestimmt
+ * nur noch die Breite.
+ */
 button,
 .button {
   font: inherit;
@@ -299,11 +330,13 @@ button,
   border: 1px solid var(--border-strong);
   background: var(--bg-input);
   color: var(--text);
-  padding: 10px 16px;
+  min-height: var(--knopf-hoehe);
+  padding: 8px 16px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: var(--abstand-2);
 }
 button:hover:not(:disabled) {
   border-color: var(--accent);
@@ -326,7 +359,8 @@ button.ghost {
   background: transparent;
 }
 button.big {
-  padding: 16px 22px;
+  min-height: var(--knopf-hoehe-gross);
+  padding: 12px 22px;
   font-size: 17px;
 }
 button.wide {
@@ -1002,4 +1036,92 @@ td.rede-knoepfe {
   gap: 6px;
   justify-content: flex-end;
   white-space: nowrap;
+}
+
+/* --------------------------------------------------------- Hilfsklassen */
+
+/*
+ * Wiederkehrende Kleinigkeiten, die vorher als `style={{ … }}` im Code
+ * standen — rund 190-mal, mit elf verschiedenen Breiten und neun Abständen.
+ * Als Klasse steht der Wert an einer Stelle und ist beim nächsten Mal wieder
+ * derselbe.
+ */
+
+/* Ein Feld, das sich den freien Platz einer Zeile teilt. */
+.col {
+  flex: 1;
+  min-width: 0;
+}
+
+.col-2 {
+  flex: 2;
+  min-width: 0;
+}
+
+/* Feste Spaltenbreiten für Zahlenfelder — drei Stufen statt elf. */
+.col-schmal {
+  width: 110px;
+  flex: none;
+}
+
+.col-mittel {
+  width: 150px;
+  flex: none;
+}
+
+.col-breit {
+  width: 200px;
+  flex: none;
+}
+
+.mt-1 {
+  margin-top: var(--abstand-1);
+}
+.mt-2 {
+  margin-top: var(--abstand-2);
+}
+.mt-3 {
+  margin-top: var(--abstand-3);
+}
+.mt-4 {
+  margin-top: var(--abstand-4);
+}
+.mb-2 {
+  margin-bottom: var(--abstand-2);
+}
+.mb-3 {
+  margin-bottom: var(--abstand-3);
+}
+
+/* Ein Merkzeichen hinter Text — vorher achtmal `style={{ marginLeft: 8 }}`. */
+.badge-nach {
+  margin-left: var(--abstand-2);
+}
+
+/* Eine Tabellenzelle mit Zeitstempel bricht nicht um. */
+td.zeitstempel,
+th.zeitstempel {
+  white-space: nowrap;
+}
+
+td.zahl,
+th.zahl {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/*
+ * Ein Hinweis als Absatz erbt sonst den Absatzabstand und steht damit tiefer
+ * als derselbe Hinweis in einem `div`. Zweimal wurde das im Stylesheet
+ * nachträglich repariert; hier ist die Ursache.
+ */
+p.hint {
+  margin-bottom: 0;
+}
+
+/* Ein einzelnes Kästchen ohne Beschriftung — etwa in einer Listenzeile. */
+input.haken[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }

@@ -137,12 +137,16 @@ export function EventPage(): React.JSX.Element {
             />
           </Field>
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Datum">
-                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Stimmberechtigte" hint="Kann jederzeit angepasst werden.">
                 <NumberInput
                   value={form.eligibleVoterCount}
@@ -156,16 +160,15 @@ export function EventPage(): React.JSX.Element {
           </Field>
 
           <h3>Geltende Wahlordnung</h3>
-          <div className="hint" style={{ marginBottom: 8 }}>
-            Wird mit der Veranstaltung gespeichert, damit später nachvollziehbar ist, auf welcher
-            Regelbasis die Konfiguration beruhte. Bitte prüfen, ob eine eigene Wahlordnung der
-            Gliederung Vorrang hat.
+          <div className="hint mb-2">
+            Wird mit der Veranstaltung gespeichert, damit später nachvollziehbar ist, auf welcher Regelbasis
+            die Konfiguration beruhte. Bitte prüfen, ob eine eigene Wahlordnung der Gliederung Vorrang hat.
           </div>
           <Field label="Bezeichnung">
             <input value={form.ruleName} onChange={(e) => setForm({ ...form, ruleName: e.target.value })} />
           </Field>
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Fassung">
                 <input
                   value={form.ruleVersion}
@@ -173,7 +176,7 @@ export function EventPage(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ flex: 2 }}>
+            <div className="col-2">
               <Field label="Quelle (optional)">
                 <input
                   value={form.ruleSource}
@@ -228,7 +231,9 @@ export function EventPage(): React.JSX.Element {
                   </td>
                   <td>
                     <div className="row">
-                      {event.status !== 'archived' && <button onClick={() => startEdit(event)}>Bearbeiten</button>}
+                      {event.status !== 'archived' && (
+                        <button onClick={() => startEdit(event)}>Bearbeiten</button>
+                      )}
                       {event.status === 'draft' && (
                         <button
                           onClick={async () => {
@@ -358,7 +363,7 @@ function ArchiveFilesDialog({
         </>
       }
     >
-      <div className="hint" style={{ marginBottom: 10 }}>
+      <div className="hint mb-3">
         Speicherort: <span className="mono">{directory || '…'}</span>
       </div>
       {files.length === 0 ? (
@@ -407,7 +412,7 @@ function ArchiveFilesDialog({
           </tbody>
         </table>
       )}
-      <div className="notice" style={{ marginTop: 12 }}>
+      <div className="notice mt-3">
         Das ZIP-Paket enthält Veranstaltungsdaten, alle Wahlgänge, Stimmzettel-PDFs, Ergebnisse und den
         Audit-Trail. Die ausgefüllten Papier-Stimmzettel werden nicht digitalisiert.
       </div>

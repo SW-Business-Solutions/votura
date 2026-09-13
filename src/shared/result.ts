@@ -357,9 +357,7 @@ export function suggestDecision(
   }
 
   if (profile.perCandidateChoice) {
-    const qualified = data.candidates
-      .filter(acceptanceQualified)
-      .sort((a, b) => (b.yes ?? 0) - (a.yes ?? 0))
+    const qualified = data.candidates.filter(acceptanceQualified).sort((a, b) => (b.yes ?? 0) - (a.yes ?? 0))
     const within = qualified.slice(0, round.seats)
     return {
       decision: within.length > 0 ? 'elected' : 'not_elected',
@@ -376,7 +374,8 @@ export function suggestDecision(
   if (tied) {
     return {
       decision: 'tie',
-      reason: 'Stimmengleichheit an der Grenze der zu besetzenden Plätze. Weiteres Verfahren durch die Wahlleitung.',
+      reason:
+        'Stimmengleichheit an der Grenze der zu besetzenden Plätze. Weiteres Verfahren durch die Wahlleitung.',
       suggestedElectedIds: [],
       requiresLeaderDecision: true
     }

@@ -76,7 +76,12 @@ function parseResponse(body: string): EposResponse {
 }
 
 /** Statusbits der ePOS-Antwort (Auszug der Epson-Statusdefinition). */
-function describeStatus(status: number): { paperOut: boolean; coverOpen: boolean; offline: boolean; text: string } {
+function describeStatus(status: number): {
+  paperOut: boolean
+  coverOpen: boolean
+  offline: boolean
+  text: string
+} {
   const online = (status & 0x00000008) === 0
   const coverOpen = (status & 0x00000020) !== 0
   const paperFeed = (status & 0x00000040) !== 0
@@ -152,7 +157,8 @@ async function post(printer: PrinterConfig, xml: string, timeoutMs = 15000): Pro
 
 export class EpsonEposPrinter implements PrinterDriver {
   constructor(readonly config: PrinterConfig) {
-    if (!config.host) throw new PrinterError('Für den Epson-ePOS-Treiber ist eine IP-Adresse erforderlich.', false)
+    if (!config.host)
+      throw new PrinterError('Für den Epson-ePOS-Treiber ist eine IP-Adresse erforderlich.', false)
   }
 
   async status(): Promise<PrinterTestResult> {

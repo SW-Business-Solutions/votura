@@ -126,14 +126,14 @@ export function VideoLibrary(): JSX.Element {
 
   return (
     <Card title="Videos">
-      <div className="row" style={{ marginBottom: 10 }}>
+      <div className="row mb-3">
         <button onClick={einspeisen} disabled={laeuft}>
           {laeuft ? 'Wird eingespeist …' : 'Video einspeisen'}
         </button>
       </div>
 
       {video && (
-        <div className="notice" style={{ marginBottom: 12 }}>
+        <div className="notice mb-3">
           <div className="row" style={{ alignItems: 'center', gap: 10 }}>
             <button
               className="primary"
@@ -159,7 +159,7 @@ export function VideoLibrary(): JSX.Element {
             step={0.1}
             value={ziehtGerade ? undefined : Math.min(position, video.durationSeconds ?? position)}
             disabled={video.durationSeconds === undefined}
-            style={{ width: '100%', marginTop: 10 }}
+            className="wide mt-3"
             onMouseDown={() => setZiehtGerade(true)}
             onChange={(event) => {
               /* Während des Ziehens nur die Marke bewegen: Jede Zwischenstufe
@@ -172,7 +172,7 @@ export function VideoLibrary(): JSX.Element {
             }}
           />
 
-          <div className="hint" style={{ marginTop: 6 }}>
+          <div className="hint mt-2">
             <strong>{video.title}</strong> — alle Bildschirme richten sich nach dieser Zeit.
             {video.readyCount > 0 && ` Der Beamer hat genug gepuffert.`}
             {video.durationSeconds === undefined &&
@@ -198,7 +198,7 @@ export function VideoLibrary(): JSX.Element {
               <tr key={eintrag.id}>
                 <td>
                   <strong>{eintrag.title}</strong>
-                  {video?.id === eintrag.id && <span className="pill"> auf dem Beamer</span>}
+                  {video?.id === eintrag.id && <span className="badge"> auf dem Beamer</span>}
                   <div className="mono" style={{ opacity: 0.7 }}>
                     {eintrag.fileName}
                   </div>
@@ -222,12 +222,12 @@ export function VideoLibrary(): JSX.Element {
         </table>
       )}
 
-      <div className="hint" style={{ marginTop: 10 }}>
-        Alle Bildschirme laufen nach derselben Uhr: Der Zustand nennt die Position zu einem
-        Zeitpunkt, jedes Gerät rechnet sich daraus seinen Stand aus — auch eines, das erst mitten
-        im Film dazukommt. Kleine Abweichungen werden über die Abspielgeschwindigkeit
-        ausgeglichen, größere durch einen Sprung. <strong>Den Ton gibt nur der Beamer aus</strong>;
-        Geräte im Netz laufen stumm mit, sonst entstünde ein Echo im Saal.
+      <div className="hint mt-3">
+        Alle Bildschirme laufen nach derselben Uhr: Der Zustand nennt die Position zu einem Zeitpunkt, jedes
+        Gerät rechnet sich daraus seinen Stand aus — auch eines, das erst mitten im Film dazukommt. Kleine
+        Abweichungen werden über die Abspielgeschwindigkeit ausgeglichen, größere durch einen Sprung.{' '}
+        <strong>Den Ton gibt nur der Beamer aus</strong>; Geräte im Netz laufen stumm mit, sonst entstünde ein
+        Echo im Saal.
       </div>
     </Card>
   )

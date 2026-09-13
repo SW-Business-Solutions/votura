@@ -100,10 +100,7 @@ describe('Markdown wird zu Blöcken', () => {
   })
 
   it('kommt mit Windows-Zeilenenden zurecht', () => {
-    expect(redeBloecke('# Titel\r\n\r\nText.').map((block) => block.art)).toEqual([
-      'ueberschrift',
-      'absatz'
-    ])
+    expect(redeBloecke('# Titel\r\n\r\nText.').map((block) => block.art)).toEqual(['ueberschrift', 'absatz'])
   })
 
   it('zählt nur wirkliche Wörter', () => {

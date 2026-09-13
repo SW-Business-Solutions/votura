@@ -38,8 +38,8 @@ export function SetupPage(): React.JSX.Element {
       <Card title="Ersteinrichtung">
         <p>
           Die Anwendung arbeitet vollständig lokal und offline. Legen Sie zuerst ein Konto für die
-          Administration an; weitere Konten für Wahlleitung, Wahlkommission und Protokoll können
-          anschließend in den Einstellungen ergänzt werden.
+          Administration an; weitere Konten für Wahlleitung, Wahlkommission und Protokoll können anschließend
+          in den Einstellungen ergänzt werden.
         </p>
         <Field label="Benutzername">
           <input value={username} onChange={(inputEvent) => setUsername(inputEvent.target.value)} autoFocus />
@@ -62,7 +62,11 @@ export function SetupPage(): React.JSX.Element {
             onKeyDown={(keyEvent) => keyEvent.key === 'Enter' && void submit()}
           />
         </Field>
-        <button className="primary wide big" disabled={busy || password.length < 8} onClick={() => void submit()}>
+        <button
+          className="primary wide big"
+          disabled={busy || password.length < 8}
+          onClick={() => void submit()}
+        >
           Konto anlegen
         </button>
       </Card>

@@ -86,14 +86,7 @@ export interface ProjectionRound {
   status: 'upcoming' | 'ready' | 'open' | 'closed' | 'counting' | 'completed'
 }
 
-export type FinalDecision =
-  | 'elected'
-  | 'not_elected'
-  | 'runoff'
-  | 'accepted'
-  | 'rejected'
-  | 'tie'
-  | 'manual'
+export type FinalDecision = 'elected' | 'not_elected' | 'runoff' | 'accepted' | 'rejected' | 'tie' | 'manual'
 
 export const FINAL_DECISION_LABELS: Record<FinalDecision, string> = {
   elected: 'GEWÄHLT',

@@ -101,9 +101,7 @@ export function unclearBatches(): PrintBatch[] {
  * Der Auftrag wird als unklar markiert — nie automatisch fortgesetzt.
  */
 export function markInterruptedBatches(): number {
-  const running = db()
-    .prepare(`SELECT * FROM print_batches WHERE status = 'running'`)
-    .all<BatchRow>()
+  const running = db().prepare(`SELECT * FROM print_batches WHERE status = 'running'`).all<BatchRow>()
   for (const row of running) {
     db()
       .prepare(`UPDATE print_batches SET status = 'unknown', error_message = ? WHERE id = ?`)
@@ -410,7 +408,9 @@ export async function startPrint(request: PrintRequest): Promise<PrintStartResul
 
   const previousStatus = round.status
   if (request.kind !== 'test' && previousStatus === 'ready') {
-    db().prepare(`UPDATE rounds SET status = 'printing', row_version = row_version + 1 WHERE id = ?`).run(round.id)
+    db()
+      .prepare(`UPDATE rounds SET status = 'printing', row_version = row_version + 1 WHERE id = ?`)
+      .run(round.id)
   }
 
   const batch = await runBatch(
@@ -422,7 +422,9 @@ export async function startPrint(request: PrintRequest): Promise<PrintStartResul
   )
 
   if (request.kind !== 'test' && previousStatus === 'ready') {
-    db().prepare(`UPDATE rounds SET status = 'ready', row_version = row_version + 1 WHERE id = ?`).run(round.id)
+    db()
+      .prepare(`UPDATE rounds SET status = 'ready', row_version = row_version + 1 WHERE id = ?`)
+      .run(round.id)
   }
 
   appendAudit({

@@ -167,10 +167,9 @@ export function BeamerPage(): React.JSX.Element {
       (nummer) => !app.buehnen.some((stage) => stage.id === nummer)
     )
     if (!frei) return
-    void speichereBuehnen([
-      ...app.buehnen,
-      { id: frei, name: `Bühne ${frei}`, followsRound: false }
-    ]).then(() => app.setBuehne(frei))
+    void speichereBuehnen([...app.buehnen, { id: frei, name: `Bühne ${frei}`, followsRound: false }]).then(
+      () => app.setBuehne(frei)
+    )
   }
 
   const aktuelleBuehne = app.buehnen.find((stage) => stage.id === buehne)
@@ -204,9 +203,7 @@ export function BeamerPage(): React.JSX.Element {
         <div className="row">
           {master ? (
             (() => {
-              const offen = betroffeneBuehnen.filter(
-                (stage) => app.beamerfenster[stage.id]?.open
-              ).length
+              const offen = betroffeneBuehnen.filter((stage) => app.beamerfenster[stage.id]?.open).length
               return (
                 <span className={`badge ${offen > 0 ? 'ok' : 'warn'}`}>
                   {offen} von {betroffeneBuehnen.length} Beamerfenstern offen
@@ -225,13 +222,13 @@ export function BeamerPage(): React.JSX.Element {
       </div>
 
       {/*
-        * Die Bühnen als Reiter.
-        *
-        * Alles darunter — Vorschau, Anzeige, Präsentation, Video, Pause —
-        * bezieht sich auf die hier gewählte Bühne. Es gibt keine zweite
-        * Stelle, an der man die Bühne einstellt, und keinen Regler, der
-        * versehentlich die falsche Wand trifft.
-        */}
+       * Die Bühnen als Reiter.
+       *
+       * Alles darunter — Vorschau, Anzeige, Präsentation, Video, Pause —
+       * bezieht sich auf die hier gewählte Bühne. Es gibt keine zweite
+       * Stelle, an der man die Bühne einstellt, und keinen Regler, der
+       * versehentlich die falsche Wand trifft.
+       */}
       <div className="buehnen-leiste">
         <div className="segmented">
           {/* Der Master ganz links: dieselben Knöpfe, aber auf allen Wänden
@@ -310,10 +307,7 @@ export function BeamerPage(): React.JSX.Element {
                         onClick={() => app.toggleAuswahl(stage.id)}
                       >
                         <div className="preview-frame">
-                          <ProjectionScreen
-                            state={app.projektionen[stage.id] ?? projection}
-                            preview
-                          />
+                          <ProjectionScreen state={app.projektionen[stage.id] ?? projection} preview />
                         </div>
                         <div className="buehnen-vorschau-marke">
                           <span className="buehnen-vorschau-name">
@@ -348,7 +342,7 @@ export function BeamerPage(): React.JSX.Element {
                 <ProjectionScreen state={projection} preview />
               </div>
             )}
-            <div className="row" style={{ marginTop: 12 }}>
+            <div className="row mt-3">
               <Checkbox
                 checked={projection.locked}
                 onChange={(value) => void api('projection.setLocked', value, ziel).catch(app.reportError)}
@@ -357,9 +351,9 @@ export function BeamerPage(): React.JSX.Element {
             </div>
             {/* Was die Sperre bewirkt, gehört unter die Sperre — sonst sieht
                 sie neben „Automatisch weiter: aus" wie dasselbe aus. */}
-            <div className="hint" style={{ marginTop: -4 }}>
-              Hält alles an: den Wechsel der Ansicht aus dem Wahlgangstatus{' '}
-              <strong>und</strong> das Weiterblättern. Von Hand geht beides weiter.
+            <div className="hint">
+              Hält alles an: den Wechsel der Ansicht aus dem Wahlgangstatus <strong>und</strong> das
+              Weiterblättern. Von Hand geht beides weiter.
             </div>
             {projection.candidatePageCount > 1 && (
               /*
@@ -392,11 +386,9 @@ export function BeamerPage(): React.JSX.Element {
                     className="mini"
                     aria-label="Nächste Seite"
                     onClick={() =>
-                      void api(
-                        'projection.setCandidatePage',
-                        projection.candidatePage + 1,
-                        ziel
-                      ).catch(app.reportError)
+                      void api('projection.setCandidatePage', projection.candidatePage + 1, ziel).catch(
+                        app.reportError
+                      )
                     }
                   >
                     ›
@@ -412,9 +404,7 @@ export function BeamerPage(): React.JSX.Element {
                       className={projection.candidatePageIntervalSeconds === takt ? 'active' : ''}
                       disabled={projection.locked}
                       onClick={() =>
-                        void api('projection.setCandidatePageInterval', takt, ziel).catch(
-                          app.reportError
-                        )
+                        void api('projection.setCandidatePageInterval', takt, ziel).catch(app.reportError)
                       }
                     >
                       {takt === 0 ? 'aus' : `${takt} s`}
@@ -489,437 +479,443 @@ export function BeamerPage(): React.JSX.Element {
           </div>
 
           {bereich === 'ausgabe' && aktuelleBuehne && !master && (
-          <Card title={`Bühne „${aktuelleBuehne.name}"`}>
-            <Field label="Name">
-              <input
-                value={aktuelleBuehne.name}
+            <Card title={`Bühne „${aktuelleBuehne.name}"`}>
+              <Field label="Name">
+                <input
+                  value={aktuelleBuehne.name}
+                  disabled={!app.can('system.manage')}
+                  onChange={(event) =>
+                    void speichereBuehnen(
+                      app.buehnen.map((stage) =>
+                        stage.id === buehne ? { ...stage, name: event.target.value } : stage
+                      )
+                    )
+                  }
+                />
+              </Field>
+              {/* Der Ablauf einer Wahl darf nicht auf jeder Wand landen: Wer
+                die Rednerliste stehen lassen will, nimmt diesen Haken weg. */}
+              <Checkbox
+                checked={aktuelleBuehne.followsRound}
                 disabled={!app.can('system.manage')}
-                onChange={(event) =>
+                onChange={(value) =>
                   void speichereBuehnen(
                     app.buehnen.map((stage) =>
-                      stage.id === buehne ? { ...stage, name: event.target.value } : stage
+                      stage.id === buehne ? { ...stage, followsRound: value } : stage
                     )
                   )
                 }
+                label="Folgt automatisch dem Wahlgang"
               />
-            </Field>
-            {/* Der Ablauf einer Wahl darf nicht auf jeder Wand landen: Wer
-                die Rednerliste stehen lassen will, nimmt diesen Haken weg. */}
-            <Checkbox
-              checked={aktuelleBuehne.followsRound}
-              disabled={!app.can('system.manage')}
-              onChange={(value) =>
-                void speichereBuehnen(
-                  app.buehnen.map((stage) =>
-                    stage.id === buehne ? { ...stage, followsRound: value } : stage
-                  )
-                )
-              }
-              label="Folgt automatisch dem Wahlgang"
-            />
-            <div className="hint">
-              Ohne Haken bleibt diese Bühne stehen, bis sie von Hand umgeschaltet wird — für eine
-              Rednerliste oder ein Standbild neben dem Wahlgeschehen.
-            </div>
-            {buehne !== HAUPTBUEHNE && app.can('system.manage') && (
-              <div className="row" style={{ marginTop: 12 }}>
-                <button
-                  className="danger"
-                  onClick={() => {
-                    void speichereBuehnen(app.buehnen.filter((stage) => stage.id !== buehne))
-                    app.setBuehne(HAUPTBUEHNE)
-                  }}
-                >
-                  Bühne abbauen
-                </button>
+              <div className="hint">
+                Ohne Haken bleibt diese Bühne stehen, bis sie von Hand umgeschaltet wird — für eine
+                Rednerliste oder ein Standbild neben dem Wahlgeschehen.
               </div>
-            )}
-          </Card>
+              {buehne !== HAUPTBUEHNE && app.can('system.manage') && (
+                <div className="row mt-3">
+                  <button
+                    className="danger"
+                    onClick={() => {
+                      void speichereBuehnen(app.buehnen.filter((stage) => stage.id !== buehne))
+                      app.setBuehne(HAUPTBUEHNE)
+                    }}
+                  >
+                    Bühne abbauen
+                  </button>
+                </div>
+              )}
+            </Card>
           )}
 
           {bereich === 'ausgabe' && (
-          <Card title="Ausgabegerät">
-            {audience?.singleDisplay && (
-              <div className="notice warn">
-                Es ist nur ein Bildschirm erkannt. Das Beamerfenster oeffnet dann im Fenstermodus, damit Sie
-                weiterarbeiten können.
-              </div>
-            )}
-            <div className="row">
-              {(audience?.displays ?? []).map((display) => (
-                <button
-                  key={display.id}
-                  className={display.current ? 'primary' : ''}
-                  onClick={() => void api('projection.openAudience', display.id, ziel).catch(app.reportError)}
-                >
-                  {display.label}
-                </button>
-              ))}
-            </div>
-            <div className="row" style={{ marginTop: 12 }}>
-              <button className="primary" onClick={() => void api('projection.openAudience', undefined, ziel).catch(app.reportError)}>
-                Beamerfenster öffnen
-              </button>
-              <button onClick={() => void api('projection.closeAudience', ziel).catch(app.reportError)}>
-                Schließen
-              </button>
-              <button
-                onClick={async () => {
-                  await api('projection.demo', true, ziel).catch(app.reportError)
-                  app.notify('info', 'Demomodus aktiv – Testdaten für die Beamerpruefung.')
-                }}
-              >
-                Demomodus
-              </button>
-            </div>
-          </Card>
-          )}
-
-          {bereich === 'inhalte' && (
-          <>
-          <Card title="Freie Mitteilung">
-            <Field label="Titel">
-              <input value={messageTitle} onChange={(e) => setMessageTitle(e.target.value)} />
-            </Field>
-            <Field label="Text (optional)">
-              <input value={messageBody} onChange={(e) => setMessageBody(e.target.value)} />
-            </Field>
-            <Checkbox
-              checked={showRoundContext}
-              onChange={setShowRoundContext}
-              label="Wahlgang und Kennung in der Fußzeile anzeigen"
-            />
-            <button
-              disabled={!messageTitle.trim()}
-              onClick={() =>
-                void setMode('custom_message', {
-                  message: { title: messageTitle, body: messageBody || undefined, showRoundContext }
-                })
-              }
-            >
-              Anzeigen
-            </button>
-          </Card>
-
-          {/*
-            * Vorstellung mit Redezeit.
-            *
-            * Auf einer Versammlung stellen sich Bewerber nacheinander vor, oft
-            * mit begrenzter Zeit. Ohne Anzeige weiß weder der Saal noch die
-            * sprechende Person, wie viel noch bleibt — und die Erinnerung
-            * daran wird zur unangenehmen Unterbrechung.
-            */}
-          <Card title="Vorstellung mit Redezeit">
-            <div className="row">
-              <div style={{ flex: 1 }}>
-                {bewerber.length > 0 ? (
-                  <Field label="Wer spricht" hint="Bewerber des Bezugswahlgangs">
-                    <select
-                      value={bewerber.some((b) => b.name === rednerName) ? rednerName : ''}
-                      onChange={(e) => setRednerName(e.target.value)}
-                    >
-                      <option value="">– auswählen –</option>
-                      {bewerber.map((eintrag) => (
-                        <option key={eintrag.id} value={eintrag.name}>
-                          {eintrag.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                ) : (
-                  <Field
-                    label="Wer spricht"
-                    hint="Ohne Bezugswahlgang gibt es keine Namensliste."
-                  >
-                    <input
-                      value={rednerName}
-                      onChange={(e) => setRednerName(e.target.value)}
-                      placeholder="Name"
-                    />
-                  </Field>
-                )}
-              </div>
-              <div style={{ width: 130 }}>
-                <Field label="Redezeit (Min.)" hint="0 = ohne Uhr">
-                  <NumberInput value={redezeit} min={0} max={120} onChange={setRedezeit} />
-                </Field>
-              </div>
-              <div style={{ width: 150 }}>
-                <Field label="Nächste zeigen" hint="0 = keine Vorschau">
-                  <NumberInput
-                    value={vorschau}
-                    min={0}
-                    max={REDNER_VORSCHAU_MAX}
-                    onChange={setVorschau}
-                  />
-                </Field>
-              </div>
-            </div>
-            {bewerber.length > 0 && (
-              /* Nicht jede Vorstellung ist die eines Bewerbers — ein Gast, ein
-                 Bericht, eine Grußbotschaft stehen in keiner Kandidatenliste. */
-              <Field label="Oder freier Name" hint="Überschreibt die Auswahl.">
-                <input
-                  value={bewerber.some((b) => b.name === rednerName) ? '' : rednerName}
-                  onChange={(e) => setRednerName(e.target.value)}
-                  placeholder="Gast, Bericht, Grußwort …"
-                />
-              </Field>
-            )}
-            <Field label="Zusatz (optional)">
-              <input
-                value={rednerZusatz}
-                onChange={(e) => setRednerZusatz(e.target.value)}
-                placeholder="Bewerbung um den Vorsitz"
-              />
-            </Field>
-            <div className="row">
-              <button
-                className="primary"
-                disabled={!rednerName.trim()}
-                onClick={() => {
-                  /*
-                   * Die Reihe ergibt sich von selbst: Vorgestellt wird in der
-                   * Reihenfolge des Stimmzettels, und die steht in der
-                   * Kandidatenliste. Niemand muss eine Warteliste pflegen.
-                   */
-                  const stelle = bewerber.findIndex((b) => b.name === rednerName.trim())
-                  const folgende =
-                    stelle >= 0 ? bewerber.slice(stelle + 1).map((b) => b.name) : []
-                  void setMode('speaker', {
-                    speaker: {
-                      name: rednerName.trim(),
-                      note: rednerZusatz.trim() || undefined,
-                      seconds: redezeit > 0 ? redezeit * 60 : undefined,
-                      upcoming: folgende,
-                      upcomingShown: vorschau
-                    }
-                  })
-                }}
-              >
-                Vorstellung anzeigen
-              </button>
-            </div>
-            {projection.mode === 'speaker' && projection.speaker && (
-              <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 8 }}>
-                <span className="hint">Läuft: {projection.speaker.name}</span>
-                <button
-                  className="primary"
-                  disabled={(projection.speaker.upcoming ?? []).length === 0}
-                  title={
-                    (projection.speaker.upcoming ?? [])[0]
-                      ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
-                      : 'Niemand mehr in der Reihe'
-                  }
-                  onClick={() => void api('projection.nextSpeaker', ziel).catch(app.reportError)}
-                >
-                  Nächster{' '}
-                  {(projection.speaker.upcoming ?? [])[0]
-                    ? `— ${(projection.speaker.upcoming ?? [])[0]}`
-                    : ''}
-                </button>
-                <button
-                  onClick={() =>
-                    void api(
-                      'projection.setSpeakerPaused',
-                      projection.speaker?.pausedSecondsLeft === undefined,
-                      ziel
-                    ).catch(app.reportError)
-                  }
-                  disabled={!projection.speaker.until && projection.speaker.pausedSecondsLeft === undefined}
-                >
-                  {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
-                </button>
-                {/* Grob und fein: Eine Minute ist der übliche Zuruf, zehn
-                    Sekunden reichen fürs Nachjustieren kurz vor Schluss. */}
-                {[
-                  ['+1 Min.', 60],
-                  ['−1 Min.', -60],
-                  ['+10 s', 10],
-                  ['−10 s', -10]
-                ].map(([beschriftung, sekunden]) => (
+            <Card title="Ausgabegerät">
+              {audience?.singleDisplay && (
+                <div className="notice warn">
+                  Es ist nur ein Bildschirm erkannt. Das Beamerfenster oeffnet dann im Fenstermodus, damit Sie
+                  weiterarbeiten können.
+                </div>
+              )}
+              <div className="row">
+                {(audience?.displays ?? []).map((display) => (
                   <button
-                    key={beschriftung}
+                    key={display.id}
+                    className={display.current ? 'primary' : ''}
                     onClick={() =>
-                      void api('projection.addSpeakerSeconds', sekunden as number, ziel).catch(
-                        app.reportError
-                      )
+                      void api('projection.openAudience', display.id, ziel).catch(app.reportError)
                     }
                   >
-                    {beschriftung}
+                    {display.label}
                   </button>
                 ))}
               </div>
-            )}
-          </Card>
-
-          <Card title="Pause">
-            {/* Zwei Wege zum selben Ziel: „noch 15 Minuten" ist beim spontanen
-                Unterbrechen bequemer, „weiter um 12:30" bei einer geplanten
-                Pause — und nur die Uhrzeit steht auch dann noch richtig, wenn
-                zwischen Ansage und Anzeigen ein paar Minuten vergehen. */}
-            <div className="row" style={{ marginBottom: 8 }}>
-              <div className="segmented">
+              <div className="row mt-3">
                 <button
-                  className={pausenart === 'dauer' ? 'active' : ''}
-                  onClick={() => setPausenart('dauer')}
+                  className="primary"
+                  onClick={() => void api('projection.openAudience', undefined, ziel).catch(app.reportError)}
                 >
-                  Dauer
+                  Beamerfenster öffnen
+                </button>
+                <button onClick={() => void api('projection.closeAudience', ziel).catch(app.reportError)}>
+                  Schließen
                 </button>
                 <button
-                  className={pausenart === 'uhrzeit' ? 'active' : ''}
-                  onClick={() => setPausenart('uhrzeit')}
+                  onClick={async () => {
+                    await api('projection.demo', true, ziel).catch(app.reportError)
+                    app.notify('info', 'Demomodus aktiv – Testdaten für die Beamerpruefung.')
+                  }}
                 >
-                  Bis Uhrzeit
+                  Demomodus
                 </button>
               </div>
-            </div>
-            <div className="row">
-              <div style={{ width: 170 }}>
-                {pausenart === 'dauer' ? (
-                  <Field label="Dauer (Minuten)" hint="0 = ohne Countdown">
-                    <NumberInput value={breakMinutes} min={0} max={240} onChange={setBreakMinutes} />
-                  </Field>
-                ) : (
-                  <Field label="Weiter um" hint="Nach der Uhr dieses Rechners.">
+            </Card>
+          )}
+
+          {bereich === 'inhalte' && (
+            <>
+              <Card title="Freie Mitteilung">
+                <Field label="Titel">
+                  <input value={messageTitle} onChange={(e) => setMessageTitle(e.target.value)} />
+                </Field>
+                <Field label="Text (optional)">
+                  <input value={messageBody} onChange={(e) => setMessageBody(e.target.value)} />
+                </Field>
+                <Checkbox
+                  checked={showRoundContext}
+                  onChange={setShowRoundContext}
+                  label="Wahlgang und Kennung in der Fußzeile anzeigen"
+                />
+                <button
+                  disabled={!messageTitle.trim()}
+                  onClick={() =>
+                    void setMode('custom_message', {
+                      message: { title: messageTitle, body: messageBody || undefined, showRoundContext }
+                    })
+                  }
+                >
+                  Anzeigen
+                </button>
+              </Card>
+
+              {/*
+               * Vorstellung mit Redezeit.
+               *
+               * Auf einer Versammlung stellen sich Bewerber nacheinander vor, oft
+               * mit begrenzter Zeit. Ohne Anzeige weiß weder der Saal noch die
+               * sprechende Person, wie viel noch bleibt — und die Erinnerung
+               * daran wird zur unangenehmen Unterbrechung.
+               */}
+              <Card title="Vorstellung mit Redezeit">
+                <div className="row">
+                  <div className="col">
+                    {bewerber.length > 0 ? (
+                      <Field label="Wer spricht" hint="Bewerber des Bezugswahlgangs">
+                        <select
+                          value={bewerber.some((b) => b.name === rednerName) ? rednerName : ''}
+                          onChange={(e) => setRednerName(e.target.value)}
+                        >
+                          <option value="">– auswählen –</option>
+                          {bewerber.map((eintrag) => (
+                            <option key={eintrag.id} value={eintrag.name}>
+                              {eintrag.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    ) : (
+                      <Field label="Wer spricht" hint="Ohne Bezugswahlgang gibt es keine Namensliste.">
+                        <input
+                          value={rednerName}
+                          onChange={(e) => setRednerName(e.target.value)}
+                          placeholder="Name"
+                        />
+                      </Field>
+                    )}
+                  </div>
+                  <div className="col-mittel">
+                    <Field label="Redezeit (Min.)" hint="0 = ohne Uhr">
+                      <NumberInput value={redezeit} min={0} max={120} onChange={setRedezeit} />
+                    </Field>
+                  </div>
+                  <div className="col-mittel">
+                    <Field label="Nächste zeigen" hint="0 = keine Vorschau">
+                      <NumberInput
+                        value={vorschau}
+                        min={0}
+                        max={REDNER_VORSCHAU_MAX}
+                        onChange={setVorschau}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                {bewerber.length > 0 && (
+                  /* Nicht jede Vorstellung ist die eines Bewerbers — ein Gast, ein
+                 Bericht, eine Grußbotschaft stehen in keiner Kandidatenliste. */
+                  <Field label="Oder freier Name" hint="Überschreibt die Auswahl.">
                     <input
-                      type="time"
-                      value={breakUntil}
-                      onChange={(e) => setBreakUntil(e.target.value)}
+                      value={bewerber.some((b) => b.name === rednerName) ? '' : rednerName}
+                      onChange={(e) => setRednerName(e.target.value)}
+                      placeholder="Gast, Bericht, Grußwort …"
                     />
                   </Field>
                 )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <Field label="Hinweistext (optional)">
+                <Field label="Zusatz (optional)">
                   <input
-                    value={breakNote}
-                    onChange={(e) => setBreakNote(e.target.value)}
-                    placeholder="Die Versammlung wird in Kürze fortgesetzt."
+                    value={rednerZusatz}
+                    onChange={(e) => setRednerZusatz(e.target.value)}
+                    placeholder="Bewerbung um den Vorsitz"
                   />
                 </Field>
-              </div>
-            </div>
-            <button
-              className="primary"
-              onClick={() =>
-                void setMode('break', {
-                  breakMinutes:
-                    pausenart === 'dauer' && breakMinutes > 0 ? breakMinutes : undefined,
-                  breakUntilTime: pausenart === 'uhrzeit' && breakUntil ? breakUntil : undefined,
-                  message: {
-                    title: 'KURZE PAUSE',
-                    body: breakNote || undefined,
-                    showRoundContext
+                <div className="row">
+                  <button
+                    className="primary"
+                    disabled={!rednerName.trim()}
+                    onClick={() => {
+                      /*
+                       * Die Reihe ergibt sich von selbst: Vorgestellt wird in der
+                       * Reihenfolge des Stimmzettels, und die steht in der
+                       * Kandidatenliste. Niemand muss eine Warteliste pflegen.
+                       */
+                      const stelle = bewerber.findIndex((b) => b.name === rednerName.trim())
+                      const folgende = stelle >= 0 ? bewerber.slice(stelle + 1).map((b) => b.name) : []
+                      void setMode('speaker', {
+                        speaker: {
+                          name: rednerName.trim(),
+                          note: rednerZusatz.trim() || undefined,
+                          seconds: redezeit > 0 ? redezeit * 60 : undefined,
+                          upcoming: folgende,
+                          upcomingShown: vorschau
+                        }
+                      })
+                    }}
+                  >
+                    Vorstellung anzeigen
+                  </button>
+                </div>
+                {projection.mode === 'speaker' && projection.speaker && (
+                  <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 8 }}>
+                    <span className="hint">Läuft: {projection.speaker.name}</span>
+                    <button
+                      className="primary"
+                      disabled={(projection.speaker.upcoming ?? []).length === 0}
+                      title={
+                        (projection.speaker.upcoming ?? [])[0]
+                          ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
+                          : 'Niemand mehr in der Reihe'
+                      }
+                      onClick={() => void api('projection.nextSpeaker', ziel).catch(app.reportError)}
+                    >
+                      Nächster{' '}
+                      {(projection.speaker.upcoming ?? [])[0]
+                        ? `— ${(projection.speaker.upcoming ?? [])[0]}`
+                        : ''}
+                    </button>
+                    <button
+                      onClick={() =>
+                        void api(
+                          'projection.setSpeakerPaused',
+                          projection.speaker?.pausedSecondsLeft === undefined,
+                          ziel
+                        ).catch(app.reportError)
+                      }
+                      disabled={
+                        !projection.speaker.until && projection.speaker.pausedSecondsLeft === undefined
+                      }
+                    >
+                      {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
+                    </button>
+                    {/* Grob und fein: Eine Minute ist der übliche Zuruf, zehn
+                    Sekunden reichen fürs Nachjustieren kurz vor Schluss. */}
+                    {[
+                      ['+1 Min.', 60],
+                      ['−1 Min.', -60],
+                      ['+10 s', 10],
+                      ['−10 s', -10]
+                    ].map(([beschriftung, sekunden]) => (
+                      <button
+                        key={beschriftung}
+                        onClick={() =>
+                          void api('projection.addSpeakerSeconds', sekunden as number, ziel).catch(
+                            app.reportError
+                          )
+                        }
+                      >
+                        {beschriftung}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              <Card title="Pause">
+                {/* Zwei Wege zum selben Ziel: „noch 15 Minuten" ist beim spontanen
+                Unterbrechen bequemer, „weiter um 12:30" bei einer geplanten
+                Pause — und nur die Uhrzeit steht auch dann noch richtig, wenn
+                zwischen Ansage und Anzeigen ein paar Minuten vergehen. */}
+                <div className="row mb-2">
+                  <div className="segmented">
+                    <button
+                      className={pausenart === 'dauer' ? 'active' : ''}
+                      onClick={() => setPausenart('dauer')}
+                    >
+                      Dauer
+                    </button>
+                    <button
+                      className={pausenart === 'uhrzeit' ? 'active' : ''}
+                      onClick={() => setPausenart('uhrzeit')}
+                    >
+                      Bis Uhrzeit
+                    </button>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="col-mittel">
+                    {pausenart === 'dauer' ? (
+                      <Field label="Dauer (Minuten)" hint="0 = ohne Countdown">
+                        <NumberInput value={breakMinutes} min={0} max={240} onChange={setBreakMinutes} />
+                      </Field>
+                    ) : (
+                      <Field label="Weiter um" hint="Nach der Uhr dieses Rechners.">
+                        <input
+                          type="time"
+                          value={breakUntil}
+                          onChange={(e) => setBreakUntil(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </div>
+                  <div className="col">
+                    <Field label="Hinweistext (optional)">
+                      <input
+                        value={breakNote}
+                        onChange={(e) => setBreakNote(e.target.value)}
+                        placeholder="Die Versammlung wird in Kürze fortgesetzt."
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <button
+                  className="primary"
+                  onClick={() =>
+                    void setMode('break', {
+                      breakMinutes: pausenart === 'dauer' && breakMinutes > 0 ? breakMinutes : undefined,
+                      breakUntilTime: pausenart === 'uhrzeit' && breakUntil ? breakUntil : undefined,
+                      message: {
+                        title: 'KURZE PAUSE',
+                        body: breakNote || undefined,
+                        showRoundContext
+                      }
+                    })
                   }
-                })
-              }
-            >
-              Pause anzeigen
-            </button>
-            <div className="hint">
-              Der Countdown ist nur für Pausen gedacht. Für die Stimmabgabe wird bewusst keine Uhr angezeigt,
-              solange die Wahlleitung kein Ende beschlossen hat.
-            </div>
-          </Card>
+                >
+                  Pause anzeigen
+                </button>
+                <div className="hint">
+                  Der Countdown ist nur für Pausen gedacht. Für die Stimmabgabe wird bewusst keine Uhr
+                  angezeigt, solange die Wahlleitung kein Ende beschlossen hat.
+                </div>
+              </Card>
 
-          <Card title="Tagesordnung">
-            <Field label="Tagesordnungspunkt">
-              <input value={agenda.top} onChange={(e) => setAgenda({ ...agenda, top: e.target.value })} />
-            </Field>
-            <div className="row">
-              <div style={{ flex: 1 }}>
-                <Field label="Aktuell">
-                  <input value={agenda.current} onChange={(e) => setAgenda({ ...agenda, current: e.target.value })} />
+              <Card title="Tagesordnung">
+                <Field label="Tagesordnungspunkt">
+                  <input value={agenda.top} onChange={(e) => setAgenda({ ...agenda, top: e.target.value })} />
                 </Field>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Field label="Danach">
-                  <input value={agenda.next} onChange={(e) => setAgenda({ ...agenda, next: e.target.value })} />
-                </Field>
-              </div>
-            </div>
-            <button onClick={() => void setMode('agenda', { agenda })}>Tagesordnung anzeigen</button>
-          </Card>
-
-          </>
+                <div className="row">
+                  <div className="col">
+                    <Field label="Aktuell">
+                      <input
+                        value={agenda.current}
+                        onChange={(e) => setAgenda({ ...agenda, current: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className="col">
+                    <Field label="Danach">
+                      <input
+                        value={agenda.next}
+                        onChange={(e) => setAgenda({ ...agenda, next: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <button onClick={() => void setMode('agenda', { agenda })}>Tagesordnung anzeigen</button>
+              </Card>
+            </>
           )}
 
           {bereich === 'medien' && (
-          <>
-            <PresentationLibrary />
-            <VideoLibrary />
-          </>
+            <>
+              <PresentationLibrary />
+              <VideoLibrary />
+            </>
           )}
 
           {bereich === 'ausgabe' && (
-          /*
-           * Hier stehen nur noch die Adressen.
-           *
-           * Port, Token und Freigaben stellt man einmal ein, bevor die
-           * Versammlung beginnt — das gehört in die Einstellungen. Was während
-           * der Versammlung gebraucht wird, ist die Adresse zum Ablesen und
-           * Weitersagen.
-           */
-          <Card title="Beamer im Netzwerk">
-            {!network || !network.running ? (
-              <p className="hint">
-                Die Netzwerkansicht läuft nicht. Einschalten unter{' '}
-                <strong>Einstellungen → Beamer</strong>.
-              </p>
-            ) : (
-              <>
-                <label>Beameransicht</label>
-                {network.urls.map((url) => (
-                  <div key={url} className="mono">
-                    {url}
+            /*
+             * Hier stehen nur noch die Adressen.
+             *
+             * Port, Token und Freigaben stellt man einmal ein, bevor die
+             * Versammlung beginnt — das gehört in die Einstellungen. Was während
+             * der Versammlung gebraucht wird, ist die Adresse zum Ablesen und
+             * Weitersagen.
+             */
+            <Card title="Beamer im Netzwerk">
+              {!network || !network.running ? (
+                <p className="hint">
+                  Die Netzwerkansicht läuft nicht. Einschalten unter <strong>Einstellungen → Beamer</strong>.
+                </p>
+              ) : (
+                <>
+                  <label>Beameransicht</label>
+                  {network.urls.map((url) => (
+                    <div key={url} className="mono">
+                      {url}
+                    </div>
+                  ))}
+                  {app.buehnen.length > 1 && (
+                    <>
+                      <label className="mt-3">Einzelne Bühnen</label>
+                      {app.buehnen.map((stage) => (
+                        <div key={`b-${stage.id}`} className="mono">
+                          {netzBasis(network)}/b/{stage.id}
+                          {network.token ? `?t=${network.token}` : ''} — {stage.name}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <label className="mt-3">Prompter am Pult</label>
+                  <div className="mono">
+                    {netzBasis(network)}/prompter{network.token ? `?t=${network.token}` : ''}
                   </div>
-                ))}
-                {app.buehnen.length > 1 && (
-                  <>
-                    <label style={{ marginTop: 10 }}>Einzelne Bühnen</label>
-                    {app.buehnen.map((stage) => (
-                      <div key={`b-${stage.id}`} className="mono">
-                        {netzBasis(network)}/b/{stage.id}
-                        {network.token ? `?t=${network.token}` : ''} — {stage.name}
-                      </div>
-                    ))}
-                  </>
-                )}
-                <label style={{ marginTop: 10 }}>Prompter am Pult</label>
-                <div className="mono">
-                  {netzBasis(network)}/prompter{network.token ? `?t=${network.token}` : ''}
-                </div>
-                {network.allowRemoteOperator && (
-                  <>
-                    <label style={{ marginTop: 10 }}>Bedienung (Anmeldung erforderlich)</label>
-                    <div className="mono">{netzBasis(network)}/operator</div>
-                  </>
-                )}
-                <div className="hint" style={{ marginTop: 10 }}>
-                  Port, Token und Freigaben: <strong>Einstellungen → Beamer</strong>.
-                </div>
-              </>
-            )}
-          </Card>
+                  {network.allowRemoteOperator && (
+                    <>
+                      <label className="mt-3">Bedienung (Anmeldung erforderlich)</label>
+                      <div className="mono">{netzBasis(network)}/operator</div>
+                    </>
+                  )}
+                  <div className="hint mt-3">
+                    Port, Token und Freigaben: <strong>Einstellungen → Beamer</strong>.
+                  </div>
+                </>
+              )}
+            </Card>
           )}
 
           {bereich === 'verlauf' && (
-          <Card title="Verlauf">
-            <div className="scroll-box" style={{ maxHeight: 220 }}>
-              <table>
-                <tbody>
-                  {history.map((entry, index) => (
-                    <tr key={index}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{formatTimeDe(entry.timestamp)}</td>
-                      <td>{entry.label}</td>
-                      <td>{entry.roundLabel ?? ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+            <Card title="Verlauf">
+              <div className="scroll-box" style={{ maxHeight: 220 }}>
+                <table>
+                  <tbody>
+                    {history.map((entry, index) => (
+                      <tr key={index}>
+                        <td className="zeitstempel">{formatTimeDe(entry.timestamp)}</td>
+                        <td>{entry.label}</td>
+                        <td>{entry.roundLabel ?? ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
         </div>
       </div>

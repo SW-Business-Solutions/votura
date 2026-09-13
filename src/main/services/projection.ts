@@ -196,7 +196,9 @@ export function refreshTheme(buehne: number = HAUPTBUEHNE): ProjectionState {
  * ein Ergebnis wieder projiziert (Beamer §57) — der Beamer startet neutral.
  */
 export function restoreProjection(): void {
-  const row = db().prepare(`SELECT state_json FROM projection_state WHERE id = 1`).get<{ state_json: string }>()
+  const row = db()
+    .prepare(`SELECT state_json FROM projection_state WHERE id = 1`)
+    .get<{ state_json: string }>()
   /*
    * Zwei Ablageformen: Bis 0.13 stand dort ein einzelner Zustand unter
    * `state`, seither die Bühnen. Beide werden gelesen — sonst stünde nach
@@ -508,10 +510,10 @@ export function setProjection(
       input.mode === 'break' && input.breakUntilTime
         ? pausenende(input.breakUntilTime)
         : input.mode === 'break' && input.breakMinutes && input.breakMinutes > 0
-        ? new Date(Date.now() + input.breakMinutes * 60_000).toISOString()
-        : input.mode === 'break'
-          ? state.breakUntil
-          : undefined,
+          ? new Date(Date.now() + input.breakMinutes * 60_000).toISOString()
+          : input.mode === 'break'
+            ? state.breakUntil
+            : undefined,
     candidatePage: 0,
     candidatePageCount: seitenZahlFuer(input.mode, {
       agendaPages,
@@ -528,8 +530,7 @@ export function setProjection(
      * beim nächsten Wechsel wieder den alten Stand. Der Folienzähler beginnt
      * deshalb bei jedem Aufruf der Präsentation von vorn.
      */
-    presentation:
-      input.mode === 'presentation' ? praesentationFuer(input.presentationId) : undefined,
+    presentation: input.mode === 'presentation' ? praesentationFuer(input.presentationId) : undefined,
     /*
      * Dasselbe gilt für das Video: Wer zurück auf den Wahlgang schaltet, will
      * den Wahlgang sehen. Es beginnt bei jedem Aufruf angehalten bei Sekunde
@@ -944,11 +945,7 @@ export function setPresentationSlide(buehne: number, slide: number): ProjectionS
  * Die Folienzahl kennt nur das Dokument selbst — sie steht nirgends im
  * Dateikopf, sondern ergibt sich, wenn dessen Skript gelaufen ist.
  */
-export function reportPresentationState(
-  buehne: number,
-  slide: number,
-  slideCount: number
-): ProjectionState {
+export function reportPresentationState(buehne: number, slide: number, slideCount: number): ProjectionState {
   let state = buehneVon(buehne)
   if (state.mode !== 'presentation' || !state.presentation) return state
   if (!Number.isFinite(slideCount) || slideCount < 1) return state
@@ -975,7 +972,11 @@ export function setCandidatePageInterval(buehne: number, seconds: number): Proje
   if (!Number.isFinite(seconds)) return state
   const sicher = Math.max(0, Math.min(Math.round(seconds), 300))
   if (sicher === state.candidatePageIntervalSeconds) return state
-  state = setzeUndGib(buehne, { ...state, candidatePageIntervalSeconds: sicher, updatedAt: new Date().toISOString() })
+  state = setzeUndGib(buehne, {
+    ...state,
+    candidatePageIntervalSeconds: sicher,
+    updatedAt: new Date().toISOString()
+  })
   persist()
   broadcast(buehne)
   return state

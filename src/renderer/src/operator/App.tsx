@@ -109,9 +109,7 @@ export function App(): React.JSX.Element {
     return <LoginPage />
   }
 
-  const activeRound = app.rounds.find(
-    (round) => round.status !== 'completed' && round.status !== 'cancelled'
-  )
+  const activeRound = app.rounds.find((round) => round.status !== 'completed' && round.status !== 'cancelled')
 
   return (
     <div className="app">
@@ -125,7 +123,11 @@ export function App(): React.JSX.Element {
           <small>Wahlgang- und Stimmzettelverwaltung</small>
         </div>
 
-        <NavItem label="Übersicht" active={route.name === 'dashboard'} onClick={() => navigate('dashboard')} />
+        <NavItem
+          label="Übersicht"
+          active={route.name === 'dashboard'}
+          onClick={() => navigate('dashboard')}
+        />
         <NavItem label="Veranstaltung" active={route.name === 'event'} onClick={() => navigate('event')} />
         <NavItem
           label="Tagesordnung"
@@ -151,16 +153,19 @@ export function App(): React.JSX.Element {
                 onClick={() => navigate(`round/${round.id}`)}
                 title={round.title}
               >
-                <span className="nav-round-label">
-                  {round.sequentialNumber > 0 ? round.roundLabel : '–'}
-                </span>
+                <span className="nav-round-label">{round.sequentialNumber > 0 ? round.roundLabel : '–'}</span>
                 <span className="nav-round-title">{round.title}</span>
                 {round.id === activeRound?.id && <span className="nav-round-dot" title="aktuell" />}
               </button>
             ))}
           </div>
         )}
-        <NavItem label="Beamer" active={route.name === 'beamer'} onClick={() => navigate('beamer')} hint="Strg+B" />
+        <NavItem
+          label="Beamer"
+          active={route.name === 'beamer'}
+          onClick={() => navigate('beamer')}
+          hint="Strg+B"
+        />
         <NavItem
           label="Prompter"
           active={route.name === 'prompter'}
@@ -168,8 +173,16 @@ export function App(): React.JSX.Element {
           hint="Strg+P"
         />
         <NavItem label="Audit-Trail" active={route.name === 'audit'} onClick={() => navigate('audit')} />
-        <NavItem label="Systemcheck" active={route.name === 'preflight'} onClick={() => navigate('preflight')} />
-        <NavItem label="Einstellungen" active={route.name === 'settings'} onClick={() => navigate('settings')} />
+        <NavItem
+          label="Systemcheck"
+          active={route.name === 'preflight'}
+          onClick={() => navigate('preflight')}
+        />
+        <NavItem
+          label="Einstellungen"
+          active={route.name === 'settings'}
+          onClick={() => navigate('settings')}
+        />
 
         <div className="sidebar-footer">
           <div>

@@ -22,14 +22,7 @@ import {
   type Buehnenwahl,
   type ProjectionState
 } from '@shared/projection'
-import type {
-  ElectionEvent,
-  Permission,
-  PrintProgress,
-  RoundSummary,
-  Session,
-  UUID
-} from '@shared/types'
+import type { ElectionEvent, Permission, PrintProgress, RoundSummary, Session, UUID } from '@shared/types'
 import { api, bridge, errorMessage } from '../lib/api'
 
 export interface Notice {
@@ -123,8 +116,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       : auswahl.length === 0 || auswahl.includes(HAUPTBUEHNE)
         ? HAUPTBUEHNE
         : auswahl[0]
-  const ziel: Buehnenwahl =
-    buehne === ALLE_BUEHNEN ? (auswahl.length > 0 ? auswahl : ALLE_BUEHNEN) : buehne
+  const ziel: Buehnenwahl = buehne === ALLE_BUEHNEN ? (auswahl.length > 0 ? auswahl : ALLE_BUEHNEN) : buehne
   const projection = projektionen[bezug] ?? EMPTY_PROJECTION_STATE
   const audience = audiences[bezug] ?? null
   const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null)
@@ -191,7 +183,9 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
         setEvent(currentEvent)
         setSettings(currentSettings)
         setBuehnen(stages)
-        void api('prompter.view').then(setPrompter).catch(() => undefined)
+        void api('prompter.view')
+          .then(setPrompter)
+          .catch(() => undefined)
         /* Jede Bühne einmal vollständig holen — danach kommen nur noch
            Wechsel über das Ereignis herein. */
         const zustaende = await Promise.all(
@@ -221,9 +215,7 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
       /* Wurde die bearbeitete Bühne abgebaut, springt die Bedienung zurück
          auf die Hauptbühne, statt ins Leere zu zeigen. */
       setBuehne((current) =>
-        current === ALLE_BUEHNEN || stages.some((stage) => stage.id === current)
-          ? current
-          : HAUPTBUEHNE
+        current === ALLE_BUEHNEN || stages.some((stage) => stage.id === current) ? current : HAUPTBUEHNE
       )
     } catch (error) {
       reportError(error)

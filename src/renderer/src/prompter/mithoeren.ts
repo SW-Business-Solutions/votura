@@ -29,10 +29,7 @@ import { SPRACHMODELL_PFAD } from '@shared/sprachmodell'
 const GEDAECHTNIS = 12
 
 export type MithoerenStand =
-  | { art: 'aus' }
-  | { art: 'startet' }
-  | { art: 'hoert'; zuletzt: string }
-  | { art: 'fehler'; text: string }
+  { art: 'aus' } | { art: 'startet' } | { art: 'hoert'; zuletzt: string } | { art: 'fehler'; text: string }
 
 export interface MithoerenOptionen {
   /** Das Manuskript, in dem gesucht wird. */
@@ -124,13 +121,15 @@ export async function starteMithoeren(optionen: MithoerenOptionen): Promise<Mith
     if (beendet) throw new Error('abgebrochen')
 
     kontext = new AudioContext({ sampleRate: 16000 })
-    const erkenner = new (modell as unknown as {
-      KaldiRecognizer: new (rate: number) => {
-        on(ereignis: string, hoerer: (nachricht: unknown) => void): void
-        acceptWaveformFloat(daten: Float32Array, rate: number): void
-        remove(): void
+    const erkenner = new (
+      modell as unknown as {
+        KaldiRecognizer: new (rate: number) => {
+          on(ereignis: string, hoerer: (nachricht: unknown) => void): void
+          acceptWaveformFloat(daten: Float32Array, rate: number): void
+          remove(): void
+        }
       }
-    }).KaldiRecognizer(kontext.sampleRate)
+    ).KaldiRecognizer(kontext.sampleRate)
 
     const verarbeite = (text: string): void => {
       const neu = wortfolge(text)

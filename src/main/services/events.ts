@@ -168,7 +168,9 @@ function setStatus(id: UUID, status: EventStatus, column?: 'closed_at' | 'archiv
   const now = new Date().toISOString()
   if (column) {
     db()
-      .prepare(`UPDATE events SET status = ?, ${column} = ?, updated_at = ?, row_version = row_version + 1 WHERE id = ?`)
+      .prepare(
+        `UPDATE events SET status = ?, ${column} = ?, updated_at = ?, row_version = row_version + 1 WHERE id = ?`
+      )
       .run(status, now, now, id)
   } else {
     db()

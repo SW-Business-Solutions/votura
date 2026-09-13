@@ -109,7 +109,9 @@ function runPowerShell(script: string, args: string[], timeoutMs = 30000): Promi
         resolve(stdout.trim())
       }
     )
-    child.on('error', (error) => reject(new PrinterError(`PowerShell nicht verfügbar: ${error.message}`, false)))
+    child.on('error', (error) =>
+      reject(new PrinterError(`PowerShell nicht verfügbar: ${error.message}`, false))
+    )
   }).finally(() => {
     try {
       unlinkSync(scriptFile)

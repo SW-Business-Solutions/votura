@@ -83,10 +83,7 @@ function Stoppuhr({ seit }: { seit: number }): JSX.Element {
  * zeigen. Läuft derselbe Foliensatz auf zwei Bühnen, muss ein Tastendruck
  * beide weiterschalten; sonst stehen sie nach der ersten Folie auseinander.
  */
-function buehnenMitFoliensatz(
-  zustaende: Record<number, ProjectionState>,
-  buehnen: Buehne[]
-): number[] {
+function buehnenMitFoliensatz(zustaende: Record<number, ProjectionState>, buehnen: Buehne[]): number[] {
   const mitFolien = buehnen
     .map((stage) => stage.id)
     .sort((a, b) => a - b)
@@ -179,10 +176,7 @@ function PrompterApp(): JSX.Element {
     (folie: number) => {
       if (!laeuft) return
       const grenze = anzahl ?? Number.MAX_SAFE_INTEGER
-      window.prompter?.goto(
-        Math.max(1, Math.min(folie, grenze)),
-        zielSchluessel.split(',').map(Number)
-      )
+      window.prompter?.goto(Math.max(1, Math.min(folie, grenze)), zielSchluessel.split(',').map(Number))
     },
     [laeuft, anzahl, zielSchluessel]
   )
@@ -292,9 +286,7 @@ function PrompterApp(): JSX.Element {
               {/* Vorgabe: alle Wände, auf denen der Foliensatz liegt. Nur so
                   bleiben zwei Beamer beim Blättern beieinander. */}
               <option value="alle">
-                {laufende.length > 1
-                  ? `Alle ${laufende.length} mit Foliensatz`
-                  : 'Alle mit Foliensatz'}
+                {laufende.length > 1 ? `Alle ${laufende.length} mit Foliensatz` : 'Alle mit Foliensatz'}
               </option>
               {buehnen.map((stage) => (
                 <option key={stage.id} value={stage.id}>

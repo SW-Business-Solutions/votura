@@ -222,9 +222,7 @@ export function startRound(roundId: UUID): ElectionRound {
 
   ensureRoundIdentity(roundId)
   db()
-    .prepare(
-      `UPDATE rounds SET status = 'candidate_collection', row_version = row_version + 1 WHERE id = ?`
-    )
+    .prepare(`UPDATE rounds SET status = 'candidate_collection', row_version = row_version + 1 WHERE id = ?`)
     .run(roundId)
 
   const after = getRound(roundId)
@@ -394,9 +392,15 @@ export function createRound(input: RoundInput): ElectionRound {
  * vertretbar, solange der Wahlgang vorbereitet wird — sobald die Stimmabgabe
  * begonnen hat oder Zettel gedruckt sind, nicht mehr.
  */
-export function verfahrenAenderbar(round: ElectionRound, gedruckt: number): { moeglich: boolean; grund?: string } {
+export function verfahrenAenderbar(
+  round: ElectionRound,
+  gedruckt: number
+): { moeglich: boolean; grund?: string } {
   if (round.status !== 'draft' && round.status !== 'candidate_collection') {
-    return { moeglich: false, grund: `Der Wahlgang ist im Status „${round.status}" — das Verfahren steht damit fest.` }
+    return {
+      moeglich: false,
+      grund: `Der Wahlgang ist im Status „${round.status}" — das Verfahren steht damit fest.`
+    }
   }
   if (gedruckt > 0) {
     return {
@@ -572,7 +576,9 @@ export function lockCandidates(roundId: UUID): ElectionRound {
   ensureRoundIdentity(roundId)
 
   db()
-    .prepare(`UPDATE rounds SET candidates_locked_at = ?, locked_at = ?, row_version = row_version + 1 WHERE id = ?`)
+    .prepare(
+      `UPDATE rounds SET candidates_locked_at = ?, locked_at = ?, row_version = row_version + 1 WHERE id = ?`
+    )
     .run(new Date().toISOString(), new Date().toISOString(), roundId)
 
   const after = getRound(roundId)
@@ -597,7 +603,9 @@ export function unlockRound(roundId: UUID, reason: string): ElectionRound {
   const round = getRound(roundId)
   assertEditable(round)
   if (round.status === 'open' || round.status === 'counting') {
-    throw new Error('Ein eröffneter Wahlgang kann nicht entsperrt werden. Bitte zuerst die Stimmabgabe beenden.')
+    throw new Error(
+      'Ein eröffneter Wahlgang kann nicht entsperrt werden. Bitte zuerst die Stimmabgabe beenden.'
+    )
   }
 
   const wasApproved = round.approvedVersion === round.ballotVersion
@@ -638,7 +646,9 @@ export function setRoundStatus(roundId: UUID, status: RoundStatus, reason?: stri
     throw new Error('Der Wahlgang kann erst eröffnet werden, wenn der aktuelle Stimmzettel freigegeben ist.')
   }
 
-  db().prepare(`UPDATE rounds SET status = ?, row_version = row_version + 1 WHERE id = ?`).run(status, roundId)
+  db()
+    .prepare(`UPDATE rounds SET status = ?, row_version = row_version + 1 WHERE id = ?`)
+    .run(status, roundId)
   const after = getRound(roundId)
   appendAudit({
     action: `round.status_${status}`,
@@ -670,7 +680,9 @@ export function completeRound(roundId: UUID): ElectionRound {
 
   const now = new Date().toISOString()
   db()
-    .prepare(`UPDATE rounds SET status = 'completed', completed_at = ?, row_version = row_version + 1 WHERE id = ?`)
+    .prepare(
+      `UPDATE rounds SET status = 'completed', completed_at = ?, row_version = row_version + 1 WHERE id = ?`
+    )
     .run(now, roundId)
 
   const after = getRound(roundId)
@@ -752,8 +764,7 @@ export function createFollowUpRound(input: {
   const procedure = input.procedure ?? (input.kind === 'runoff' ? 'runoff' : parent.procedure)
   const seats = input.seats ?? (input.kind === 'runoff' ? 1 : parent.seats)
   const profile = profileFor(procedure)
-  const maxVotes =
-    input.maxVotes !== undefined ? input.maxVotes : profile.defaultMaxVotes(seats)
+  const maxVotes = input.maxVotes !== undefined ? input.maxVotes : profile.defaultMaxVotes(seats)
 
   const template = {
     ...defaultTemplateFor(procedure, {

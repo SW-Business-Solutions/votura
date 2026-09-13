@@ -2,6 +2,30 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ROUND_STATUS_LABELS, type RoundStatus } from '@shared/types'
 
+export function Tabs<T extends string>({
+  eintraege,
+  aktiv,
+  aufWahl
+}: {
+  eintraege: readonly { id: T; label: string }[]
+  aktiv: T
+  aufWahl: (id: T) => void
+}): React.JSX.Element {
+  return (
+    <div className="tabs">
+      {eintraege.map((eintrag) => (
+        <button
+          key={eintrag.id}
+          className={`tab${aktiv === eintrag.id ? ' active' : ''}`}
+          onClick={() => aufWahl(eintrag.id)}
+        >
+          {eintrag.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Card({
   title,
   actions,
@@ -104,8 +128,16 @@ export function Modal({
   }, [onClose])
 
   return (
-    <div className="modal-backdrop" onMouseDown={(clickEvent) => clickEvent.target === clickEvent.currentTarget && onClose()}>
-      <div className="modal" style={wide ? { width: 'min(940px, 100%)' } : undefined} role="dialog" aria-modal="true">
+    <div
+      className="modal-backdrop"
+      onMouseDown={(clickEvent) => clickEvent.target === clickEvent.currentTarget && onClose()}
+    >
+      <div
+        className="modal"
+        style={wide ? { width: 'min(940px, 100%)' } : undefined}
+        role="dialog"
+        aria-modal="true"
+      >
         <h2>{title}</h2>
         {children}
         {actions && <div className="modal-actions">{actions}</div>}
@@ -169,7 +201,15 @@ export function EmptyState({ text, action }: { text: string; action?: ReactNode 
   )
 }
 
-export function Kpi({ label, value, tone }: { label: string; value: ReactNode; tone?: string }): React.JSX.Element {
+export function Kpi({
+  label,
+  value,
+  tone
+}: {
+  label: string
+  value: ReactNode
+  tone?: string
+}): React.JSX.Element {
   return (
     <div className="kpi">
       <span className="value" style={tone ? { color: `var(--${tone})` } : undefined}>

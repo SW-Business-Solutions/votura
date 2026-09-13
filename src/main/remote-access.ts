@@ -148,7 +148,10 @@ export async function handleRemoteRequest(
       json(response, 200, { ok: true, data: { token, session } })
     } catch (error) {
       noteFailure(client)
-      json(response, 401, { ok: false, error: error instanceof Error ? error.message : 'Anmeldung fehlgeschlagen.' })
+      json(response, 401, {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Anmeldung fehlgeschlagen.'
+      })
     }
     return true
   }

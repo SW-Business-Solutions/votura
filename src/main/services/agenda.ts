@@ -100,11 +100,7 @@ export function addAgendaItem(input: AgendaItemInput): AgendaItem {
 }
 
 /** Wird beim Anlegen eines Wahlgangs automatisch aufgerufen. */
-export function ensureAgendaItemForRound(input: {
-  eventId: UUID
-  roundId: UUID
-  title: string
-}): void {
+export function ensureAgendaItemForRound(input: { eventId: UUID; roundId: UUID; title: string }): void {
   const existing = db()
     .prepare(`SELECT id FROM agenda_items WHERE round_id = ?`)
     .get<{ id: string }>(input.roundId)
@@ -115,7 +111,14 @@ export function ensureAgendaItemForRound(input: {
       `INSERT INTO agenda_items (id, event_id, position, title, kind, round_id, done, created_at)
        VALUES (?, ?, ?, ?, 'round', ?, 0, ?)`
     )
-    .run(randomUUID(), input.eventId, nextPosition(input.eventId), input.title, input.roundId, new Date().toISOString())
+    .run(
+      randomUUID(),
+      input.eventId,
+      nextPosition(input.eventId),
+      input.title,
+      input.roundId,
+      new Date().toISOString()
+    )
 }
 
 export function updateAgendaItem(input: {
@@ -142,7 +145,8 @@ export function updateAgendaItem(input: {
 
   const after = listAgenda(before.eventId).find((item) => item.id === input.id) as AgendaItem
   appendAudit({
-    action: input.done !== undefined && input.done !== before.done ? 'agenda.item_status' : 'agenda.item_updated',
+    action:
+      input.done !== undefined && input.done !== before.done ? 'agenda.item_status' : 'agenda.item_updated',
     userId: session.user.id,
     userName: session.user.displayName,
     eventId: before.eventId,
@@ -164,7 +168,9 @@ export function reorderAgenda(eventId: UUID, orderedIds: UUID[]): AgendaItem[] {
     orderedIds.forEach((id, index) => {
       const item = items.get(id)
       if (!item) return
-      db().prepare(`UPDATE agenda_items SET position = ? WHERE id = ?`).run(index + 1, id)
+      db()
+        .prepare(`UPDATE agenda_items SET position = ? WHERE id = ?`)
+        .run(index + 1, id)
       if (item.roundId) {
         db()
           .prepare(`UPDATE rounds SET agenda_order = ?, row_version = row_version + 1 WHERE id = ?`)
@@ -179,7 +185,9 @@ export function reorderAgenda(eventId: UUID, orderedIds: UUID[]): AgendaItem[] {
     userName: session.user.displayName,
     eventId,
     newValue: {
-      reihenfolge: orderedIds.map((id) => items.get(id)?.title).filter((title): title is string => Boolean(title))
+      reihenfolge: orderedIds
+        .map((id) => items.get(id)?.title)
+        .filter((title): title is string => Boolean(title))
     }
   })
   return listAgenda(eventId)

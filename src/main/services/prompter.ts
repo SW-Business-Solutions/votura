@@ -150,12 +150,7 @@ export function setPrompterTempo(tempo: number): PrompterViewState {
  * dass etwas läuft.
  */
 export function setPrompterDarstellung(
-  aenderung: Partial<
-    Pick<
-      PrompterViewState,
-      'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'
-    >
-  >
+  aenderung: Partial<Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'>>
 ): PrompterViewState {
   return setze(aenderung, false)
 }
@@ -200,6 +195,10 @@ export function setPrompterNetzBedienung(erlaubt: boolean): PrompterViewState {
 
 /** Setzt alles zurück — nach der Versammlung und beim Start. */
 export function resetPrompter(): PrompterViewState {
-  state = { ...PROMPTER_VORGABE, serverInstanceId: state.serverInstanceId, updatedAt: new Date().toISOString() }
+  state = {
+    ...PROMPTER_VORGABE,
+    serverInstanceId: state.serverInstanceId,
+    updatedAt: new Date().toISOString()
+  }
   return melde()
 }

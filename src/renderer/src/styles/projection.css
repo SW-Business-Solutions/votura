@@ -39,7 +39,12 @@ html {
   height: 100%;
   background: var(--projection-bg);
   color: var(--projection-text);
-  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    Arial,
+    sans-serif;
   display: flex;
   flex-direction: column;
   overflow: hidden;

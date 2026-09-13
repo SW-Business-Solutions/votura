@@ -11,11 +11,7 @@ import type { TabProps } from '../RoundDetailPage'
  * Darstellung des Stimmzettels je Wahlgang. Änderungen sind druckwirksam:
  * nach einer Freigabe entsteht dadurch zwingend eine neue Version (§58).
  */
-function LayoutCard({
-  detail,
-  reload,
-  onChanged
-}: TabProps & { onChanged: () => void }): React.JSX.Element {
+function LayoutCard({ detail, reload, onChanged }: TabProps & { onChanged: () => void }): React.JSX.Element {
   const app = useApp()
   const round = detail.round
   const [template, setTemplate] = useState(round.template)
@@ -76,7 +72,7 @@ function LayoutCard({
       />
 
       <h3>Optionen auf dem Stimmzettel</h3>
-      <div className="hint" style={{ marginBottom: 8 }}>
+      <div className="hint mb-2">
         Ob „Nein" und „Enthaltung" aufgedruckt werden, richtet sich nach der geltenden Wahlordnung — die
         Anwendung erzwingt hier nichts. Bei Gruppenwahlen beziehen sich beide Angaben auf alle Bewerber
         gemeinsam und stehen deshalb am Ende des Zettels, nie hinter einzelnen Namen.
@@ -114,7 +110,7 @@ function LayoutCard({
             />
           </Field>
         </div>
-        <div style={{ width: 200 }}>
+        <div className="col-breit">
           <Field label="Leerzeilen zwischen Personen">
             <NumberInput
               value={template.candidateSpacingLines}
@@ -125,7 +121,7 @@ function LayoutCard({
             />
           </Field>
         </div>
-        <div style={{ flex: 1 }}>
+        <div className="col">
           <Field label="Wahlanweisung">
             <input
               value={template.instructionText}
@@ -180,7 +176,8 @@ export function BallotTab({ detail, reload }: TabProps): React.JSX.Element {
 
   const approved = round.approvedVersion === round.ballotVersion
   const printed = detail.batches.some(
-    (batch) => batch.ballotVersion === round.ballotVersion && batch.kind !== 'test' && batch.submittedCopies > 0
+    (batch) =>
+      batch.ballotVersion === round.ballotVersion && batch.kind !== 'test' && batch.submittedCopies > 0
   )
 
   return (
@@ -212,15 +209,15 @@ export function BallotTab({ detail, reload }: TabProps): React.JSX.Element {
               : 'Vorschau wird erzeugt …'}
           </div>
         </div>
-        <div className="hint" style={{ marginTop: 10 }}>
-          Die Vorschau entsteht aus derselben Vorlage, die auch gedruckt wird. Alle Stimmzettel dieses Wahlgangs
-          sind identisch und tragen dieselbe Kennung – es gibt keine Einzelnummerierung.
+        <div className="hint mt-3">
+          Die Vorschau entsteht aus derselben Vorlage, die auch gedruckt wird. Alle Stimmzettel dieses
+          Wahlgangs sind identisch und tragen dieselbe Kennung – es gibt keine Einzelnummerierung.
         </div>
         {round.ballotVersion > 1 && (
           <div className="notice warn">
-            Dies ist Fassung v{round.ballotVersion}. Ab der zweiten Fassung wird die Versionsnummer immer auf den
-            Stimmzettel gedruckt, damit sich die Stapel unterscheiden lassen. Zettel früherer Fassungen dürfen
-            nicht mehr ausgegeben werden.
+            Dies ist Fassung v{round.ballotVersion}. Ab der zweiten Fassung wird die Versionsnummer immer auf
+            den Stimmzettel gedruckt, damit sich die Stapel unterscheiden lassen. Zettel früherer Fassungen
+            dürfen nicht mehr ausgegeben werden.
           </div>
         )}
       </Card>
@@ -256,7 +253,7 @@ export function BallotTab({ detail, reload }: TabProps): React.JSX.Element {
             />
           ))}
 
-          <div className="row" style={{ marginTop: 14 }}>
+          <div className="row mt-4">
             <button
               className="primary big"
               disabled={
@@ -272,7 +269,7 @@ export function BallotTab({ detail, reload }: TabProps): React.JSX.Element {
           </div>
 
           {preview && (
-            <div className="hint" style={{ marginTop: 12 }}>
+            <div className="hint mt-3">
               Aktueller Hash (SHA-256) der Vorlage:
               <div className="mono">{preview.hash}</div>
             </div>
@@ -365,7 +362,9 @@ export function BallotTab({ detail, reload }: TabProps): React.JSX.Element {
               </tr>
               <tr>
                 <th>Kandidaten / Optionen</th>
-                <td>{preview.document.sections.reduce((sum, section) => sum + section.candidates.length, 0)}</td>
+                <td>
+                  {preview.document.sections.reduce((sum, section) => sum + section.candidates.length, 0)}
+                </td>
               </tr>
               <tr>
                 <th>Positionen</th>

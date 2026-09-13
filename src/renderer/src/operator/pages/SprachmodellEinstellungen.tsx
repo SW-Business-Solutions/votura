@@ -34,9 +34,9 @@ export function SprachmodellEinstellungen(): React.JSX.Element {
   return (
     <Card title="Sprachmodell für den Prompter">
       <p className="hint">
-        Auf Wunsch läuft der Redetext am Pult nicht gleichmäßig, sondern hört mit und folgt dem
-        Gesprochenen. Dafür braucht es ein Sprachmodell. Es arbeitet vollständig auf dem Gerät:
-        Aufgenommen wird nichts, und nichts verlässt den Rechner.
+        Auf Wunsch läuft der Redetext am Pult nicht gleichmäßig, sondern hört mit und folgt dem Gesprochenen.
+        Dafür braucht es ein Sprachmodell. Es arbeitet vollständig auf dem Gerät: Aufgenommen wird nichts, und
+        nichts verlässt den Rechner.
       </p>
 
       {!modell ? (
@@ -51,12 +51,12 @@ export function SprachmodellEinstellungen(): React.JSX.Element {
         </>
       ) : (
         <div className="notice warn">
-          Kein Sprachmodell hinterlegt. „Nach Stimme" bleibt am Pult ohne Wirkung; der Text läuft
-          dann gleichmäßig oder wird von Hand bewegt.
+          Kein Sprachmodell hinterlegt. „Nach Stimme" bleibt am Pult ohne Wirkung; der Text läuft dann
+          gleichmäßig oder wird von Hand bewegt.
         </div>
       )}
 
-      <div className="row" style={{ marginTop: 12 }}>
+      <div className="row mt-3">
         <button onClick={() => void rufe(() => api('speechmodel.install'))}>
           Eigenes Modell hinterlegen …
         </button>
@@ -68,9 +68,8 @@ export function SprachmodellEinstellungen(): React.JSX.Element {
       </div>
       <div className="hint">
         Erwartet wird ein Modellarchiv (.zip oder .tar.gz), etwa von{' '}
-        <span className="mono">alphacephei.com/vosk/models</span>. Ein größeres Modell erkennt
-        besser und braucht mehr Zeit zum Laden; für das bloße Mitlaufen im bekannten Text genügt
-        das kleine.
+        <span className="mono">alphacephei.com/vosk/models</span>. Ein größeres Modell erkennt besser und
+        braucht mehr Zeit zum Laden; für das bloße Mitlaufen im bekannten Text genügt das kleine.
       </div>
     </Card>
   )

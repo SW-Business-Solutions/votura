@@ -17,13 +17,7 @@ import type {
 import type { Buehnenwahl } from './projection'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
 import type { SprachmodellInfo } from './sprachmodell'
-import type {
-  Laufart,
-  PrompterAnsicht,
-  PrompterViewState,
-  SpeechContent,
-  SpeechInfo
-} from './speech'
+import type { Laufart, PrompterAnsicht, PrompterViewState, SpeechContent, SpeechInfo } from './speech'
 import type { VideoInfo } from './video'
 import type {
   AgendaItem,
@@ -393,9 +387,7 @@ export interface Api {
   }) => Promise<Candidate[]>
 
   /* ----------------------------------------------------------- Stimmzettel */
-  'ballot.preview': (
-    roundId: UUID
-  ) => Promise<{
+  'ballot.preview': (roundId: UUID) => Promise<{
     document: BallotDocument
     lines: string[]
     rows: BallotPreviewRow[]
@@ -477,29 +469,32 @@ export interface Api {
   /** Die eingerichteten Bühnen. */
   'projection.buehnen': () => Promise<Buehne[]>
   'projection.saveBuehnen': (buehnen: Buehne[]) => Promise<Buehne[]>
-  'projection.setMode': (input: {
-    mode: ProjectionMode
-    roundId?: UUID
-    message?: { title: string; body?: string; showRoundContext?: boolean }
-    agenda?: { top?: string; current?: string; next?: string }
-    agendaView?: 'full' | 'focus'
-    showAll?: boolean
-    breakMinutes?: number
-    /** Feste Uhrzeit "HH:MM", zu der es weitergeht — statt einer Dauer. */
-    breakUntilTime?: string
-    /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
-    speaker?: {
-      name: string
-      note?: string
-      seconds?: number
-      /** Wer danach an der Reihe ist, in Reihenfolge. */
-      upcoming?: string[]
-      /** Wie viele davon der Beamer zeigt; 0 blendet die Vorschau aus. */
-      upcomingShown?: number
-    }
-    presentationId?: UUID
-    videoId?: UUID
-    }, stage?: Buehnenwahl) => Promise<ProjectionState>
+  'projection.setMode': (
+    input: {
+      mode: ProjectionMode
+      roundId?: UUID
+      message?: { title: string; body?: string; showRoundContext?: boolean }
+      agenda?: { top?: string; current?: string; next?: string }
+      agendaView?: 'full' | 'focus'
+      showAll?: boolean
+      breakMinutes?: number
+      /** Feste Uhrzeit "HH:MM", zu der es weitergeht — statt einer Dauer. */
+      breakUntilTime?: string
+      /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
+      speaker?: {
+        name: string
+        note?: string
+        seconds?: number
+        /** Wer danach an der Reihe ist, in Reihenfolge. */
+        upcoming?: string[]
+        /** Wie viele davon der Beamer zeigt; 0 blendet die Vorschau aus. */
+        upcomingShown?: number
+      }
+      presentationId?: UUID
+      videoId?: UUID
+    },
+    stage?: Buehnenwahl
+  ) => Promise<ProjectionState>
   'projection.setCandidatePage': (page: number, stage?: Buehnenwahl) => Promise<ProjectionState>
   /** Takt des automatischen Seitenwechsels in Sekunden; 0 hält ihn an. */
   'projection.setCandidatePageInterval': (seconds: number, stage?: Buehnenwahl) => Promise<ProjectionState>
@@ -588,9 +583,7 @@ export interface Api {
   'prompter.nudge': (zeilen: number) => Promise<PrompterViewState>
   'prompter.setTempo': (tempo: number) => Promise<PrompterViewState>
   'prompter.setDarstellung': (
-    aenderung: Partial<
-      Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'>
-    >
+    aenderung: Partial<Pick<PrompterViewState, 'schrift' | 'spiegel' | 'breite' | 'leselinie' | 'zeigeUhr'>>
   ) => Promise<PrompterViewState>
   /** Übernimmt die Redezeit der laufenden Vorstellung auf den Prompter. */
   'prompter.setUntil': (until?: string) => Promise<PrompterViewState>

@@ -50,7 +50,11 @@ export function LoginPage(): React.JSX.Element {
             onKeyDown={(keyEvent) => keyEvent.key === 'Enter' && void submit()}
           />
         </Field>
-        <button className="primary wide big" disabled={busy || !username || !password} onClick={() => void submit()}>
+        <button
+          className="primary wide big"
+          disabled={busy || !username || !password}
+          onClick={() => void submit()}
+        >
           Anmelden
         </button>
       </Card>

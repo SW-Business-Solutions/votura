@@ -114,8 +114,7 @@ export function berechneGleichlauf(
 ): Gleichlauf {
   const gelaufen = video.playing ? Math.max(0, (jetzt - video.anchoredAt) / 1000) : 0
   const roh = video.position + gelaufen
-  const soll =
-    video.durationSeconds !== undefined ? Math.min(roh, video.durationSeconds) : roh
+  const soll = video.durationSeconds !== undefined ? Math.min(roh, video.durationSeconds) : roh
   const abweichung = soll - istPosition
 
   if (!video.playing) {

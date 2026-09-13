@@ -54,7 +54,10 @@ function NetworkSection({
         allowPrompterControl
       })
       onChange(next)
-      app.notify(next.running ? 'ok' : 'info', next.running ? 'Netzwerkansicht läuft.' : 'Netzwerkansicht deaktiviert.')
+      app.notify(
+        next.running ? 'ok' : 'info',
+        next.running ? 'Netzwerkansicht läuft.' : 'Netzwerkansicht deaktiviert.'
+      )
     } catch (error) {
       app.reportError(error)
     }
@@ -69,12 +72,12 @@ function NetworkSection({
       </p>
       <Checkbox checked={enabled} onChange={setEnabled} label="Netzwerkansicht aktivieren" />
       <div className="row">
-        <div style={{ width: 140 }}>
+        <div className="col-mittel">
           <Field label="Port">
             <NumberInput value={port} min={1024} max={65535} onChange={setPort} />
           </Field>
         </div>
-        <div style={{ flex: 1 }}>
+        <div className="col">
           <Field label="Zugriffstoken" hint="Leer = ohne Token (nur in vollständig abgeschotteten Netzen).">
             <input value={token} onChange={(e) => setToken(e.target.value)} />
           </Field>
@@ -89,9 +92,9 @@ function NetworkSection({
       <h3>Bedienung von einem zweiten Gerät</h3>
       <p className="hint">
         Zusätzlich zur Beameransicht kann die vollständige Bedienoberfläche im Browser eines anderen Geräts
-        geöffnet werden — unter der Adresse mit dem Zusatz <span className="mono">/operator</span>. Dort ist eine
-        Anmeldung mit einem lokalen Konto nötig; es gelten dieselben Rollen und Rechte, und jede Aktion landet
-        mit dem jeweiligen Benutzer im Audit-Trail. Systemdialoge (Ordnerwahl, Backup-Ziel) bleiben dem
+        geöffnet werden — unter der Adresse mit dem Zusatz <span className="mono">/operator</span>. Dort ist
+        eine Anmeldung mit einem lokalen Konto nötig; es gelten dieselben Rollen und Rechte, und jede Aktion
+        landet mit dem jeweiligen Benutzer im Audit-Trail. Systemdialoge (Ordnerwahl, Backup-Ziel) bleiben dem
         Hauptrechner vorbehalten.
       </p>
       <Checkbox
@@ -108,11 +111,11 @@ function NetworkSection({
 
       <h3>Bedienung der Prompteransicht</h3>
       <p className="hint">
-        Die Prompteransicht (<span className="mono">/prompter</span>) zeigt normalerweise nur an. Wer am
-        Pult steht, hat aber oft ein Tablet vor sich und niemanden am Board — dann muss eine
-        Verhaspelung dort zu beheben sein. Freigegeben wird ausschließlich das eigene Manuskript:
-        anhalten, weiterlaufen, eine Stelle zurück, Tempo, Schriftgröße, Umschalten auf die Folien.
-        An Wahldaten kommt diese Freigabe nicht heran.
+        Die Prompteransicht (<span className="mono">/prompter</span>) zeigt normalerweise nur an. Wer am Pult
+        steht, hat aber oft ein Tablet vor sich und niemanden am Board — dann muss eine Verhaspelung dort zu
+        beheben sein. Freigegeben wird ausschließlich das eigene Manuskript: anhalten, weiterlaufen, eine
+        Stelle zurück, Tempo, Schriftgröße, Umschalten auf die Folien. An Wahldaten kommt diese Freigabe nicht
+        heran.
       </p>
       <Checkbox
         checked={allowPrompterControl}
@@ -122,11 +125,11 @@ function NetworkSection({
 
       <h3>Bedienung der Prompteransicht</h3>
       <p className="hint">
-        Die Prompteransicht (<span className="mono">/prompter</span>) zeigt normalerweise nur an. Wer am
-        Pult steht, hat aber oft ein Tablet vor sich und niemanden am Board — dann muss eine Verhaspelung
-        dort zu beheben sein. Freigegeben wird ausschließlich das eigene Manuskript: anhalten,
-        weiterlaufen, eine Stelle zurück, Tempo, Schriftgröße, Umschalten auf die Folien. An Wahldaten
-        kommt diese Freigabe nicht heran; eine Anmeldung braucht sie deshalb auch nicht.
+        Die Prompteransicht (<span className="mono">/prompter</span>) zeigt normalerweise nur an. Wer am Pult
+        steht, hat aber oft ein Tablet vor sich und niemanden am Board — dann muss eine Verhaspelung dort zu
+        beheben sein. Freigegeben wird ausschließlich das eigene Manuskript: anhalten, weiterlaufen, eine
+        Stelle zurück, Tempo, Schriftgröße, Umschalten auf die Folien. An Wahldaten kommt diese Freigabe nicht
+        heran; eine Anmeldung braucht sie deshalb auch nicht.
       </p>
       <Checkbox
         checked={allowPrompterControl}
@@ -139,13 +142,15 @@ function NetworkSection({
           Übernehmen
         </button>
         <button
-          onClick={() => setToken(Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6))}
+          onClick={() =>
+            setToken(Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6))
+          }
         >
           Token erzeugen
         </button>
       </div>
       {status.running && status.urls.length > 0 && (
-        <div style={{ marginTop: 10 }}>
+        <div className="mt-3">
           <label>Beameransicht</label>
           {status.urls.map((url) => (
             <div key={url} className="mono">
@@ -153,15 +158,15 @@ function NetworkSection({
             </div>
           ))}
           {/*
-            * Eine Adresse je Bühne.
-            *
-            * Ein Gerät im Saal wählt seine Bühne über die Adresse — `/b/2`
-            * neben dem zweiten Beamer, und es zeigt bis zum Schluss genau
-            * das, was dort hingehört.
-            */}
+           * Eine Adresse je Bühne.
+           *
+           * Ein Gerät im Saal wählt seine Bühne über die Adresse — `/b/2`
+           * neben dem zweiten Beamer, und es zeigt bis zum Schluss genau
+           * das, was dort hingehört.
+           */}
           {app.buehnen.length > 1 && (
             <>
-              <label style={{ marginTop: 10 }}>Einzelne Bühnen</label>
+              <label className="mt-3">Einzelne Bühnen</label>
               {app.buehnen.map((stage) => (
                 <div key={`b-${stage.id}`} className="mono">
                   {status.urls[0].split('?')[0].replace(/\/$/, '')}/b/{stage.id}
@@ -172,7 +177,7 @@ function NetworkSection({
           )}
           {status.allowRemoteOperator && (
             <>
-              <label style={{ marginTop: 10 }}>Bedienung (Anmeldung erforderlich)</label>
+              <label className="mt-3">Bedienung (Anmeldung erforderlich)</label>
               {status.urls.map((url) => (
                 <div key={`op-${url}`} className="mono">
                   {url.split('?')[0].replace(/\/$/, '')}/operator

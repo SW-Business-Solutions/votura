@@ -95,9 +95,7 @@ export function PresentationLibrary(): JSX.Element {
   const prompterUmschalten = async (): Promise<void> => {
     try {
       setPrompter(
-        prompter.open
-          ? await api('presentation.closePrompter')
-          : await api('presentation.openPrompter')
+        prompter.open ? await api('presentation.closePrompter') : await api('presentation.openPrompter')
       )
     } catch (fehler) {
       app.reportError(fehler)
@@ -108,7 +106,7 @@ export function PresentationLibrary(): JSX.Element {
 
   return (
     <Card title="Präsentationen">
-      <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+      <div className="row mb-3">
         <button onClick={() => void einspeisen()} disabled={laeuft}>
           {laeuft ? 'Wird eingespeist …' : 'Präsentation einspeisen (HTML oder PDF)'}
         </button>
@@ -118,13 +116,13 @@ export function PresentationLibrary(): JSX.Element {
       </div>
 
       {liste.length === 0 ? (
-        <p className="muted">
+        <p className="hint">
           Noch nichts eingespeist. Erwartet wird eine <strong>einzelne HTML-Datei</strong>, die alles
-          mitbringt — Schriften, Bilder und Steuerung darin. Sie läuft dann ohne Netz und ohne
-          zweites Programm.
+          mitbringt — Schriften, Bilder und Steuerung darin. Sie läuft dann ohne Netz und ohne zweites
+          Programm.
         </p>
       ) : (
-        <table className="table">
+        <table>
           <thead>
             <tr>
               <th>Präsentation</th>
@@ -141,8 +139,8 @@ export function PresentationLibrary(): JSX.Element {
                 <tr key={eintrag.id} className={laufend ? 'active' : undefined}>
                   <td>
                     <strong>{eintrag.title}</strong>
-                    {laufend && <span className="badge accent" style={{ marginLeft: 8 }}>auf dem Beamer</span>}
-                    <div className="muted small">{eintrag.fileName}</div>
+                    {laufend && <span className="badge accent badge-nach">auf dem Beamer</span>}
+                    <div className="hint">{eintrag.fileName}</div>
                   </td>
                   <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
                   <td>{eintrag.slideCount ?? '–'}</td>
@@ -165,16 +163,16 @@ export function PresentationLibrary(): JSX.Element {
         </table>
       )}
 
-      <p className="muted small" style={{ marginTop: 10 }}>
-        Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder
-        Wahldaten noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet
-        Votura selbst — ohne Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der
-        Netzwerkansicht erscheint in beiden Fällen dieselbe Folie.
+      <p className="muted small mt-3">
+        Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder Wahldaten
+        noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet Votura selbst — ohne
+        Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der Netzwerkansicht erscheint in beiden
+        Fällen dieselbe Folie.
       </p>
       <p className="hint">
         <strong>PowerPoint:</strong> dort über <em>Datei → Exportieren → PDF/XPS erstellen</em>
-        speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu;
-        Animationen und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
+        speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu; Animationen
+        und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
       </p>
     </Card>
   )

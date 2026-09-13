@@ -44,16 +44,8 @@ export function createBackup(target?: string): BackupResult {
 
   writeFileSync(join(directory, 'settings.json'), JSON.stringify(settings, null, 2), 'utf8')
   writeFileSync(join(directory, 'audit.json'), JSON.stringify(auditForExport({}), null, 2), 'utf8')
-  writeFileSync(
-    join(directory, 'audit-pruefung.json'),
-    JSON.stringify(verifyAuditChain(), null, 2),
-    'utf8'
-  )
-  writeFileSync(
-    join(directory, 'veranstaltungen.json'),
-    JSON.stringify(listEvents(), null, 2),
-    'utf8'
-  )
+  writeFileSync(join(directory, 'audit-pruefung.json'), JSON.stringify(verifyAuditChain(), null, 2), 'utf8')
+  writeFileSync(join(directory, 'veranstaltungen.json'), JSON.stringify(listEvents(), null, 2), 'utf8')
 
   if (existsSync(paths.exports)) {
     cpSync(paths.exports, join(directory, 'exports'), { recursive: true })

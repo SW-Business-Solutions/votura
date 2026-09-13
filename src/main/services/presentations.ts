@@ -98,7 +98,9 @@ export function listPresentations(): PresentationInfo[] {
  */
 function titelAusDatei(pfad: string, ersatz: string): string {
   try {
-    const kopf = readFileSync(pfad).subarray(0, 64 * 1024).toString('utf8')
+    const kopf = readFileSync(pfad)
+      .subarray(0, 64 * 1024)
+      .toString('utf8')
     const treffer = /<title[^>]*>([^<]{1,200})<\/title>/i.exec(kopf)
     const titel = treffer?.[1]?.trim()
     return titel && titel.length > 0 ? titel : ersatz
@@ -132,7 +134,10 @@ export function importPresentation(sourcePath: string): PresentationInfo {
     id,
     kind: art,
     /* Der <title> steht nur in HTML; bei einem PDF bleibt der Dateiname. */
-    title: art === 'html' ? titelAusDatei(ziel, dateiname.replace(/\.html?$/i, '')) : dateiname.replace(/\.pdf$/i, ''),
+    title:
+      art === 'html'
+        ? titelAusDatei(ziel, dateiname.replace(/\.html?$/i, ''))
+        : dateiname.replace(/\.pdf$/i, ''),
     fileName: dateiname,
     size: groesse,
     importedAt: new Date().toISOString()

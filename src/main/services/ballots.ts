@@ -12,12 +12,7 @@ import { profileFor, validateRoundSetup } from '@shared/election'
 import type { BallotDocument, BallotVersionRecord, UUID } from '@shared/types'
 import { db } from '../db'
 import { fromJson, optionalString } from '../db/driver'
-import {
-  buildBallotOps,
-  renderPreviewLines,
-  renderPreviewRows,
-  type PreviewRow
-} from '../printing/layout'
+import { buildBallotOps, renderPreviewLines, renderPreviewRows, type PreviewRow } from '../printing/layout'
 import { appendAudit } from './audit'
 import { requirePermission } from './auth'
 import { listCandidates } from './candidates'
@@ -54,7 +49,9 @@ function mapVersion(row: VersionRow): BallotVersionRecord {
 }
 
 export function ballotHash(document: BallotDocument): string {
-  return createHash('sha256').update(canonicalJson(ballotHashInput(document))).digest('hex')
+  return createHash('sha256')
+    .update(canonicalJson(ballotHashInput(document)))
+    .digest('hex')
 }
 
 /** Aktuelle (ggf. noch nicht freigegebene) Vorlage aus dem Live-Datenbestand. */
@@ -70,7 +67,9 @@ export function currentDocument(roundId: UUID): BallotDocument {
  * gespeicherten Snapshot, nie aus der veränderlichen Kandidatentabelle
  * (Beamer §47, §11).
  */
-export function approvedDocument(roundId: UUID): { document: BallotDocument; version: number; hash: string } | null {
+export function approvedDocument(
+  roundId: UUID
+): { document: BallotDocument; version: number; hash: string } | null {
   const round = getRound(roundId)
   if (round.approvedVersion === undefined) return null
   const row = db()
@@ -153,7 +152,9 @@ export function approveBallot(roundId: UUID, checklist: string[]): BallotVersion
   const issues = validateRoundSetup(round, candidates)
   const errors = issues.filter((issue) => issue.level === 'error')
   if (errors.length > 0) {
-    throw new Error(`Der Wahlgang ist noch nicht freigabefaehig:\n- ${errors.map((e) => e.message).join('\n- ')}`)
+    throw new Error(
+      `Der Wahlgang ist noch nicht freigabefaehig:\n- ${errors.map((e) => e.message).join('\n- ')}`
+    )
   }
 
   const document = currentDocument(roundId)

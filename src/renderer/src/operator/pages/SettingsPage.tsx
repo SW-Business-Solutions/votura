@@ -12,14 +12,23 @@ import type {
 import { PRINTER_KIND_LABELS, PRINTER_KINDS, ROLE_LABELS, ROLES } from '@shared/types'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
-import { Card, Checkbox, ConfirmDialog, Field, Modal, NumberInput } from '../components/ui'
+import { Card, Checkbox, ConfirmDialog, Field, Modal, NumberInput, Tabs } from '../components/ui'
 import { ProjectionDesign } from './ProjectionDesign'
 import { NetzwerkEinstellungen } from './NetzwerkEinstellungen'
 import { SprachmodellEinstellungen } from './SprachmodellEinstellungen'
 
+/** Die Reiter der Einstellungen — einmal beschrieben, nicht fünfmal getippt. */
+const EINSTELLUNGS_REITER = [
+  { id: 'printers', label: 'Drucker' },
+  { id: 'general', label: 'Allgemein' },
+  { id: 'beamer', label: 'Beamer' },
+  { id: 'users', label: 'Benutzer' },
+  { id: 'backup', label: 'Backup' }
+] as const
+
 export function SettingsPage(): React.JSX.Element {
   const app = useApp()
-  const [tab, setTab] = useState<'printers' | 'general' | 'beamer' | 'users' | 'backup'>('printers')
+  const [tab, setTab] = useState<(typeof EINSTELLUNGS_REITER)[number]['id']>('printers')
 
   if (!app.settings) return <Card>Einstellungen werden geladen …</Card>
 
@@ -32,23 +41,7 @@ export function SettingsPage(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="tabs">
-        <button className={`tab${tab === 'printers' ? ' active' : ''}`} onClick={() => setTab('printers')}>
-          Drucker
-        </button>
-        <button className={`tab${tab === 'general' ? ' active' : ''}`} onClick={() => setTab('general')}>
-          Allgemein
-        </button>
-        <button className={`tab${tab === 'beamer' ? ' active' : ''}`} onClick={() => setTab('beamer')}>
-          Beamer
-        </button>
-        <button className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
-          Benutzer
-        </button>
-        <button className={`tab${tab === 'backup' ? ' active' : ''}`} onClick={() => setTab('backup')}>
-          Backup
-        </button>
-      </div>
+      <Tabs eintraege={EINSTELLUNGS_REITER} aktiv={tab} aufWahl={setTab} />
 
       {tab === 'printers' && <PrinterSettings />}
       {tab === 'general' && <GeneralSettings />}
@@ -76,7 +69,9 @@ function PrinterSettings(): React.JSX.Element {
   useEffect(() => setPrinters(app.settings?.printers ?? []), [app.settings])
 
   const update = (id: string, patch: Partial<PrinterConfig>): void => {
-    setPrinters((current) => current.map((printer) => (printer.id === id ? { ...printer, ...patch } : printer)))
+    setPrinters((current) =>
+      current.map((printer) => (printer.id === id ? { ...printer, ...patch } : printer))
+    )
   }
 
   const save = async (): Promise<void> => {
@@ -100,12 +95,12 @@ function PrinterSettings(): React.JSX.Element {
       {printers.map((printer) => (
         <Card key={printer.id} title={printer.name}>
           <div className="row">
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Bezeichnung">
                 <input value={printer.name} onChange={(e) => update(printer.id, { name: e.target.value })} />
               </Field>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="col">
               <Field label="Anbindung">
                 <select
                   value={printer.kind}
@@ -123,7 +118,7 @@ function PrinterSettings(): React.JSX.Element {
 
           {(printer.kind === 'epson_epos' || printer.kind === 'escpos_network') && (
             <div className="row">
-              <div style={{ flex: 2 }}>
+              <div className="col-2">
                 <Field label="IP-Adresse / Hostname">
                   <input
                     value={printer.host ?? ''}
@@ -132,7 +127,7 @@ function PrinterSettings(): React.JSX.Element {
                   />
                 </Field>
               </div>
-              <div style={{ width: 140 }}>
+              <div className="col-mittel">
                 <Field label="Port">
                   <NumberInput
                     value={printer.port ?? (printer.kind === 'epson_epos' ? 80 : 9100)}
@@ -141,7 +136,7 @@ function PrinterSettings(): React.JSX.Element {
                 </Field>
               </div>
               {printer.kind === 'epson_epos' && (
-                <div style={{ flex: 1 }}>
+                <div className="col">
                   <Field label="Gerätename (ePOS)">
                     <input
                       value={printer.deviceId ?? 'local_printer'}
@@ -166,7 +161,7 @@ function PrinterSettings(): React.JSX.Element {
           )}
 
           <div className="row">
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Papierbreite (mm)">
                 <select
                   value={printer.paperWidthMm}
@@ -185,7 +180,7 @@ function PrinterSettings(): React.JSX.Element {
                 </select>
               </Field>
             </div>
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Zeichen je Zeile">
                 <NumberInput
                   value={printer.charsPerLine}
@@ -193,7 +188,7 @@ function PrinterSettings(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Punkte je Zeile">
                 <NumberInput
                   value={printer.dotsPerLine}
@@ -201,11 +196,13 @@ function PrinterSettings(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ width: 170 }}>
+            <div className="col-mittel">
               <Field label="Zeichentabelle">
                 <select
                   value={printer.codepage}
-                  onChange={(e) => update(printer.id, { codepage: e.target.value as PrinterConfig['codepage'] })}
+                  onChange={(e) =>
+                    update(printer.id, { codepage: e.target.value as PrinterConfig['codepage'] })
+                  }
                 >
                   <option value="CP858">CP858</option>
                   <option value="CP437">CP437</option>
@@ -213,7 +210,7 @@ function PrinterSettings(): React.JSX.Element {
                 </select>
               </Field>
             </div>
-            <div style={{ width: 170 }}>
+            <div className="col-mittel">
               <Field label="Leerzeilen vor Schnitt">
                 <NumberInput
                   value={printer.feedLinesBeforeCut}
@@ -319,7 +316,7 @@ function GeneralSettings(): React.JSX.Element {
           </select>
         </Field>
         <div className="row">
-          <div style={{ flex: 1 }}>
+          <div className="col">
             <Field label="Standard-Zusatzreserve">
               <NumberInput
                 value={config.printing.reserveCopies}
@@ -329,11 +326,13 @@ function GeneralSettings(): React.JSX.Element {
               />
             </Field>
           </div>
-          <div style={{ flex: 1 }}>
+          <div className="col">
             <Field label="Pause zwischen Exemplaren (ms)" hint="Schont den Druckerpuffer bei großen Stapeln.">
               <NumberInput
                 value={config.printing.copyDelayMs}
-                onChange={(value) => setConfig({ ...config, printing: { ...config.printing, copyDelayMs: value } })}
+                onChange={(value) =>
+                  setConfig({ ...config, printing: { ...config.printing, copyDelayMs: value } })
+                }
               />
             </Field>
           </div>
@@ -344,9 +343,7 @@ function GeneralSettings(): React.JSX.Element {
           <div className="segmented">
             <button
               className={config.printing.copiesPerRequest <= 1 ? 'active' : ''}
-              onClick={() =>
-                setConfig({ ...config, printing: { ...config.printing, copiesPerRequest: 1 } })
-              }
+              onClick={() => setConfig({ ...config, printing: { ...config.printing, copiesPerRequest: 1 } })}
             >
               Jeder Zettel einzeln
             </button>
@@ -357,7 +354,8 @@ function GeneralSettings(): React.JSX.Element {
                   ...config,
                   printing: {
                     ...config.printing,
-                    copiesPerRequest: config.printing.copiesPerRequest > 1 ? config.printing.copiesPerRequest : 10
+                    copiesPerRequest:
+                      config.printing.copiesPerRequest > 1 ? config.printing.copiesPerRequest : 10
                   }
                 })
               }
@@ -369,20 +367,18 @@ function GeneralSettings(): React.JSX.Element {
 
         {config.printing.copiesPerRequest <= 1 ? (
           <div className="notice">
-            <strong>Jeder Zettel einzeln.</strong> Der Drucker bestätigt jeden Stimmzettel
-            einzeln — die übermittelte Menge ist damit auf den Zettel genau bekannt. Bei
-            Netzwerkdruckern (Epson ePOS) antwortet das Gerät erst, wenn der Zettel durchgelaufen,
-            geschnitten und der Status ermittelt ist; <strong>gemessen sind das rund zwei Sekunden
-            je Zettel</strong> — für 150 Zettel also etwa fünf Minuten. Gebündelt halbiert sich
-            das ungefähr.
+            <strong>Jeder Zettel einzeln.</strong> Der Drucker bestätigt jeden Stimmzettel einzeln — die
+            übermittelte Menge ist damit auf den Zettel genau bekannt. Bei Netzwerkdruckern (Epson ePOS)
+            antwortet das Gerät erst, wenn der Zettel durchgelaufen, geschnitten und der Status ermittelt ist;{' '}
+            <strong>gemessen sind das rund zwei Sekunden je Zettel</strong> — für 150 Zettel also etwa fünf
+            Minuten. Gebündelt halbiert sich das ungefähr.
           </div>
         ) : (
           <div className="notice warn">
-            <strong>Gebündelt.</strong> Mehrere Zettel gehen in einem Auftrag an den Drucker und
-            laufen ohne Pause durch — <strong>deutlich schneller</strong>. Dafür ist bei einem
-            Abbruch (Papierende, Netzwerkstörung) nur bekannt, dass es innerhalb des laufenden
-            Bündels geschah: Bis zu {config.printing.copiesPerRequest} Zettel müssen dann von Hand
-            nachgezählt werden statt einem.
+            <strong>Gebündelt.</strong> Mehrere Zettel gehen in einem Auftrag an den Drucker und laufen ohne
+            Pause durch — <strong>deutlich schneller</strong>. Dafür ist bei einem Abbruch (Papierende,
+            Netzwerkstörung) nur bekannt, dass es innerhalb des laufenden Bündels geschah: Bis zu{' '}
+            {config.printing.copiesPerRequest} Zettel müssen dann von Hand nachgezählt werden statt einem.
           </div>
         )}
 
@@ -405,26 +401,33 @@ function GeneralSettings(): React.JSX.Element {
 
         <Checkbox
           checked={config.ballots.printRoundCode}
-          onChange={(value) => setConfig({ ...config, ballots: { ...config.ballots, printRoundCode: value } })}
+          onChange={(value) =>
+            setConfig({ ...config, ballots: { ...config.ballots, printRoundCode: value } })
+          }
           label="Wahlgangkennung auf den Stimmzettel drucken"
         />
         <Checkbox
           checked={config.ballots.printBallotVersion}
-          onChange={(value) => setConfig({ ...config, ballots: { ...config.ballots, printBallotVersion: value } })}
+          onChange={(value) =>
+            setConfig({ ...config, ballots: { ...config.ballots, printBallotVersion: value } })
+          }
           label="Zettelversion aufdrucken"
         />
 
         <h3>Beschriftungen</h3>
         <div className="row">
           {(['yes', 'no', 'abstention', 'abstentionShort'] as const).map((key) => (
-            <div key={key} style={{ flex: 1 }}>
+            <div key={key} className="col">
               <Field label={key}>
                 <input
                   value={config.ballots.labels[key]}
                   onChange={(e) =>
                     setConfig({
                       ...config,
-                      ballots: { ...config.ballots, labels: { ...config.ballots.labels, [key]: e.target.value } }
+                      ballots: {
+                        ...config.ballots,
+                        labels: { ...config.ballots.labels, [key]: e.target.value }
+                      }
                     })
                   }
                 />
@@ -436,7 +439,10 @@ function GeneralSettings(): React.JSX.Element {
 
       <Card title="Sicherheit und Zeit">
         <Field label="Zeitzone" hint="Zeitpunkte werden intern in UTC gespeichert und lokal angezeigt.">
-          <input value={config.timezone} onChange={(e) => setConfig({ ...config, timezone: e.target.value })} />
+          <input
+            value={config.timezone}
+            onChange={(e) => setConfig({ ...config, timezone: e.target.value })}
+          />
         </Field>
         <Field label="Sitzungszeitlimit (Minuten)">
           <NumberInput
@@ -462,7 +468,7 @@ function GeneralSettings(): React.JSX.Element {
           label="Vier-Augen-Prinzip: Ergebnis muss von einer anderen Person bestätigt werden"
         />
         <PinSection />
-        <div className="row" style={{ marginTop: 16 }}>
+        <div className="row mt-4">
           <button className="primary big" onClick={() => void save()}>
             Einstellungen speichern
           </button>
@@ -479,7 +485,7 @@ function PinSection(): React.JSX.Element {
     <>
       <h3>Eigene Wahlleiter-PIN</h3>
       <div className="row">
-        <div style={{ flex: 1 }}>
+        <div className="col">
           <Field label="Neue PIN (4–12 Ziffern)">
             <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} />
           </Field>
@@ -566,9 +572,19 @@ function UserSettings(): React.JSX.Element {
                   ))}
                 </select>
               </td>
-              <td>{user.hasPrintPin ? <span className="badge ok">gesetzt</span> : <span className="badge">–</span>}</td>
               <td>
-                {user.active ? <span className="badge ok">aktiv</span> : <span className="badge danger">gesperrt</span>}
+                {user.hasPrintPin ? (
+                  <span className="badge ok">gesetzt</span>
+                ) : (
+                  <span className="badge">–</span>
+                )}
+              </td>
+              <td>
+                {user.active ? (
+                  <span className="badge ok">aktiv</span>
+                ) : (
+                  <span className="badge danger">gesperrt</span>
+                )}
               </td>
               <td>
                 <button
@@ -737,9 +753,9 @@ function BackupSettings(): React.JSX.Element {
 
       <Card title="Neue Fassung">
         <div className="notice">
-          Votura arbeitet offline. Die Prüfung fragt einmalig die zuletzt veröffentlichte Fassung bei
-          GitHub ab und verrät dabei die Adresse dieses Rechners. Es wird nichts geladen und nichts
-          installiert — Sie erhalten nur die Auskunft, ob es eine neuere Fassung gibt.
+          Votura arbeitet offline. Die Prüfung fragt einmalig die zuletzt veröffentlichte Fassung bei GitHub
+          ab und verrät dabei die Adresse dieses Rechners. Es wird nichts geladen und nichts installiert — Sie
+          erhalten nur die Auskunft, ob es eine neuere Fassung gibt.
         </div>
 
         <Checkbox
@@ -779,10 +795,7 @@ function BackupSettings(): React.JSX.Element {
         </div>
 
         {update && (
-          <div
-            className={`notice ${update.error ? 'warn' : update.updateAvailable ? 'ok' : ''}`}
-            style={{ marginTop: 12 }}
-          >
+          <div className={`notice mt-3 ${update.error ? 'warn' : update.updateAvailable ? 'ok' : ''}`}>
             {update.error ? (
               <>Die Prüfung war nicht möglich: {update.error}</>
             ) : update.updateAvailable ? (
@@ -790,9 +803,9 @@ function BackupSettings(): React.JSX.Element {
                 <strong>Version {update.latestVersion} ist verfügbar</strong> (installiert:{' '}
                 {update.installedVersion}).
                 <br />
-                Ein Wechsel während einer laufenden Versammlung ist nicht ratsam — geprüft und
-                freigegeben wurde die Fassung, die gerade läuft.
-                <div className="row" style={{ marginTop: 8 }}>
+                Ein Wechsel während einer laufenden Versammlung ist nicht ratsam — geprüft und freigegeben
+                wurde die Fassung, die gerade läuft.
+                <div className="row mt-2">
                   <button
                     className="primary"
                     disabled={installBusy || !app.can('system.manage')}
@@ -861,8 +874,8 @@ function BackupSettings(): React.JSX.Element {
                       <li key={grund}>{grund}</li>
                     ))}
                   </ul>
-                  Bitte erst die laufenden Wahlgänge abschließen. Während einer Versammlung darf die
-                  Fassung nicht gewechselt werden.
+                  Bitte erst die laufenden Wahlgänge abschließen. Während einer Versammlung darf die Fassung
+                  nicht gewechselt werden.
                 </div>
               ) : (
                 <>
@@ -873,8 +886,8 @@ function BackupSettings(): React.JSX.Element {
                     ersetzen. Ihre Daten bleiben erhalten.
                   </p>
                   <p className="hint">
-                    Der Vorgang wird im Audit-Trail vermerkt. Führen Sie ihn nie unmittelbar vor oder
-                    während einer Versammlung durch, sondern prüfen Sie die neue Fassung vorher in Ruhe.
+                    Der Vorgang wird im Audit-Trail vermerkt. Führen Sie ihn nie unmittelbar vor oder während
+                    einer Versammlung durch, sondern prüfen Sie die neue Fassung vorher in Ruhe.
                   </p>
                 </>
               )}
@@ -903,9 +916,9 @@ function BackupSettings(): React.JSX.Element {
       <Card title="Datenbank">
         <p className="hint">Speicherort der Datenbank:</p>
         <div className="mono">{app.setup?.databasePath}</div>
-        <div className="notice" style={{ marginTop: 12 }}>
-          Für den Betrieb vor Ort empfiehlt sich ein Ersatzrechner, auf dem ein Backup eingespielt werden kann,
-          sowie zwei USB-Sticks für wechselnde Sicherungen.
+        <div className="notice mt-3">
+          Für den Betrieb vor Ort empfiehlt sich ein Ersatzrechner, auf dem ein Backup eingespielt werden
+          kann, sowie zwei USB-Sticks für wechselnde Sicherungen.
         </div>
       </Card>
     </div>

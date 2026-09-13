@@ -94,7 +94,9 @@ const BEISPIEL: Pick<ProjectionState, 'mode' | 'round' | 'result'> = {
 
 export function ProjectionDesign(): React.JSX.Element {
   const app = useApp()
-  const [theme, setTheme] = useState<ProjectionTheme>(app.settings?.projectionTheme ?? DEFAULT_PROJECTION_THEME)
+  const [theme, setTheme] = useState<ProjectionTheme>(
+    app.settings?.projectionTheme ?? DEFAULT_PROJECTION_THEME
+  )
   const [busy, setBusy] = useState(false)
 
   /*
@@ -147,7 +149,7 @@ export function ProjectionDesign(): React.JSX.Element {
               </button>
             ))}
           </div>
-          <div className="grid cols-2" style={{ marginTop: 12 }}>
+          <div className="grid cols-2 mt-3">
             {COLOR_FIELDS.map((entry) => (
               <Field key={entry.key} label={entry.label} hint={entry.hint}>
                 <div className="row">
@@ -160,7 +162,7 @@ export function ProjectionDesign(): React.JSX.Element {
                   <input
                     value={String(theme[entry.key] ?? '')}
                     onChange={(e) => setTheme({ ...theme, [entry.key]: e.target.value })}
-                    style={{ flex: 1 }}
+                    className="col"
                   />
                 </div>
               </Field>
@@ -182,16 +184,16 @@ export function ProjectionDesign(): React.JSX.Element {
             )}
           </div>
           <div className="hint">
-            Das Bild wird in die Konfiguration eingebettet (PNG, JPEG, GIF, WebP oder SVG, maximal 1,5 MB). Es wird
-            nichts aus dem Netz nachgeladen; die Netzwerkansicht zeigt dasselbe Logo.
+            Das Bild wird in die Konfiguration eingebettet (PNG, JPEG, GIF, WebP oder SVG, maximal 1,5 MB). Es
+            wird nichts aus dem Netz nachgeladen; die Netzwerkansicht zeigt dasselbe Logo.
           </div>
           {theme.logo && (
             <div style={{ marginTop: 10, background: theme.background, padding: 12, borderRadius: 8 }}>
               <img src={theme.logo} alt="Logo-Vorschau" style={{ maxHeight: 80, maxWidth: '100%' }} />
             </div>
           )}
-          <div className="row" style={{ marginTop: 12 }}>
-            <div style={{ flex: 1 }}>
+          <div className="row mt-3">
+            <div className="col">
               <Field label="Platzierung">
                 <select
                   value={theme.logoPosition}
@@ -207,7 +209,7 @@ export function ProjectionDesign(): React.JSX.Element {
                 </select>
               </Field>
             </div>
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Höhe (% der Bildhöhe)">
                 <NumberInput
                   value={theme.logoSizePercent}
@@ -217,7 +219,7 @@ export function ProjectionDesign(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ width: 150 }}>
+            <div className="col-mittel">
               <Field label="Deckkraft (%)" hint="Für das Wasserzeichen niedrig wählen.">
                 <NumberInput
                   value={Math.round(theme.logoOpacity * 100)}
@@ -267,7 +269,7 @@ export function ProjectionDesign(): React.JSX.Element {
 
           <h3>Darstellung</h3>
           <div className="row">
-            <div style={{ width: 180 }}>
+            <div className="col-breit">
               <Field label="Schriftgröße (%)" hint="Wirkt auf die gesamte Anzeige.">
                 <NumberInput
                   value={Math.round(theme.fontScale * 100)}
@@ -277,7 +279,7 @@ export function ProjectionDesign(): React.JSX.Element {
                 />
               </Field>
             </div>
-            <div style={{ width: 200 }}>
+            <div className="col-breit">
               <Field label="Randabstand (%)" hint="Gegen Overscan bei Projektoren.">
                 <NumberInput
                   value={theme.safeAreaPercent}
@@ -314,7 +316,7 @@ export function ProjectionDesign(): React.JSX.Element {
         <div className="preview-frame">
           <ProjectionScreen state={{ ...vorschauZustand, theme }} preview />
         </div>
-        <div className="hint" style={{ marginTop: 10 }}>
+        <div className="hint mt-3">
           {zeigtBeispiel
             ? 'Auf dem Beamer läuft gerade ein Foliensatz oder ein Film — daran lassen sich die Farben nicht beurteilen. Gezeigt wird deshalb ein Beispielergebnis.'
             : 'Die Vorschau zeigt den aktuellen Beamerinhalt mit den gewählten Farben.'}{' '}

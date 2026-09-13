@@ -195,9 +195,13 @@ export function reorderCandidates(roundId: UUID, orderedIds: UUID[]): Candidate[
 
   db().transaction(() => {
     orderedIds.forEach((id, index) => {
-      db().prepare(`UPDATE candidates SET sort_order = ? WHERE id = ? AND round_id = ?`).run(index, id, roundId)
+      db()
+        .prepare(`UPDATE candidates SET sort_order = ? WHERE id = ? AND round_id = ?`)
+        .run(index, id, roundId)
     })
-    db().prepare(`UPDATE rounds SET order_mode = 'manual', row_version = row_version + 1 WHERE id = ?`).run(roundId)
+    db()
+      .prepare(`UPDATE rounds SET order_mode = 'manual', row_version = row_version + 1 WHERE id = ?`)
+      .run(roundId)
     renumberIfNumbered(roundId)
   })
 
@@ -254,7 +258,9 @@ export function assignBallotNumbers(roundId: UUID): Candidate[] {
   const candidates = listCandidates(roundId).filter((candidate) => !candidate.withdrawn)
   db().transaction(() => {
     candidates.forEach((candidate, index) => {
-      db().prepare(`UPDATE candidates SET ballot_number = ? WHERE id = ?`).run(index + 1, candidate.id)
+      db()
+        .prepare(`UPDATE candidates SET ballot_number = ? WHERE id = ?`)
+        .run(index + 1, candidate.id)
     })
   })
   appendAudit({

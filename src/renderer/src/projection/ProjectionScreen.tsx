@@ -247,10 +247,7 @@ export function ProjectionScreen({
 
   if (state.mode === 'presentation') {
     return (
-      <div
-        className={`projection-root presentation-mode${preview ? ' preview' : ''}`}
-        style={style}
-      >
+      <div className={`projection-root presentation-mode${preview ? ' preview' : ''}`} style={style}>
         {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
         {state.presentation && presentationSrc ? (
           presentationKind(state.presentation) === 'pdf' ? (
@@ -272,9 +269,7 @@ export function ProjectionScreen({
           <div className="projection-presentation-empty">
             <div className="projection-status">PRÄSENTATION</div>
             <div className="projection-note">
-              {state.presentation
-                ? state.presentation.title
-                : 'Es ist keine Präsentation ausgewählt.'}
+              {state.presentation ? state.presentation.title : 'Es ist keine Präsentation ausgewählt.'}
             </div>
           </div>
         )}
@@ -293,11 +288,7 @@ export function ProjectionScreen({
         <img className="projection-logo watermark" src={theme.logo} alt="" />
       )}
       {showLogo && inCorner && (
-        <img
-          className={`projection-logo corner ${theme.logoPosition}`}
-          src={theme.logo}
-          alt=""
-        />
+        <img className={`projection-logo corner ${theme.logoPosition}`} src={theme.logo} alt="" />
       )}
 
       <header className="projection-head">
@@ -754,10 +745,7 @@ function CandidateList({ state }: { state: ProjectionState }): JSX.Element | nul
   const rows = Math.max(1, Math.ceil(page.length / columns))
 
   return (
-    <div
-      className={`projection-candidates cols-${columns}`}
-      style={{ ['--rows' as string]: String(rows) }}
-    >
+    <div className={`projection-candidates cols-${columns}`} style={{ ['--rows' as string]: String(rows) }}>
       {page.map((candidate) => (
         <CandidateRow key={candidate.id} candidate={candidate} />
       ))}
@@ -847,9 +835,7 @@ function ResultView({ state }: { state: ProjectionState }): JSX.Element {
         <div className="projection-result-figures">
           {result.yes !== undefined && <ResultFigure label="JA" value={result.yes} tone="success" />}
           {result.no !== undefined && <ResultFigure label="NEIN" value={result.no} tone="danger" />}
-          {result.abstentions !== undefined && (
-            <ResultFigure label="ENTHALTUNG" value={result.abstentions} />
-          )}
+          {result.abstentions !== undefined && <ResultFigure label="ENTHALTUNG" value={result.abstentions} />}
         </div>
       )}
 
@@ -860,8 +846,8 @@ function ResultView({ state }: { state: ProjectionState }): JSX.Element {
       {result.finalMessage && <div className="projection-note">{result.finalMessage}</div>}
 
       <div className="projection-note">
-        Abgegebene Stimmzettel: {result.ballotsCast ?? '–'} &middot; gültig: {result.validBallots ?? '–'} &middot;
-        ungültig: {result.invalidBallots ?? '–'}
+        Abgegebene Stimmzettel: {result.ballotsCast ?? '–'} &middot; gültig: {result.validBallots ?? '–'}{' '}
+        &middot; ungültig: {result.invalidBallots ?? '–'}
       </div>
     </>
   )

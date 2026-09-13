@@ -60,7 +60,9 @@ export function PrompterPage(): React.JSX.Element {
     void api('prompter.windowState')
       .then((zustand) => setFenster(zustand.open))
       .catch(() => undefined)
-    void api('projection.network').then(setNetz).catch(() => undefined)
+    void api('projection.network')
+      .then(setNetz)
+      .catch(() => undefined)
   }, [laden])
 
   useEffect(() => {
@@ -111,9 +113,10 @@ export function PrompterPage(): React.JSX.Element {
   const stelle = prompterPosition(view, jetzt)
   const amEnde = prompterAmEnde(view, jetzt)
 
-  const prompterAdresse = netz?.running && netz.urls[0]
-    ? `${netz.urls[0].split('?')[0].replace(/\/$/, '')}/prompter${netz.token ? `?t=${netz.token}` : ''}`
-    : undefined
+  const prompterAdresse =
+    netz?.running && netz.urls[0]
+      ? `${netz.urls[0].split('?')[0].replace(/\/$/, '')}/prompter${netz.token ? `?t=${netz.token}` : ''}`
+      : undefined
 
   return (
     <>
@@ -121,8 +124,8 @@ export function PrompterPage(): React.JSX.Element {
         <div>
           <h1>Prompter</h1>
           <div className="subtitle">
-            Reden ablegen und am Pult anzeigen — im eigenen Fenster oder über das Netz. Nichts davon
-            erscheint auf dem Beamer.
+            Reden ablegen und am Pult anzeigen — im eigenen Fenster oder über das Netz. Nichts davon erscheint
+            auf dem Beamer.
           </div>
         </div>
         <div className="row">
@@ -165,12 +168,12 @@ export function PrompterPage(): React.JSX.Element {
             </div>
 
             {reden.length === 0 ? (
-              <div className="hint" style={{ marginTop: 12 }}>
-                Noch keine Rede abgelegt. Markdown-Dateien (.md) lassen sich einspeisen; eine neue
-                Rede kann auch hier entstehen.
+              <div className="hint mt-3">
+                Noch keine Rede abgelegt. Markdown-Dateien (.md) lassen sich einspeisen; eine neue Rede kann
+                auch hier entstehen.
               </div>
             ) : (
-              <table className="tabelle" style={{ marginTop: 12 }}>
+              <table className="mt-3">
                 <thead>
                   <tr>
                     <th>Rede</th>
@@ -187,10 +190,8 @@ export function PrompterPage(): React.JSX.Element {
                           <button className="linkartig" onClick={() => void oeffne(rede)}>
                             {rede.title}
                           </button>
-                          {liegtAuf && <span className="badge ok" style={{ marginLeft: 8 }}>auf dem Prompter</span>}
-                          {rede.candidateName && (
-                            <div className="hint">für {rede.candidateName}</div>
-                          )}
+                          {liegtAuf && <span className="badge ok badge-nach">auf dem Prompter</span>}
+                          {rede.candidateName && <div className="hint">für {rede.candidateName}</div>}
                         </td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {rede.words} Wörter
@@ -275,9 +276,7 @@ export function PrompterPage(): React.JSX.Element {
                   <button className="primary" disabled={gespeichert} onClick={() => void speichere()}>
                     Speichern
                   </button>
-                  <button onClick={() => void rufe(() => api('prompter.load', offen))}>
-                    Auflegen
-                  </button>
+                  <button onClick={() => void rufe(() => api('prompter.load', offen))}>Auflegen</button>
                 </div>
               </div>
             </Card>
@@ -308,10 +307,7 @@ export function PrompterPage(): React.JSX.Element {
                     >
                       ↑
                     </button>
-                    <button
-                      onClick={() => void rufe(() => api('prompter.nudge', 12))}
-                      title="Ein Stück vor"
-                    >
+                    <button onClick={() => void rufe(() => api('prompter.nudge', 12))} title="Ein Stück vor">
                       ↓
                     </button>
                   </div>
@@ -320,7 +316,7 @@ export function PrompterPage(): React.JSX.Element {
                   </button>
                 </div>
 
-                <div className="prompter-stand-balken" style={{ marginTop: 12 }}>
+                <div className="prompter-stand-balken mt-3">
                   <div
                     className="prompter-stand-fuellung"
                     style={{
@@ -359,8 +355,8 @@ export function PrompterPage(): React.JSX.Element {
                 </Field>
                 {view.laufart === 'stimme' && (
                   <div className="hint">
-                    Der Prompter hört mit und setzt die Stelle dorthin, wo gesprochen wird. Dafür
-                    muss am Pult ein Sprachmodell hinterlegt sein — siehe Einstellungen.
+                    Der Prompter hört mit und setzt die Stelle dorthin, wo gesprochen wird. Dafür muss am Pult
+                    ein Sprachmodell hinterlegt sein — siehe Einstellungen.
                   </div>
                 )}
                 {view.laufart === 'hand' && (
@@ -422,9 +418,7 @@ export function PrompterPage(): React.JSX.Element {
                 step={0.5}
                 value={view.schrift}
                 onChange={(event) =>
-                  void rufe(() =>
-                    api('prompter.setDarstellung', { schrift: Number(event.target.value) })
-                  )
+                  void rufe(() => api('prompter.setDarstellung', { schrift: Number(event.target.value) }))
                 }
               />
             </Field>
@@ -436,9 +430,7 @@ export function PrompterPage(): React.JSX.Element {
                 step={5}
                 value={view.breite}
                 onChange={(event) =>
-                  void rufe(() =>
-                    api('prompter.setDarstellung', { breite: Number(event.target.value) })
-                  )
+                  void rufe(() => api('prompter.setDarstellung', { breite: Number(event.target.value) }))
                 }
               />
             </Field>
@@ -450,9 +442,7 @@ export function PrompterPage(): React.JSX.Element {
                 step={5}
                 value={view.leselinie}
                 onChange={(event) =>
-                  void rufe(() =>
-                    api('prompter.setDarstellung', { leselinie: Number(event.target.value) })
-                  )
+                  void rufe(() => api('prompter.setDarstellung', { leselinie: Number(event.target.value) }))
                 }
               />
             </Field>
@@ -501,9 +491,7 @@ export function PrompterPage(): React.JSX.Element {
               label="Bedienung am Gerät im Netz erlauben"
             />
             {!netz?.enabled && (
-              <div className="hint">
-                Dafür muss die Netzwerkansicht laufen — Beamer → Ausgabe &amp; Netz.
-              </div>
+              <div className="hint">Dafür muss die Netzwerkansicht laufen — Beamer → Ausgabe &amp; Netz.</div>
             )}
           </Card>
 
@@ -513,7 +501,9 @@ export function PrompterPage(): React.JSX.Element {
                 className={fenster ? '' : 'primary'}
                 onClick={() =>
                   void rufe(async () =>
-                    setFenster((await (fenster ? api('prompter.closeWindow') : api('prompter.openWindow'))).open)
+                    setFenster(
+                      (await (fenster ? api('prompter.closeWindow') : api('prompter.openWindow'))).open
+                    )
                   )
                 }
               >
@@ -522,7 +512,7 @@ export function PrompterPage(): React.JSX.Element {
             </div>
             {prompterAdresse ? (
               <>
-                <label style={{ marginTop: 10 }}>Am Pult im Browser</label>
+                <label className="mt-3">Am Pult im Browser</label>
                 <div className="mono">{prompterAdresse}</div>
                 <div className="hint">
                   {view.netzBedienung
@@ -531,9 +521,9 @@ export function PrompterPage(): React.JSX.Element {
                 </div>
               </>
             ) : (
-              <div className="hint" style={{ marginTop: 10 }}>
-                Für ein Gerät am Pult die <strong>Netzwerkansicht</strong> unter Beamer →
-                Ausgabe &amp; Netz einschalten; die Adresse endet dann auf <code>/prompter</code>.
+              <div className="hint mt-3">
+                Für ein Gerät am Pult die <strong>Netzwerkansicht</strong> unter Beamer → Ausgabe &amp; Netz
+                einschalten; die Adresse endet dann auf <code>/prompter</code>.
               </div>
             )}
           </Card>
@@ -542,10 +532,10 @@ export function PrompterPage(): React.JSX.Element {
             {/* Dieselbe Uhr wie auf dem Beamer: Wer vorn steht, sieht dieselbe
                 Zahl wie der Saal — und nicht zwei, die auseinanderlaufen. */}
             <div className="hint">
-              Läuft auf einer Bühne gerade eine Vorstellung mit Redezeit, lässt sich deren Uhr auf
-              den Prompter holen.
+              Läuft auf einer Bühne gerade eine Vorstellung mit Redezeit, lässt sich deren Uhr auf den
+              Prompter holen.
             </div>
-            <div className="row" style={{ marginTop: 8 }}>
+            <div className="row mt-2">
               {app.buehnen.map((stage) => {
                 const rede = app.projektionen[stage.id]?.speaker
                 return (

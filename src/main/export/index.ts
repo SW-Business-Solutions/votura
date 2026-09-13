@@ -166,12 +166,16 @@ function resultHtml(round: ElectionRound, result: ElectionResult | null): string
     ${result.resultData.no !== undefined ? `<tr><th>Nein</th><td class="num">${result.resultData.no}</td></tr>` : ''}
     ${result.resultData.abstentions !== undefined ? `<tr><th>Enthaltung</th><td class="num">${result.resultData.abstentions}</td></tr>` : ''}
   </table>
-  ${ranked.length > 0 ? `<h3>Reihenfolge nach Stimmen</h3><table><thead><tr><th class="num">Rang</th><th>Name</th><th class="num">Stimmen</th></tr></thead><tbody>${ranked
-    .map(
-      (candidate) =>
-        `<tr><td class="num">${candidate.rank}</td><td>${escapeHtml(candidate.name)}</td><td class="num">${candidate.votes ?? candidate.yes ?? 0}</td></tr>`
-    )
-    .join('')}</tbody></table>` : ''}
+  ${
+    ranked.length > 0
+      ? `<h3>Reihenfolge nach Stimmen</h3><table><thead><tr><th class="num">Rang</th><th>Name</th><th class="num">Stimmen</th></tr></thead><tbody>${ranked
+          .map(
+            (candidate) =>
+              `<tr><td class="num">${candidate.rank}</td><td>${escapeHtml(candidate.name)}</td><td class="num">${candidate.votes ?? candidate.yes ?? 0}</td></tr>`
+          )
+          .join('')}</tbody></table>`
+      : ''
+  }
   ${decision ? `<div class="hint"><strong>Feststellung der Wahlleitung:</strong> ${escapeHtml(decision)}${result.determination ? ` – ${escapeHtml(result.determination)}` : ''}</div>` : ''}
   ${result.lotDecision ? `<div class="hint"><strong>Losentscheid:</strong> ${escapeHtml(result.lotDecision)}</div>` : ''}
   <div class="meta">Erfasst von ${escapeHtml(result.enteredByName)} am ${formatDateTimeDe(result.createdAt, timeZone())}${

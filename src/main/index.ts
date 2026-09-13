@@ -197,8 +197,7 @@ function registerPresentationProtocol(): void {
     if (!existsSync(datei)) return new Response('Die Datei fehlt.', { status: 404 })
     /* Ein PDF muss als PDF ausgeliefert werden — sonst versucht der Rahmen,
        Binärdaten als HTML zu lesen. */
-    const typ =
-      presentationKind(eintrag) === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8'
+    const typ = presentationKind(eintrag) === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8'
     return new Response(await readFile(datei), {
       headers: {
         'Content-Type': typ,
@@ -332,7 +331,7 @@ function hardenSecurity(): void {
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +
-        ": blob:"
+        ': blob:'
       : /*
          * `worker-src 'self' blob:` ist für den Prompter da.
          *
@@ -359,7 +358,7 @@ function hardenSecurity(): void {
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +
-        ": blob:"
+        ': blob:'
     callback({
       responseHeaders: {
         ...details.responseHeaders,

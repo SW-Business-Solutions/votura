@@ -136,7 +136,9 @@ export async function checkOnStartIfEnabled(): Promise<UpdateCheckResult | null>
   if (!getConfig().updates.checkOnStart) return null
   const ergebnis = await checkForUpdate()
   if (ergebnis.updateAvailable) {
-    logger.info(`Neue Fassung verfügbar: ${ergebnis.latestVersion} (installiert: ${ergebnis.installedVersion})`)
+    logger.info(
+      `Neue Fassung verfügbar: ${ergebnis.latestVersion} (installiert: ${ergebnis.installedVersion})`
+    )
   }
   return ergebnis
 }

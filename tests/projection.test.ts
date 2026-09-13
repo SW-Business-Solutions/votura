@@ -54,8 +54,9 @@ describe('Aufteilung der Kandidatenliste', () => {
     for (const anzahl of [31, 46, 61, 90, 121]) {
       const seiten = projectionPageCount(anzahl)
       const groesse = projectionPageSize(anzahl)
-      const mengen = Array.from({ length: seiten }, (_, seite) =>
-        paginateCandidates(candidates(anzahl), seite).length
+      const mengen = Array.from(
+        { length: seiten },
+        (_, seite) => paginateCandidates(candidates(anzahl), seite).length
       )
       // Alle Seiten bis auf die letzte sind voll; der Unterschied bleibt klein.
       expect(Math.max(...mengen) - Math.min(...mengen)).toBeLessThan(groesse)
@@ -98,8 +99,9 @@ describe('Aufteilung der Ergebnisliste', () => {
     expect(projectionResultPageSize(anzahl)).toBe(15)
 
     const groesse = projectionResultPageSize(anzahl)
-    const mengen = Array.from({ length: projectionResultPageCount(anzahl) }, (_, seite) =>
-      paginateCandidates(candidates(anzahl), seite, groesse).length
+    const mengen = Array.from(
+      { length: projectionResultPageCount(anzahl) },
+      (_, seite) => paginateCandidates(candidates(anzahl), seite, groesse).length
     )
     expect(mengen.reduce((summe, wert) => summe + wert, 0)).toBe(anzahl)
     expect(Math.max(...mengen) - Math.min(...mengen)).toBeLessThan(groesse)
@@ -157,12 +159,7 @@ describe('Seitenzahl je Ansicht', () => {
    * Regel als Tabelle festgehalten, damit sie beim Ergänzen einer Ansicht
    * bewusst entschieden wird.
    */
-  const blaettert: ProjectionMode[] = [
-    'agenda',
-    'candidate_presentation',
-    'runoff_announced',
-    'result'
-  ]
+  const blaettert: ProjectionMode[] = ['agenda', 'candidate_presentation', 'runoff_announced', 'result']
 
   it('nennt genau die Ansichten, die blättern', () => {
     const ohne = PROJECTION_MODES.filter((mode) => !blaettert.includes(mode))

@@ -109,7 +109,12 @@ function serveFile(response: ServerResponse, filePath: string): void {
  * springen, ohne neu zu beginnen. Genau darauf beruht der Gleichlauf: Ein
  * Nachzügler holt sich den Abschnitt, der gerade läuft, statt den Anfang.
  */
-function serveVideo(request: IncomingMessage, response: ServerResponse, filePath: string, mimeType: string): void {
+function serveVideo(
+  request: IncomingMessage,
+  response: ServerResponse,
+  filePath: string,
+  mimeType: string
+): void {
   if (!existsSync(filePath) || !statSync(filePath).isFile()) {
     deny(response, 404, 'Nicht gefunden.')
     return
@@ -266,7 +271,10 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   if (url.pathname === '/api/projection/state') {
-    response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+    response.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    })
     response.end(JSON.stringify(getProjectionState(buehneAus(url))))
     return
   }
@@ -421,7 +429,10 @@ async function handlePrompterControl(
   }
   try {
     const daten = await ruf(eingabe.method, Array.isArray(eingabe.args) ? eingabe.args : [])
-    response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+    response.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    })
     response.end(JSON.stringify({ ok: true, data: daten }))
   } catch (fehler) {
     const text = fehler instanceof Error ? fehler.message : String(fehler)
