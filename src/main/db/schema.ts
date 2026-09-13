@@ -6,8 +6,6 @@
  * - Produktivdaten werden nie gelöscht, nur mit Status versehen (§57).
  * - Das Audit-Log ist append-only und per Hash-Chain verkettet (§60).
  */
-export const SCHEMA_VERSION = 4
-
 export const MIGRATIONS: { version: number; sql: string }[] = [
   {
     version: 1,
@@ -265,3 +263,17 @@ ALTER TABLE results ADD COLUMN rank_order_json TEXT;
 `
   }
 ]
+
+/**
+ * Höchste Schemaversion, die diese Programmfassung versteht.
+ *
+ * Abgeleitet und **nicht** von Hand gepflegt: Als feste Zahl lief sie
+ * auseinander, sobald jemand eine Migration ergänzte und die Zahl vergaß. Die
+ * Folge war heimtückisch — der erste Start wanderte auf die neue Version, und
+ * erst der zweite verweigerte den Dienst, weil die Prüfung den beim Start
+ * gelesenen Stand verwendet. Da standen die Daten schon in der neuen Fassung.
+ */
+export const SCHEMA_VERSION = MIGRATIONS.reduce(
+  (hoechste, migration) => Math.max(hoechste, migration.version),
+  0
+)
