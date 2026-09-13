@@ -59,6 +59,9 @@ export function BeamerPage(): React.JSX.Element {
   const [showAll, setShowAll] = useState(true)
   const [showRoundContext, setShowRoundContext] = useState(false)
   const [breakMinutes, setBreakMinutes] = useState(10)
+  const [rednerName, setRednerName] = useState('')
+  const [rednerZusatz, setRednerZusatz] = useState('')
+  const [redezeit, setRedezeit] = useState(3)
   const [pausenart, setPausenart] = useState<'dauer' | 'uhrzeit'>('dauer')
   /* Vorschlag: die nächste halbe Stunde — das ist die häufigste Ansage. */
   const [breakUntil, setBreakUntil] = useState(() => {
@@ -119,8 +122,14 @@ export function BeamerPage(): React.JSX.Element {
               <Checkbox
                 checked={projection.locked}
                 onChange={(value) => void api('projection.setLocked', value).catch(app.reportError)}
-                label="Beamer sperren — kein automatisches Umschalten, kein Weiterblättern"
+                label="Beamer sperren"
               />
+            </div>
+            {/* Was die Sperre bewirkt, gehört unter die Sperre — sonst sieht
+                sie neben „Automatisch weiter: aus" wie dasselbe aus. */}
+            <div className="hint" style={{ marginTop: -4 }}>
+              Hält alles an: den Wechsel der Ansicht aus dem Wahlgangstatus{' '}
+              <strong>und</strong> das Weiterblättern. Von Hand geht beides weiter.
             </div>
             {projection.candidatePageCount > 1 && (
               <div className="row">
@@ -147,7 +156,9 @@ export function BeamerPage(): React.JSX.Element {
             )}
             {projection.candidatePageCount > 1 && (
               <div className="row" style={{ alignItems: 'center', gap: 8 }}>
-                <span className="hint">Automatisch weiter:</span>
+                <span className="hint" title="Nur das Blättern durch die Seiten dieser Ansicht">
+                  Seiten wechseln alle:
+                </span>
                 <div className="segmented">
                   {[0, 8, 15, 30].map((takt) => (
                     <button
@@ -162,7 +173,9 @@ export function BeamerPage(): React.JSX.Element {
                     </button>
                   ))}
                 </div>
-                {projection.locked && <span className="hint">— der Beamer ist gesperrt.</span>}
+                {projection.locked && (
+                  <span className="hint">— gesperrt, es wird gar nicht geblättert.</span>
+                )}
               </div>
             )}
           </Card>
@@ -291,6 +304,89 @@ export function BeamerPage(): React.JSX.Element {
             >
               Anzeigen
             </button>
+          </Card>
+
+          {/*
+            * Vorstellung mit Redezeit.
+            *
+            * Auf einer Versammlung stellen sich Bewerber nacheinander vor, oft
+            * mit begrenzter Zeit. Ohne Anzeige weiß weder der Saal noch die
+            * sprechende Person, wie viel noch bleibt — und die Erinnerung
+            * daran wird zur unangenehmen Unterbrechung.
+            */}
+          <Card title="Vorstellung mit Redezeit">
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <Field label="Wer spricht">
+                  <input
+                    value={rednerName}
+                    onChange={(e) => setRednerName(e.target.value)}
+                    placeholder="Name"
+                    list="votura-bewerber"
+                  />
+                </Field>
+                {/* Vorschläge aus dem Bezugswahlgang: Die Namen stehen schon
+                    in der Anwendung, sie abzutippen wäre Arbeit ohne Zweck. */}
+                <datalist id="votura-bewerber">
+                  {(projection.round?.candidates ?? projection.result?.candidates ?? []).map(
+                    (eintrag) => (
+                      <option key={eintrag.id} value={eintrag.displayName} />
+                    )
+                  )}
+                </datalist>
+              </div>
+              <div style={{ width: 130 }}>
+                <Field label="Redezeit (Min.)" hint="0 = ohne Uhr">
+                  <NumberInput value={redezeit} min={0} max={120} onChange={setRedezeit} />
+                </Field>
+              </div>
+            </div>
+            <Field label="Zusatz (optional)">
+              <input
+                value={rednerZusatz}
+                onChange={(e) => setRednerZusatz(e.target.value)}
+                placeholder="Bewerbung um den Vorsitz"
+              />
+            </Field>
+            <div className="row">
+              <button
+                className="primary"
+                disabled={!rednerName.trim()}
+                onClick={() =>
+                  void setMode('speaker', {
+                    speaker: {
+                      name: rednerName.trim(),
+                      note: rednerZusatz.trim() || undefined,
+                      seconds: redezeit > 0 ? redezeit * 60 : undefined
+                    }
+                  })
+                }
+              >
+                Vorstellung anzeigen
+              </button>
+            </div>
+            {projection.mode === 'speaker' && projection.speaker && (
+              <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 8 }}>
+                <span className="hint">Läuft: {projection.speaker.name}</span>
+                <button
+                  onClick={() =>
+                    void api(
+                      'projection.setSpeakerPaused',
+                      projection.speaker?.pausedSecondsLeft === undefined
+                    ).catch(app.reportError)
+                  }
+                  disabled={!projection.speaker.until && projection.speaker.pausedSecondsLeft === undefined}
+                >
+                  {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
+                </button>
+                <button onClick={() => void api('projection.addSpeakerSeconds', 60).catch(app.reportError)}>
+                  +1 Min.
+                </button>
+                <button onClick={() => void api('projection.addSpeakerSeconds', -60).catch(app.reportError)}>
+                  −1 Min.
+                </button>
+              </div>
+            )}
           </Card>
 
           <Card title="Pause">

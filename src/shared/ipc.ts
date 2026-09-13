@@ -205,6 +205,8 @@ export interface ResultInput {
   finalDecision?: ElectionResult['finalDecision']
   electedCandidateIds?: UUID[]
   lotDecision?: string
+  /** Von der Versammlung festgelegte Reihenfolge bei Gleichstand. */
+  rankOrder?: UUID[]
 }
 
 export interface AccountingInput {
@@ -451,12 +453,18 @@ export interface Api {
     breakMinutes?: number
     /** Feste Uhrzeit "HH:MM", zu der es weitergeht — statt einer Dauer. */
     breakUntilTime?: string
+    /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
+    speaker?: { name: string; note?: string; seconds?: number }
     presentationId?: UUID
     videoId?: UUID
   }) => Promise<ProjectionState>
   'projection.setCandidatePage': (page: number) => Promise<ProjectionState>
   /** Takt des automatischen Seitenwechsels in Sekunden; 0 hält ihn an. */
   'projection.setCandidatePageInterval': (seconds: number) => Promise<ProjectionState>
+  /** Hält die Redezeit an oder lässt sie weiterlaufen (Zwischenfrage). */
+  'projection.setSpeakerPaused': (paused: boolean) => Promise<ProjectionState>
+  /** Verlängert oder kürzt die laufende Redezeit um Sekunden. */
+  'projection.addSpeakerSeconds': (seconds: number) => Promise<ProjectionState>
   'projection.setLocked': (locked: boolean) => Promise<ProjectionState>
   'projection.history': () => Promise<ProjectionHistoryEntry[]>
   'projection.displays': () => Promise<DisplayInfo[]>

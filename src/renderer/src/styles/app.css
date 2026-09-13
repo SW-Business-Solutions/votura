@@ -769,3 +769,12 @@ tr.muted td {
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* Kleine Schaltfläche innerhalb einer Zeile — etwa zum Umreihen bei
+   Gleichstand. Bewusst schmal: Sie steht neben Text, nicht über ihm. */
+button.mini {
+  min-height: 0;
+  padding: 2px 8px;
+  font-size: 13px;
+  line-height: 1.3;
+}

@@ -249,5 +249,19 @@ CREATE INDEX IF NOT EXISTS idx_agenda_event ON agenda_items(event_id, position);
 ALTER TABLE results ADD COLUMN counting_mode TEXT NOT NULL DEFAULT 'counted';
 ALTER TABLE results ADD COLUMN declaration TEXT;
 `
+  },
+  {
+    /*
+     * Wo die Zahlen nicht mehr trennen, entscheidet die Versammlung.
+     *
+     * Bei gleicher Ja- und Nein-Zahl steht offen, wer Delegierter und wer
+     * Ersatz wird. Die Auflösung — Verzicht auf den höheren Platz, Stichwahl,
+     * Losentscheid — ist eine Feststellung und gehört ins Ergebnis, nicht in
+     * eine stille Sortierung nach dem Namen.
+     */
+    version: 5,
+    sql: `
+ALTER TABLE results ADD COLUMN rank_order_json TEXT;
+`
   }
 ]

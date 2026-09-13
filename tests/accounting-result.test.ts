@@ -183,6 +183,39 @@ describe('Rangfolge und Feststellungsvorschlag', () => {
     expect(ranked[2].rank).toBe(3)
   })
 
+  /*
+   * Was die Versammlung entschieden hat, zählt — aber nur dort, wo die Zahlen
+   * nichts mehr hergeben. Sonst könnte eine eingetragene Reihenfolge jemanden
+   * an Bewerbern mit mehr Stimmen vorbeiziehen.
+   */
+  it('löst den Gleichstand nach dem Beschluss der Versammlung auf', () => {
+    const stimmen = [
+      { candidateId: 'a', name: 'Anna', yes: 50, no: 12 },
+      { candidateId: 'b', name: 'Bernd', yes: 50, no: 12 }
+    ]
+    /* Ohne Beschluss: offener Rang, Reihenfolge nur alphabetisch stabil. */
+    expect(rankCandidates(stimmen, 2).every((entry) => entry.tied)).toBe(true)
+
+    const entschieden = rankCandidates(stimmen, 2, { decidedOrder: ['b', 'a'] })
+    expect(entschieden.map((entry) => entry.name)).toEqual(['Bernd', 'Anna'])
+    expect(entschieden.every((entry) => entry.tied)).toBe(false)
+    expect(entschieden.map((entry) => entry.rank)).toEqual([1, 2])
+  })
+
+  it('hebt niemanden über die Zahlen hinweg', () => {
+    const ranked = rankCandidates(
+      [
+        { candidateId: 'stark', name: 'Stark', yes: 90, no: 5 },
+        { candidateId: 'schwach', name: 'Schwach', yes: 20, no: 5 }
+      ],
+      2,
+      /* Der Beschluss nennt den Schwächeren zuerst — die Zahlen trennen aber
+         eindeutig, also bleibt es bei ihnen. */
+      { decidedOrder: ['schwach', 'stark'] }
+    )
+    expect(ranked.map((entry) => entry.name)).toEqual(['Stark', 'Schwach'])
+  })
+
   /* Mehr Nein als Ja heißt nicht gewählt — auch wenn ein Platz frei bliebe. */
   it('stellt Bewerber ohne Mehrheit hinten an, auch bei freien Plätzen', () => {
     const ranked = rankCandidates(

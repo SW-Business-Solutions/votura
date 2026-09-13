@@ -641,3 +641,45 @@ html {
   height: 100%;
   text-align: center;
 }
+
+/* ------------------------------------------------------------- Redezeit */
+
+.projection-redezeit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2cqh;
+  width: 60cqw;
+}
+
+/* Knapp und überzogen sind die beiden Zustände, die auffallen müssen — der
+   Rest der Zeit soll niemanden hetzen. */
+.projection-countdown.knapp {
+  color: var(--projection-warning);
+}
+
+.projection-countdown.vorbei {
+  color: var(--projection-danger);
+}
+
+.projection-redezeit-balken {
+  width: 100%;
+  height: 1.4cqh;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--projection-text) 18%, transparent);
+  overflow: hidden;
+}
+
+.projection-redezeit-balken > div {
+  height: 100%;
+  background: var(--projection-primary);
+  transition: width 0.5s linear;
+}
+
+.projection-redezeit-balken > div.knapp {
+  background: var(--projection-warning);
+}
+
+.projection-redezeit-balken > div.vorbei {
+  background: var(--projection-danger);
+}
