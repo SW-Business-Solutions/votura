@@ -9,11 +9,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   istSaalAntwort,
+  rolleBrauchtAnmeldung,
   rollenAdresse,
   rollenName,
   SUCHRUF,
   SUCHRUF_PORT,
-  type SaalAntwort
+  type SaalAntwort,
+  type SaalEinstellung,
+  type SaalRolle
 } from '../src/shared/saal'
 
 const lies = (pfad: string): string => readFileSync(join(__dirname, '..', pfad), 'utf8')
@@ -137,5 +140,53 @@ describe('Was die Begleitanwendung darf — und was nicht', () => {
     expect(paket).not.toContain('sprachmodell')
     const server = lies('src/main/network-projection.ts')
     expect(server).toContain('SPRACHMODELL_PFAD')
+  })
+})
+
+describe('Die bedienenden Rollen', () => {
+  /*
+   * Bühne und Prompter zeigen nur an. Akkreditierung, Ausgabe und Wahlkabine
+   * werden bedient — hinter ihnen steht ein Mensch, der etwas auslöst.
+   */
+  const einstellung = (rolle: SaalRolle, token = ''): SaalEinstellung => ({
+    master: 'http://192.168.1.5:8477',
+    token,
+    rolle
+  })
+
+  it('führen auf die Fernbedienung des Hauptrechners', () => {
+    /*
+     * Dieselbe Oberfläche, dieselbe Anmeldung, dieselbe Rechteprüfung. Ein
+     * zweiter, schwächerer Weg an dieselben Daten wäre genau die Abkürzung,
+     * die man später bereut.
+     */
+    expect(rollenAdresse(einstellung({ art: 'akkreditierung' }))).toBe(
+      'http://192.168.1.5:8477/operator#/akkreditierung'
+    )
+    expect(rollenAdresse(einstellung({ art: 'ausgabe' }))).toBe('http://192.168.1.5:8477/operator#/ausgabe')
+  })
+
+  it('reichen das Zugriffstoken vor der Raute durch', () => {
+    /* Alles hinter der Raute sieht der Server nie — das Token muss davor
+       stehen, sonst käme es nie an. */
+    const adresse = rollenAdresse(einstellung({ art: 'akkreditierung' }, 'geheim'))
+    expect(adresse).toBe('http://192.168.1.5:8477/operator?t=geheim#/akkreditierung')
+    expect(adresse.indexOf('t=geheim')).toBeLessThan(adresse.indexOf('#'))
+  })
+
+  it('verlangen eine Anmeldung, die anzeigenden nicht', () => {
+    expect(rolleBrauchtAnmeldung({ art: 'akkreditierung' })).toBe(true)
+    expect(rolleBrauchtAnmeldung({ art: 'ausgabe' })).toBe(true)
+    expect(rolleBrauchtAnmeldung({ art: 'buehne', nummer: 1 })).toBe(false)
+    expect(rolleBrauchtAnmeldung({ art: 'prompter' })).toBe(false)
+    /* Die Wahlkabine nicht: Dort meldet sich niemand an — dort wählt jemand,
+       und genau deshalb darf sie niemanden kennen (ADR-0006). */
+    expect(rolleBrauchtAnmeldung({ art: 'wahlkabine' })).toBe(false)
+  })
+
+  it('heißen im Klartext, wonach jemand am Gerät sucht', () => {
+    expect(rollenName({ art: 'akkreditierung' })).toBe('Akkreditierung am Einlass')
+    expect(rollenName({ art: 'ausgabe' })).toBe('Ausgabe der Stimmzettel')
+    expect(rollenName({ art: 'wahlkabine' })).toBe('Wahlkabine')
   })
 })
