@@ -399,6 +399,14 @@ export interface Api {
   'participant.block': (input: { id: UUID; reason: string }) => Promise<Participant>
   'participant.unblock': (id: UUID) => Promise<Participant>
   'participant.presence': (eventId: UUID) => Promise<PresenceSummary>
+  /**
+   * Pass ausgeben **und** drucken — in einem Aufruf.
+   *
+   * Getrennt wäre es ein Fehler mit Ansage: Zwischen Ausgeben und Drucken
+   * müsste der Wert durch die Oberfläche wandern, und wer dazwischen abbricht,
+   * hat einen gültigen Pass, den niemand hat.
+   */
+  'participant.issueAndPrintPass': (input: { id: UUID; printerId: string }) => Promise<Participant>
 
   /* ------------------------------------------------ Ausgabe der Zettel */
   'handout.issue': (input: {

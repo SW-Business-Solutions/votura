@@ -74,6 +74,11 @@ export function encodeInit(printer: PrinterConfig): Buffer {
   return writer.toBuffer()
 }
 
+/** Modulbreite in den Bereich, den die Geräte annehmen (1–16, sinnvoll 3–8). */
+function clampQr(size: number | undefined): number {
+  return Math.max(3, Math.min(8, Math.round(size ?? 6)))
+}
+
 export function encodeOps(ops: PrintOp[], printer: PrinterConfig): Buffer {
   const writer = new ByteWriter()
 
@@ -104,6 +109,40 @@ export function encodeOps(ops: PrintOp[], printer: PrinterConfig): Buffer {
         if (op.dots === 'default') writer.push(ESC, 0x32)
         else writer.push(ESC, 0x33, Math.max(0, Math.min(255, op.dots))) // ESC 3 – Zeilenabstand
         break
+      case 'qr': {
+        /*
+         * GS ( k — die Befehlsgruppe für zweidimensionale Codes.
+         *
+         * Vier Schritte, und die Reihenfolge ist vorgeschrieben: Modell
+         * wählen, Modulbreite setzen, Fehlerkorrektur setzen, Daten in den
+         * Speicher legen, drucken. Der Aufbau `pL pH cn fn` wiederholt sich;
+         * `pL + pH * 256` ist jeweils die Länge des Rests.
+         */
+        const align = op.align === 'left' ? 0 : op.align === 'right' ? 2 : 1
+        writer.push(ESC, 0x61, align)
+
+        // Modell 2 — das gebräuchliche, von jedem Telefon gelesen.
+        writer.push(GS, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00)
+        // Modulbreite in Punkten.
+        writer.push(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, clampQr(op.size))
+        /*
+         * Fehlerkorrektur M (15 %). L wäre kleiner, aber der Pass wird
+         * eingesteckt, geknickt und aus der Tasche gezogen — und ein Code,
+         * der nach dem dritten Knick nicht mehr liest, kostet am Einlass
+         * genau die Zeit, die er sparen sollte.
+         */
+        writer.push(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31)
+
+        const daten = Buffer.from(op.data, 'ascii')
+        const laenge = daten.length + 3
+        writer.push(GS, 0x28, 0x6b, laenge & 0xff, (laenge >> 8) & 0xff, 0x31, 0x50, 0x30)
+        writer.pushBytes(daten)
+
+        // Drucken.
+        writer.push(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30)
+        writer.push(ESC, 0x61, 0x00)
+        break
+      }
       case 'cut':
         writer.push(ESC, 0x64, printer.feedLinesBeforeCut)
         // GS V 66 n – Teilschnitt mit Papiervorschub (Epson-Funktion B)

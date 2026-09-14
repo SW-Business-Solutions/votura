@@ -20,6 +20,18 @@ export type PrintOp =
   | { type: 'feed'; lines: number }
   | { type: 'spacing'; dots: number | 'default' }
   | { type: 'cut' }
+  /**
+   * Ein QR-Code.
+   *
+   * **Der Drucker zeichnet ihn selbst.** Thermodrucker können das seit
+   * Jahrzehnten; ein Bild zu rechnen und als Punktgrafik zu schicken wäre
+   * langsamer, gröber und brächte eine Bibliothek ins Projekt, die nur an
+   * dieser einen Stelle gebraucht würde.
+   *
+   * `size` ist die Modulbreite in Punkten (3 bis 8). Bei 80-mm-Papier ergibt
+   * 6 einen Code, den jedes Telefon aus einer Handbreit Entfernung liest.
+   */
+  | { type: 'qr'; data: string; size?: number; align?: 'left' | 'center' | 'right' }
 
 export function text(value: string, style: TextStyle = {}): PrintOp {
   return { type: 'text', text: value, ...style }
@@ -35,6 +47,10 @@ export function spacing(dots: number | 'default'): PrintOp {
 
 export function cut(): PrintOp {
   return { type: 'cut' }
+}
+
+export function qr(data: string, size = 6, align: 'left' | 'center' | 'right' = 'center'): PrintOp {
+  return { type: 'qr', data, size, align }
 }
 
 /** Bricht Text auf die Zeilenbreite um; Folgezeilen werden eingerückt (Wahlformen §37). */
@@ -90,6 +106,9 @@ export function countLines(ops: PrintOp[]): number {
     if (op.type === 'text') lines += op.doubleHeight ? 2 : 1
     else if (op.type === 'feed') lines += op.lines
     else if (op.type === 'cut') lines += 2
+    /* Ein QR-Code ist so hoch wie breit; bei Modulbreite 6 sind das rund
+       sieben Textzeilen. Die Schätzung geht in den Papierverbrauch ein. */
+    else if (op.type === 'qr') lines += Math.max(4, Math.round((op.size ?? 6) * 1.2))
   }
   return lines
 }

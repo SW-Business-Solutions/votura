@@ -69,6 +69,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'participant.blocked': 'Teilnehmer gesperrt',
   'participant.unblocked': 'Sperre aufgehoben',
   'participant.passes_expired': 'Voting Pässe verfallen',
+  'participant.pass_printed': 'Voting Pass gedruckt',
   'round.presence_taken': 'Anwesenheit für den Wahlgang festgehalten',
   'agenda.item_added': 'Tagesordnungspunkt hinzugefügt',
   'agenda.item_updated': 'Tagesordnungspunkt geändert',

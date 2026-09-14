@@ -23,7 +23,7 @@ import {
   type IsoDateTime,
   type PrinterConfig
 } from '@shared/types'
-import { centerText, cut, feed, ruler, spacing, text, wrapText, type PrintOp } from './ops'
+import { centerText, cut, feed, qr, ruler, spacing, text, wrapText, type PrintOp } from './ops'
 
 const CHECKBOX = '[   ]'
 /**
@@ -353,6 +353,17 @@ export function renderPreviewRows(ops: PrintOp[], _width: number): PreviewRow[] 
         rows.push({ text: '' })
         rows.push({ text: 'Abschnitt durch Cutter', cut: true })
         break
+      case 'qr':
+        /*
+         * In der Vorschau steht der Inhalt als Text, nicht als Bild.
+         *
+         * Wer die Vorschau liest, prüft, **was** kodiert wird — ein
+         * gezeichneter QR-Code sagte ihm darüber nichts. Beim Voting Pass
+         * steht dort ohnehin nur ein Zufallswert, und der gehört sichtbar,
+         * damit niemand ihn für eine Mitgliedsnummer hält.
+         */
+        rows.push({ text: `[QR] ${op.data}`, align: op.align === 'left' ? undefined : op.align })
+        break
       case 'spacing':
         break
     }
@@ -408,6 +419,86 @@ export function buildProtocolSlipOps(
   ops.push(text('_'.repeat(width)))
   ops.push(feed(1))
   ops.push(text(`WG: ${input.roundCode}`, { align: 'center' }))
+  ops.push(feed(1))
+  if (printer.cutEveryBallot) ops.push(cut())
+  else ops.push(feed(printer.feedLinesBeforeCut))
+  return ops
+}
+
+/* ----------------------------------------------------------- Voting Pass */
+
+export interface VotingPassInput {
+  organization: string
+  eventTitle: string
+  date: string
+  lastName: string
+  firstName: string
+  number?: string
+  /** Das Geheimnis. Es steht hier genau einmal — und danach nur im QR. */
+  token: string
+  weight: number
+}
+
+/**
+ * Der gedruckte Voting Pass.
+ *
+ * **Kein Stimmzettel**, und das steht ganz oben und umgekehrt gesetzt: Am
+ * Einlass liegen beide Sorten Papier nebeneinander auf dem Tisch, und
+ * jemand, der sie verwechselt, wirft einen Pass in die Urne.
+ *
+ * Der Code steht doppelt darauf — als QR für den Scanner und darunter in
+ * Zeichen für den Fall, dass die Kamera nicht mag oder das Papier einen Knick
+ * hat. Der Zeichenvorrat lässt I, O, 0 und 1 bewusst weg; abgetippt wird er
+ * nur im Ausnahmefall, aber dann unter Zeitdruck.
+ *
+ * Der Name steht dabei: Der Pass ist persönlich, und wer ihn findet, soll ihn
+ * zurückgeben können. Er weist die **Stimmberechtigung** nach, nicht die
+ * Stimme — was daraus wird, regelt ADR-0006.
+ */
+export function buildVotingPassOps(input: VotingPassInput, printer: PrinterConfig): PrintOp[] {
+  const width = printer.charsPerLine
+  const ops: PrintOp[] = []
+
+  ops.push(text(ruler(width, '='), { align: 'center' }))
+  ops.push(text('KEIN STIMMZETTEL', { align: 'center', bold: true, invert: true }))
+  ops.push(text('VOTING PASS', { align: 'center', bold: true, doubleHeight: true }))
+  ops.push(text(ruler(width, '='), { align: 'center' }))
+  ops.push(feed(1))
+
+  for (const line of wrapText(input.organization, width))
+    ops.push(text(line, { align: 'center', bold: true }))
+  for (const line of wrapText(input.eventTitle, width)) ops.push(text(line, { align: 'center' }))
+  ops.push(text(formatDateDe(input.date), { align: 'center' }))
+  ops.push(feed(1))
+
+  for (const line of wrapText(`${input.lastName}, ${input.firstName}`, width)) {
+    ops.push(text(line, { align: 'center', bold: true, doubleHeight: true }))
+  }
+  if (input.number) ops.push(text(`Nr. ${input.number}`, { align: 'center' }))
+  /* Nur erwähnen, wenn es etwas zu erwähnen gibt: In einem Verein trägt
+     jeder eine Stimme, und „1 Stimme" auf jedem Pass wäre Rauschen. */
+  if (input.weight > 1) {
+    ops.push(text(`${input.weight} Stimmen`, { align: 'center', bold: true }))
+  }
+  ops.push(feed(1))
+
+  ops.push(qr(input.token, 6, 'center'))
+  ops.push(feed(1))
+  ops.push(text(input.token, { align: 'center', bold: true, doubleWidth: true }))
+  ops.push(feed(1))
+
+  /*
+   * Drei kurze Zeilen statt eines umbrochenen Absatzes: Auf 42 Zeichen zerreißt
+   * ein Umbruch genau die Sätze, auf die es ankommt — und gelesen wird das
+   * hier im Vorbeigehen.
+   */
+  for (const zeile of [
+    'Bitte am Einlass vorzeigen.',
+    'Nicht in die Urne werfen.',
+    'Gilt nur für diese Versammlung.'
+  ]) {
+    ops.push(text(zeile, { align: 'center' }))
+  }
   ops.push(feed(1))
   if (printer.cutEveryBallot) ops.push(cut())
   else ops.push(feed(printer.feedLinesBeforeCut))

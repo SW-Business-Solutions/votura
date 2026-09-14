@@ -94,6 +94,32 @@ export function AkkreditierungPage(): React.JSX.Element {
     }
   }
 
+  const passAusgeben = async (person: Participant): Promise<void> => {
+    if (
+      person.passIssued &&
+      !window.confirm(
+        `${person.firstName} ${person.lastName} hat bereits einen Voting Pass.
+
+` + 'Ein neuer Pass entwertet den alten. Fortfahren?'
+      )
+    ) {
+      return
+    }
+    try {
+      const drucker = app.settings?.config.printing.defaultPrinterId
+      if (drucker) {
+        await api('participant.issueAndPrintPass', { id: person.id, printerId: drucker })
+        setMeldung(`Voting Pass für ${person.firstName} ${person.lastName} gedruckt.`)
+      } else {
+        const { token } = await api('participant.issuePass', person.id)
+        setPassAnzeige({ name: `${person.firstName} ${person.lastName}`, token })
+      }
+      await laden()
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
   /** Wie ein Ausweis in einem Satz heißt. */
   const bezeichnung = (karte: Ausweis): string =>
     karte.kind === 'band' ? `Bändchen ${karte.serial}` : `Karte ${karte.serial}`
@@ -229,25 +255,6 @@ export function AkkreditierungPage(): React.JSX.Element {
         weight: Number(neu.weight) || 1
       })
       setNeu({ lastName: '', firstName: '', number: '', weight: '1' })
-      await laden()
-    } catch (error) {
-      app.reportError(error)
-    }
-  }
-
-  const passAusgeben = async (person: Participant): Promise<void> => {
-    if (
-      person.passIssued &&
-      !window.confirm(
-        `${person.firstName} ${person.lastName} hat bereits einen Voting Pass.\n\n` +
-          'Ein neuer Pass entwertet den alten. Fortfahren?'
-      )
-    ) {
-      return
-    }
-    try {
-      const { token } = await api('participant.issuePass', person.id)
-      setPassAnzeige({ name: `${person.firstName} ${person.lastName}`, token })
       await laden()
     } catch (error) {
       app.reportError(error)

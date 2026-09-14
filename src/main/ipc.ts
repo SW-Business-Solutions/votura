@@ -160,6 +160,7 @@ import {
   setCardStatus
 } from './services/cards'
 import { handoutCount, handoutFor, issueBallot, revokeIssue } from './services/handout'
+import { printVotingPass } from './services/printing'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
   getConfig,
@@ -531,6 +532,11 @@ const api: Api = {
   'participant.block': async (input) => blockParticipant(input.id, input.reason),
   'participant.unblock': async (id) => unblockParticipant(id),
   'participant.presence': async (eventId) => presenceSummary(eventId, getConfig().assembly.quorum),
+  'participant.issueAndPrintPass': async (input) => {
+    const { participant, token } = issuePass(input.id)
+    await printVotingPass({ participantId: input.id, token, printerId: input.printerId })
+    return participant
+  },
 
   'agenda.list': async (eventId) => listAgenda(eventId),
   'agenda.add': async (input) => addAgendaItem(input),
