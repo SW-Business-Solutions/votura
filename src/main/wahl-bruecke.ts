@@ -13,8 +13,8 @@
 import type { WahlDispatcher } from './network-projection'
 import type { Stimmabgabe, WahlAuskunft } from '@shared/wahl'
 import { activeEvent } from './services/events'
-import { mayVote } from './services/participants'
-import { resolveScan } from './services/cards'
+import { getParticipant, mayVote } from './services/participants'
+import { cardHeldBy, resolveScan } from './services/cards'
 import {
   ausschussWahlgang,
   berechtigungAusgeben,
@@ -29,18 +29,77 @@ import {
   votingLage
 } from './services/voting'
 
-/** Den Ausweis zu einer Person auflösen — Karte, Bändchen oder gedruckter Pass. */
-function personZu(code: string): { id: string; name: string; gewicht: number } | null {
+/** Eine Person samt der Ausweise, die zu ihr gehören. */
+interface Ausweisträger {
+  id: string
+  name: string
+  gewicht: number
+  /** Welcher Faktor fehlt noch, damit abgestimmt werden darf? */
+  fehlt?: 'karte' | 'pass'
+}
+
+/**
+ * Die Ausweise zu einer Person auflösen — und prüfen, ob **alle** da sind.
+ *
+ * ## Warum zwei Faktoren
+ *
+ * Eine Stimmkarte ist wiederverwendbar; ihr Code steht aufgedruckt darauf und
+ * lässt sich über die Schulter fotografieren. Wer das tut, könnte am eigenen
+ * Telefon die Stimme desjenigen abgeben, dem die Karte gerade gehört — und
+ * später, wenn dieselbe Karte an jemand anderen ausgegeben wird, dessen
+ * Stimme. Der Code lässt sich nicht ändern; er ist gedruckt.
+ *
+ * Der **gedruckte Pass** kann beides: Er gehört einer Person, und ein neuer
+ * macht den alten im selben Augenblick ungültig (`issuePass` überschreibt den
+ * Hash). Wer seinen Pass verliert, bekommt einen neuen; wer ihn fotografiert
+ * hat, hält dann Altpapier in der Hand.
+ *
+ * Deshalb zählt hier **jeder Ausweis, den diese Person tatsächlich hat**: Wer
+ * eine Karte hält *und* einen Pass bekommen hat, muss beide vorzeigen. Ein
+ * Foto von einem der beiden genügt nicht.
+ *
+ * ## Warum das nichts erzwingt, was es nicht gibt
+ *
+ * Eine Versammlung ohne Karten arbeitet unverändert weiter — verlangt wird,
+ * was ausgegeben wurde, nicht was denkbar wäre. Sonst hätte diese Änderung
+ * jede bestehende Einrichtung stillgelegt.
+ */
+function personZu(...codes: unknown[]): Ausweisträger | null {
   const event = activeEvent()
   if (!event) return null
-  const treffer = resolveScan(event.id, String(code ?? '').trim())
-  const person = treffer?.participant
+
+  const gesehen = new Set<'card' | 'pass'>()
+  let person: { id: string; firstName: string; lastName: string; weight: number } | null = null
+
+  for (const roh of codes) {
+    const code = String(roh ?? '').trim()
+    if (!code) continue
+    const treffer = resolveScan(event.id, code)
+    if (!treffer?.participant) continue
+    /* Zwei Ausweise, zwei Personen: Da hat jemand fremde Papiere in der Hand
+       oder zwei Leute an einem Gerät. Beides ist keine Stimmabgabe. */
+    if (person && person.id !== treffer.participant.id) return null
+    person = treffer.participant
+    gesehen.add(treffer.kind)
+  }
+
   if (!person) return null
+
+  const hatKarte = cardHeldBy(person.id) !== null
+  const hatPass = getParticipant(person.id)?.passIssued ?? false
+
   return {
     id: person.id,
     name: `${person.firstName} ${person.lastName}`,
-    gewicht: person.weight
+    gewicht: person.weight,
+    fehlt: hatKarte && !gesehen.has('card') ? 'karte' : hatPass && !gesehen.has('pass') ? 'pass' : undefined
   }
+}
+
+/** Klartext für den fehlenden Faktor — er steht am Gerät des Wählers. */
+const FAKTOR_TEXT: Record<'karte' | 'pass', string> = {
+  karte: 'Bitte zusätzlich die Stimmkarte oder das Bändchen scannen.',
+  pass: 'Bitte zusätzlich den gedruckten Voting Pass scannen.'
 }
 
 /**
@@ -75,10 +134,10 @@ export const wahlBruecke: WahlDispatcher = {
    * versehentlich für einen anderen abstimmt, weil der falsche Ausweis oben
    * auf lag.
    */
-  async lage(code: string, mitToken: boolean): Promise<WahlAuskunft> {
+  async lage(code: string, mitToken: boolean, code2?: string): Promise<WahlAuskunft> {
     const event = activeEvent()
     const lage = event ? offeneWahl(event.id) : null
-    const person = personZu(code)
+    const person = personZu(code, code2)
 
     if (!person) {
       return {
@@ -103,11 +162,14 @@ export const wahlBruecke: WahlDispatcher = {
     const kabine = kabinenpflicht(lage, mitToken)
     return {
       lage,
-      berechtigt: urteil.ok && !kabine,
+      berechtigt: urteil.ok && !kabine && !person.fehlt,
       bereitsAusgegeben: schonAusgegeben(lage.roundId, person.id),
       name: person.name,
       gewicht: person.gewicht,
-      hindernis: kabine ?? (urteil.ok ? undefined : urteil.reason)
+      /* Der fehlende Faktor ist kein Fehler, sondern der nächste Schritt —
+         das Gerät fragt danach, statt den Vorgang abzubrechen. */
+      fehlenderFaktor: person.fehlt,
+      hindernis: kabine ?? (person.fehlt ? FAKTOR_TEXT[person.fehlt] : urteil.ok ? undefined : urteil.reason)
     }
   },
 
@@ -129,8 +191,9 @@ export const wahlBruecke: WahlDispatcher = {
     const kabine = kabinenpflicht(lage, mitToken)
     if (kabine) throw new Error(kabine)
 
-    const person = personZu(String(eingabe.code ?? ''))
+    const person = personZu(eingabe.code, eingabe.code2)
     if (!person) throw new Error('Dieser Ausweis gehört zu niemandem in dieser Versammlung.')
+    if (person.fehlt) throw new Error(FAKTOR_TEXT[person.fehlt])
 
     return berechtigungAusgeben({
       roundId,
@@ -168,8 +231,9 @@ export const wahlBruecke: WahlDispatcher = {
       return {}
     }
 
-    const person = personZu(String(eingabe.code ?? ''))
+    const person = personZu(eingabe.code, eingabe.code2)
     if (!person) throw new Error('Dieser Ausweis gehört zu niemandem in dieser Versammlung.')
+    if (person.fehlt) throw new Error(FAKTOR_TEXT[person.fehlt])
     const urteil = mayVote(person.id)
     if (!urteil.ok) throw new Error(urteil.reason ?? 'Keine Stimmberechtigung.')
 

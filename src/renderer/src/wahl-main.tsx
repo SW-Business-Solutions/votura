@@ -92,6 +92,15 @@ function Wahlseite(): React.JSX.Element {
   const [auskunft, setAuskunft] = useState<WahlAuskunft | null>(null)
   const [gewaehlt, setGewaehlt] = useState<Set<string>>(new Set())
   const [antwort, setAntwort] = useState<'ja' | 'nein' | 'enthaltung' | null>(null)
+  /*
+   * Der zweite Ausweis.
+   *
+   * Wer eine Stimmkarte hält und einen gedruckten Pass hat, braucht beide:
+   * Der Kartencode steht aufgedruckt da und lässt sich fotografieren, der
+   * Pass lässt sich neu ausgeben und macht den alten damit ungültig. Welcher
+   * noch fehlt, sagt der Hauptrechner — das Gerät rät nicht.
+   */
+  const [zweiterCode, setZweiterCode] = useState('')
   const [fehler, setFehler] = useState<string | null>(null)
   const [laeuft, setLaeuft] = useState(false)
   /*
@@ -106,10 +115,12 @@ function Wahlseite(): React.JSX.Element {
   const berechtigung = useRef<{ serial: string; signatur?: string } | null>(null)
   const [wartet, setWartet] = useState(false)
 
-  const pruefen = useCallback(async (wert: string) => {
+  const pruefen = useCallback(async (wert: string, zweiter = '') => {
     setFehler(null)
     try {
-      const ergebnis = await hole<WahlAuskunft>(`/api/stimme/lage?code=${encodeURIComponent(wert)}`)
+      const ergebnis = await hole<WahlAuskunft>(
+        `/api/stimme/lage?code=${encodeURIComponent(wert)}&code2=${encodeURIComponent(zweiter)}`
+      )
       setAuskunft(ergebnis)
       /*
        * Wer schon abgestimmt hat, erfährt es **vorher**. Es erst beim
@@ -118,6 +129,10 @@ function Wahlseite(): React.JSX.Element {
        */
       if (ergebnis.bereitsAusgegeben) {
         setFehler('Für diesen Wahlgang haben Sie bereits eine Stimmberechtigung erhalten.')
+      } else if (ergebnis.fehlenderFaktor) {
+        /* Kein Abbruch: Das Gerät bleibt stehen und fragt den zweiten Ausweis
+           ab. Der erste bleibt dabei erhalten. */
+        setFehler(null)
       } else if (ergebnis.berechtigt && ergebnis.lage) {
         setSchritt('wahl')
       } else {
@@ -163,6 +178,7 @@ function Wahlseite(): React.JSX.Element {
           const geholt = await mitWiederholung(() =>
             hole<{ signatur?: string; ticket?: string }>('/api/stimme/berechtigung', {
               code,
+              code2: zweiterCode,
               roundId: lage.roundId,
               verblendet
             })
@@ -209,13 +225,18 @@ function Wahlseite(): React.JSX.Element {
       } else {
         if (!berechtigung.current) {
           const { serial } = await mitWiederholung(() =>
-            hole<{ serial: string }>('/api/stimme/berechtigung', { code, roundId: lage.roundId })
+            hole<{ serial: string }>('/api/stimme/berechtigung', {
+              code,
+              code2: zweiterCode,
+              roundId: lage.roundId
+            })
           )
           berechtigung.current = { serial }
         }
         await mitWiederholung(() =>
           hole('/api/stimme/abgeben', {
             code,
+            code2: zweiterCode,
             roundId: lage.roundId,
             serial: berechtigung.current!.serial,
             choice: stimme
@@ -262,24 +283,57 @@ function Wahlseite(): React.JSX.Element {
   }
 
   if (schritt === 'ausweis' || !auskunft?.lage) {
+    const fehlt = auskunft?.fehlenderFaktor
     return (
       <main className="wahl">
         <h1>Stimmabgabe</h1>
-        <p>Bitte den Code Ihres Ausweises eingeben oder den QR-Code scannen.</p>
-        <input
-          className="gross"
-          autoFocus
-          autoCapitalize="characters"
-          spellCheck={false}
-          value={code}
-          onChange={(ereignis) => setCode(ereignis.target.value.toUpperCase())}
-          onKeyDown={(ereignis) => {
-            if (ereignis.key === 'Enter') void pruefen(code)
-          }}
-        />
-        <button className="gross" onClick={() => void pruefen(code)}>
-          Weiter
-        </button>
+        {fehlt ? (
+          <>
+            <p>
+              {auskunft?.name ? `${auskunft.name} — ` : ''}
+              {fehlt === 'karte'
+                ? 'bitte zusätzlich Ihre Stimmkarte oder Ihr Bändchen scannen.'
+                : 'bitte zusätzlich Ihren gedruckten Voting Pass scannen.'}
+            </p>
+            <p className="leise">
+              Zum Abstimmen gehören beide Ausweise. Der aufgedruckte Code einer Karte lässt sich
+              fotografieren und nicht ändern — der Pass dagegen wird bei Verlust neu ausgegeben, und der alte
+              gilt im selben Augenblick nicht mehr.
+            </p>
+            <input
+              className="gross"
+              autoFocus
+              autoCapitalize="characters"
+              spellCheck={false}
+              value={zweiterCode}
+              onChange={(ereignis) => setZweiterCode(ereignis.target.value.toUpperCase())}
+              onKeyDown={(ereignis) => {
+                if (ereignis.key === 'Enter') void pruefen(code, zweiterCode)
+              }}
+            />
+            <button className="gross" onClick={() => void pruefen(code, zweiterCode)}>
+              Weiter
+            </button>
+          </>
+        ) : (
+          <>
+            <p>Bitte den Code Ihres Ausweises eingeben oder den QR-Code scannen.</p>
+            <input
+              className="gross"
+              autoFocus
+              autoCapitalize="characters"
+              spellCheck={false}
+              value={code}
+              onChange={(ereignis) => setCode(ereignis.target.value.toUpperCase())}
+              onKeyDown={(ereignis) => {
+                if (ereignis.key === 'Enter') void pruefen(code)
+              }}
+            />
+            <button className="gross" onClick={() => void pruefen(code)}>
+              Weiter
+            </button>
+          </>
+        )}
         {fehler && <p className="fehler">{fehler}</p>}
       </main>
     )

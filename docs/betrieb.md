@@ -427,6 +427,19 @@ Karten und Bändchen kommen vom Hersteller mit einer Liste aus Nummer und Code. 
 eingelesen — **und danach vernichtet**: Sie ist ein Stapel gültiger Ausweise in Textform. Gespeichert
 wird nur die Prüfsumme.
 
+### Zwei Ausweise, eine Stimme
+
+Karte und Pass gehören zusammen: **Wer eine Stimmkarte oder ein Bändchen hält und einen gedruckten
+Pass bekommen hat, braucht zum Abstimmen am eigenen Gerät beide.** Die Reihenfolge ist gleich — das
+Gerät fragt nach dem zweiten, sobald der erste gelesen ist.
+
+Der Grund steht auf der Karte: Ihr Code ist aufgedruckt, lässt sich fotografieren und nicht ändern.
+Der Pass dagegen wird bei Verlust neu gedruckt, und der alte gilt im selben Augenblick nicht mehr.
+Erst zusammen sind sie etwas wert.
+
+Wer keine Karten benutzt, merkt davon nichts: Verlangt wird nur, was tatsächlich ausgegeben wurde.
+Am Ausgabetisch genügt weiterhin ein Ausweis — dort steht ein Mensch, der die Person vor sich hat.
+
 ### Der Ablauf am Einlass
 
 Ein Scan genügt, und er entscheidet selbst, was er ist:

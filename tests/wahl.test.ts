@@ -45,6 +45,7 @@ const wahl = await import('../src/main/services/voting')
 const ausgabe = await import('../src/main/services/handout')
 const bilanz = await import('../src/main/services/accounting')
 const einstellungen = await import('../src/main/services/settings')
+const karten = await import('../src/main/services/cards')
 const bruecke = await import('../src/main/wahl-bruecke')
 const ergebnisse = await import('../src/main/services/results')
 
@@ -995,5 +996,122 @@ describe('Entwertung einer Stimmberechtigung', () => {
         verblendet: zweiter.verblendet
       })
     ).toThrow(/bereits eine Stimmberechtigung/)
+  })
+})
+
+/**
+ * Karte **und** Pass.
+ *
+ * Eine Stimmkarte ist wiederverwendbar, und ihr Code steht aufgedruckt darauf.
+ * Wer ihn über die Schulter fotografiert, könnte am eigenen Telefon die Stimme
+ * dessen abgeben, dem die Karte gerade gehört — und später die des Nächsten,
+ * der dieselbe Karte bekommt. Ändern lässt sich der Code nicht; er ist
+ * gedruckt.
+ *
+ * Der gedruckte Pass kann beides: Er gehört einer Person, und ein neuer macht
+ * den alten im selben Augenblick ungültig. Deshalb zählt beides zusammen.
+ */
+describe('Zwei Ausweise, eine Stimme', () => {
+  let roundId = ''
+  let person = { id: '' }
+  let kartenCode = ''
+  let passCode = ''
+
+  beforeAll(() => {
+    /* Die Brücke fragt immer die **aktive** Veranstaltung — ein Gerät im Saal
+       kennt keine Kennung, es kennt nur seinen Ausweis. */
+    events.activateEvent(eventId)
+    roundId = wahlgangMitBewerbern(['Pi', 'Rho'])
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(roundId)
+
+    kartenCode = 'ZWEIFAKTOR-KARTE-000001'
+    karten.importCards([{ serial: 'Z-001', code: kartenCode }], 'card')
+    person = teilnehmer.addParticipant({ eventId, lastName: 'Zweifaktor', firstName: 'T' })
+    /* Die Karte am Einlass — damit gilt die Person zugleich als anwesend. */
+    karten.assignCard(person.id, kartenCode)
+    passCode = teilnehmer.issuePass(person.id).token
+  })
+
+  it('verlangt zum Kartencode noch den Pass', async () => {
+    const auskunft = (await bruecke.wahlBruecke.lage(kartenCode, false)) as {
+      berechtigt: boolean
+      fehlenderFaktor?: string
+      name?: string
+    }
+    expect(auskunft.fehlenderFaktor).toBe('pass')
+    expect(auskunft.berechtigt).toBe(false)
+    /* Der Name steht trotzdem da: Am Gerät soll erkennbar sein, wessen
+       Ausweis gerade gelesen wurde. */
+    expect(auskunft.name).toContain('Zweifaktor')
+  })
+
+  it('verlangt zum Pass noch die Karte', async () => {
+    const auskunft = (await bruecke.wahlBruecke.lage(passCode, false)) as { fehlenderFaktor?: string }
+    expect(auskunft.fehlenderFaktor).toBe('karte')
+  })
+
+  it('gibt mit beiden Ausweisen frei — in beliebiger Reihenfolge', async () => {
+    const eine = (await bruecke.wahlBruecke.lage(kartenCode, false, passCode)) as {
+      berechtigt: boolean
+      fehlenderFaktor?: string
+    }
+    expect(eine.fehlenderFaktor).toBeUndefined()
+    expect(eine.berechtigt).toBe(true)
+
+    const andere = (await bruecke.wahlBruecke.lage(passCode, false, kartenCode)) as { berechtigt: boolean }
+    expect(andere.berechtigt).toBe(true)
+  })
+
+  it('gibt keine Berechtigung auf ein fotografiertes Stück Plastik', async () => {
+    /* **Der Angriff, um den es geht.** Ein Foto des Kartencodes, ein eigenes
+       Telefon, sonst nichts. */
+    await expect(
+      bruecke.wahlBruecke.berechtigung({ roundId, code: kartenCode }, false)
+    ).rejects.toThrow(/Voting Pass/)
+  })
+
+  it('nimmt keine zwei Ausweise verschiedener Personen an', async () => {
+    const fremder = teilnehmer.addParticipant({ eventId, lastName: 'Fremd', firstName: 'T' })
+    teilnehmer.setAttendance(fremder.id, 'in')
+    const fremderPass = teilnehmer.issuePass(fremder.id).token
+    await expect(
+      bruecke.wahlBruecke.berechtigung({ roundId, code: kartenCode, code2: fremderPass }, false)
+    ).rejects.toThrow(/niemandem/)
+  })
+
+  it('lässt eine Versammlung ohne Karten unverändert', async () => {
+    /* Verlangt wird, was ausgegeben wurde — nicht, was denkbar wäre. Sonst
+       hätte diese Regel jede bestehende Einrichtung stillgelegt. */
+    const ohneKarte = teilnehmer.addParticipant({ eventId, lastName: 'Nurpass', firstName: 'T' })
+    teilnehmer.setAttendance(ohneKarte.id, 'in')
+    const nurPass = teilnehmer.issuePass(ohneKarte.id).token
+    const auskunft = (await bruecke.wahlBruecke.lage(nurPass, false)) as {
+      berechtigt: boolean
+      fehlenderFaktor?: string
+    }
+    expect(auskunft.fehlenderFaktor).toBeUndefined()
+    expect(auskunft.berechtigt).toBe(true)
+  })
+
+  it('macht den verlorenen Pass mit dem neuen ungültig', async () => {
+    /*
+     * Der Grund, warum der Pass der zweite Faktor ist und nicht ein zweiter
+     * Aufdruck: Er lässt sich ersetzen. Wer ihn verliert oder fotografiert
+     * weiß, bekommt einen neuen — der alte ist im selben Augenblick wertlos.
+     */
+    const neuerPass = teilnehmer.issuePass(person.id).token
+    expect(neuerPass).not.toBe(passCode)
+
+    const mitAltem = (await bruecke.wahlBruecke.lage(kartenCode, false, passCode)) as {
+      fehlenderFaktor?: string
+    }
+    expect(mitAltem.fehlenderFaktor).toBe('pass')
+
+    const mitNeuem = (await bruecke.wahlBruecke.lage(kartenCode, false, neuerPass)) as {
+      berechtigt: boolean
+    }
+    expect(mitNeuem.berechtigt).toBe(true)
+    passCode = neuerPass
   })
 })

@@ -90,7 +90,8 @@ Mitleser brechen könnte.
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Pass zweimal verwenden                   | je Pass und Wahlgang genau eine Unterschrift                                                                         |
 | Unterschrift zweimal einlösen            | jede Seriennummer wird genau einmal angenommen                                                                       |
-| Fremden Pass fotografieren und verwenden | Pass wird bei der Akkreditierung gegen Ausweis ausgegeben; Sperrung möglich; **bei eigenen Geräten bleibt ein Rest** |
+| Fremden Pass fotografieren und verwenden | Pass wird bei der Akkreditierung gegen Ausweis ausgegeben; Sperrung möglich; ein neuer Pass macht den alten ungültig |
+| Aufgedruckten Kartencode fotografieren  | zum Abstimmen gehört zusätzlich der gedruckte Pass — ein Foto der Karte allein nützt nichts |
 | Seriennummer erfinden                    | geheim: ohne gültige Unterschrift nimmt die Urne nichts an · offen und namentlich: die Berechtigung gilt genau einmal |
 | Unterschrift fälschen                    | RSA; Schlüssel je Wahlgang, öffentlicher Teil vorher veröffentlicht                                                  |
 
@@ -106,9 +107,17 @@ wäre die Gegenmaßnahme selbst das Problem: Wessen Stimme angenommen wurde, wä
 verloren ging, drückt noch einmal. Dieselbe Seriennummer mit derselben Auswahl gilt deshalb als
 das, was sie ist: schon geschehen. Dieselbe Seriennummer mit **anderer** Auswahl wird abgewiesen.
 
-Der Passdiebstahl ist der schwächste Punkt bei eigenen Geräten: Ein QR-Code lässt sich über die
-Schulter fotografieren. Gegenmaßnahmen: Ausgabe erst im Saal, Sperrmöglichkeit, und — die
-wirksamste — die Kabine, in der der Pass gescannt und sofort verbraucht wird.
+Der Ausweisdiebstahl ist der schwächste Punkt bei eigenen Geräten: Ein QR-Code lässt sich über die
+Schulter fotografieren. Bei der **Stimmkarte** wiegt das besonders schwer, denn ihr Code ist
+aufgedruckt, unveränderlich und wird nach der Rückgabe an die nächste Person weitergereicht.
+
+Deshalb zählen beide Ausweise zusammen: **Wer eine Karte hält und einen Pass hat, muss beide
+vorzeigen.** Der Pass ist der ersetzbare Teil — ein neuer macht den alten im selben Augenblick
+ungültig. Damit ist ein fotografierter Kartencode für sich wertlos, und ein fotografierter Pass
+verliert seinen Wert, sobald der Bestohlene einen neuen bekommt.
+
+Weitere Gegenmaßnahmen: Ausgabe erst im Saal, Sperrmöglichkeit, und — die wirksamste — die Kabine,
+in der der Ausweis gescannt und sofort verbraucht wird.
 
 ### 3.3 Ergebnis verändern
 
@@ -224,6 +233,7 @@ Die Maßnahmen dieses Dokuments sind gebaut. Was davon geprüft ist und wo:
 | Die Berechtigung gilt genau einmal                            | ebenda — auch mit erfundener zweiter Seriennummer                                                                                                                                         |
 | Dieselbe Stimme zweimal zählt einmal                          | ebenda — bei offener und geheimer Wahl, auch bei anderer Reihenfolge der Kreuze; andere Auswahl wird abgewiesen                                                                           |
 | Das Stimmgewicht kommt von der Berechtigung                   | ebenda — nicht aus der Anfrage des Geräts                                                                                                                                                 |
+| Karte allein genügt nicht                                     | ebenda — mit beiden Ausweisen in beliebiger Reihenfolge frei, mit einem nicht; ein neuer Pass entwertet den alten                                                                             |
 
 **Was dabei nicht geprüft ist und nicht geprüft werden kann:** ob die Umsetzung der Kryptografie
 frei von Fehlern ist. Prüfungen zeigen, dass sie das Erwartete tut — nicht, dass sie nichts anderes

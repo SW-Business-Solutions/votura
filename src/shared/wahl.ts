@@ -84,6 +84,15 @@ export interface WahlAuskunft {
    * jemanden erst auswählen zu lassen und ihm dann das Papier wegzunehmen.
    */
   bereitsAusgegeben: boolean
+  /**
+   * Welcher zweite Ausweis noch fehlt.
+   *
+   * Wer eine Stimmkarte hält **und** einen gedruckten Pass hat, braucht
+   * beide. Ein aufgedruckter Kartencode lässt sich fotografieren und nicht
+   * ändern; ein Pass lässt sich neu ausgeben und macht den alten damit
+   * ungültig. Erst zusammen sind sie etwas wert.
+   */
+  fehlenderFaktor?: 'karte' | 'pass'
   /** Name der Person — damit am Gerät niemand für einen anderen abstimmt. */
   name?: string
   /** Stimmgewicht, falls größer als eins. */

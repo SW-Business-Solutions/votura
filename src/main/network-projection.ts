@@ -93,7 +93,7 @@ export interface WahlDispatcher {
    * Mehr ist es nicht — wer das Token an die Wand schreibt, hat den
    * Unterschied wieder aufgehoben.
    */
-  lage(code: string, mitToken: boolean): Promise<unknown>
+  lage(code: string, mitToken: boolean, code2?: string): Promise<unknown>
   berechtigung(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown>
   abgeben(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown>
   /** Das Gerät des Wählers holt seine Unterschrift ab (Ausschussbetrieb). */
@@ -588,8 +588,10 @@ async function handleWahl(
 ): Promise<boolean> {
   if (url.pathname === '/api/stimme/lage') {
     const code = url.searchParams.get('code') ?? ''
+    /* Der zweite Faktor: Karte und Pass gehören zusammen (ADR-0006). */
+    const code2 = url.searchParams.get('code2') ?? ''
     try {
-      sendeJson(response, 200, await ruf.lage(code, tokenValid(request, url)))
+      sendeJson(response, 200, await ruf.lage(code, tokenValid(request, url), code2))
     } catch (fehler) {
       sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
     }

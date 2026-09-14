@@ -130,6 +130,28 @@ Der Preis: Eine einzelne Person kann nicht überprüfen, dass ihre Stimme in der
 zusammen können überprüfen, dass die Liste zum Ergebnis passt und nicht mehr Stimmen enthält als
 Berechtigungen ausgegeben wurden.
 
+### Zum Abstimmen gehören zwei Ausweise
+
+Eine Stimmkarte ist wiederverwendbar — das ist ihr Zweck und zugleich ihre Schwäche. Ihr Code steht
+aufgedruckt darauf, lässt sich über die Schulter fotografieren und **nicht ändern**. Wer ihn hat,
+könnte am eigenen Telefon die Stimme dessen abgeben, dem die Karte gerade gehört; und wenn dieselbe
+Karte am Abend an jemand anderen ausgegeben wird, dessen Stimme gleich mit.
+
+Der **gedruckte Voting Pass** hat diese Schwäche nicht: Er gehört einer Person, und ein neuer macht
+den alten im selben Augenblick ungültig — `issuePass` überschreibt den Hash, es gibt je Person nur
+einen. Wer seinen Pass verliert oder ihn fotografiert weiß, bekommt einen neuen und hält der andere
+Altpapier in der Hand.
+
+Deshalb gilt: **Wer eine Karte hält und einen Pass hat, muss beide vorzeigen.** Die Reihenfolge ist
+gleich; das Gerät sagt, welcher noch fehlt. Ein Foto von einem der beiden nützt nichts.
+
+Verlangt wird dabei nur, was **ausgegeben wurde**, nicht was denkbar wäre: Eine Versammlung ohne
+Karten arbeitet unverändert weiter, eine ohne Pässe ebenso. Sonst hätte diese Regel jede bestehende
+Einrichtung stillgelegt.
+
+**Am Ausgabetisch bleibt es bei einem Ausweis.** Dort steht ein Mensch, der die Person vor sich hat;
+der zweite Faktor ersetzt keine Anwesenheit, sondern das fehlende Gegenüber am eigenen Telefon.
+
 ### Ein abgerissenes Netz darf keine Stimme kosten
 
 Ein Saal-WLAN mit mehreren hundert Geräten verliert Verbindungen — das ist der Normalfall, nicht die
