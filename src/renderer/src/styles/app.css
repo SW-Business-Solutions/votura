@@ -1217,3 +1217,31 @@ tr.aktionen.active > td {
   font-size: 13px;
   color: var(--text-muted);
 }
+
+/* ------------------------------------------------------------- QR-Scanner */
+
+/*
+ * Das Kamerabild bleibt bewusst klein: Es ist ein Sucher, keine Vorführung.
+ * Wer scannt, hält den Ausweis hinein und schaut auf das Feld darunter.
+ */
+.qr-scanner {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+.qr-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.qr-bild {
+  width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius);
+  background: #000;
+  object-fit: cover;
+}

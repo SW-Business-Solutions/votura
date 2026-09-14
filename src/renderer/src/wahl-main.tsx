@@ -28,7 +28,8 @@ import {
   type OeffentlicherSchluessel,
   type Pruefsumme
 } from '@shared/blindsignatur'
-import { GEHEIMNIS_LABELS, type Stimmabgabe, type WahlAuskunft } from '@shared/wahl'
+import { GEHEIMNIS_LABELS, type Stimmabgabe, type WahlAuskunft, type WahlLage } from '@shared/wahl'
+import { QrScanner } from './qr-scanner'
 import './styles/wahl.css'
 
 /** SHA-256 aus dem Browser — selbst zu hashen wäre die Art Rad, die man nicht neu erfindet. */
@@ -123,6 +124,19 @@ function Wahlseite(): React.JSX.Element {
   /* Sichtbarer Rückwärtszähler: Ein Bildschirm, der ohne Ankündigung
      umspringt, sieht aus wie ein Absturz. */
   const [restzeit, setRestzeit] = useState(RUECKSETZEN_NACH_ABGABE)
+  /* Die Kamera ist das Angebot, nicht die Bedingung — das Tippfeld bleibt
+     daneben stehen und funktioniert immer (ADR-0007). */
+  const [scannt, setScannt] = useState(false)
+  /*
+   * Was gerade offen ist — **ohne** dass jemand seinen Ausweis vorzeigt.
+   *
+   * Vorher fragte das Gerät erst nach dem Ausweis und teilte danach mit, dass
+   * gar keine Abstimmung läuft. In einer Wahlkabine heißt das: Jemand holt
+   * seine Karte heraus, tippt, wartet — und erfährt dann, dass er umsonst
+   * angestanden hat. `undefined` bedeutet „noch nicht gefragt", `null`
+   * bedeutet „nichts offen".
+   */
+  const [offeneAbstimmung, setOffeneAbstimmung] = useState<WahlLage | null | undefined>(undefined)
   /*
    * **Was bei einem zweiten Versuch nicht noch einmal passieren darf.**
    * Die Berechtigung gibt es je Wahlgang genau einmal. Bricht die Abgabe ab,
@@ -182,6 +196,7 @@ function Wahlseite(): React.JSX.Element {
     setAntwort(null)
     setFehler(null)
     setRestzeit(RUECKSETZEN_NACH_ABGABE)
+    setScannt(false)
     berechtigung.current = null
     if (location.search) history.replaceState(null, '', location.pathname)
   }, [])
@@ -232,6 +247,33 @@ function Wahlseite(): React.JSX.Element {
       }
     }
   }, [schritt, zuruecksetzen])
+
+  /**
+   * Nachsehen, ob etwas offen ist — und zwar immer wieder.
+   *
+   * Ein Gerät in der Kabine steht den ganzen Abend dort. Es soll von selbst
+   * bereit sein, wenn die Wahlleitung den nächsten Wahlgang eröffnet, und
+   * nicht darauf warten, dass jemand die Seite neu lädt.
+   */
+  useEffect(() => {
+    if (schritt !== 'ausweis') return
+    let abgebrochen = false
+    const nachsehen = async (): Promise<void> => {
+      try {
+        const ergebnis = await hole<WahlAuskunft>('/api/stimme/lage?code=')
+        if (!abgebrochen) setOffeneAbstimmung(ergebnis.lage)
+      } catch {
+        /* Kein Netz ist keine Aussage über die Abstimmung — der nächste
+           Versuch kommt in fünf Sekunden. */
+      }
+    }
+    void nachsehen()
+    const takt = setInterval(() => void nachsehen(), 5000)
+    return () => {
+      abgebrochen = true
+      clearInterval(takt)
+    }
+  }, [schritt])
 
   /* Ein Aufruf mit `?c=…` kommt vom Scan eines QR-Codes — dann ist der Ausweis
      schon da und der erste Schritt entfällt. */
@@ -381,9 +423,33 @@ function Wahlseite(): React.JSX.Element {
 
   if (schritt === 'ausweis' || !auskunft?.lage) {
     const fehlt = auskunft?.fehlenderFaktor
+
+    /*
+     * Nichts offen: Dann gibt es hier nichts einzutippen. Das Gerät sieht
+     * weiter nach und wird von selbst bereit, sobald eröffnet wird.
+     */
+    if (offeneAbstimmung === null && !fehlt) {
+      return (
+        <main className="wahl">
+          <h1>Gerade läuft keine Abstimmung.</h1>
+          <p>
+            Dieses Gerät ist bereit. Sobald die Wahlleitung einen Wahlgang eröffnet, erscheint er hier von
+            selbst — die Seite muss nicht neu geladen werden.
+          </p>
+          <p className="leise">Bitte den Ausweis so lange behalten.</p>
+          {fehler && <p className="fehler">{fehler}</p>}
+        </main>
+      )
+    }
+
     return (
       <main className="wahl">
         <h1>Stimmabgabe</h1>
+        {offeneAbstimmung && !fehlt && (
+          <p className="leise">
+            {offeneAbstimmung.roundLabel} · {offeneAbstimmung.titel}
+          </p>
+        )}
         {fehlt ? (
           <>
             <p>
@@ -397,9 +463,23 @@ function Wahlseite(): React.JSX.Element {
               fotografieren und nicht ändern — der Pass dagegen wird bei Verlust neu ausgegeben, und der alte
               gilt im selben Augenblick nicht mehr.
             </p>
+            {scannt ? (
+              <QrScanner
+                titel={fehlt === 'karte' ? 'Stimmkarte scannen' : 'Voting Pass scannen'}
+                aufSchliessen={() => setScannt(false)}
+                aufCode={(gelesen) => {
+                  setScannt(false)
+                  setZweiterCode(gelesen)
+                  void pruefen(code, gelesen)
+                }}
+              />
+            ) : (
+              <button className="gross" onClick={() => setScannt(true)}>
+                Mit der Kamera scannen
+              </button>
+            )}
             <input
               className="gross"
-              autoFocus
               autoCapitalize="characters"
               spellCheck={false}
               value={zweiterCode}
@@ -414,10 +494,24 @@ function Wahlseite(): React.JSX.Element {
           </>
         ) : (
           <>
-            <p>Bitte den Code Ihres Ausweises eingeben oder den QR-Code scannen.</p>
+            <p>Bitte den QR-Code Ihres Ausweises scannen oder den Code eingeben.</p>
+            {scannt ? (
+              <QrScanner
+                titel="Ausweis scannen"
+                aufSchliessen={() => setScannt(false)}
+                aufCode={(gelesen) => {
+                  setScannt(false)
+                  setCode(gelesen)
+                  void pruefen(gelesen)
+                }}
+              />
+            ) : (
+              <button className="gross" onClick={() => setScannt(true)}>
+                Mit der Kamera scannen
+              </button>
+            )}
             <input
               className="gross"
-              autoFocus
               autoCapitalize="characters"
               spellCheck={false}
               value={code}

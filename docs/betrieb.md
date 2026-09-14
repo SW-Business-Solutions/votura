@@ -440,6 +440,21 @@ Erst zusammen sind sie etwas wert.
 Wer keine Karten benutzt, merkt davon nichts: Verlangt wird nur, was tatsächlich ausgegeben wurde.
 Am Ausgabetisch genügt weiterhin ein Ausweis — dort steht ein Mensch, der die Person vor sich hat.
 
+### Womit gescannt wird
+
+Drei Wege, und alle drei führen zum selben Feld:
+
+| | |
+| --- | --- |
+| **Handscanner am USB-Anschluss** | Der schnellste Weg an Einlass und Ausgabe. Er arbeitet als Tastatur: tippt den Code ins Feld und schließt mit der Eingabetaste ab. Niemand muss die Maus anfassen. |
+| **Kamera des Geräts** | Der Knopf _Mit der Kamera_ an Einlass, Ausgabe und auf der Wahlseite. Erkannt wird im Gerät; es wird nichts aufgenommen und nichts gespeichert. |
+| **Eintippen** | Funktioniert immer — bei schlechtem Licht, zerkratzter Karte oder verweigerter Kameraerlaubnis. |
+
+Die Kamera verlangt eine **verschlüsselte Verbindung**. In Votura Saal ist das eingerichtet; auf
+mitgebrachten Telefonen muss dafür in den Einstellungen → Netzwerk die verschlüsselte Übertragung
+eingeschaltet sein — was für Abstimmungen ohnehin gilt. Ist sie aus, steht auf dem Gerät, woran es
+liegt, statt einer Schaltfläche, die nichts tut.
+
 ### Der Ablauf am Einlass
 
 Ein Scan genügt, und er entscheidet selbst, was er ist:
@@ -533,6 +548,16 @@ Wichtig: Nur wenn wirklich keine Stimme abgegeben wurde. Bei geheimer Wahl kann 
 nicht feststellen — das ist ihr Zweck —, deshalb ist es eine Entscheidung der Wahlleitung, und sie
 steht im Protokoll. Der Stand der Abstimmung weist entwertete Berechtigungen eigens aus, damit die
 Lücke zwischen ausgegeben und abgegeben erklärt ist.
+
+### Das Gerät in der Kabine
+
+Es setzt sich von selbst zurück: **15 Sekunden** nach der Abgabe, und nach **zwei Minuten** ohne
+Berührung auch mitten in der Auswahl. Damit findet niemand den Namen, die Auswahl oder die
+Bestätigung des Vorigen vor — und niemand kann einen halb ausgefüllten Stimmzettel absenden, den ein
+anderer stehen gelassen hat.
+
+Läuft gerade kein Wahlgang, sagt das Gerät genau das und fragt nicht nach einem Ausweis. Sobald die
+Wahlleitung eröffnet, wird es von selbst bereit; die Seite muss nicht neu geladen werden.
 
 ### Schließen und auszählen
 

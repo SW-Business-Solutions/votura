@@ -16,6 +16,7 @@ import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Field } from '../components/ui'
+import { QrScanner } from '../../qr-scanner'
 
 type Antwort =
   | { art: 'gut'; text: string; person: Participant }
@@ -38,6 +39,8 @@ export function AusgabePage(): React.JSX.Element {
   const [antwort, setAntwort] = useState<Antwort>(null)
   const feld = useRef<HTMLInputElement | null>(null)
   const [entwertungsgrund, setEntwertungsgrund] = useState('')
+  /* Die Kamera als zweiter Weg neben dem Handscanner (ADR-0007). */
+  const [kamera, setKamera] = useState(false)
   /* Wer gerade gescannt wurde — für den Fall, dass die Ausgabe scheitert und
      die Seite trotzdem wissen muss, um wen es ging. */
   const gescannt = useRef<Participant | null>(null)
@@ -82,8 +85,10 @@ export function AusgabePage(): React.JSX.Element {
     )
   }
 
-  const scannen = async (): Promise<void> => {
-    const wert = code.trim()
+  const scannen = async (roh = code): Promise<void> => {
+    /* Aus der Kamera kommt der Code als Argument: Der Zustand ist zu diesem
+       Zeitpunkt noch der alte. */
+    const wert = roh.trim()
     if (!wahlgang || wert.length < 10 || /\s/.test(wert)) return
 
     try {
@@ -198,16 +203,32 @@ export function AusgabePage(): React.JSX.Element {
 
           {wahlgang && (
             <Card title="Ausweis scannen">
-              <input
-                ref={feld}
-                autoFocus
-                placeholder="Karte, Bändchen oder Pass scannen …"
-                value={code}
-                onChange={(ereignis) => setCode(ereignis.target.value)}
-                onKeyDown={(ereignis) => {
-                  if (ereignis.key === 'Enter') void scannen()
-                }}
-              />
+              <div className="row">
+                <div className="col">
+                  <input
+                    ref={feld}
+                    autoFocus
+                    placeholder="Karte, Bändchen oder Pass scannen …"
+                    value={code}
+                    onChange={(ereignis) => setCode(ereignis.target.value)}
+                    onKeyDown={(ereignis) => {
+                      if (ereignis.key === 'Enter') void scannen()
+                    }}
+                  />
+                </div>
+                <button onClick={() => setKamera(true)}>Mit der Kamera</button>
+              </div>
+              {kamera && (
+                <QrScanner
+                  titel="Ausweis scannen"
+                  aufSchliessen={() => setKamera(false)}
+                  aufCode={(gelesen) => {
+                    setKamera(false)
+                    setCode(gelesen)
+                    void scannen(gelesen)
+                  }}
+                />
+              )}
               {antwort && (
                 <div
                   className={`notice mt-2 ${antwort.art === 'gut' ? 'ok' : 'warn'}`}

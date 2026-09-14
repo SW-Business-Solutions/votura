@@ -17,6 +17,7 @@ import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Field } from '../components/ui'
+import { QrScanner } from '../../qr-scanner'
 
 /** Wie ein Zeitpunkt am Einlass aussehen soll: kurz. */
 function uhrzeit(wert?: string): string {
@@ -48,6 +49,9 @@ export function AkkreditierungPage(): React.JSX.Element {
   const [wartendeKarte, setWartendeKarte] = useState<{ card: Ausweis; code: string } | null>(null)
   const [importText, setImportText] = useState('')
   const [importArt, setImportArt] = useState<Ausweis['kind']>('card')
+  /* Die Kamera als zweiter Weg neben dem Handscanner — für Geräte, an denen
+     keiner steckt (ADR-0007). */
+  const [kamera, setKamera] = useState(false)
   const sucheFeld = useRef<HTMLInputElement | null>(null)
 
   const laden = useCallback(async () => {
@@ -154,8 +158,11 @@ export function AkkreditierungPage(): React.JSX.Element {
    * dahintersteckt, entscheidet das System: Karte, Bändchen oder gedruckter
    * Pass.
    */
-  const scannen = async (): Promise<void> => {
-    const wert = suche.trim()
+  const scannen = async (roh = suche): Promise<void> => {
+    /* Kommt der Code aus der Kamera, steht er noch nicht im Feld — React
+       setzt den Zustand erst zum nächsten Bild. Deshalb der Umweg über das
+       Argument. */
+    const wert = roh.trim()
     if (wert.length < 10 || /\s/.test(wert)) return
 
     try {
@@ -318,17 +325,32 @@ export function AkkreditierungPage(): React.JSX.Element {
           Pass scannen oder Namen tippen. Ein Scanner gibt den Pass als Tastatureingabe ein und schließt mit
           der Eingabetaste ab — es muss niemand die Maus anfassen.
         </div>
-        <input
-          ref={sucheFeld}
-          autoFocus
-          className="mt-2"
-          placeholder="Voting Pass scannen oder Namen suchen …"
-          value={suche}
-          onChange={(ereignis) => setSuche(ereignis.target.value)}
-          onKeyDown={(ereignis) => {
-            if (ereignis.key === 'Enter') void scannen()
-          }}
-        />
+        <div className="row mt-2">
+          <div className="col">
+            <input
+              ref={sucheFeld}
+              autoFocus
+              placeholder="Voting Pass scannen oder Namen suchen …"
+              value={suche}
+              onChange={(ereignis) => setSuche(ereignis.target.value)}
+              onKeyDown={(ereignis) => {
+                if (ereignis.key === 'Enter') void scannen()
+              }}
+            />
+          </div>
+          <button onClick={() => setKamera(true)}>Mit der Kamera</button>
+        </div>
+        {kamera && (
+          <QrScanner
+            titel="Ausweis scannen"
+            aufSchliessen={() => setKamera(false)}
+            aufCode={(gelesen) => {
+              setKamera(false)
+              setSuche(gelesen)
+              void scannen(gelesen)
+            }}
+          />
+        )}
         {(ausgewaehlt || wartendeKarte) && (
           <div className="notice mt-2">
             {wartendeKarte

@@ -136,3 +136,27 @@
     --leise: #57636d;
   }
 }
+
+/* ------------------------------------------------------------- QR-Scanner */
+
+/*
+ * Auf dem Telefon darf das Bild groß sein — dort ist es der ganze Vorgang,
+ * und wer in einer Schlange steht, will nicht zielen müssen.
+ */
+.qr-scanner {
+  margin: 16px 0;
+}
+.qr-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.qr-bild {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 12px;
+  background: #000;
+  object-fit: cover;
+}
