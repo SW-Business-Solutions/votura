@@ -138,14 +138,50 @@ describe('Offene Abstimmung (M1)', () => {
     await wahl.stimmeEinlegen({
       roundId,
       serial: serial!,
-      choice: { kandidaten: [bewerber[0].id] }
+      choice: { kandidaten: [bewerber[0].id] },
+      participantId: person.id
     })
     expect(wahl.votingStand(roundId)).toMatchObject({ ausgegeben: 1, abgegeben: 1 })
   })
 
-  it('gibt je Wahlgang nur eine Berechtigung', () => {
+  it('gibt dieselbe Berechtigung noch einmal aus, solange sie unverbraucht ist', async () => {
+    /*
+     * Wer die Seite neu lädt, bevor er abgeschickt hat, hat seine
+     * Seriennummer verloren. Eine zweite zu bekommen ist hier gefahrlos:
+     * Abgestimmt wird gegen die **Berechtigung**, und die gilt einmal — zwei
+     * Nummern ergeben trotzdem nur eine Stimme.
+     */
     const person = anwesend('Doppelt')
-    wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    const erste = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    const zweite = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    expect(zweite.serial).toBeTruthy()
+    expect(zweite.serial).not.toBe(erste.serial)
+
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: zweite.serial!,
+      choice: { antwort: 'enthaltung' },
+      participantId: person.id
+    })
+    await expect(
+      wahl.stimmeEinlegen({
+        roundId,
+        serial: erste.serial!,
+        choice: { antwort: 'ja' },
+        participantId: person.id
+      })
+    ).rejects.toThrow(/bereits abgestimmt/)
+  })
+
+  it('gibt nach der Abgabe keine Berechtigung mehr aus', async () => {
+    const person = anwesend('Verbraucht')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { antwort: 'nein' },
+      participantId: person.id
+    })
     expect(() => wahl.berechtigungAusgeben({ roundId, participantId: person.id })).toThrow(
       /bereits eine Stimmberechtigung/
     )
@@ -154,9 +190,19 @@ describe('Offene Abstimmung (M1)', () => {
   it('nimmt denselben Stimmzettel nicht zweimal an', async () => {
     const person = anwesend('Zweimal')
     const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
-    await wahl.stimmeEinlegen({ roundId, serial: serial!, choice: { antwort: 'enthaltung' } })
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { antwort: 'enthaltung' },
+      participantId: person.id
+    })
     await expect(
-      wahl.stimmeEinlegen({ roundId, serial: serial!, choice: { antwort: 'ja' } })
+      wahl.stimmeEinlegen({
+        roundId,
+        serial: serial!,
+        choice: { antwort: 'ja' },
+        participantId: person.id
+      })
     ).rejects.toThrow(/bereits abgestimmt/)
   })
 
@@ -180,7 +226,7 @@ describe('Offene Abstimmung (M1)', () => {
       roundId,
       serial: serial!,
       choice: { kandidaten: [bewerber[1].id] },
-      gewicht: 3
+      participantId: delegierter.id
     })
 
     const zaehlung = wahl.zaehlung(roundId)
@@ -272,7 +318,18 @@ describe('Geheime Wahl (M2)', () => {
         .get<Record<string, unknown>>(roundId) ?? {}
     ).sort()
 
-    expect(rechte).toEqual(['id', 'issued_at', 'participant_id', 'round_id', 'weight'])
+    /* `used_at` trägt einen Zeitpunkt und sonst nichts — kein Wort über die
+       Auswahl. Die Urne führt keine Zeit, also lässt sich auch nichts in eine
+       gemeinsame Reihenfolge bringen. */
+    expect(rechte).toEqual([
+      'id',
+      'issued_at',
+      'participant_id',
+      'round_id',
+      'used_at',
+      'voided_reason',
+      'weight'
+    ])
     expect(urne).toEqual(['choice_json', 'id', 'ordnung', 'participant_id', 'round_id', 'serial', 'weight'])
     /* Die einzige gemeinsame Spalte ist der Wahlgang. */
     expect(rechte.filter((spalte) => urne.includes(spalte))).toEqual([
@@ -577,7 +634,12 @@ describe('Hybride Auszählung (M3)', () => {
     for (const kandidat of bewerber) {
       const person = anwesend(`Digital-${kandidat.displayName}`)
       const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
-      await wahl.stimmeEinlegen({ roundId, serial: serial!, choice: { kandidaten: [kandidat.id] } })
+      await wahl.stimmeEinlegen({
+        roundId,
+        serial: serial!,
+        choice: { kandidaten: [kandidat.id] },
+        participantId: person.id
+      })
     }
     wahl.closeVoting(roundId)
   })
@@ -638,7 +700,8 @@ describe('Hybride Auszählung (M3)', () => {
     await wahl.stimmeEinlegen({
       roundId: offenerRound,
       serial: serial!,
-      choice: { kandidaten: [offeneBewerber[0].id] }
+      choice: { kandidaten: [offeneBewerber[0].id] },
+      participantId: person.id
     })
 
     ergebnisse.saveResult({
@@ -672,5 +735,265 @@ describe('Hybride Auszählung (M3)', () => {
       resultData: { candidates: [] }
     })
     expect(ergebnisse.getResult(nurDigital)!.ballotsCast).toBe(0)
+  })
+})
+
+/**
+ * Was passiert, wenn das Netz abreißt.
+ *
+ * Ein WLAN im Saal mit 500 Geräten verliert Verbindungen — das ist keine
+ * Ausnahme, sondern der Normalfall. Die gefährliche Sekunde ist die zwischen
+ * „Urne hat angenommen" und „Gerät hat die Antwort": Der Wähler sieht einen
+ * Fehler, obwohl seine Stimme liegt, und drückt noch einmal.
+ */
+describe('Wiederholung und Mehrfachabgabe', () => {
+  let roundId = ''
+  let bewerber: { id: string; displayName: string }[] = []
+
+  beforeAll(() => {
+    roundId = wahlgangMitBewerbern(['Iota', 'Kappa'])
+    bewerber = candidates.listCandidates(roundId)
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(roundId)
+  })
+
+  it('nimmt dieselbe Stimme noch einmal an, ohne sie zweimal zu zählen', async () => {
+    const person = anwesend('Abgerissen')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    const stimme = { roundId, serial: serial!, choice: { kandidaten: [bewerber[0].id] }, participantId: person.id }
+
+    await wahl.stimmeEinlegen(stimme)
+    const nachher = wahl.votingStand(roundId).abgegeben
+    /* Der zweite Versuch darf **nicht** werfen: Was gewollt war, ist
+       geschehen, und ein Fehler hier schickt jemanden zur Wahlleitung, dem
+       nichts fehlt. */
+    await wahl.stimmeEinlegen(stimme)
+    expect(wahl.votingStand(roundId).abgegeben).toBe(nachher)
+  })
+
+  it('erkennt dieselbe Auswahl auch in anderer Reihenfolge', async () => {
+    const person = anwesend('Reihenfolge')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { kandidaten: [bewerber[0].id, bewerber[1].id] },
+      participantId: person.id
+    })
+    const vorher = wahl.votingStand(roundId).abgegeben
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      /* Dasselbe Kreuz, andere Reihenfolge — zwei Geräte ordnen verschieden. */
+      choice: { kandidaten: [bewerber[1].id, bewerber[0].id] },
+      participantId: person.id
+    })
+    expect(wahl.votingStand(roundId).abgegeben).toBe(vorher)
+  })
+
+  it('weist dieselbe Nummer mit anderer Auswahl ab', async () => {
+    const person = anwesend('Anders')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { kandidaten: [bewerber[0].id] },
+      participantId: person.id
+    })
+    await expect(
+      wahl.stimmeEinlegen({
+        roundId,
+        serial: serial!,
+        choice: { kandidaten: [bewerber[1].id] },
+        participantId: person.id
+      })
+    ).rejects.toThrow(/bereits abgestimmt/)
+  })
+
+  it('lässt keine zweite Stimme mit erfundener Seriennummer zu', async () => {
+    /*
+     * **Die Lücke, die das schließt.** Bei offener Abstimmung kommt die
+     * Seriennummer vom Rechner, stand aber nirgends — geprüft wurde nur, ob
+     * dieselbe Nummer zweimal kam. Wer eine zweite erfand, kam durch. Jetzt
+     * entscheidet die Berechtigung, und die gilt einmal.
+     */
+    const person = anwesend('Stopfer')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { kandidaten: [bewerber[0].id] },
+      participantId: person.id
+    })
+    await expect(
+      wahl.stimmeEinlegen({
+        roundId,
+        serial: zuBase64Url(zufall(24)),
+        choice: { kandidaten: [bewerber[0].id] },
+        participantId: person.id
+      })
+    ).rejects.toThrow(/bereits abgestimmt/)
+  })
+
+  it('nimmt ohne Berechtigung nichts an', async () => {
+    const person = anwesend('Ohne-Berechtigung')
+    await expect(
+      wahl.stimmeEinlegen({
+        roundId,
+        serial: zuBase64Url(zufall(24)),
+        choice: { kandidaten: [bewerber[0].id] },
+        participantId: person.id
+      })
+    ).rejects.toThrow(/Keine Stimmberechtigung/)
+  })
+
+  it('nimmt das Stimmgewicht von der Berechtigung, nicht vom Gerät', async () => {
+    /* Sonst entschiede das Gerät, wie schwer seine Stimme wiegt. */
+    const delegierter = anwesend('Gewichtig', 5)
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: delegierter.id })
+    const vorher =
+      wahl.zaehlung(roundId).candidates.find((k) => k.candidateId === bewerber[1].id)?.votes ?? 0
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { kandidaten: [bewerber[1].id] },
+      participantId: delegierter.id,
+      gewicht: 99
+    })
+    expect(
+      wahl.zaehlung(roundId).candidates.find((k) => k.candidateId === bewerber[1].id)?.votes
+    ).toBe(vorher + 5)
+  })
+
+  it('gilt auch bei geheimer Wahl — dort entscheidet die Unterschrift', async () => {
+    const geheim = wahlgangMitBewerbern(['Lambda', 'My'])
+    const geheimeBewerber = candidates.listCandidates(geheim)
+    wahl.prepareVoting({ roundId: geheim, geheimnis: 'secret', geraete: 'booth' })
+    wahl.openVoting(geheim)
+
+    const person = anwesend('Geheim-Wiederholung')
+    const lage = wahl.votingLage(geheim)!
+    const seriennummer = zufall(32)
+    const { verblendet, faktor } = await verblenden(seriennummer, lage.schluessel!, sha256, zufall)
+    const { signatur } = wahl.berechtigungAusgeben({ roundId: geheim, participantId: person.id, verblendet })
+    const echte = entblenden(signatur!, faktor, lage.schluessel!)
+
+    const stimme = {
+      roundId: geheim,
+      serial: zuBase64Url(seriennummer),
+      signatur: echte,
+      choice: { kandidaten: [geheimeBewerber[0].id] }
+    }
+    await wahl.stimmeEinlegen(stimme)
+    await wahl.stimmeEinlegen(stimme)
+    expect(wahl.votingStand(geheim).abgegeben).toBe(1)
+  })
+})
+
+/**
+ * Der Fingertipp, der eine Stimme kosten kann.
+ *
+ * Jemand lädt am Gerät die Seite neu, bevor er abgeschickt hat. Die
+ * Berechtigung ist vergeben, in der Urne liegt nichts — und weil eine
+ * digitale Berechtigung die Papierausgabe sperrt, könnte diese Person
+ * überhaupt nicht mehr abstimmen. Dafür gibt es die Entwertung.
+ */
+describe('Entwertung einer Stimmberechtigung', () => {
+  let roundId = ''
+
+  beforeAll(() => {
+    roundId = wahlgangMitBewerbern(['Ny', 'Xi'])
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(roundId)
+  })
+
+  it('verlangt eine Begründung', () => {
+    const person = anwesend('Ohne-Grund')
+    wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    expect(() =>
+      wahl.berechtigungEntwerten({ roundId, participantId: person.id, grund: '   ' })
+    ).toThrow(/Begründung/)
+  })
+
+  it('gibt den Weg zum Papier frei', () => {
+    const person = anwesend('Neugeladen')
+    wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    /* Vorher gesperrt — sonst läge eine Stimme doppelt. */
+    expect(() => ausgabe.issueBallot({ roundId, participantId: person.id })).toThrow(
+      /digitale Stimmberechtigung/
+    )
+
+    wahl.berechtigungEntwerten({
+      roundId,
+      participantId: person.id,
+      grund: 'Seite am Gerät neu geladen, Stimme nicht abgegeben'
+    })
+    expect(() => ausgabe.issueBallot({ roundId, participantId: person.id })).not.toThrow()
+  })
+
+  it('nimmt danach keine Stimme mehr an', async () => {
+    const person = anwesend('Entwertet')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    wahl.berechtigungEntwerten({ roundId, participantId: person.id, grund: 'Gerät ausgefallen' })
+    await expect(
+      wahl.stimmeEinlegen({
+        roundId,
+        serial: serial!,
+        choice: { antwort: 'ja' },
+        participantId: person.id
+      })
+    ).rejects.toThrow(/entwertet/)
+  })
+
+  it('entwertet nicht, was bereits abgestimmt hat', async () => {
+    /* Sonst stünde eine Stimme in der Urne und eine zweite auf Papier. */
+    const person = anwesend('Schon-Gewaehlt')
+    const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: serial!,
+      choice: { antwort: 'nein' },
+      participantId: person.id
+    })
+    expect(() =>
+      wahl.berechtigungEntwerten({ roundId, participantId: person.id, grund: 'Irrtum' })
+    ).toThrow(/bereits abgestimmt/)
+  })
+
+  it('steht mit Begründung im Protokoll', () => {
+    const person = anwesend('Protokolliert')
+    wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    wahl.berechtigungEntwerten({ roundId, participantId: person.id, grund: 'Akku leer' })
+    const eintrag = db()
+      .prepare(
+        `SELECT reason, new_json FROM audit WHERE action = 'voting.right.voided'
+         ORDER BY seq DESC LIMIT 1`
+      )
+      .get<{ reason: string; new_json: string }>()
+    expect(eintrag?.reason).toBe('Akku leer')
+    expect(eintrag?.new_json).toContain('Protokolliert')
+  })
+
+  it('lässt sich bei geheimer Wahl nicht durch eine zweite Unterschrift ersetzen', async () => {
+    /*
+     * Dort wäre die erneute Ausgabe eine zweite gültige Unterschrift — und
+     * damit eine zweite Stimme, die niemand mehr der Person zuordnen kann.
+     */
+    const geheim = wahlgangMitBewerbern(['Omikron'])
+    wahl.prepareVoting({ roundId: geheim, geheimnis: 'secret', geraete: 'booth' })
+    wahl.openVoting(geheim)
+    const person = anwesend('Geheim-Neugeladen')
+    const lage = wahl.votingLage(geheim)!
+    const { verblendet } = await verblenden(zufall(32), lage.schluessel!, sha256, zufall)
+    wahl.berechtigungAusgeben({ roundId: geheim, participantId: person.id, verblendet })
+
+    const zweiter = await verblenden(zufall(32), lage.schluessel!, sha256, zufall)
+    expect(() =>
+      wahl.berechtigungAusgeben({
+        roundId: geheim,
+        participantId: person.id,
+        verblendet: zweiter.verblendet
+      })
+    ).toThrow(/bereits eine Stimmberechtigung/)
   })
 })

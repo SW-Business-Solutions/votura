@@ -130,6 +130,37 @@ Der Preis: Eine einzelne Person kann nicht überprüfen, dass ihre Stimme in der
 zusammen können überprüfen, dass die Liste zum Ergebnis passt und nicht mehr Stimmen enthält als
 Berechtigungen ausgegeben wurden.
 
+### Ein abgerissenes Netz darf keine Stimme kosten
+
+Ein Saal-WLAN mit mehreren hundert Geräten verliert Verbindungen — das ist der Normalfall, nicht die
+Ausnahme. Die gefährliche Sekunde liegt zwischen „die Urne hat angenommen" und „das Gerät hat die
+Antwort": Der Wähler sieht einen Fehler, obwohl seine Stimme liegt.
+
+Drei Dinge greifen ineinander:
+
+1. **Das Gerät hält seine Berechtigung fest.** Ein neuer Anlauf holt keine zweite — die gibt es je
+   Wahlgang nicht, und der Versuch endete sonst in „bereits ausgegeben", mit einer verbrauchten
+   Berechtigung und ohne Gewissheit.
+2. **Dieselbe Stimme wird wiedererkannt.** Gleiche Seriennummer und gleiche Auswahl heißt: schon da.
+   Gezählt wird sie einmal, gemeldet wird Erfolg. Gleiche Seriennummer, **andere** Auswahl wird
+   abgewiesen — das ist kein Wiederholungsversuch mehr.
+3. **Die Berechtigung wird verbraucht** (`voting_rights.used_at`). Damit ist zugleich eine Lücke
+   geschlossen: Bei offener und namentlicher Abstimmung stand die Seriennummer nirgends, und wer
+   eine zweite erfand, kam durch.
+
+Das Gerät wiederholt bei einem Netzfehler von sich aus, und die Oberfläche sagt beim Scheitern das
+Entscheidende: **nicht neu laden**, sondern noch einmal tippen.
+
+Wer trotzdem neu lädt, bekommt bei offener und namentlicher Abstimmung eine neue Seriennummer — das
+ist gefahrlos, weil die Berechtigung zählt und nicht die Nummer. Bei geheimer Wahl wäre es eine
+zweite Unterschrift und damit eine zweite Stimme; dort bleibt nur der Weg über den Ausgabetisch:
+Die Wahlleitung **entwertet die Berechtigung mit Begründung** und gibt einen Papierzettel aus.
+
+Dass sie dabei nicht prüfen kann, ob wirklich nichts in der Urne liegt, ist keine Lücke der
+Umsetzung, sondern das Wahlgeheimnis selbst. Die Entscheidung gehört deshalb dorthin, wo sie
+hingehört — zu einem Menschen, mit Begründung, im Protokoll —, und die Bilanz weist entwertete
+Berechtigungen eigens aus, damit die Lücke zwischen ausgegeben und abgegeben erklärt ist.
+
 ### Papier und Urne ergeben zusammen das Ergebnis
 
 Ein Wahlgang kann **beides** sein: Wer ein Gerät hat, stimmt digital ab, wer keines will, bekommt

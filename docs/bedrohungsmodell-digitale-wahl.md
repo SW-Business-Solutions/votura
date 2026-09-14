@@ -91,8 +91,20 @@ Mitleser brechen könnte.
 | Pass zweimal verwenden                   | je Pass und Wahlgang genau eine Unterschrift                                                                         |
 | Unterschrift zweimal einlösen            | jede Seriennummer wird genau einmal angenommen                                                                       |
 | Fremden Pass fotografieren und verwenden | Pass wird bei der Akkreditierung gegen Ausweis ausgegeben; Sperrung möglich; **bei eigenen Geräten bleibt ein Rest** |
-| Seriennummer erfinden                    | ohne gültige Unterschrift nimmt die Urne nichts an                                                                   |
+| Seriennummer erfinden                    | geheim: ohne gültige Unterschrift nimmt die Urne nichts an · offen und namentlich: die Berechtigung gilt genau einmal |
 | Unterschrift fälschen                    | RSA; Schlüssel je Wahlgang, öffentlicher Teil vorher veröffentlicht                                                  |
+
+**Eine Lücke bestand hier bis zuletzt, und zwar in der harmlos aussehenden Betriebsart.** Bei
+offener und namentlicher Abstimmung kommt die Seriennummer vom Rechner — gespeichert wurde sie
+nirgends, und die Urne wies nur dieselbe Nummer zweimal ab. Wer eine zweite erfand und mit
+demselben Pass schickte, kam durch; die Unterschrift, die das im geheimen Fall verhindert, gibt es
+dort nicht. Jetzt wird die Stimmberechtigung verbraucht (`voting_rights.used_at`), und die gibt es
+je Person und Wahlgang genau einmal.
+
+**Die Wiederholung nach einem Verbindungsabbruch ist davon ausgenommen** — sie muss es sein, sonst
+wäre die Gegenmaßnahme selbst das Problem: Wessen Stimme angenommen wurde, während die Antwort
+verloren ging, drückt noch einmal. Dieselbe Seriennummer mit derselben Auswahl gilt deshalb als
+das, was sie ist: schon geschehen. Dieselbe Seriennummer mit **anderer** Auswahl wird abgewiesen.
 
 Der Passdiebstahl ist der schwächste Punkt bei eigenen Geräten: Ein QR-Code lässt sich über die
 Schulter fotografieren. Gegenmaßnahmen: Ausgabe erst im Saal, Sperrmöglichkeit, und — die
@@ -209,6 +221,9 @@ Die Maßnahmen dieses Dokuments sind gebaut. Was davon geprüft ist und wo:
 | In der Warteschlange steht nur Verblendetes                   | ebenda — die Spalten werden namentlich festgehalten                                                                                                                                       |
 | Papier und Urne ergeben zusammen das Ergebnis                 | ebenda — und mehrfaches Speichern verändert die Summe nicht                                                                                                                               |
 | Eine laufende Abstimmung wird nicht mitgezählt                | ebenda — eine Zwischensumme ist kein Ergebnis                                                                                                                                             |
+| Die Berechtigung gilt genau einmal                            | ebenda — auch mit erfundener zweiter Seriennummer                                                                                                                                         |
+| Dieselbe Stimme zweimal zählt einmal                          | ebenda — bei offener und geheimer Wahl, auch bei anderer Reihenfolge der Kreuze; andere Auswahl wird abgewiesen                                                                           |
+| Das Stimmgewicht kommt von der Berechtigung                   | ebenda — nicht aus der Anfrage des Geräts                                                                                                                                                 |
 
 **Was dabei nicht geprüft ist und nicht geprüft werden kann:** ob die Umsetzung der Kryptografie
 frei von Fehlern ist. Prüfungen zeigen, dass sie das Erwartete tut — nicht, dass sie nichts anderes

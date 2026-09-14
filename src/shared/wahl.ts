@@ -96,4 +96,12 @@ export interface WahlStand {
   abgegeben: number
   /** Summe der Stimmgewichte in der Urne. */
   gewicht: number
+  /**
+   * Ausgegebene Berechtigungen, die entwertet wurden.
+   *
+   * Sie erklären die Lücke zwischen ausgegeben und abgegeben. Ohne sie sähe
+   * die Bilanz nach verschwundenen Stimmen aus — und jede unerklärte Lücke
+   * ist bei einer Wahl ein Vorwurf, auch wenn sie harmlos ist.
+   */
+  entwertet: number
 }

@@ -15,9 +15,19 @@ import type { Participant, RoundSummary } from '@shared/types'
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
-import { Card, EmptyState } from '../components/ui'
+import { Card, EmptyState, Field } from '../components/ui'
 
-type Antwort = { art: 'gut'; text: string; person: Participant } | { art: 'schlecht'; text: string } | null
+type Antwort =
+  | { art: 'gut'; text: string; person: Participant }
+  | { art: 'schlecht'; text: string }
+  /*
+   * Der dritte Fall, den es geben muss: Die Ausgabe ist gesperrt, weil diese
+   * Person digital abstimmen darf — aber ihr Gerät ist ausgefallen. Dann ist
+   * die Antwort weder „gut" noch „schlecht", sondern eine Entscheidung, die
+   * die Wahlleitung treffen und begründen muss.
+   */
+  | { art: 'digital'; text: string; person: Participant }
+  | null
 
 export function AusgabePage(): React.JSX.Element {
   const app = useApp()
@@ -27,6 +37,10 @@ export function AusgabePage(): React.JSX.Element {
   const [code, setCode] = useState('')
   const [antwort, setAntwort] = useState<Antwort>(null)
   const feld = useRef<HTMLInputElement | null>(null)
+  const [entwertungsgrund, setEntwertungsgrund] = useState('')
+  /* Wer gerade gescannt wurde — für den Fall, dass die Ausgabe scheitert und
+     die Seite trotzdem wissen muss, um wen es ging. */
+  const gescannt = useRef<Participant | null>(null)
 
   /*
    * Ausgegeben wird immer für **einen** Wahlgang, und zwar den, der gerade
@@ -77,6 +91,7 @@ export function AusgabePage(): React.JSX.Element {
       /* Karte, Bändchen oder Pass — an diesem Tisch ist nur eines wichtig:
          zu wem er gehört. */
       const person = treffer?.participant ?? null
+      gescannt.current = person
 
       if (!person) {
         setAntwort({
@@ -102,9 +117,45 @@ export function AusgabePage(): React.JSX.Element {
     } catch (error) {
       /* Die Meldung des Dienstes ist die Antwort: Sie nennt Namen, Grund und
          Uhrzeit. Sie hier umzuformulieren hieße, sie zu verschlechtern. */
-      setAntwort({ art: 'schlecht', text: error instanceof Error ? error.message : String(error) })
+      const text = error instanceof Error ? error.message : String(error)
+      const person = gescannt.current
+      setAntwort(
+        text.includes('digitale Stimmberechtigung') && person
+          ? { art: 'digital', text, person }
+          : { art: 'schlecht', text }
+      )
     } finally {
       setCode('')
+      feld.current?.focus()
+    }
+  }
+
+  /**
+   * Die digitale Berechtigung entwerten und den Zettel doch ausgeben.
+   *
+   * Zwei Schritte, die zusammengehören: Ohne die Entwertung bleibt die
+   * Ausgabe gesperrt, ohne die Ausgabe hätte die Entwertung niemandem
+   * geholfen. Die Begründung steht im Protokoll.
+   */
+  const entwertenUndAusgeben = async (person: Participant): Promise<void> => {
+    const grund = entwertungsgrund.trim()
+    if (!wahlgang || !grund) return
+    try {
+      await api('voting.entwerten', { roundId: wahlgang.id, participantId: person.id, grund })
+      const { participant } = await api('handout.issue', {
+        roundId: wahlgang.id,
+        participantId: person.id
+      })
+      setAntwort({
+        art: 'gut',
+        text: `${participant.firstName} ${participant.lastName} — Stimmzettel ausgeben`,
+        person: participant
+      })
+      setEntwertungsgrund('')
+      await laden()
+    } catch (error) {
+      setAntwort({ art: 'schlecht', text: error instanceof Error ? error.message : String(error) })
+    } finally {
       feld.current?.focus()
     }
   }
@@ -164,6 +215,29 @@ export function AusgabePage(): React.JSX.Element {
                 >
                   {antwort.text}
                 </div>
+              )}
+              {antwort?.art === 'digital' && (
+                <Card title="Digital abstimmen war nicht möglich?" tight>
+                  <p className="hint">
+                    Nur wenn am Gerät <strong>keine Stimme abgegeben</strong> wurde — etwa weil die Seite neu
+                    geladen wurde oder der Akku leer war. Die digitale Berechtigung wird entwertet und kann
+                    danach nicht mehr verwendet werden. Der Vorgang steht mit Begründung im Protokoll.
+                  </p>
+                  <Field label="Begründung">
+                    <input
+                      value={entwertungsgrund}
+                      placeholder="z. B. Seite am Gerät neu geladen, Stimme nicht abgegeben"
+                      onChange={(ereignis) => setEntwertungsgrund(ereignis.target.value)}
+                    />
+                  </Field>
+                  <button
+                    className="primary mt-2"
+                    disabled={!entwertungsgrund.trim()}
+                    onClick={() => void entwertenUndAusgeben(antwort.person)}
+                  >
+                    Entwerten und Stimmzettel ausgeben
+                  </button>
+                </Card>
               )}
             </Card>
           )}

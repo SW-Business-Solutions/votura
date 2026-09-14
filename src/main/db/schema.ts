@@ -513,6 +513,47 @@ CREATE TABLE IF NOT EXISTS signing_queue (
 
 CREATE INDEX IF NOT EXISTS idx_signatur_offen ON signing_queue(round_id, answered_at);
 `
+  },
+  {
+    /**
+     * Die Stimmberechtigung merkt sich, dass sie verbraucht ist.
+     *
+     * Zwei Lücken schließt diese eine Spalte.
+     *
+     * **Die erste: mehrfach abstimmen.** Bei offener und namentlicher
+     * Abstimmung erzeugt das Gerät seine Seriennummer nicht selbst — es
+     * bekommt sie. Nachprüfbar war sie bisher trotzdem nicht: Gespeichert
+     * wurde sie nirgends, und die Urne wies nur dieselbe Nummer zweimal ab.
+     * Wer eine zweite Nummer erfand, kam durch. Jetzt entscheidet die
+     * Berechtigung, und die gibt es je Person und Wahlgang genau einmal.
+     *
+     * **Die zweite: eine abgerissene Verbindung.** Kommt die Antwort nicht
+     * an, schickt das Gerät dieselbe Stimme noch einmal. Sie liegt dann schon
+     * in der Urne — die Wiederholung darf deshalb weder eine zweite Stimme
+     * erzeugen noch als Fehler erscheinen.
+     *
+     * **Warum hier kein Wort über die Stimme steht.** Die Spalte trägt einen
+     * Zeitpunkt, sonst nichts. Ein Abdruck der Auswahl neben der Person wäre
+     * bei einer Handvoll möglicher Kreuze dasselbe wie die Auswahl im
+     * Klartext. Die Wiederholung wird deshalb an der Seriennummer in der Urne
+     * erkannt, nicht hier.
+     *
+     * Bei geheimer Wahl bleibt die Spalte leer: Dort ist die Unterschrift der
+     * Nachweis, und die Urne kennt die Berechtigung nicht.
+     *
+     * **`voided_reason` ist der Ausweg für den Fall, den kein Verfahren
+     * verhindert.** Jemand lädt die Seite neu, bevor die Stimme abgeschickt
+     * ist. Die Berechtigung ist vergeben, die Stimme liegt nicht in der Urne,
+     * und weil eine digitale Berechtigung die Papierausgabe sperrt, könnte
+     * diese Person gar nicht mehr abstimmen. Die Wahlleitung entwertet sie
+     * deshalb mit Begründung; danach — und nur danach — gibt es einen Zettel.
+     * Eine entwertete Berechtigung nimmt keine Stimme mehr an.
+     */
+    version: 12,
+    sql: `
+ALTER TABLE voting_rights ADD COLUMN used_at TEXT;
+ALTER TABLE voting_rights ADD COLUMN voided_reason TEXT;
+`
   }
 ]
 

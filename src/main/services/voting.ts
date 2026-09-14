@@ -36,7 +36,7 @@ import {
 } from '@shared/blindsignatur'
 import type { Geraetewahl, Stimmabgabe, Wahlgeheimnis, WahlLage, WahlStand, Wahlstatus } from '@shared/wahl'
 import { db } from '../db'
-import { optionalString } from '../db/driver'
+import { fromJson, optionalString } from '../db/driver'
 import { appendAudit } from './audit'
 import { requirePermission } from './auth'
 import { listCandidates } from './candidates'
@@ -237,8 +237,12 @@ export function closeVoting(roundId: UUID): WahlStand {
 /** Der Stand, wie ihn die Leinwand zeigt — und wie die Bilanz aufgehen muss. */
 export function votingStand(roundId: UUID): WahlStand {
   const rechte = db()
-    .prepare(`SELECT COUNT(*) AS anzahl FROM voting_rights WHERE round_id = ?`)
-    .get<{ anzahl: number }>(roundId)
+    .prepare(
+      `SELECT COUNT(*) AS anzahl,
+              COALESCE(SUM(CASE WHEN voided_reason IS NOT NULL THEN 1 ELSE 0 END), 0) AS entwertet
+       FROM voting_rights WHERE round_id = ?`
+    )
+    .get<{ anzahl: number; entwertet: number }>(roundId)
   const urne = db()
     .prepare(
       `SELECT COUNT(*) AS anzahl, COALESCE(SUM(weight), 0) AS gewicht FROM cast_ballots WHERE round_id = ?`
@@ -247,7 +251,10 @@ export function votingStand(roundId: UUID): WahlStand {
   return {
     ausgegeben: Number(rechte?.anzahl ?? 0),
     abgegeben: Number(urne?.anzahl ?? 0),
-    gewicht: Number(urne?.gewicht ?? 0)
+    gewicht: Number(urne?.gewicht ?? 0),
+    /* Entwertete Berechtigungen erklären die Lücke zwischen beidem — ohne sie
+       sähe die Bilanz nach verschwundenen Stimmen aus. */
+    entwertet: Number(rechte?.entwertet ?? 0)
   }
 }
 
@@ -501,9 +508,79 @@ export function signaturZaehler(roundId: UUID): { angefragt: number; unterschrie
 export function hatStimmrecht(roundId: UUID, participantId: UUID): boolean {
   return (
     db()
-      .prepare(`SELECT id FROM voting_rights WHERE round_id = ? AND participant_id = ?`)
+      .prepare(
+        `SELECT id FROM voting_rights
+         WHERE round_id = ? AND participant_id = ? AND voided_reason IS NULL`
+      )
       .get<{ id: string }>(roundId, participantId) !== undefined
   )
+}
+
+/**
+ * Eine ausgegebene Stimmberechtigung entwerten.
+ *
+ * **Wofür das da ist.** Jemand lädt am Gerät die Seite neu, bevor die Stimme
+ * abgeschickt ist. Die Berechtigung ist vergeben, in der Urne liegt nichts —
+ * und weil eine digitale Berechtigung die Papierausgabe sperrt, könnte diese
+ * Person überhaupt nicht mehr abstimmen. Ohne einen Weg zurück wäre das der
+ * Verlust einer Stimme durch einen Fingertipp.
+ *
+ * **Was dabei nicht passieren darf.** Wer bereits abgestimmt hat, bekommt
+ * nichts mehr — sonst stünde eine Stimme in der Urne und eine zweite auf
+ * Papier. Bei offener und namentlicher Abstimmung ist das feststellbar, und
+ * es wird festgestellt.
+ *
+ * **Bei geheimer Wahl ist es nicht feststellbar**, denn genau das ist ihr
+ * Zweck. Die Entwertung bleibt möglich, verlangt aber eine Begründung und
+ * steht im Protokoll: Sie ist eine Entscheidung der Wahlleitung, keine
+ * Rechnung des Programms. Die Bilanz zeigt sie als das, was sie ist — eine
+ * ausgegebene Berechtigung, die nicht in die Urne gelangt ist.
+ */
+export function berechtigungEntwerten(input: {
+  roundId: UUID
+  participantId: UUID
+  grund: string
+}): void {
+  const sitzung = requirePermission('accounting.edit')
+  const grund = input.grund.trim()
+  if (!grund) throw new Error('Für die Entwertung einer Stimmberechtigung ist eine Begründung nötig.')
+
+  const recht = db()
+    .prepare(
+      `SELECT id, used_at, voided_reason FROM voting_rights WHERE round_id = ? AND participant_id = ?`
+    )
+    .get<{ id: string; used_at: string | null; voided_reason: string | null }>(
+      input.roundId,
+      input.participantId
+    )
+  if (!recht) throw new Error('Für diesen Wahlgang wurde keine digitale Stimmberechtigung ausgegeben.')
+  if (recht.voided_reason) throw new Error('Diese Stimmberechtigung ist bereits entwertet.')
+  if (recht.used_at) throw new Error('Mit dieser Stimmberechtigung wurde bereits abgestimmt.')
+
+  db()
+    .prepare(`UPDATE voting_rights SET voided_reason = ?, used_at = ? WHERE id = ?`)
+    .run(grund, new Date().toISOString(), recht.id)
+
+  const zeile = session(input.roundId)
+  const person = db()
+    .prepare(`SELECT last_name, first_name FROM participants WHERE id = ?`)
+    .get<{ last_name: string; first_name: string }>(input.participantId)
+  appendAudit({
+    action: 'voting.right.voided',
+    userId: sitzung.user.id,
+    userName: sitzung.user.displayName,
+    electionRoundId: input.roundId,
+    reason: grund,
+    /* Im Klartext, nicht als Kennung: Wer das Protokoll liest, soll nicht
+       raten müssen, was hier geschehen ist. */
+    newValue: {
+      name: person ? `${person.last_name}, ${person.first_name}` : input.participantId,
+      hinweis:
+        zeile?.secrecy === 'secret'
+          ? 'Geheime Wahl — ob abgestimmt wurde, ist nicht feststellbar'
+          : 'Es war keine Stimme abgegeben'
+    }
+  })
 }
 
 /**
@@ -596,8 +673,34 @@ export function berechtigungAusgeben(input: {
     .get<{ weight: number }>(input.participantId)
   const gewicht = Number(person?.weight ?? 1)
 
-  if (hatStimmrecht(input.roundId, input.participantId)) {
-    throw new Error('Für diesen Wahlgang wurde bereits eine Stimmberechtigung ausgegeben.')
+  const vorhanden = db()
+    .prepare(
+      `SELECT id, used_at, voided_reason FROM voting_rights WHERE round_id = ? AND participant_id = ?`
+    )
+    .get<{ id: string; used_at: string | null; voided_reason: string | null }>(
+      input.roundId,
+      input.participantId
+    )
+  if (vorhanden) {
+    if (vorhanden.voided_reason) {
+      throw new Error('Diese Stimmberechtigung wurde entwertet. Bitte beim Wahlvorstand melden.')
+    }
+    /*
+     * **Eine unverbrauchte Berechtigung wird noch einmal ausgeliefert.** Wer
+     * die Seite neu lädt, bevor er abgeschickt hat, stünde sonst vor einer
+     * vergebenen Berechtigung, die er nicht mehr in der Hand hat.
+     *
+     * Das ist nur bei offener und namentlicher Abstimmung gefahrlos: Dort
+     * entscheidet nicht die Seriennummer, sondern die Berechtigung, und die
+     * gilt genau einmal — er mag zwei Nummern haben, abstimmen kann er mit
+     * einer. Bei geheimer Wahl wäre es eine zweite Unterschrift und damit
+     * eine zweite Stimme; dort bleibt nur die Entwertung durch die
+     * Wahlleitung.
+     */
+    if (zeile.secrecy === 'secret' || vorhanden.used_at) {
+      throw new Error('Für diesen Wahlgang wurde bereits eine Stimmberechtigung ausgegeben.')
+    }
+    return { serial: zuBase64Url(new Uint8Array(randomBytes(24))) }
   }
   /*
    * **Der hybride Fall.** Läuft ein Wahlgang auf Papier *und* digital, darf
@@ -674,10 +777,58 @@ export async function stimmeEinlegen(input: {
     if (!gueltig) throw new Error('Diese Stimme trägt keine gültige Unterschrift.')
   }
 
+  /*
+   * **Dieselbe Stimme ein zweites Mal.** Reißt die Verbindung ab, nachdem die
+   * Urne angenommen hat, sieht der Wähler einen Fehler, obwohl seine Stimme
+   * liegt — und schickt sie noch einmal. Sie darf dann weder doppelt gezählt
+   * werden noch als Fehler erscheinen: Was gewollt war, ist geschehen.
+   *
+   * Entschieden wird an der Stimme selbst. Gleiche Seriennummer und gleiche
+   * Auswahl heißt: schon da, alles in Ordnung. Gleiche Seriennummer, andere
+   * Auswahl heißt: ein zweiter Versuch mit anderem Inhalt — und der wird
+   * abgewiesen.
+   */
   const doppelt = db()
-    .prepare(`SELECT id FROM cast_ballots WHERE round_id = ? AND serial = ?`)
-    .get<{ id: string }>(input.roundId, input.serial)
-  if (doppelt) throw new Error('Für diesen Stimmzettel wurde bereits abgestimmt.')
+    .prepare(`SELECT choice_json FROM cast_ballots WHERE round_id = ? AND serial = ?`)
+    .get<{ choice_json: string }>(input.roundId, input.serial)
+  if (doppelt) {
+    if (stimmabdruck(fromJson<Stimmabgabe>(doppelt.choice_json, {})) === stimmabdruck(input.choice)) return
+    throw new Error('Für diesen Stimmzettel wurde bereits abgestimmt.')
+  }
+
+  /*
+   * **Die Berechtigung wird verbraucht.** Bei offener und namentlicher
+   * Abstimmung ist sie der Nachweis: Die Seriennummer kommt vom Rechner,
+   * steht aber nirgends — wer eine zweite erfände, käme sonst durch. Je Person
+   * und Wahlgang gibt es genau eine Berechtigung, und sie gilt einmal.
+   *
+   * Bei geheimer Wahl ist das weder nötig noch möglich: Dort trägt die
+   * Unterschrift den Nachweis, und die Urne darf die Person nicht kennen.
+   */
+  if (zeile.secrecy !== 'secret') {
+    if (!input.participantId) throw new Error('Keine Stimmberechtigung für diesen Wahlgang.')
+    const recht = db()
+      .prepare(
+        `SELECT id, weight, used_at, voided_reason FROM voting_rights
+         WHERE round_id = ? AND participant_id = ?`
+      )
+      .get<{ id: string; weight: number; used_at: string | null; voided_reason: string | null }>(
+        input.roundId,
+        input.participantId
+      )
+    if (!recht) throw new Error('Keine Stimmberechtigung für diesen Wahlgang.')
+    if (recht.voided_reason) {
+      throw new Error('Diese Stimmberechtigung wurde entwertet. Bitte beim Wahlvorstand melden.')
+    }
+    if (recht.used_at) throw new Error('Für diesen Wahlgang wurde bereits abgestimmt.')
+
+    db()
+      .prepare(`UPDATE voting_rights SET used_at = ? WHERE id = ? AND used_at IS NULL`)
+      .run(new Date().toISOString(), recht.id)
+    /* Das Gewicht steht an der Berechtigung, nicht an der Anfrage — sonst
+       entschiede das Gerät, wie schwer seine Stimme wiegt. */
+    input = { ...input, gewicht: Number(recht.weight) }
+  }
 
   db()
     .prepare(
@@ -695,6 +846,19 @@ export async function stimmeEinlegen(input: {
       zeile.secrecy === 'namentlich' ? (input.participantId ?? null) : null,
       randomBytes(4).readUInt32BE(0)
     )
+}
+
+/**
+ * Der Abdruck einer Stimme — zum Vergleichen, nicht zum Speichern.
+ *
+ * Die Reihenfolge angekreuzter Bewerber sagt nichts aus; zwei Geräte können
+ * dieselbe Auswahl verschieden anordnen. Verglichen wird deshalb sortiert.
+ */
+function stimmabdruck(choice: Stimmabgabe): string {
+  return JSON.stringify({
+    antwort: choice.antwort ?? null,
+    kandidaten: [...(choice.kandidaten ?? [])].sort()
+  })
 }
 
 /** Eine Kennung ohne Abhängigkeit von `randomUUID` in älteren Laufzeiten. */

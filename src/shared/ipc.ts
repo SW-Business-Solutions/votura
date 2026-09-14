@@ -439,6 +439,14 @@ export interface Api {
   'voting.lage': (roundId: UUID) => Promise<WahlLage | null>
   'voting.stand': (roundId: UUID) => Promise<WahlStand>
   /** Zählt aus und schreibt das Ergebnis in den Wahlgang. */
+  /**
+   * Eine ausgegebene digitale Stimmberechtigung entwerten.
+   *
+   * Für den Fall, den kein Verfahren verhindert: Jemand lädt am Gerät die
+   * Seite neu, bevor die Stimme abgeschickt ist. Danach — und nur danach —
+   * darf er einen Papierzettel bekommen.
+   */
+  'voting.entwerten': (input: { roundId: UUID; participantId: UUID; grund: string }) => Promise<void>
   'voting.uebernehmen': (roundId: UUID) => Promise<void>
   /** Die Urne als Liste — Grundlage des Ausdrucks und der Nachzählung. */
   'voting.urne': (roundId: UUID) => Promise<{ serial: string; text: string; weight: number }[]>

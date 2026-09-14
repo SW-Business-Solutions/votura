@@ -167,7 +167,8 @@ import {
   prepareVoting,
   urnenListe,
   votingLage,
-  votingStand
+  votingStand,
+  berechtigungEntwerten
 } from './services/voting'
 import {
   confirmResult,
@@ -554,6 +555,9 @@ const api: Api = {
       eligibleVoters: stand.ausgegeben,
       resultData: { candidates: [] }
     })
+  },
+  'voting.entwerten': async (input) => {
+    berechtigungEntwerten(input)
   },
   'voting.drucken': async (input) => {
     await printUrnenListe(input)

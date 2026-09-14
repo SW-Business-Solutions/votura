@@ -488,6 +488,25 @@ Berechtigungen ausgegeben wurden.**
 Wer am Ausgabetisch bereits einen Papierzettel bekommen hat, bekommt keine digitale Berechtigung —
 und umgekehrt. Beide Seiten prüfen die jeweils andere; niemand stimmt doppelt ab.
 
+### Wenn die Verbindung abreißt
+
+Auf dem Gerät des Wählers steht dann: erneut auf **Stimme abgeben** tippen, die Seite **nicht** neu
+laden. Das Gerät schickt dieselbe Stimme noch einmal; liegt sie bereits in der Urne, wird sie
+wiedererkannt und nicht doppelt gezählt.
+
+Wer die Seite doch neu geladen hat, bekommt bei **offener und namentlicher** Abstimmung einfach eine
+neue Seriennummer — abgestimmt wird gegen die Berechtigung, und die gilt genau einmal.
+
+Bei **geheimer Wahl** geht das nicht: Eine zweite Unterschrift wäre eine zweite Stimme, die niemand
+mehr zuordnen kann. Diese Person geht an den Ausgabetisch. Dort erscheint nach dem Scan der Hinweis
+_Digital abstimmen war nicht möglich?_ — die digitale Berechtigung wird **mit Begründung entwertet**
+und der Papierzettel ausgegeben. Beides gehört zusammen und passiert in einem Schritt.
+
+Wichtig: Nur wenn wirklich keine Stimme abgegeben wurde. Bei geheimer Wahl kann der Rechner das
+nicht feststellen — das ist ihr Zweck —, deshalb ist es eine Entscheidung der Wahlleitung, und sie
+steht im Protokoll. Der Stand der Abstimmung weist entwertete Berechtigungen eigens aus, damit die
+Lücke zwischen ausgegeben und abgegeben erklärt ist.
+
 ### Schließen und auszählen
 
 Beim Schließen wird der private Schlüssel gelöscht und die Urne gemischt. Sie wird als **Liste

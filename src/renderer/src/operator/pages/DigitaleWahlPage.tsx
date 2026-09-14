@@ -252,7 +252,19 @@ export function DigitaleWahlPage(): React.JSX.Element {
                         <span className="label">Stimmen mit Gewicht</span>
                       </div>
                     )}
+                    {stand.entwertet > 0 && (
+                      <div className="kpi">
+                        <span className="value">{stand.entwertet}</span>
+                        <span className="label">entwertet</span>
+                      </div>
+                    )}
                   </div>
+                  {stand.entwertet > 0 && (
+                    <div className="hint mt-2">
+                      Entwertete Berechtigungen erklären die Lücke: Diese Personen haben am Gerät nicht
+                      abgestimmt und einen Papierzettel bekommen. Grund und Uhrzeit stehen im Protokoll.
+                    </div>
+                  )}
                   {stand.abgegeben > stand.ausgegeben && (
                     <div className="notice warn mt-2">
                       In der Urne liegen <strong>mehr Stimmen als Berechtigungen ausgegeben</strong> wurden.

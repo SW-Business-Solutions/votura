@@ -19,7 +19,7 @@
  * hält ein Telefon in einer Hand, hat die Lesebrille im Mantel und dreißig
  * Leute hinter sich.
  */
-import { StrictMode, useCallback, useEffect, useState } from 'react'
+import { StrictMode, useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   entblenden,
@@ -37,15 +37,51 @@ const sha256: Pruefsumme = async (daten) =>
 
 const zufall = (laenge: number): Uint8Array => crypto.getRandomValues(new Uint8Array(laenge))
 
+/**
+ * Ein Fehler, der nichts über die Stimme sagt — nur über die Leitung.
+ *
+ * Der Unterschied ist der ganze Punkt: „Sie haben schon abgestimmt" ist eine
+ * Antwort, „das WLAN war weg" ist keine. Nur beim zweiten lohnt es, dieselbe
+ * Anfrage noch einmal zu schicken.
+ */
+class NetzFehler extends Error {}
+
 async function hole<T>(pfad: string, koerper?: unknown): Promise<T> {
-  const antwort = await fetch(pfad, {
-    method: koerper ? 'POST' : 'GET',
-    headers: koerper ? { 'Content-Type': 'application/json' } : undefined,
-    body: koerper ? JSON.stringify(koerper) : undefined
-  })
-  const daten = (await antwort.json()) as { fehler?: string } & T
+  let antwort: Response
+  try {
+    antwort = await fetch(pfad, {
+      method: koerper ? 'POST' : 'GET',
+      headers: koerper ? { 'Content-Type': 'application/json' } : undefined,
+      body: koerper ? JSON.stringify(koerper) : undefined
+    })
+  } catch {
+    throw new NetzFehler('Keine Verbindung zum Wahlrechner.')
+  }
+  const daten = (await antwort.json().catch(() => {
+    throw new NetzFehler('Die Antwort kam nicht vollständig an.')
+  })) as { fehler?: string } & T
   if (!antwort.ok) throw new Error(daten.fehler ?? `Fehler ${antwort.status}`)
   return daten
+}
+
+/**
+ * Dieselbe Anfrage noch einmal, solange nur die Leitung schuld ist.
+ *
+ * Ein Saal-WLAN mit mehreren hundert Geräten verliert Verbindungen; das ist
+ * der Normalfall, nicht die Ausnahme. Die Stimme darf dabei weder verloren
+ * gehen noch doppelt ankommen — deshalb wird **dieselbe** Seriennummer mit
+ * **derselben** Auswahl geschickt. Der Rechner erkennt sie wieder und zählt
+ * sie nicht zweimal.
+ */
+async function mitWiederholung<T>(was: () => Promise<T>, versuche = 4): Promise<T> {
+  for (let versuch = 1; ; versuch++) {
+    try {
+      return await was()
+    } catch (error) {
+      if (!(error instanceof NetzFehler) || versuch >= versuche) throw error
+      await new Promise((weiter) => setTimeout(weiter, 800 * versuch))
+    }
+  }
 }
 
 type Schritt = 'ausweis' | 'wahl' | 'fertig'
@@ -58,6 +94,16 @@ function Wahlseite(): React.JSX.Element {
   const [antwort, setAntwort] = useState<'ja' | 'nein' | 'enthaltung' | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const [laeuft, setLaeuft] = useState(false)
+  /*
+   * **Was bei einem zweiten Versuch nicht noch einmal passieren darf.**
+   * Die Berechtigung gibt es je Wahlgang genau einmal. Bricht die Abgabe ab,
+   * nachdem sie geholt wurde, wäre ein neuer Anlauf von vorn der sichere Weg
+   * in „Für diesen Wahlgang wurde bereits eine Stimmberechtigung ausgegeben"
+   * — und der Wähler stünde mit einer verbrauchten Berechtigung da, ohne zu
+   * wissen, ob seine Stimme liegt. Sie wird deshalb festgehalten und beim
+   * nächsten Versuch weiterverwendet.
+   */
+  const berechtigung = useRef<{ serial: string; signatur?: string } | null>(null)
   const [wartet, setWartet] = useState(false)
 
   const pruefen = useCallback(async (wert: string) => {
@@ -110,14 +156,17 @@ function Wahlseite(): React.JSX.Element {
          * Anfrage — zusammen mit der Stimme abgegeben.
          */
         const schluessel = lage.schluessel as OeffentlicherSchluessel
-        const seriennummer = zufall(32)
-        const { verblendet, faktor } = await verblenden(seriennummer, schluessel, sha256, zufall)
+        if (!berechtigung.current) {
+          const seriennummer = zufall(32)
+          const { verblendet, faktor } = await verblenden(seriennummer, schluessel, sha256, zufall)
 
-        const berechtigung = await hole<{ signatur?: string; ticket?: string }>('/api/stimme/berechtigung', {
-          code,
-          roundId: lage.roundId,
-          verblendet
-        })
+          const geholt = await mitWiederholung(() =>
+            hole<{ signatur?: string; ticket?: string }>('/api/stimme/berechtigung', {
+              code,
+              roundId: lage.roundId,
+              verblendet
+            })
+          )
 
         /*
          * Unterschreibt der Wahlausschuss, kommt statt der Unterschrift eine
@@ -125,47 +174,69 @@ function Wahlseite(): React.JSX.Element {
          * Also nachfragen, bis sie da ist — ein paar Sekunden, in denen der
          * Wähler vor dem Bildschirm steht und lesen soll, warum.
          */
-        let signatur = berechtigung.signatur
-        if (!signatur && berechtigung.ticket) {
-          setWartet(true)
-          for (let versuch = 0; versuch < 120 && !signatur; versuch++) {
-            await new Promise((weiter) => setTimeout(weiter, 500))
-            const antwort = await hole<{ signatur?: string }>('/api/stimme/warten', {
-              ticket: berechtigung.ticket
-            })
-            signatur = antwort.signatur
+          let signatur = geholt.signatur
+          if (!signatur && geholt.ticket) {
+            setWartet(true)
+            for (let versuch = 0; versuch < 120 && !signatur; versuch++) {
+              await new Promise((weiter) => setTimeout(weiter, 500))
+              const antwort = await mitWiederholung(() =>
+                hole<{ signatur?: string }>('/api/stimme/warten', { ticket: geholt.ticket })
+              )
+              signatur = antwort.signatur
+            }
+            setWartet(false)
           }
-          setWartet(false)
-        }
-        if (!signatur) {
-          throw new Error(
-            'Der Wahlausschuss hat nicht geantwortet. Bitte beim Wahlvorstand melden — Ihre Stimme ist noch nicht abgegeben.'
-          )
+          if (!signatur) {
+            throw new Error(
+              'Der Wahlausschuss hat nicht geantwortet. Bitte beim Wahlvorstand melden — Ihre Stimme ist noch nicht abgegeben.'
+            )
+          }
+
+          berechtigung.current = {
+            serial: zuBase64Url(seriennummer),
+            signatur: entblenden(signatur, faktor, schluessel)
+          }
         }
 
-        const echte = entblenden(signatur, faktor, schluessel)
-
-        await hole('/api/stimme/abgeben', {
-          roundId: lage.roundId,
-          serial: zuBase64Url(seriennummer),
-          signatur: echte,
-          choice: stimme
-        })
+        await mitWiederholung(() =>
+          hole('/api/stimme/abgeben', {
+            roundId: lage.roundId,
+            serial: berechtigung.current!.serial,
+            signatur: berechtigung.current!.signatur,
+            choice: stimme
+          })
+        )
       } else {
-        const { serial } = await hole<{ serial: string }>('/api/stimme/berechtigung', {
-          code,
-          roundId: lage.roundId
-        })
-        await hole('/api/stimme/abgeben', {
-          code,
-          roundId: lage.roundId,
-          serial,
-          choice: stimme
-        })
+        if (!berechtigung.current) {
+          const { serial } = await mitWiederholung(() =>
+            hole<{ serial: string }>('/api/stimme/berechtigung', { code, roundId: lage.roundId })
+          )
+          berechtigung.current = { serial }
+        }
+        await mitWiederholung(() =>
+          hole('/api/stimme/abgeben', {
+            code,
+            roundId: lage.roundId,
+            serial: berechtigung.current!.serial,
+            choice: stimme
+          })
+        )
       }
       setSchritt('fertig')
     } catch (error) {
-      setFehler(error instanceof Error ? error.message : String(error))
+      /*
+       * Bei einem Netzfehler steht die Auswahl noch auf dem Bildschirm und
+       * die Berechtigung ist festgehalten — der Knopf schickt dieselbe Stimme
+       * noch einmal. Das muss dort stehen, denn die naheliegende Handlung,
+       * die Seite neu zu laden, ist genau die falsche.
+       */
+      setFehler(
+        error instanceof NetzFehler
+          ? 'Die Verbindung zum Wahlrechner ist abgerissen. Ihre Auswahl steht noch — tippen Sie erneut auf „Stimme abgeben". Laden Sie die Seite nicht neu.'
+          : error instanceof Error
+            ? error.message
+            : String(error)
+      )
     } finally {
       setLaeuft(false)
     }
@@ -276,7 +347,13 @@ function Wahlseite(): React.JSX.Element {
         disabled={laeuft || zuviele || (lage.sachabstimmung && !antwort)}
         onClick={() => void abgeben()}
       >
-        {wartet ? 'Der Wahlausschuss unterschreibt …' : laeuft ? 'Wird abgegeben …' : 'Stimme abgeben'}
+        {wartet
+          ? 'Der Wahlausschuss unterschreibt …'
+          : laeuft
+            ? 'Wird abgegeben …'
+            : fehler && berechtigung.current
+              ? 'Erneut versuchen'
+              : 'Stimme abgeben'}
       </button>
       <p className="leise">
         Nach dem Absenden lässt sich nichts mehr ändern — wie ein Zettel, der in der Urne ist.
