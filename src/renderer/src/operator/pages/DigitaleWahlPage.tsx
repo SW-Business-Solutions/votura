@@ -80,6 +80,32 @@ export function DigitaleWahlPage(): React.JSX.Element {
     }
   }
 
+  /**
+   * Die Urne ins Ergebnis übernehmen — und sagen, was dabei herauskam.
+   *
+   * Vorher passierte sichtbar nichts: Der Knopf schrieb ein Ergebnis in einen
+   * anderen Reiter, und wer davon nichts wusste, hielt ihn für kaputt. Lag
+   * bereits eine Papierauszählung vor, tat er sogar tatsächlich nichts — die
+   * Urne wird ja beim Lesen hinzugerechnet.
+   */
+  const uebernehmen = async (): Promise<void> => {
+    if (!wahlgang) return
+    try {
+      const { digital, hatteErgebnis } = await api('voting.uebernehmen', wahlgang.id)
+      await laden()
+      app.notify(
+        'ok',
+        hatteErgebnis
+          ? `Die Urne mit ${digital} ${digital === 1 ? 'Stimme' : 'Stimmen'} ist im Ergebnis enthalten — sie wird zur Handauszählung hinzugerechnet.`
+          : `${digital} ${digital === 1 ? 'Stimme' : 'Stimmen'} ins Ergebnis übernommen.`
+      )
+      /* Dorthin, wo das Ergebnis steht — sonst sucht die Wahlleitung es. */
+      navigate(`round/${wahlgang.id}/result`)
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
   const drucker = app.settings?.config.printing.defaultPrinterId
 
   return (
@@ -289,10 +315,7 @@ export function DigitaleWahlPage(): React.JSX.Element {
                     >
                       Urnenverzeichnis drucken
                     </button>
-                    <button
-                      className="primary"
-                      onClick={() => void tue(() => api('voting.uebernehmen', wahlgang.id))}
-                    >
+                    <button className="primary" onClick={() => void uebernehmen()}>
                       Ergebnis übernehmen
                     </button>
                   </div>

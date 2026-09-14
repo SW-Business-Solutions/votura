@@ -447,7 +447,13 @@ export interface Api {
    * darf er einen Papierzettel bekommen.
    */
   'voting.entwerten': (input: { roundId: UUID; participantId: UUID; grund: string }) => Promise<void>
-  'voting.uebernehmen': (roundId: UUID) => Promise<void>
+  /**
+   * Die geschlossene Urne ins Ergebnis übernehmen.
+   *
+   * Die Antwort sagt, was geschehen ist — sonst sieht ein Klick, der nichts
+   * zu tun fand, genauso aus wie einer, der nicht funktioniert hat.
+   */
+  'voting.uebernehmen': (roundId: UUID) => Promise<{ digital: number; hatteErgebnis: boolean }>
   /** Die Urne als Liste — Grundlage des Ausdrucks und der Nachzählung. */
   'voting.urne': (roundId: UUID) => Promise<{ serial: string; text: string; weight: number }[]>
   'voting.drucken': (input: { roundId: UUID; printerId: string }) => Promise<void>

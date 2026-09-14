@@ -168,7 +168,8 @@ import {
   urnenListe,
   votingLage,
   votingStand,
-  berechtigungEntwerten
+  berechtigungEntwerten,
+  zaehlung
 } from './services/voting'
 import {
   confirmResult,
@@ -542,7 +543,13 @@ const api: Api = {
    * hat diese Stelle sie überschrieben.
    */
   'voting.uebernehmen': async (roundId) => {
-    if (getPapierergebnis(roundId)) return
+    const digital = zaehlung(roundId).ballotsCast
+    /*
+     * Gibt es schon ein Ergebnis, ist nichts zu tun: Die Urne wird beim Lesen
+     * hinzugerechnet, und die eingetragene Papierauszählung bleibt unangetastet.
+     * Gemeldet wird es trotzdem — ein stiller Klick sieht aus wie ein Fehler.
+     */
+    if (getPapierergebnis(roundId)) return { digital, hatteErgebnis: true }
     const stand = votingStand(roundId)
     saveResult({
       electionRoundId: roundId,
@@ -555,6 +562,7 @@ const api: Api = {
       eligibleVoters: stand.ausgegeben,
       resultData: { candidates: [] }
     })
+    return { digital, hatteErgebnis: false }
   },
   'voting.entwerten': async (input) => {
     berechtigungEntwerten(input)

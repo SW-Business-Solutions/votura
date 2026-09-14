@@ -38,6 +38,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
     "vosk-browser": "^0.0.8"
   }
 }
