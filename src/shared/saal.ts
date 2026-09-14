@@ -21,6 +21,7 @@
  * und die Antworten einsammeln ist in dreißig Zeilen erklärt und funktioniert
  * in jedem flachen Netz — und ein Saalnetz ist immer flach.
  */
+import { AUSSCHUSS_PFAD, WAHL_PFAD } from './wahl'
 
 /** Port des Suchrufs. Bewusst neben dem des Projektionsservers. */
 export const SUCHRUF_PORT = 8478
@@ -135,10 +136,17 @@ export function rollenAdresse(einstellung: SaalEinstellung): string {
       return `${basis}/operator${frage}#/akkreditierung`
     case 'ausgabe':
       return `${basis}/operator${frage}#/ausgabe`
+    /*
+     * Die Pfade kommen aus derselben Quelle, aus der sie auch ausgeliefert
+     * werden. Hier stand einmal `/wahl`, ausgeliefert wurde `/stimme` — das
+     * Fenster blieb schwarz, und zwar ohne Meldung: Ein 404 hat keine
+     * Oberfläche. Zwei Schreibweisen desselben Pfades an zwei Orten laufen
+     * früher oder später auseinander.
+     */
     case 'wahlkabine':
-      return `${basis}/wahl${frage}`
+      return `${basis}${WAHL_PFAD}${frage}`
     case 'wahlausschuss':
-      return `${basis}/ausschuss${frage}`
+      return `${basis}${AUSSCHUSS_PFAD}${frage}`
     default:
       return `${basis}/?buehne=${einstellung.rolle.nummer}${token}`
   }

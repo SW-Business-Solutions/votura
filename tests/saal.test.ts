@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { AUSSCHUSS_PFAD, WAHL_PFAD } from '../src/shared/wahl'
 import {
   istSaalAntwort,
   rolleBrauchtAnmeldung,
@@ -172,6 +173,23 @@ describe('Die bedienenden Rollen', () => {
     const adresse = rollenAdresse(einstellung({ art: 'akkreditierung' }, 'geheim'))
     expect(adresse).toBe('http://192.168.1.5:8477/operator?t=geheim#/akkreditierung')
     expect(adresse.indexOf('t=geheim')).toBeLessThan(adresse.indexOf('#'))
+  })
+
+  it('zeigen auf die Pfade, die der Hauptrechner wirklich ausliefert', () => {
+    /*
+     * **Der Fehler, der hier gefangen wird.** Die Kabine zeigte auf `/wahl`,
+     * ausgeliefert wurde `/stimme`. Das Fenster blieb schwarz — ein 404 hat
+     * keine Oberfläche, und im Saal sieht niemand, woran es liegt.
+     *
+     * Verglichen wird deshalb gegen dieselben Begriffe, die der
+     * Projektionsserver benutzt, nicht gegen abgeschriebene Zeichenketten.
+     */
+    expect(rollenAdresse(einstellung({ art: 'wahlkabine' }))).toBe(
+      `http://192.168.1.5:8477${WAHL_PFAD}`
+    )
+    expect(rollenAdresse(einstellung({ art: 'wahlausschuss' }))).toBe(
+      `http://192.168.1.5:8477${AUSSCHUSS_PFAD}`
+    )
   })
 
   it('verlangen eine Anmeldung, die anzeigenden nicht', () => {

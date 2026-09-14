@@ -112,6 +112,36 @@ function rendererRoot(): string {
   return join(__dirname, '../renderer')
 }
 
+/**
+ * Eine Seite an ein Gerät im Saal ausliefern.
+ *
+ * **Warum das im Entwicklungsmodus nicht einfach eine Weiterleitung ist.**
+ * Vite liefert die Oberfläche unter einer eigenen Adresse aus, und eine
+ * Weiterleitung dorthin schickt das Gerät auf eine **andere Herkunft**: Das
+ * Zugriffstoken steht als Keks an dieser hier, `/api/…` gibt es dort nicht,
+ * und `localhost` ist auf einem anderen Gerät ohnehin es selbst. Für den
+ * Entwickler im eigenen Browser ging das gut — für die Begleitanwendung im
+ * Saal brach die Verbindung sofort ab, und zwar ohne erkennbaren Grund.
+ *
+ * Ausgeliefert wird deshalb, was gebaut ist. Nur wenn es das nicht gibt —
+ * jemand hat noch nie gebaut —, bleibt die Weiterleitung als Notnagel, jetzt
+ * mitsamt der Abfrage, damit das Token nicht unterwegs verloren geht.
+ */
+function seiteAusliefern(response: ServerResponse, datei: string, url: URL): void {
+  const gebaut = join(rendererRoot(), datei)
+  if (existsSync(gebaut)) {
+    serveFile(response, gebaut)
+    return
+  }
+  if (process.env.ELECTRON_RENDERER_URL) {
+    const abfrage = url.search ? url.search : ''
+    response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/${datei}${abfrage}` })
+    response.end()
+    return
+  }
+  deny(response, 404, 'Nicht gefunden.')
+}
+
 function tokenValid(request: IncomingMessage, url: URL): boolean {
   if (!config?.token) return true
   const fromQuery = url.searchParams.get('t')
@@ -275,12 +305,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       deny(response, 403, 'Der Fernzugriff auf die Bedienung ist nicht freigeschaltet.')
       return
     }
-    if (process.env.ELECTRON_RENDERER_URL) {
-      response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/` })
-      response.end()
-      return
-    }
-    serveFile(response, join(rendererRoot(), 'index.html'))
+    seiteAusliefern(response, 'index.html', url)
     return
   }
   if (!tokenValid(request, url)) {
@@ -309,12 +334,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
    * Text kommt über die eigene Leitung darunter.
    */
   if (url.pathname === PROMPTER_PFAD || url.pathname === `${PROMPTER_PFAD}/`) {
-    if (process.env.ELECTRON_RENDERER_URL) {
-      response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/teleprompter.html` })
-      response.end()
-      return
-    }
-    serveFile(response, join(rendererRoot(), 'teleprompter.html'))
+    seiteAusliefern(response, 'teleprompter.html', url)
     return
   }
 
@@ -441,13 +461,6 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    // Im Entwicklungsmodus liefert Vite die Oberfläche aus.
-    response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/audience.html` })
-    response.end()
-    return
-  }
-
   const headers: Record<string, string> = {}
   if (config?.token && url.searchParams.get('t') === config.token) {
     headers['Set-Cookie'] = `wz_token=${config.token}; Path=/; SameSite=Strict`
@@ -462,6 +475,10 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   if (Object.keys(headers).length > 0) {
     // Cookie zuerst setzen, dann Datei ausliefern.
     response.setHeader('Set-Cookie', headers['Set-Cookie'])
+  }
+  if (!existsSync(filePath) && url.pathname === '/') {
+    seiteAusliefern(response, 'audience.html', url)
+    return
   }
   serveFile(response, filePath)
 }
