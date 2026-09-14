@@ -77,7 +77,12 @@ export interface WahlAuskunft {
   hindernis?: string
   /** Der Ausweis ist gültig und die Person darf abstimmen. */
   berechtigt: boolean
-  /** Für diesen Wahlgang wurde bereits eine Berechtigung ausgegeben. */
+  /**
+   * Für diesen Wahlgang wurde bereits eine Berechtigung ausgegeben.
+   *
+   * Das Gerät erfährt es **vorher**. Es erst beim Absenden zu sagen, hieße
+   * jemanden erst auswählen zu lassen und ihm dann das Papier wegzunehmen.
+   */
   bereitsAusgegeben: boolean
   /** Name der Person — damit am Gerät niemand für einen anderen abstimmt. */
   name?: string

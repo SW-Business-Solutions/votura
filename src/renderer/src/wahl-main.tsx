@@ -65,8 +65,18 @@ function Wahlseite(): React.JSX.Element {
     try {
       const ergebnis = await hole<WahlAuskunft>(`/api/stimme/lage?code=${encodeURIComponent(wert)}`)
       setAuskunft(ergebnis)
-      if (ergebnis.berechtigt && ergebnis.lage) setSchritt('wahl')
-      else setFehler(ergebnis.hindernis ?? 'Gerade ist keine Abstimmung offen.')
+      /*
+       * Wer schon abgestimmt hat, erfährt es **vorher**. Es erst beim
+       * Absenden zu sagen, hieße jemanden erst auswählen zu lassen und ihm
+       * dann das Papier wieder wegzunehmen.
+       */
+      if (ergebnis.bereitsAusgegeben) {
+        setFehler('Für diesen Wahlgang haben Sie bereits eine Stimmberechtigung erhalten.')
+      } else if (ergebnis.berechtigt && ergebnis.lage) {
+        setSchritt('wahl')
+      } else {
+        setFehler(ergebnis.hindernis ?? 'Gerade ist keine Abstimmung offen.')
+      }
     } catch (error) {
       setFehler(error instanceof Error ? error.message : String(error))
     }

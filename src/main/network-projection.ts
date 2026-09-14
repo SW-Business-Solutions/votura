@@ -85,9 +85,17 @@ export function setRemoteDispatcher(next: RemoteDispatcher): void {
  * alles andere ist nicht erreichbar, weil es nicht aufgezählt ist.
  */
 export interface WahlDispatcher {
-  lage(code: string): Promise<unknown>
-  berechtigung(eingabe: Record<string, unknown>): Promise<unknown>
-  abgeben(eingabe: Record<string, unknown>): Promise<unknown>
+  /**
+   * `mitToken` sagt, ob die Anfrage das Zugriffstoken mitbrachte.
+   *
+   * Daran erkennt der Hauptrechner eine **Wahlkabine**: Sie gehört der
+   * Veranstaltung und wurde eingerichtet, ein mitgebrachtes Telefon nicht.
+   * Mehr ist es nicht — wer das Token an die Wand schreibt, hat den
+   * Unterschied wieder aufgehoben.
+   */
+  lage(code: string, mitToken: boolean): Promise<unknown>
+  berechtigung(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown>
+  abgeben(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown>
   /** Das Gerät des Wählers holt seine Unterschrift ab (Ausschussbetrieb). */
   warten(eingabe: Record<string, unknown>): Promise<unknown>
   /** Der Wahlausschuss: Lage, Schlüssel melden, offene Anfragen, Unterschrift. */
@@ -548,7 +556,7 @@ async function handleWahl(
   if (url.pathname === '/api/stimme/lage') {
     const code = url.searchParams.get('code') ?? ''
     try {
-      sendeJson(response, 200, await ruf.lage(code))
+      sendeJson(response, 200, await ruf.lage(code, tokenValid(request, url)))
     } catch (fehler) {
       sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
     }
@@ -567,12 +575,13 @@ async function handleWahl(
     const koerper = await leseKoerper(request, response)
     if (!koerper) return true
     try {
+      const mitToken = tokenValid(request, url)
       const ergebnis =
         url.pathname === '/api/stimme/berechtigung'
-          ? await ruf.berechtigung(koerper)
+          ? await ruf.berechtigung(koerper, mitToken)
           : url.pathname === '/api/stimme/warten'
             ? await ruf.warten(koerper)
-            : await ruf.abgeben(koerper)
+            : await ruf.abgeben(koerper, mitToken)
       sendeJson(response, 200, ergebnis ?? {})
     } catch (fehler) {
       sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))

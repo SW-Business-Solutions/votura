@@ -19,6 +19,7 @@ import {
   ausschussWahlgang,
   berechtigungAusgeben,
   committeeKeyMelden,
+  hatStimmrecht,
   offeneSignaturen,
   offeneWahl,
   signaturAbholen,
@@ -42,6 +43,30 @@ function personZu(code: string): { id: string; name: string; gewicht: number } |
   }
 }
 
+/**
+ * Darf von diesem Gerät abgestimmt werden?
+ *
+ * Hat die Wahlleitung „nur Wahlkabinen" gewählt, war das bisher eine Angabe
+ * in der Datenbank und sonst nichts — die Oberfläche versprach etwas, das der
+ * Code nicht hielt.
+ *
+ * Erkannt wird eine Kabine am **Zugriffstoken**: Sie gehört der Veranstaltung
+ * und wurde eingerichtet, ein mitgebrachtes Telefon nicht. Mehr ist es nicht,
+ * und mehr behauptet es auch nicht — wer das Token an die Wand schreibt, hat
+ * den Unterschied wieder aufgehoben. Ohne eingerichtetes Token lässt sich die
+ * Beschränkung nicht durchsetzen, und dann sagt sie das auch.
+ */
+function kabinenpflicht(lage: { geraete: string }, mitToken: boolean): string | undefined {
+  if (lage.geraete !== 'booth') return undefined
+  if (mitToken) return undefined
+  return 'Für diesen Wahlgang ist die Stimmabgabe nur in der Wahlkabine vorgesehen.'
+}
+
+/** Wurde für diesen Wahlgang schon eine Berechtigung ausgegeben? */
+function schonAusgegeben(roundId: string, participantId: string): boolean {
+  return hatStimmrecht(roundId, participantId)
+}
+
 export const wahlBruecke: WahlDispatcher = {
   /**
    * Was dieses Gerät gerade tun kann.
@@ -50,7 +75,7 @@ export const wahlBruecke: WahlDispatcher = {
    * versehentlich für einen anderen abstimmt, weil der falsche Ausweis oben
    * auf lag.
    */
-  async lage(code: string): Promise<WahlAuskunft> {
+  async lage(code: string, mitToken: boolean): Promise<WahlAuskunft> {
     const event = activeEvent()
     const lage = event ? offeneWahl(event.id) : null
     const person = personZu(code)
@@ -75,13 +100,14 @@ export const wahlBruecke: WahlDispatcher = {
       }
     }
 
+    const kabine = kabinenpflicht(lage, mitToken)
     return {
       lage,
-      berechtigt: urteil.ok,
-      bereitsAusgegeben: false,
+      berechtigt: urteil.ok && !kabine,
+      bereitsAusgegeben: schonAusgegeben(lage.roundId, person.id),
       name: person.name,
       gewicht: person.gewicht,
-      hindernis: urteil.ok ? undefined : urteil.reason
+      hindernis: kabine ?? (urteil.ok ? undefined : urteil.reason)
     }
   },
 
@@ -91,13 +117,20 @@ export const wahlBruecke: WahlDispatcher = {
    * Bei geheimer Wahl kommt ein verblendeter Wert herein und eine
    * Blindsignatur zurück — was unterschrieben wird, erfährt der Rechner nicht.
    */
-  async berechtigung(eingabe: Record<string, unknown>): Promise<unknown> {
-    const person = personZu(String(eingabe.code ?? ''))
-    if (!person) throw new Error('Dieser Ausweis gehört zu niemandem in dieser Versammlung.')
-
+  async berechtigung(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown> {
+    /*
+     * Erst die Lage, dann der Ausweis. „Hier darf gar nicht abgestimmt
+     * werden" ist die grundsätzlichere Auskunft — und wer in der falschen
+     * Schlange steht, soll das erfahren, bevor er seinen Ausweis zückt.
+     */
     const roundId = String(eingabe.roundId ?? '')
     const lage = votingLage(roundId)
     if (!lage || lage.status !== 'open') throw new Error('Diese Abstimmung ist nicht geöffnet.')
+    const kabine = kabinenpflicht(lage, mitToken)
+    if (kabine) throw new Error(kabine)
+
+    const person = personZu(String(eingabe.code ?? ''))
+    if (!person) throw new Error('Dieser Ausweis gehört zu niemandem in dieser Versammlung.')
 
     return berechtigungAusgeben({
       roundId,
@@ -117,10 +150,12 @@ export const wahlBruecke: WahlDispatcher = {
    * die Stimme ihr Gewicht, und bei namentlicher gehört die Zuordnung ins
    * Protokoll.
    */
-  async abgeben(eingabe: Record<string, unknown>): Promise<unknown> {
+  async abgeben(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown> {
     const roundId = String(eingabe.roundId ?? '')
     const lage = votingLage(roundId)
     if (!lage || lage.status !== 'open') throw new Error('Diese Abstimmung ist nicht geöffnet.')
+    const kabine = kabinenpflicht(lage, mitToken)
+    if (kabine) throw new Error(kabine)
 
     const choice = (eingabe.choice ?? {}) as Stimmabgabe
     if (lage.geheimnis === 'secret') {

@@ -44,6 +44,8 @@ const teilnehmer = await import('../src/main/services/participants')
 const wahl = await import('../src/main/services/voting')
 const ausgabe = await import('../src/main/services/handout')
 const bilanz = await import('../src/main/services/accounting')
+const einstellungen = await import('../src/main/services/settings')
+const bruecke = await import('../src/main/wahl-bruecke')
 
 const sha256: Pruefsumme = async (daten) => new Uint8Array(createHash('sha256').update(daten).digest())
 const zufall = (laenge: number): Uint8Array => new Uint8Array(randomBytes(laenge))
@@ -60,6 +62,11 @@ beforeAll(() => {
     )
     .run(auth.hashSecret('geheim-1234'), new Date().toISOString())
   auth.login('wahlleitung', 'geheim-1234')
+
+  /* „Nur Wahlkabinen" verlangt ein Zugriffstoken — ohne eines ließe sich eine
+     Kabine von einem mitgebrachten Gerät nicht unterscheiden. */
+  const netz = einstellungen.getNetworkProjection()
+  einstellungen.saveNetworkProjection({ ...netz, token: 'saalgeheim' })
 
   eventId = events.createEvent({
     title: 'Mitgliederversammlung',
@@ -494,5 +501,55 @@ describe('Vier-Augen-Prinzip (M3)', () => {
       db().prepare(`SELECT * FROM signing_queue LIMIT 1`).get<Record<string, unknown>>() ?? {}
     ).sort()
     expect(spalten).toEqual(['answered_at', 'blinded', 'created_at', 'id', 'round_id', 'signature'])
+  })
+})
+
+describe('„Nur Wahlkabinen" ist eine Zusage, keine Angabe', () => {
+  /*
+   * Die Einstellung wurde gespeichert und angezeigt — und von keinem Endpunkt
+   * geprüft. Die Oberfläche versprach etwas, das der Code nicht hielt. Das ist
+   * die gefährlichere Sorte Fehler: Sie sieht aus wie eine Maßnahme.
+   */
+  it('verlangt ein Zugriffstoken, sonst gibt es nichts zu unterscheiden', () => {
+    /*
+     * Ohne Token gilt jedes Gerät als Kabine. Lieber beim Vorbereiten
+     * abbrechen als im Saal etwas versprechen, das nicht gilt.
+     */
+    const netz = einstellungen.getNetworkProjection()
+    einstellungen.saveNetworkProjection({ ...netz, token: '' })
+    try {
+      const roundId = wahlgangMitBewerbern(['Kappa'])
+      expect(() => wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'booth' })).toThrow(
+        /Zugriffstoken/
+      )
+    } finally {
+      /* Zurücksetzen, sonst nimmt diese Prüfung den übrigen Abschnitten die
+         Grundlage — genau der Fehler, den sie beschreibt. */
+      einstellungen.saveNetworkProjection(netz)
+    }
+  })
+
+  it('weist ein Gerät ohne Token ab', async () => {
+    const roundId = wahlgangMitBewerbern(['Lambda'])
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'booth' })
+    wahl.openVoting(roundId)
+    const person = anwesend('Kabinenwaehler')
+
+    /* Mitgebrachtes Telefon: kein Token, also kein Zutritt. */
+    await expect(bruecke.wahlBruecke.berechtigung({ roundId, code: '' }, false)).rejects.toThrow(/Wahlkabine/)
+
+    /* Die Kabine selbst kommt durch — dass der Ausweis fehlt, ist der
+       nächste Fehler und nicht dieser. */
+    await expect(bruecke.wahlBruecke.berechtigung({ roundId, code: '' }, true)).rejects.toThrow(/Ausweis/)
+    expect(person.id).toBeTruthy()
+  })
+
+  it('lässt eigene Geräte, wo sie erlaubt sind', async () => {
+    const roundId = wahlgangMitBewerbern(['My'])
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(roundId)
+    /* Ohne Token abgewiesen zu werden, wäre hier falsch — die Meldung dreht
+       sich um den fehlenden Ausweis, nicht um die Kabine. */
+    await expect(bruecke.wahlBruecke.berechtigung({ roundId, code: '' }, false)).rejects.toThrow(/Ausweis/)
   })
 })

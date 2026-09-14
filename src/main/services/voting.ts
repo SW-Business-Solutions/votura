@@ -42,6 +42,7 @@ import { requirePermission } from './auth'
 import { listCandidates } from './candidates'
 import { mayVote } from './participants'
 import { getRound } from './rounds'
+import { getNetworkProjection } from './settings'
 
 /** SHA-256, wie das Rechenwerk es erwartet. */
 const sha256: Pruefsumme = async (daten) => new Uint8Array(createHash('sha256').update(daten).digest())
@@ -98,6 +99,20 @@ export function prepareVoting(input: {
   const vorhanden = session(input.roundId)
   if (vorhanden && vorhanden.status !== 'prepared') {
     throw new Error('Diese Abstimmung läuft bereits oder ist geschlossen.')
+  }
+
+  /*
+   * „Nur Wahlkabinen" lässt sich nur durchsetzen, wenn es überhaupt etwas
+   * gibt, woran eine Kabine zu erkennen ist — und das ist das Zugriffstoken
+   * des Netzes. Ohne eingerichtetes Token gälte jedes Gerät als Kabine, und
+   * die Einstellung wäre eine Behauptung. Lieber hier abbrechen als im Saal
+   * etwas versprechen, das nicht gilt.
+   */
+  if (input.geraete === 'booth' && !getNetworkProjection().token) {
+    throw new Error(
+      'Für „nur Wahlkabinen" muss in den Netzwerkeinstellungen ein Zugriffstoken gesetzt sein — ' +
+        'nur daran lässt sich eine Kabine von einem mitgebrachten Gerät unterscheiden.'
+    )
   }
 
   const signer = input.signer ?? 'hub'
