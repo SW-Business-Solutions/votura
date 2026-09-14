@@ -29,12 +29,18 @@ stundenlang laufen soll, zu knapp.
 Auf dem frisch aufgesetzten Pi, angemeldet als der übliche Benutzer:
 
 ```bash
-# Bühne oder Pult (Voreinstellung)
 curl -fsSL https://www.getvotura.de/pi/install.sh | sudo bash
+```
 
-# Der Hauptrechner
+Das Skript fragt zuerst, welche Rolle der Pi bekommen soll, und erklärt beide in zwei Sätzen. Wer
+die Antwort schon kennt oder unbeaufsichtigt einrichtet, gibt sie mit:
+
+```bash
 curl -fsSL https://www.getvotura.de/pi/install.sh | sudo bash -s -- --rolle hauptrechner
 ```
+
+Gefragt wird über das Terminal, nicht über die Standardeingabe — bei `curl … | sudo bash` ist die
+nämlich vom Skript selbst belegt. Gibt es kein Terminal, bleibt es ohne Warten bei `saal`.
 
 Oder aus dem Projekt heraus, wenn kein Netz zur Website besteht:
 

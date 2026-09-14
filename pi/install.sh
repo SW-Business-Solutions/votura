@@ -15,7 +15,8 @@
 # eingerichteten Pi, und es ist die Grundlage, aus der die Abbilder entstehen.
 #
 # Aufruf:
-#   sudo ./install.sh                              (Saal, Paket von GitHub)
+#   sudo ./install.sh                              (fragt nach der Rolle)
+#   sudo ./install.sh --rolle saal
 #   sudo ./install.sh --rolle hauptrechner
 #   sudo ./install.sh --paket ./Votura-Saal-1.3.0-linux-arm64.tar.gz
 #   sudo ./install.sh --version 1.3.0
@@ -25,7 +26,7 @@ set -euo pipefail
 QUELLE_BASIS='https://github.com/SW-Business-Solutions/votura/releases'
 BENUTZER='votura'
 
-rolle='saal'
+rolle=''
 paket=''
 version='latest'
 zeitzone='Europe/Berlin'
@@ -48,12 +49,72 @@ done
 melde() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 fehler() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
+# Zuerst, noch vor jeder Frage: Wer nicht darf, soll nicht erst antworten
+# müssen.
+[[ $EUID -eq 0 ]] || fehler 'Bitte mit sudo ausführen.'
+
+# Welche Rolle soll es sein?
+#
+# Gefragt wird nur, wenn niemand `--rolle` angegeben hat und ein Mensch
+# davorsitzt. Der Abbildbau gibt die Rolle mit und wird nie gefragt.
+#
+# **Gefragt wird über `/dev/tty`, nicht über die Standardeingabe.** Der Aufruf
+# aus der Anleitung lautet `curl … | sudo bash` — dort *ist* die
+# Standardeingabe das Skript selbst. Ein `read` läse die nächste Zeile des
+# Skripts, nicht die Antwort, und verschluckte sie obendrein.
+#
+# Lässt sich kein Terminal öffnen, bleibt es bei `saal`: Das ist die Rolle,
+# die es vielfach gibt, und ein unbeaufsichtigter Lauf darf nicht auf eine
+# Antwort warten, die nie kommt.
+frage_rolle() {
+  local antwort
+  if ! { exec 3<>/dev/tty; } 2>/dev/null; then
+    printf 'saal'
+    return
+  fi
+
+  {
+    printf '\n  \033[1mWelche Rolle soll dieser Pi bekommen?\033[0m\n\n'
+    printf '    1) Bühne oder Pult\n'
+    printf '       Zeigt, was der Hauptrechner sagt — hinter dem Beamer oder unter dem\n'
+    printf '       Rednerpult. So viele, wie Bildschirme da sind.\n\n'
+    printf '    2) Hauptrechner\n'
+    printf '       Hier wird die Versammlung geführt: Wahlgänge, Stimmzettel, Ergebnisse.\n'
+    printf '       Genau einer. Die Daten liegen dann auf der SD-Karte.\n\n'
+  } >&3
+
+  while true; do
+    printf '  Auswahl [1]: ' >&3
+    if ! read -r antwort <&3; then
+      # Kein Gegenüber mehr — lieber die häufige Rolle als ein Abbruch.
+      printf '\n' >&3
+      exec 3>&-
+      printf 'saal'
+      return
+    fi
+    case "${antwort:-1}" in
+      1 | saal | Saal | s | S)
+        exec 3>&-
+        printf 'saal'
+        return ;;
+      2 | hauptrechner | Hauptrechner | h | H)
+        exec 3>&-
+        printf 'hauptrechner'
+        return ;;
+      *)
+        printf '  Bitte 1 oder 2 eingeben.\n' >&3 ;;
+    esac
+  done
+}
+
 # --------------------------------------------------------------- Die Rolle
 #
 # Die beiden Rollen unterscheiden sich in einem Punkt grundsätzlich: Die eine
 # wird *angesehen*, die andere *bedient*. Daran hängt alles Weitere — ob es
 # eine Fensterverwaltung gibt, ob ein Mauszeiger zu sehen ist, ob Drucker und
 # Wechseldatenträger gebraucht werden.
+
+[[ -n "$rolle" ]] || rolle="$(frage_rolle)"
 
 case "$rolle" in
   saal)
@@ -94,8 +155,6 @@ paketadresse() {
   printf '%s/download/v%s/%s-%s-linux-%s.tar.gz' \
     "$QUELLE_BASIS" "$nummer" "$ARCHIV" "$nummer" "$bogen"
 }
-
-[[ $EUID -eq 0 ]] || fehler 'Bitte mit sudo ausführen.'
 
 # ---------------------------------------------------------------- Prüfungen
 
