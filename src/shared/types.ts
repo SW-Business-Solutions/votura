@@ -841,6 +841,16 @@ export interface AppConfig {
       cutMarker: string
     }
   }
+  /**
+   * Die Versammlung selbst.
+   *
+   * Wann sie beschlussfähig ist, steht in der Satzung und nicht im Programm —
+   * deshalb einstellbar und mit `none` voreingestellt: Ohne ausdrückliche
+   * Regel behauptet Votura nichts über die Beschlussfähigkeit.
+   */
+  assembly: {
+    quorum: QuorumRule
+  }
   security: {
     sessionTimeoutMinutes: number
     requirePinForMassPrint: boolean

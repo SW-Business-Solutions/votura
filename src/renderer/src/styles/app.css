@@ -299,6 +299,11 @@ p {
 .grid.cols-3 {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
+/* Für Kennzahlen: schmaler als cols-3, damit vier Werte nebeneinanderpassen
+   und bei schmalem Fenster sauber umbrechen. */
+.grid.cols-4 {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
 .row {
   display: flex;
   gap: 10px;

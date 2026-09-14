@@ -103,6 +103,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     printBallotVersion: false,
     labels: DEFAULT_BALLOT_LABELS
   },
+  assembly: { quorum: { kind: 'none', value: 0 } },
   security: {
     sessionTimeoutMinutes: 30,
     requirePinForMassPrint: true,

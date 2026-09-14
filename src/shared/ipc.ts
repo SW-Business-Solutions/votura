@@ -23,6 +23,7 @@ import type {
   AgendaItem,
   AgendaItemInput,
   AppConfig,
+  AttendanceEntry,
   AuditChainCheck,
   AuditEntry,
   BallotAccounting,
@@ -40,7 +41,10 @@ import type {
   ElectionRound,
   ElectionRuleSet,
   IsoDate,
+  Participant,
+  ParticipantInput,
   PreflightItem,
+  PresenceSummary,
   PrintBatch,
   PrinterConfig,
   PrinterTestResult,
@@ -374,6 +378,24 @@ export interface Api {
   }) => Promise<AgendaItem>
   'agenda.reorder': (input: { eventId: UUID; orderedIds: UUID[] }) => Promise<AgendaItem[]>
   'agenda.remove': (id: UUID) => Promise<AgendaItem[]>
+
+  /* --------------------------------------------------------- Akkreditierung */
+  'participant.list': (eventId: UUID) => Promise<Participant[]>
+  'participant.add': (input: ParticipantInput) => Promise<Participant>
+  'participant.update': (input: ParticipantInput & { id: UUID; rowVersion: number }) => Promise<Participant>
+  'participant.attendance': (input: { id: UUID; kind: 'in' | 'out'; note?: string }) => Promise<Participant>
+  'participant.history': (id: UUID) => Promise<AttendanceEntry[]>
+  /**
+   * Gibt einen Voting Pass aus und liefert ihn **einmalig** zurück.
+   *
+   * Der Wert erscheint nur in dieser einen Antwort; gespeichert wird nur sein
+   * Hash. Er gehört damit an genau eine Stelle — in den Druck.
+   */
+  'participant.issuePass': (id: UUID) => Promise<{ participant: Participant; token: string }>
+  'participant.findByPass': (input: { eventId: UUID; token: string }) => Promise<Participant | null>
+  'participant.block': (input: { id: UUID; reason: string }) => Promise<Participant>
+  'participant.unblock': (id: UUID) => Promise<Participant>
+  'participant.presence': (eventId: UUID) => Promise<PresenceSummary>
 
   /* ------------------------------------------------------------ Kandidaten */
   'candidate.add': (input: { roundId: UUID; candidates: CandidateInput[] }) => Promise<Candidate[]>

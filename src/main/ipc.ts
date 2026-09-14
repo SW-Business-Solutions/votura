@@ -138,8 +138,21 @@ import {
   reorderAgenda,
   updateAgendaItem
 } from './services/agenda'
+import {
+  addParticipant,
+  attendanceHistory,
+  blockParticipant,
+  findByPass,
+  issuePass,
+  listParticipants,
+  presenceSummary,
+  setAttendance,
+  unblockParticipant,
+  updateParticipant
+} from './services/participants'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
+  getConfig,
   getNetworkProjection,
   getProjectionTheme,
   getSettings,
@@ -480,6 +493,18 @@ const api: Api = {
   },
 
   /* ---------------------------------------------------------- Tagesordnung */
+  /* ------------------------------------------------------- Akkreditierung */
+  'participant.list': async (eventId) => listParticipants(eventId),
+  'participant.add': async (input) => addParticipant(input),
+  'participant.update': async (input) => updateParticipant(input.id, input),
+  'participant.attendance': async (input) => setAttendance(input.id, input.kind, input.note),
+  'participant.history': async (id) => attendanceHistory(id),
+  'participant.issuePass': async (id) => issuePass(id),
+  'participant.findByPass': async (input) => findByPass(input.eventId, input.token),
+  'participant.block': async (input) => blockParticipant(input.id, input.reason),
+  'participant.unblock': async (id) => unblockParticipant(id),
+  'participant.presence': async (eventId) => presenceSummary(eventId, getConfig().assembly.quorum),
+
   'agenda.list': async (eventId) => listAgenda(eventId),
   'agenda.add': async (input) => addAgendaItem(input),
   'agenda.update': async (input) => updateAgendaItem(input),
