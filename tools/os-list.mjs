@@ -99,7 +99,10 @@ for (const datei of dateien) {
     extract_size: roh.bytes,
     extract_sha256: roh.sha256,
     image_download_size: geladen,
-    release_date: new Date().toISOString().slice(0, 10),
+    /* Örtliches Datum, nicht UTC: Ein Abbild, das um halb eins nachts gebaut
+       wird, trägt sonst das Datum des Vortags — und wer es am nächsten Tag
+       sieht, hält es für älter, als es ist. */
+    release_date: new Date().toLocaleDateString('sv-SE'),
     /* Pi 4 und Pi 5. Der Pi 3 fehlt mit Absicht: Electron gibt es nicht
        mehr für armv7, und Chromium auf 1 GB RAM ist für eine Wand, die
        stundenlang läuft, zu knapp. */
