@@ -1,7 +1,7 @@
 # ADR-0006: Digitale Stimmabgabe neben der Papierwahl
 
-- **Status:** angenommen (Entwurf der Architektur; Umsetzung in Meilensteinen)
-- **Datum:** 2026-09-14
+- **Status:** angenommen und umgesetzt (M0–M2)
+- **Datum:** 2026-09-14, Umsetzung nachgetragen am 2026-09-14
 
 ## Kontext
 
@@ -70,6 +70,35 @@ Bondrucker, der auch die Stimmzettel druckt.
 Je Wahlgang entsteht daraus eine neue, einmalige Berechtigung. Doppelte Stimmabgabe wird an zwei
 Stellen verhindert: Die Berechtigungsseite gibt je Pass und Wahlgang genau eine Unterschrift aus,
 die Urne nimmt jede Seriennummer genau einmal an.
+
+### Nur wer im Saal ist, darf abstimmen
+
+Der Ausweis weist die Berechtigung nach; **anwesend** sein muss man trotzdem. Beides fällt nicht von
+selbst zusammen: Ein gedruckter Pass funktionierte sonst auch vom Parkplatz aus.
+
+Der Ausweis kommt daher in drei Formen, und alle drei werden am Ausgang eingezogen oder verfallen:
+
+|            | **Stimmkarte**               | **Einlassbändchen**           | **Gedruckter Pass**       |
+| ---------- | ---------------------------- | ----------------------------- | ------------------------- |
+| Material   | Plastik, wiederverwendbar    | Papier, um das Handgelenk     | Bon aus dem Thermodrucker |
+| Am Ausgang | zurück in den Stapel         | abgerissen, verbraucht        | bleibt beim Teilnehmer    |
+| Wofür      | wiederkehrende Versammlungen | einmalige Großveranstaltungen | kleine Runden, Nachzügler |
+
+Wer den Saal verlässt, gibt ab; wer wiederkommt, bekommt einen neuen Ausweis. Damit ist die
+Anwesenheit nicht mehr eine zusätzlich zu pflegende Liste, sondern fällt beim Ein- und Auslass von
+selbst an — ein Scan gibt aus und macht anwesend, ein Scan nimmt zurück und macht abwesend.
+
+**Der Ausweis ist ein Inhaberpapier.** Wer ihn hat, gilt als die Person, der er zugewiesen ist — wie
+eine Garderobenmarke. Das ist im Saal gängige Praxis, aber es ist etwas anderes als ein
+Ausweisdokument, und es gehört benannt statt verschwiegen. Vier Dinge begrenzen den Schaden: Im QR
+steht ein langes Zufallsgeheimnis statt der aufgedruckten Nummer; ein Ausweis gilt nur, solange er
+zugewiesen ist; mit dem Abschluss der Versammlung verfällt alles Ausgegebene — Karten, Bändchen
+**und** gedruckte Pässe; und ein verlorener Ausweis wird gesperrt und bleibt es.
+
+Eine **Einmalnutzung** der Karte wäre der naheliegende Schluss und hilft nicht: Das Foto entsteht,
+während die Karte ausgegeben ist, und der Missbrauch geschieht im selben Zeitfenster. Entwertet wird
+deshalb bei der Rückgabe, beim Abschluss der Versammlung und auf Zuruf — und die eigentliche
+Einmaligkeit sitzt eine Ebene tiefer, bei der Stimmberechtigung je Wahlgang.
 
 ### Die Bilanz wird zur Prüfung
 
@@ -147,14 +176,34 @@ Stimmabgabe, ohne für 500 Teilnehmer Geräte zu beschaffen.
   Parteiengesetzes sind am aktuellen Wortlaut zu prüfen; das Bedrohungsmodell nennt die offenen
   Fragen. Diese ADR trifft dazu keine Aussage.
 
+## Wie es umgesetzt wurde
+
+|                                    | Wo                                                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Rechenwerk der Blindsignatur       | `src/shared/blindsignatur.ts` — BigInt, damit dieselbe Rechnung auf dem Telefon und im Hauptprozess läuft |
+| Wahldienst, Urne, Auszählung       | `src/main/services/voting.ts`                                                                             |
+| Akkreditierung, Anwesenheit, Pässe | `src/main/services/participants.ts`                                                                       |
+| Karten und Bändchen                | `src/main/services/cards.ts`                                                                              |
+| Ausgabe der Stimmzettel            | `src/main/services/handout.ts`                                                                            |
+| Seite auf dem Teilnehmergerät      | `src/renderer/src/wahl-main.tsx`                                                                          |
+| Brücke ohne Anmeldung              | `src/main/wahl-bruecke.ts` — drei Funktionen, mehr ist von außen nicht erreichbar                         |
+
+**Die Prüfsumme kommt von außen herein.** Das Rechenwerk hasht nicht selbst; im Hauptprozess liefert
+`node:crypto` sie, im Browser `crypto.subtle`. Eine eigene SHA-256-Implementierung wäre die Art Rad,
+die man nicht neu erfindet.
+
+**Die Trennung ist geprüft, nicht behauptet.** Eine Prüfung hält die Spalten von `voting_rights` und
+`cast_ballots` namentlich fest: Außer dem Wahlgang haben sie nichts gemeinsam, und `participant_id`
+bleibt in der Urne leer — außer bei einer namentlichen Abstimmung, wo die Zuordnung der Zweck ist.
+
 ## Meilensteine
 
-|        | Inhalt                                                                                                            | Warum in dieser Reihenfolge                                                                                                                                                                               |
-| ------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M0** | Akkreditierung: Mitglieder, Anwesenheit, Kommen und Gehen, Beschlussfähigkeit, Voting Pass als gedruckter QR-Code | Fundament. `eligible_voters` ist heute **eine getippte Zahl am Ereignis** — beim vierten Wahlgang sind andere Leute im Saal als beim ersten. Verbessert sofort die Papierwahl, ganz ohne digitale Stimme. |
-| **M1** | Offene Abstimmungen digital (Sach- und GO-Anträge)                                                                | Kein Wahlgeheimnis, also ohne Blindsignaturen. Erprobt Netz, Pass, Oberfläche und Bilanz unter echten Bedingungen — 500 Geräte im WLAN sind ein Problem für sich.                                         |
-| **M2** | Geheime Wahl: Blindsignaturen, Kabinenrolle in Votura Saal, gedruckte Urnenliste                                  | Erst jetzt, mit erprobter Infrastruktur, der Teil mit der höchsten Fallhöhe.                                                                                                                              |
-| **M3** | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                      | Setzt M2 voraus.                                                                                                                                                                                          |
+|          | Inhalt                                                                                                                                                          | Warum in dieser Reihenfolge                                                                                                                                                                               |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M0** ✓ | Akkreditierung: Mitglieder, Anwesenheit, Kommen und Gehen, Beschlussfähigkeit, Voting Pass als gedruckter QR-Code, Karten und Bändchen, Ausgabe der Stimmzettel | Fundament. `eligible_voters` ist heute **eine getippte Zahl am Ereignis** — beim vierten Wahlgang sind andere Leute im Saal als beim ersten. Verbessert sofort die Papierwahl, ganz ohne digitale Stimme. |
+| **M1** ✓ | Offene und namentliche Abstimmungen digital                                                                                                                     | Kein Wahlgeheimnis, also ohne Blindsignaturen. Erprobt Netz, Pass, Oberfläche und Bilanz unter echten Bedingungen — 500 Geräte im WLAN sind ein Problem für sich.                                         |
+| **M2** ✓ | Geheime Wahl: Blindsignaturen, Kabinenrolle in Votura Saal, gedrucktes Urnenverzeichnis                                                                         | Erst jetzt, mit erprobter Infrastruktur, der Teil mit der höchsten Fallhöhe.                                                                                                                              |
+| **M3**   | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                                                                    | Setzt M2 voraus — **offen**.                                                                                                                                                                              |
 
 ## Verworfene Alternativen
 
