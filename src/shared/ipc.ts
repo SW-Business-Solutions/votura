@@ -31,6 +31,8 @@ import type {
   BallotPreviewRow,
   BallotTemplateConfig,
   BallotVersionRecord,
+  Card,
+  CardStock,
   Candidate,
   CandidateOrderMode,
   CountingMode,
@@ -396,6 +398,34 @@ export interface Api {
   'participant.block': (input: { id: UUID; reason: string }) => Promise<Participant>
   'participant.unblock': (id: UUID) => Promise<Participant>
   'participant.presence': (eventId: UUID) => Promise<PresenceSummary>
+
+  /* ------------------------------------------------- Karten und Bändchen */
+  'card.list': () => Promise<Card[]>
+  'card.stock': () => Promise<CardStock>
+  'card.import': (input: {
+    entries: { serial: string; code: string }[]
+    kind: Card['kind']
+  }) => Promise<{ added: number; skipped: number }>
+  'card.assign': (input: {
+    participantId: UUID
+    code: string
+  }) => Promise<{ card: Card; participant: Participant }>
+  'card.return': (code: string) => Promise<{ card: Card; participant: Participant | null }>
+  'card.setStatus': (input: { id: UUID; status: Card['status']; note?: string }) => Promise<Card>
+  /**
+   * Ein Scan am Einlass — was auch immer da gescannt wurde.
+   *
+   * Karte, Bändchen oder gedruckter Pass: Wer das Gerät hält, soll nicht
+   * vorher entscheiden müssen, was er gleich darüberzieht.
+   */
+  'card.resolve': (input: {
+    eventId: UUID
+    code: string
+  }) => Promise<
+    | { kind: 'card'; card: Card; participant: Participant | null }
+    | { kind: 'pass'; participant: Participant }
+    | null
+  >
 
   /* ------------------------------------------------------------ Kandidaten */
   'candidate.add': (input: { roundId: UUID; candidates: CandidateInput[] }) => Promise<Candidate[]>

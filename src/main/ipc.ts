@@ -150,6 +150,15 @@ import {
   unblockParticipant,
   updateParticipant
 } from './services/participants'
+import {
+  assignCard,
+  cardStock,
+  importCards,
+  listCards,
+  resolveScan,
+  returnCard,
+  setCardStatus
+} from './services/cards'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
   getConfig,
@@ -493,6 +502,15 @@ const api: Api = {
   },
 
   /* ---------------------------------------------------------- Tagesordnung */
+  /* ------------------------------------------------ Karten und Bändchen */
+  'card.list': async () => listCards(),
+  'card.stock': async () => cardStock(),
+  'card.import': async (input) => importCards(input.entries, input.kind),
+  'card.assign': async (input) => assignCard(input.participantId, input.code),
+  'card.return': async (code) => returnCard(code),
+  'card.setStatus': async (input) => setCardStatus(input.id, input.status, input.note),
+  'card.resolve': async (input) => resolveScan(input.eventId, input.code),
+
   /* ------------------------------------------------------- Akkreditierung */
   'participant.list': async (eventId) => listParticipants(eventId),
   'participant.add': async (input) => addParticipant(input),

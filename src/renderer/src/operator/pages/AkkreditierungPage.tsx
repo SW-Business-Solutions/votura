@@ -12,7 +12,7 @@
  * kann vortreten, ohne dass jemand die Maus anfasst.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Participant, PresenceSummary } from '@shared/types'
+import type { Card as Ausweis, CardStock, Participant, PresenceSummary } from '@shared/types'
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
@@ -33,17 +33,29 @@ export function AkkreditierungPage(): React.JSX.Element {
   const [meldung, setMeldung] = useState<string | null>(null)
   const [passAnzeige, setPassAnzeige] = useState<{ name: string; token: string } | null>(null)
   const [neu, setNeu] = useState({ lastName: '', firstName: '', number: '', weight: '1' })
+  const [bestand, setBestand] = useState<CardStock | null>(null)
+  /*
+   * Der Einlass funktioniert in beiden Richtungen: erst die Person wählen und
+   * dann die Karte scannen — oder erst die Karte scannen und dann die Person
+   * antippen. Wer in einer Schlange steht, macht es mal so und mal so.
+   */
+  const [ausgewaehlt, setAusgewaehlt] = useState<Participant | null>(null)
+  const [wartendeKarte, setWartendeKarte] = useState<{ card: Ausweis; code: string } | null>(null)
+  const [importText, setImportText] = useState('')
+  const [importArt, setImportArt] = useState<Ausweis['kind']>('card')
   const sucheFeld = useRef<HTMLInputElement | null>(null)
 
   const laden = useCallback(async () => {
     if (!event) return
     try {
-      const [teilnehmer, zusammenfassung] = await Promise.all([
+      const [teilnehmer, zusammenfassung, karten] = await Promise.all([
         api('participant.list', event.id),
-        api('participant.presence', event.id)
+        api('participant.presence', event.id),
+        api('card.stock')
       ])
       setListe(teilnehmer)
       setStand(zusammenfassung)
+      setBestand(karten)
     } catch (error) {
       app.reportError(error)
     }
@@ -82,31 +94,125 @@ export function AkkreditierungPage(): React.JSX.Element {
     }
   }
 
+  /** Wie ein Ausweis in einem Satz heißt. */
+  const bezeichnung = (karte: Ausweis): string =>
+    karte.kind === 'band' ? `Bändchen ${karte.serial}` : `Karte ${karte.serial}`
+
+  const zuruecksetzen = (): void => {
+    setSuche('')
+    sucheFeld.current?.focus()
+  }
+
+  const ausgeben = async (person: Participant, karte: Ausweis, code: string): Promise<void> => {
+    try {
+      await api('card.assign', { participantId: person.id, code })
+      setMeldung(`${person.firstName} ${person.lastName} — ${bezeichnung(karte)} ausgegeben`)
+      setAusgewaehlt(null)
+      setWartendeKarte(null)
+      await laden()
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
   /**
    * Ein Scan oder eine Eingabe im Suchfeld.
    *
-   * Sieht der Wert nach einem Voting Pass aus, wird er als solcher behandelt
-   * und die Person unmittelbar auf „anwesend" gesetzt — das ist der Handgriff,
-   * der am Einlass zählt. Sonst bleibt es eine gewöhnliche Suche.
+   * Kurze Eingaben sind eine Namenssuche — niemand tippt einen
+   * Sechzehnstellet von Hand. Alles Längere wird als Code behandelt, und was
+   * dahintersteckt, entscheidet das System: Karte, Bändchen oder gedruckter
+   * Pass.
    */
-  const absenden = async (): Promise<void> => {
+  const scannen = async (): Promise<void> => {
     const wert = suche.trim()
-    if (!wert) return
-    if (!/^[A-Za-z0-9]{16}$/.test(wert)) return
+    if (wert.length < 10 || /\s/.test(wert)) return
 
     try {
-      const person = await api('participant.findByPass', { eventId: event.id, token: wert })
-      if (!person) {
-        setMeldung('Dieser Pass gehört zu niemandem in dieser Versammlung.')
+      const treffer = await api('card.resolve', { eventId: event.id, code: wert })
+      if (!treffer) {
+        setMeldung('Dieser Code gehört zu nichts in dieser Versammlung.')
+        zuruecksetzen()
         return
       }
-      if (person.blockedAt) {
-        setMeldung(`${person.firstName} ${person.lastName} ist gesperrt — ${person.blockedReason ?? ''}`)
+
+      if (treffer.kind === 'pass') {
+        if (treffer.participant.blockedAt) {
+          setMeldung(
+            `${treffer.participant.firstName} ${treffer.participant.lastName} ist gesperrt` +
+              (treffer.participant.blockedReason ? ` — ${treffer.participant.blockedReason}` : '.')
+          )
+          zuruecksetzen()
+          return
+        }
+        await anwesenheit(treffer.participant, treffer.participant.present ? 'out' : 'in')
+        zuruecksetzen()
         return
       }
-      await anwesenheit(person, person.present ? 'out' : 'in')
-      setSuche('')
-      sucheFeld.current?.focus()
+
+      /* Ein ausgegebener Ausweis wird zurückgenommen — das ist der Ausgang. */
+      if (treffer.participant) {
+        const { participant } = await api('card.return', wert)
+        setMeldung(
+          `${participant?.firstName ?? ''} ${participant?.lastName ?? ''} — gegangen, ` +
+            (treffer.card.kind === 'band'
+              ? `${bezeichnung(treffer.card)} verbraucht`
+              : `${bezeichnung(treffer.card)} zurück im Stapel`)
+        )
+        await laden()
+        zuruecksetzen()
+        return
+      }
+
+      /* Ein freier Ausweis: Er braucht eine Person. Steht schon eine bereit,
+         geht es sofort; sonst wartet der Ausweis auf den nächsten Antipper. */
+      if (ausgewaehlt) {
+        await ausgeben(ausgewaehlt, treffer.card, wert)
+      } else {
+        setWartendeKarte({ card: treffer.card, code: wert })
+        setMeldung(`${bezeichnung(treffer.card)} bereit — jetzt die Person antippen.`)
+      }
+      zuruecksetzen()
+    } catch (error) {
+      app.reportError(error)
+      zuruecksetzen()
+    }
+  }
+
+  /**
+   * Jemanden in der Liste antippen.
+   *
+   * Wartet ein gescannter Ausweis, bekommt die Person ihn sofort. Sonst wird
+   * sie vorgemerkt und der nächste Scan gehört ihr.
+   */
+  const antippen = async (person: Participant): Promise<void> => {
+    if (wartendeKarte) {
+      await ausgeben(person, wartendeKarte.card, wartendeKarte.code)
+      return
+    }
+    setAusgewaehlt(ausgewaehlt?.id === person.id ? null : person)
+  }
+
+  const kartenEinlesen = async (): Promise<void> => {
+    /*
+     * Die Liste kommt vom Hersteller: je Zeile die aufgedruckte Nummer und
+     * der Code, getrennt durch Semikolon, Komma oder Tabulator. Mehr braucht
+     * es nicht — und ein eigenes Dateiformat wäre eine Hürde ohne Gewinn.
+     */
+    const entries = importText
+      .split('\n')
+      .map((zeile) => zeile.split(/[;,\t]/).map((teil) => teil.trim()))
+      .filter((teile) => teile.length >= 2 && teile[0] && teile[1])
+      .map(([serial, code]) => ({ serial, code }))
+
+    if (entries.length === 0) {
+      setMeldung('Keine verwertbaren Zeilen gefunden — erwartet wird „Nummer;Code".')
+      return
+    }
+    try {
+      const ergebnis = await api('card.import', { entries, kind: importArt })
+      setMeldung(`${ergebnis.added} aufgenommen, ${ergebnis.skipped} übersprungen (schon im Bestand).`)
+      setImportText('')
+      await laden()
     } catch (error) {
       app.reportError(error)
     }
@@ -176,6 +282,17 @@ export function AkkreditierungPage(): React.JSX.Element {
         </Card>
       )}
 
+      {bestand && bestand.total > 0 && (
+        <Card tight>
+          <div className="grid cols-4">
+            <Zahl wert={bestand.available} text="Ausweise frei" />
+            <Zahl wert={bestand.assigned} text="ausgegeben" />
+            <Zahl wert={bestand.lost} text="verloren" />
+            <Zahl wert={bestand.retired} text="verbraucht" />
+          </div>
+        </Card>
+      )}
+
       {stand && stand.quorum.kind !== 'none' && (
         <div className={`notice ${stand.quorumMet ? 'ok' : 'warn'}`}>
           <strong>{stand.quorumMet ? 'Beschlussfähig' : 'Nicht beschlussfähig'}</strong> —{' '}
@@ -197,9 +314,25 @@ export function AkkreditierungPage(): React.JSX.Element {
           value={suche}
           onChange={(ereignis) => setSuche(ereignis.target.value)}
           onKeyDown={(ereignis) => {
-            if (ereignis.key === 'Enter') void absenden()
+            if (ereignis.key === 'Enter') void scannen()
           }}
         />
+        {(ausgewaehlt || wartendeKarte) && (
+          <div className="notice mt-2">
+            {wartendeKarte
+              ? `${bezeichnung(wartendeKarte.card)} wartet — Person in der Liste antippen.`
+              : `${ausgewaehlt?.firstName} ${ausgewaehlt?.lastName} ist vorgemerkt — jetzt Ausweis scannen.`}{' '}
+            <button
+              className="ghost"
+              onClick={() => {
+                setAusgewaehlt(null)
+                setWartendeKarte(null)
+              }}
+            >
+              Abbrechen
+            </button>
+          </div>
+        )}
         {meldung && <div className="notice mt-2">{meldung}</div>}
       </Card>
 
@@ -222,6 +355,35 @@ export function AkkreditierungPage(): React.JSX.Element {
           </button>
         </Card>
       )}
+
+      <Card title="Karten und Bändchen einlesen">
+        <div className="hint">
+          Die Liste kommt vom Hersteller — je Zeile die aufgedruckte Nummer und der Code, getrennt durch
+          Semikolon. Gespeichert wird nur die Prüfsumme des Codes; die Liste gehört danach vernichtet, denn
+          sie ist ein Stapel gültiger Ausweise in Textform.
+        </div>
+        <div className="row mt-2">
+          <label className="field-inline">
+            <input type="radio" checked={importArt === 'card'} onChange={() => setImportArt('card')} />
+            Karten (kommen zurück)
+          </label>
+          <label className="field-inline">
+            <input type="radio" checked={importArt === 'band'} onChange={() => setImportArt('band')} />
+            Bändchen (werden abgerissen)
+          </label>
+        </div>
+        <textarea
+          className="mt-2"
+          rows={4}
+          placeholder={`0001;A7F2-9K3M-XQ81-2BVR
+0002;L4D8-3PZ1-9WTC-6HNE`}
+          value={importText}
+          onChange={(ereignis) => setImportText(ereignis.target.value)}
+        />
+        <button className="mt-2" onClick={() => void kartenEinlesen()}>
+          Einlesen
+        </button>
+      </Card>
 
       <Card title="Teilnehmer aufnehmen">
         <div className="row">
@@ -274,7 +436,11 @@ export function AkkreditierungPage(): React.JSX.Element {
             </thead>
             <tbody>
               {gefiltert.map((person) => (
-                <tr key={person.id} className={person.present ? 'anwesend' : undefined}>
+                <tr
+                  key={person.id}
+                  className={ausgewaehlt?.id === person.id ? 'ausgewaehlt' : undefined}
+                  onClick={() => void antippen(person)}
+                >
                   <td>
                     {person.lastName}, {person.firstName}
                     {person.blockedAt && <span className="badge">gesperrt</span>}
@@ -284,8 +450,8 @@ export function AkkreditierungPage(): React.JSX.Element {
                     {person.eligible ? (person.weight > 1 ? `${person.weight} Stimmen` : 'ja') : 'Gast'}
                   </td>
                   <td>{person.present ? uhrzeit(person.lastSeenAt) : '—'}</td>
-                  <td>{person.passIssued ? 'ausgegeben' : '—'}</td>
-                  <td className="row">
+                  <td>{person.passIssued ? 'Pass' : '—'}</td>
+                  <td className="row" onClick={(ereignis) => ereignis.stopPropagation()}>
                     <button onClick={() => void anwesenheit(person, person.present ? 'out' : 'in')}>
                       {person.present ? 'Gegangen' : 'Da'}
                     </button>
