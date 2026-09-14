@@ -6,6 +6,7 @@ import { db } from '../db'
 import { optionalNumber, optionalString } from '../db/driver'
 import { appendAudit } from './audit'
 import { handoutCount } from './handout'
+import { votingStand } from './voting'
 import { requirePermission } from './auth'
 
 interface ManualRow {
@@ -34,11 +35,14 @@ export function accountingFor(roundId: UUID): BallotAccounting {
   const manual = db().prepare(`SELECT * FROM accounting WHERE round_id = ?`).get<ManualRow>(roundId)
 
   const ausgabe = handoutCount(roundId)
+  const digital = votingStand(roundId)
 
   return {
     ...base,
     handedOut: ausgabe.initial,
     handedOutReplacements: ausgabe.replacements,
+    digitalIssued: digital.ausgegeben,
+    digitalCast: digital.abgegeben,
     printed: Number(printed?.printed ?? 0),
     printFailures: Number(printed?.failures ?? 0),
     testPrints: Number(printed?.tests ?? 0),

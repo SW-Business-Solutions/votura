@@ -14,6 +14,8 @@ export function emptyAccounting(electionRoundId: string): BallotAccounting {
     testPrints: 0,
     handedOut: 0,
     handedOutReplacements: 0,
+    digitalIssued: 0,
+    digitalCast: 0,
     issued: 0,
     replacementsIssued: 0,
     returnedSpoiled: 0,

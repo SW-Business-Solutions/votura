@@ -64,6 +64,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'voting.opened': 'Digitale Abstimmung eröffnet',
   'voting.closed': 'Digitale Abstimmung geschlossen',
   'voting.urne_printed': 'Urnenverzeichnis gedruckt',
+  'voting.committee_key': 'Prüfschlüssel des Wahlausschusses gemeldet',
   'participant.added': 'Teilnehmer aufgenommen',
   'participant.updated': 'Teilnehmer geändert',
   'participant.arrived': 'Teilnehmer eingetroffen',

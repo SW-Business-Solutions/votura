@@ -744,6 +744,15 @@ export interface BallotAccounting {
    */
   handedOut: number
   handedOutReplacements: number
+  /**
+   * Digital ausgegebene Stimmberechtigungen und eingegangene Stimmen.
+   *
+   * Bei einem hybriden Wahlgang gehört beides in **eine** Rechnung: Papier
+   * und digital laufen nebeneinander, und niemand darf beide Wege gehen. Die
+   * Bilanz muss das als ein Bild zeigen, sonst prüft niemand sie zu Ende.
+   */
+  digitalIssued: number
+  digitalCast: number
   /** Manuell dokumentierte Mengen. */
   issued: number
   replacementsIssued: number

@@ -478,6 +478,41 @@ CREATE TABLE IF NOT EXISTS cast_ballots (
 
 CREATE INDEX IF NOT EXISTS idx_urne_wahlgang ON cast_ballots(round_id, ordnung);
 `
+  },
+  {
+    /*
+     * Vier-Augen-Prinzip: der Schlüssel liegt woanders.
+     *
+     * Bis hierher hält der Hauptrechner den privaten Schlüssel. Wer ihn
+     * vollständig kontrolliert, kann zusätzliche Unterschriften erzeugen; die
+     * Bilanz macht das sichtbar, verhindert es aber nicht — und die Zahl der
+     * ausgegebenen Berechtigungen stammt vom selben Rechner.
+     *
+     * `signer = 'committee'` verschiebt das: Der Schlüssel entsteht auf dem
+     * Gerät des Wahlausschusses und verlässt es nie. Der Hauptrechner sammelt
+     * die verblendeten Werte in `signing_queue`, das andere Gerät holt sie ab,
+     * unterschreibt und gibt zurück. Er kann dann nichts erzeugen, was der
+     * Ausschuss nicht gesehen hat — und der zählt mit.
+     *
+     * Die Warteschlange enthält **nur verblendete Werte**. Auch wer sie
+     * vollständig liest, erfährt daraus nichts: Das ist der ganze Sinn der
+     * Verblendung.
+     */
+    version: 11,
+    sql: `
+ALTER TABLE voting_sessions ADD COLUMN signer TEXT NOT NULL DEFAULT 'hub';
+
+CREATE TABLE IF NOT EXISTS signing_queue (
+  id          TEXT PRIMARY KEY,
+  round_id    TEXT NOT NULL REFERENCES rounds(id),
+  blinded     TEXT NOT NULL,
+  signature   TEXT,
+  created_at  TEXT NOT NULL,
+  answered_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_signatur_offen ON signing_queue(round_id, answered_at);
+`
   }
 ]
 

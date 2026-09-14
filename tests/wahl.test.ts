@@ -5,12 +5,13 @@
  * sind nicht die, die zeigen, dass es funktioniert, sondern die, die zeigen,
  * **was nicht in der Urne steht**.
  */
-import { createHash, randomBytes } from 'node:crypto'
+import { constants, createHash, generateKeyPairSync, privateEncrypt, randomBytes } from 'node:crypto'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
+  ausBase64Url,
   entblenden,
   pruefeSignatur,
   verblenden,
@@ -41,6 +42,8 @@ const rounds = await import('../src/main/services/rounds')
 const candidates = await import('../src/main/services/candidates')
 const teilnehmer = await import('../src/main/services/participants')
 const wahl = await import('../src/main/services/voting')
+const ausgabe = await import('../src/main/services/handout')
+const bilanz = await import('../src/main/services/accounting')
 
 const sha256: Pruefsumme = async (daten) => new Uint8Array(createHash('sha256').update(daten).digest())
 const zufall = (laenge: number): Uint8Array => new Uint8Array(randomBytes(laenge))
@@ -338,5 +341,158 @@ describe('Namentliche Abstimmung', () => {
       .prepare(`SELECT participant_id FROM cast_ballots WHERE round_id = ?`)
       .get<{ participant_id: string | null }>(roundId)
     expect(zeile?.participant_id).toBeNull()
+  })
+})
+
+describe('Hybride Wahlgänge (M3)', () => {
+  /*
+   * Papier und digital nebeneinander. Der eine Fehler, den keine Bilanz der
+   * Welt fände: Jemand bekommt beides — eine Stimme in der elektronischen
+   * Urne und eine zweite in der aus Pappe.
+   */
+  let roundId = ''
+
+  beforeAll(() => {
+    roundId = wahlgangMitBewerbern(['Theta'])
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(roundId)
+  })
+
+  it('gibt keinen Zettel, wer schon digital abstimmen darf', () => {
+    const person = anwesend('DigitalZuerst')
+    wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+    expect(() => ausgabe.issueBallot({ roundId, participantId: person.id })).toThrow(
+      /bereits eine digitale Stimmberechtigung/
+    )
+  })
+
+  it('gibt keine digitale Berechtigung, wer schon einen Zettel hat', () => {
+    const person = anwesend('PapierZuerst')
+    ausgabe.issueBallot({ roundId, participantId: person.id })
+    expect(() => wahl.berechtigungAusgeben({ roundId, participantId: person.id })).toThrow(
+      /bereits ein Stimmzettel auf Papier/
+    )
+  })
+
+  it('zeigt beide Wege in einer Bilanz', () => {
+    /* Zwei getrennte Rechnungen prüft niemand zu Ende. */
+    const stand = bilanz.accountingFor(roundId)
+    expect(stand.handedOut).toBe(1)
+    expect(stand.digitalIssued).toBe(1)
+  })
+})
+
+describe('Vier-Augen-Prinzip (M3)', () => {
+  /*
+   * Bis hierher hält der Hauptrechner den privaten Schlüssel. Wer ihn
+   * kontrolliert, kann zusätzliche Unterschriften erzeugen — die Bilanz macht
+   * das sichtbar, verhindert es aber nicht.
+   *
+   * Beim Ausschussbetrieb entsteht der Schlüssel auf einem anderen Gerät und
+   * verlässt es nie.
+   */
+  let roundId = ''
+  const ausschuss = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 65537 })
+  const jwk = ausschuss.publicKey.export({ format: 'jwk' }) as { n: string; e: string }
+
+  beforeAll(() => {
+    roundId = wahlgangMitBewerbern(['Iota'])
+    wahl.prepareVoting({ roundId, geheimnis: 'secret', geraete: 'booth', signer: 'committee' })
+  })
+
+  it('hält beim Hauptrechner keinen Schlüssel vor', () => {
+    const zeile = db()
+      .prepare(`SELECT private_key, public_key FROM voting_sessions WHERE round_id = ?`)
+      .get<{ private_key: string | null; public_key: string | null }>(roundId)
+    expect(zeile?.private_key).toBeNull()
+    expect(zeile?.public_key).toBeNull()
+  })
+
+  it('lässt sich ohne gemeldeten Schlüssel nicht eröffnen', () => {
+    /* Sonst stünde die Abstimmung offen und niemand bekäme eine
+       Berechtigung — ein Zustand, den im Saal niemand versteht. */
+    expect(() => wahl.openVoting(roundId)).toThrow(/Prüfschlüssel noch nicht gemeldet/)
+  })
+
+  it('nimmt den Schlüssel des Ausschusses an — genau einmal', () => {
+    wahl.committeeKeyMelden(roundId, { n: jwk.n, e: jwk.e })
+    expect(wahl.votingLage(roundId)!.schluessel?.n).toBe(jwk.n)
+
+    /* Ein Schlüssel, der sich austauschen ließe, wäre keine Prüfmöglichkeit,
+       sondern eine Einladung. */
+    const fremd = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 65537 })
+    const fremdJwk = fremd.publicKey.export({ format: 'jwk' }) as { n: string; e: string }
+    expect(() => wahl.committeeKeyMelden(roundId, { n: fremdJwk.n, e: fremdJwk.e })).toThrow(
+      /bereits ein Prüfschlüssel/
+    )
+  })
+
+  it('führt die Unterschrift über das andere Gerät', async () => {
+    wahl.openVoting(roundId)
+    const person = anwesend('Ausschusswahl')
+    const schluessel = { n: jwk.n, e: jwk.e }
+    const seriennummer = zufall(32)
+    const { verblendet, faktor } = await verblenden(seriennummer, schluessel, sha256, zufall)
+
+    /* Der Hauptrechner gibt kein Ergebnis zurück, sondern eine Wartenummer. */
+    const antwort = wahl.berechtigungAusgeben({
+      roundId,
+      participantId: person.id,
+      verblendet
+    })
+    expect(antwort.ticket).toBeTruthy()
+    expect(antwort.signatur).toBeUndefined()
+    expect(wahl.signaturAbholen(antwort.ticket!).signatur).toBeUndefined()
+
+    /* Jetzt das Gerät des Ausschusses: abholen, unterschreiben, zurückgeben. */
+    const offen = wahl.offeneSignaturen(roundId)
+    expect(offen).toHaveLength(1)
+    const roh = privateEncrypt(
+      { key: ausschuss.privateKey, padding: constants.RSA_NO_PADDING },
+      Buffer.from(ausBase64Url(offen[0].blinded))
+    )
+    wahl.signaturEintragen(offen[0].id, zuBase64Url(new Uint8Array(roh)))
+
+    const abgeholt = wahl.signaturAbholen(antwort.ticket!)
+    expect(abgeholt.signatur).toBeTruthy()
+
+    const echte = entblenden(abgeholt.signatur!, faktor, schluessel)
+    expect(await pruefeSignatur(seriennummer, echte, schluessel, sha256)).toBe(true)
+
+    await wahl.stimmeEinlegen({
+      roundId,
+      serial: zuBase64Url(seriennummer),
+      signatur: echte,
+      choice: { antwort: 'ja' }
+    })
+    expect(wahl.votingStand(roundId).abgegeben).toBe(1)
+  })
+
+  it('unterschreibt dieselbe Anfrage nicht zweimal', () => {
+    /* Eine zweite Unterschrift auf dieselbe Anfrage wäre eine zusätzliche
+       Berechtigung aus dem Nichts. */
+    const offen = wahl.offeneSignaturen(roundId)
+    expect(offen).toHaveLength(0)
+  })
+
+  it('lässt den Ausschuss unabhängig mitzählen', () => {
+    /*
+     * Das ist das Vier-Augen-Prinzip: nicht, dass der Hauptrechner nichts
+     * kann, sondern dass jemand anderes nachrechnet. Der Ausschuss weiß, wie
+     * viele Unterschriften er geleistet hat; in der Urne dürfen nie mehr
+     * liegen.
+     */
+    const zaehler = wahl.signaturZaehler(roundId)
+    expect(zaehler.unterschrieben).toBe(1)
+    expect(wahl.votingStand(roundId).abgegeben).toBeLessThanOrEqual(zaehler.unterschrieben)
+  })
+
+  it('speichert in der Warteschlange nur Verblendetes', () => {
+    /* Auch wer sie vollständig liest, erfährt daraus nichts — deshalb darf
+       sie über das Netz gehen. */
+    const spalten = Object.keys(
+      db().prepare(`SELECT * FROM signing_queue LIMIT 1`).get<Record<string, unknown>>() ?? {}
+    ).sort()
+    expect(spalten).toEqual(['answered_at', 'blinded', 'created_at', 'id', 'round_id', 'signature'])
   })
 })

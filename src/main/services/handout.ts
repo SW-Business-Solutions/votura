@@ -27,6 +27,7 @@ import { appendAudit } from './audit'
 import { requirePermission } from './auth'
 import { assertMayVote } from './participants'
 import { getRound } from './rounds'
+import { hatStimmrecht } from './voting'
 
 interface IssueRow {
   id: string
@@ -96,6 +97,17 @@ export function issueBallot(input: {
   }
   if (art === 'replacement' && !input.reason?.trim()) {
     throw new Error('Ein Ersatzzettel braucht einen Grund.')
+  }
+
+  /*
+   * **Der hybride Fall.** Wer für diesen Wahlgang schon digital abstimmen
+   * darf, bekommt keinen Zettel — sonst läge eine Stimme in der elektronischen
+   * Urne und eine zweite in der aus Pappe.
+   */
+  if (art === 'initial' && hatStimmrecht(input.roundId, input.participantId)) {
+    throw new Error(
+      `${person.firstName} ${person.lastName} hat für ${round.roundLabel} bereits eine digitale Stimmberechtigung.`
+    )
   }
 
   const bisher = handoutFor(input.roundId, input.participantId)

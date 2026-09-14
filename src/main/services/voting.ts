@@ -50,6 +50,7 @@ interface SessionRow {
   round_id: string
   secrecy: string
   devices: string
+  signer: string
   status: string
   public_key: string | null
   private_key: string | null
@@ -80,6 +81,17 @@ export function prepareVoting(input: {
   roundId: UUID
   geheimnis: Wahlgeheimnis
   geraete: Geraetewahl
+  /**
+   * Wer unterschreibt.
+   *
+   * `hub` — der Hauptrechner, wie bisher. Einfach, und die Bilanz macht
+   * Missbrauch sichtbar.
+   *
+   * `committee` — das Gerät des Wahlausschusses. Der Schlüssel entsteht dort
+   * und verlässt es nie; der Hauptrechner **kann** dann keine zusätzlichen
+   * Unterschriften erzeugen, nicht nur „tut es nicht".
+   */
+  signer?: 'hub' | 'committee'
 }): WahlLage {
   const nutzer = requirePermission('round.manage')
   const round = getRound(input.roundId)
@@ -88,9 +100,12 @@ export function prepareVoting(input: {
     throw new Error('Diese Abstimmung läuft bereits oder ist geschlossen.')
   }
 
+  const signer = input.signer ?? 'hub'
   let oeffentlich: string | null = null
   let privat: string | null = null
-  if (input.geheimnis === 'secret') {
+  /* Beim Ausschuss entsteht der Schlüssel dort — hier bleibt beides leer, bis
+     das Gerät seinen öffentlichen Teil meldet. */
+  if (input.geheimnis === 'secret' && signer === 'hub') {
     const paar = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 65537 })
     const jwk = paar.publicKey.export({ format: 'jwk' }) as { n: string; e: string }
     oeffentlich = JSON.stringify({ n: jwk.n, e: jwk.e })
@@ -99,13 +114,13 @@ export function prepareVoting(input: {
 
   db()
     .prepare(
-      `INSERT INTO voting_sessions (round_id, secrecy, devices, status, public_key, private_key, created_at)
-       VALUES (?, ?, ?, 'prepared', ?, ?, ?)
+      `INSERT INTO voting_sessions (round_id, secrecy, devices, signer, status, public_key, private_key, created_at)
+       VALUES (?, ?, ?, ?, 'prepared', ?, ?, ?)
        ON CONFLICT(round_id) DO UPDATE SET
-         secrecy = excluded.secrecy, devices = excluded.devices,
+         secrecy = excluded.secrecy, devices = excluded.devices, signer = excluded.signer,
          public_key = excluded.public_key, private_key = excluded.private_key`
     )
-    .run(input.roundId, input.geheimnis, input.geraete, oeffentlich, privat, new Date().toISOString())
+    .run(input.roundId, input.geheimnis, input.geraete, signer, oeffentlich, privat, new Date().toISOString())
 
   appendAudit({
     action: 'voting.prepared',
@@ -117,6 +132,7 @@ export function prepareVoting(input: {
     newValue: {
       geheimnis: input.geheimnis,
       geraete: input.geraete,
+      unterschreibt: signer === 'committee' ? 'Wahlausschuss' : 'Hauptrechner',
       schluessel: oeffentlich ? (JSON.parse(oeffentlich) as OeffentlicherSchluessel).n : undefined
     }
   })
@@ -128,6 +144,17 @@ export function openVoting(roundId: UUID): WahlLage {
   const zeile = session(roundId)
   if (!zeile) throw new Error('Für diesen Wahlgang ist keine digitale Abstimmung vorbereitet.')
   if (zeile.status === 'closed') throw new Error('Diese Abstimmung ist bereits geschlossen.')
+  /*
+   * Ohne Schlüssel keine geheime Wahl. Beim Ausschussbetrieb heißt das: Das
+   * Gerät des Wahlausschusses muss seinen öffentlichen Teil gemeldet haben —
+   * sonst stünde die Abstimmung offen und niemand könnte eine Berechtigung
+   * bekommen.
+   */
+  if (zeile.secrecy === 'secret' && !zeile.public_key) {
+    throw new Error(
+      'Der Wahlausschuss hat seinen Prüfschlüssel noch nicht gemeldet. Erst danach lässt sich eröffnen.'
+    )
+  }
 
   db()
     .prepare(`UPDATE voting_sessions SET status = 'open', opened_at = ? WHERE round_id = ?`)
@@ -296,6 +323,119 @@ export function urnenListe(roundId: UUID): { serial: string; text: string; weigh
   })
 }
 
+/* ================================================== Der Wahlausschuss (M3) */
+
+/**
+ * Das Gerät des Wahlausschusses meldet seinen öffentlichen Schlüssel.
+ *
+ * **Nur einmal.** Steht schon einer da, wird die Meldung abgewiesen — ein
+ * Schlüssel, der sich während einer laufenden Abstimmung austauschen ließe,
+ * wäre keine Prüfmöglichkeit, sondern eine Einladung. Aus demselben Grund
+ * geht es nur vor der Eröffnung.
+ */
+export function committeeKeyMelden(roundId: UUID, schluessel: OeffentlicherSchluessel): void {
+  const zeile = session(roundId)
+  if (!zeile) throw new Error('Für diesen Wahlgang ist keine digitale Abstimmung vorbereitet.')
+  if (zeile.signer !== 'committee') throw new Error('Dieser Wahlgang unterschreibt nicht über den Ausschuss.')
+  if (zeile.status !== 'prepared') throw new Error('Die Abstimmung ist bereits eröffnet.')
+  if (zeile.public_key) throw new Error('Für diesen Wahlgang steht bereits ein Prüfschlüssel fest.')
+  if (!schluessel?.n || !schluessel?.e) throw new Error('Der gemeldete Schlüssel ist unvollständig.')
+
+  db()
+    .prepare(`UPDATE voting_sessions SET public_key = ? WHERE round_id = ?`)
+    .run(JSON.stringify({ n: schluessel.n, e: schluessel.e }), roundId)
+
+  appendAudit({
+    action: 'voting.committee_key',
+    electionRoundId: roundId,
+    newValue: { schluessel: schluessel.n.slice(0, 32) }
+  })
+}
+
+/**
+ * Was noch zu unterschreiben ist.
+ *
+ * Die Liste enthält **nur verblendete Werte**. Auch wer sie vollständig liest,
+ * erfährt daraus nichts — das ist der ganze Sinn der Verblendung. Sie darf
+ * deshalb über das Netz gehen.
+ */
+export function offeneSignaturen(roundId: UUID): { id: string; blinded: string }[] {
+  return db()
+    .prepare(
+      `SELECT id, blinded FROM signing_queue
+        WHERE round_id = ? AND answered_at IS NULL ORDER BY created_at LIMIT 50`
+    )
+    .all<{ id: string; blinded: string }>(roundId)
+}
+
+/** Der Ausschuss gibt eine Unterschrift zurück. */
+export function signaturEintragen(id: string, signatur: string): void {
+  const zeile = db()
+    .prepare(`SELECT id, answered_at FROM signing_queue WHERE id = ?`)
+    .get<{ id: string; answered_at: string | null }>(id)
+  if (!zeile) throw new Error('Diese Anfrage gibt es nicht.')
+  /* Einmal beantwortet, bleibt beantwortet: Eine zweite Unterschrift auf
+     dieselbe Anfrage wäre eine zusätzliche Berechtigung aus dem Nichts. */
+  if (zeile.answered_at) return
+
+  db()
+    .prepare(`UPDATE signing_queue SET signature = ?, answered_at = ? WHERE id = ?`)
+    .run(signatur, new Date().toISOString(), id)
+}
+
+/** Das Gerät des Wählers holt seine Unterschrift ab, sobald sie da ist. */
+export function signaturAbholen(id: string): { signatur?: string } {
+  const zeile = db()
+    .prepare(`SELECT signature FROM signing_queue WHERE id = ?`)
+    .get<{ signature: string | null }>(id)
+  if (!zeile) throw new Error('Diese Anfrage gibt es nicht.')
+  return zeile.signature ? { signatur: zeile.signature } : {}
+}
+
+/**
+ * Wie viele Unterschriften über den Ausschuss gelaufen sind.
+ *
+ * Die Zahl, die der Ausschuss unabhängig mitzählen kann — und die am Ende
+ * zur Urne passen muss. Genau das ist das Vier-Augen-Prinzip: nicht, dass
+ * der Hauptrechner nichts kann, sondern dass jemand anderes nachrechnet.
+ */
+export function signaturZaehler(roundId: UUID): { angefragt: number; unterschrieben: number } {
+  const zeile = db()
+    .prepare(`SELECT COUNT(*) AS alle, COUNT(answered_at) AS fertig FROM signing_queue WHERE round_id = ?`)
+    .get<{ alle: number; fertig: number }>(roundId)
+  return { angefragt: Number(zeile?.alle ?? 0), unterschrieben: Number(zeile?.fertig ?? 0) }
+}
+
+/**
+ * Hat diese Person für diesen Wahlgang schon eine digitale Stimmberechtigung?
+ *
+ * Gebraucht von der Papierausgabe: In einem hybriden Wahlgang laufen beide
+ * Wege nebeneinander, und niemand darf beide gehen.
+ */
+export function hatStimmrecht(roundId: UUID, participantId: UUID): boolean {
+  return (
+    db()
+      .prepare(`SELECT id FROM voting_rights WHERE round_id = ? AND participant_id = ?`)
+      .get<{ id: string }>(roundId, participantId) !== undefined
+  )
+}
+
+/**
+ * Hat diese Person für diesen Wahlgang schon einen **Stimmzettel auf Papier**
+ * bekommen?
+ *
+ * Die Abfrage geht bewusst unmittelbar an die Tabelle und nicht über den
+ * Ausgabedienst: Der ruft seinerseits hier an, und zwei Dienste, die
+ * einander importieren, sind der Anfang einer Schleife.
+ */
+function hatPapierzettel(roundId: UUID, participantId: UUID): boolean {
+  return (
+    db()
+      .prepare(`SELECT id FROM ballot_issues WHERE round_id = ? AND participant_id = ? AND kind = 'initial'`)
+      .get<{ id: string }>(roundId, participantId) !== undefined
+  )
+}
+
 /* ====================================================== Teilnehmergeräte */
 
 /**
@@ -357,7 +497,7 @@ export function berechtigungAusgeben(input: {
   participantId: UUID
   /** Nur bei geheimer Wahl: der verblendete Wert vom Gerät. */
   verblendet?: string
-}): { signatur?: string; serial?: string } {
+}): { signatur?: string; serial?: string; ticket?: string } {
   const zeile = session(input.roundId)
   if (!zeile) throw new Error('Für diesen Wahlgang läuft keine digitale Abstimmung.')
   if (zeile.status !== 'open') throw new Error('Diese Abstimmung ist nicht geöffnet.')
@@ -370,10 +510,17 @@ export function berechtigungAusgeben(input: {
     .get<{ weight: number }>(input.participantId)
   const gewicht = Number(person?.weight ?? 1)
 
-  const bereits = db()
-    .prepare(`SELECT id FROM voting_rights WHERE round_id = ? AND participant_id = ?`)
-    .get<{ id: string }>(input.roundId, input.participantId)
-  if (bereits) throw new Error('Für diesen Wahlgang wurde bereits eine Stimmberechtigung ausgegeben.')
+  if (hatStimmrecht(input.roundId, input.participantId)) {
+    throw new Error('Für diesen Wahlgang wurde bereits eine Stimmberechtigung ausgegeben.')
+  }
+  /*
+   * **Der hybride Fall.** Läuft ein Wahlgang auf Papier *und* digital, darf
+   * niemand beide Wege gehen — sonst läge eine Stimme in der Urne und eine
+   * zweite in der Wahlurne aus Pappe, und keine Bilanz der Welt fände das.
+   */
+  if (hatPapierzettel(input.roundId, input.participantId)) {
+    throw new Error('Für diesen Wahlgang wurde bereits ein Stimmzettel auf Papier ausgegeben.')
+  }
 
   db()
     .prepare(
@@ -384,6 +531,21 @@ export function berechtigungAusgeben(input: {
 
   if (zeile.secrecy === 'secret') {
     if (!input.verblendet) throw new Error('Bei geheimer Wahl fehlt der verblendete Wert.')
+
+    /*
+     * Unterschreibt der Ausschuss, liegt der Schlüssel nicht hier. Die
+     * Anfrage kommt in die Warteschlange; das Gerät des Ausschusses holt sie
+     * ab, unterschreibt und gibt zurück. Der Wähler wartet Sekunden — dafür
+     * kann dieser Rechner nichts erzeugen, was niemand gesehen hat.
+     */
+    if (zeile.signer === 'committee') {
+      const ticket = randomUUIDLike()
+      db()
+        .prepare(`INSERT INTO signing_queue (id, round_id, blinded, created_at) VALUES (?, ?, ?, ?)`)
+        .run(ticket, input.roundId, input.verblendet, new Date().toISOString())
+      return { ticket }
+    }
+
     if (!zeile.private_key) throw new Error('Der Schlüssel dieses Wahlgangs ist nicht mehr verfügbar.')
     const schluessel = schluesselAus(zeile)!
     const laenge = schluessellaenge(schluessel)
