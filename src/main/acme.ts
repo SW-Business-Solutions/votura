@@ -49,6 +49,7 @@ import {
   type KeyObject
 } from 'node:crypto'
 import { request } from 'node:https'
+import { Resolver } from 'node:dns/promises'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { feld, folge, name, oid, pem } from './tls'
@@ -235,6 +236,8 @@ interface Zwischenstand {
   challengeUrl: string
   authUrl: string
   domain: string
+  /** Der Wert, der im Namensystem stehen muss — zum Selbstprüfen. */
+  erwartet: string
 }
 
 /** Zwischen „Wert anzeigen" und „jetzt prüfen lassen" — nur im Arbeitsspeicher. */
@@ -314,7 +317,8 @@ export async function auftragBeginnen(input: {
     auftragUrl,
     challengeUrl: dns.url,
     authUrl,
-    domain
+    domain,
+    erwartet: wert
   })
 
   logger.info(`ACME: Auftrag für ${domain} gestellt, wartet auf den DNS-Eintrag`)
@@ -332,6 +336,25 @@ export async function auftragAbschliessen(faden: string): Promise<{ cert: string
   const stand = offeneAuftraege.get(faden)
   if (!stand) throw new Error('Dieser Vorgang ist abgelaufen. Bitte neu beginnen.')
   const { konto, nonce } = stand
+
+  /*
+   * **Erst selbst nachsehen, dann fragen.**
+   *
+   * Eine Prüfung, die scheitert, verbrennt die Freigabe: Sie steht danach auf
+   * „ungültig" und lässt sich nicht wiederbeleben — ein zweiter Klick endet
+   * in „authorization must be pending", und es hilft nur ein neuer Auftrag
+   * mit neuem Wert. Dazu zählt jeder Fehlversuch gegen ein Stundenkontingent.
+   *
+   * Beides lässt sich vermeiden, denn dieselbe Frage kann dieses Programm
+   * selbst stellen. Steht der Eintrag noch nicht, wird die Prüfstelle gar
+   * nicht erst behelligt, und der Vorgang bleibt offen.
+   */
+  const sichtbar = await eintragSichtbar(stand.domain, stand.erwartet)
+  if (!sichtbar) {
+    throw new Error(
+      `Der Eintrag _acme-challenge.${stand.domain} ist noch nicht zu sehen. Die Prüfstelle wurde deshalb gar nicht erst gefragt — der Vorgang bleibt offen. Einige Minuten warten und erneut prüfen lassen.`
+    )
+  }
 
   const angestossen = await ruf(
     stand.challengeUrl,
@@ -356,8 +379,14 @@ export async function auftragAbschliessen(faden: string): Promise<{ cert: string
   )
   if (auth.status !== 'valid') {
     const grund = auth.challenges?.find((eintrag) => eintrag.error?.detail)?.error?.detail
+    /*
+     * Die Freigabe ist damit verbraucht. Sie hier stehen zu lassen hieße,
+     * den nächsten Klick in eine Meldung laufen zu lassen, die niemand
+     * versteht („authorization must be pending").
+     */
+    offeneAuftraege.delete(faden)
     throw new Error(
-      `Der Eintrag im Domain-Namensystem wurde nicht gefunden oder passt nicht${grund ? ` (${grund})` : ''}. Häufigster Grund: Er ist noch nicht überall übernommen — einige Minuten warten und erneut prüfen lassen.`
+      `Die Prüfstelle hat den Eintrag nicht anerkannt${grund ? ` (${grund})` : ''}. Dieser Vorgang ist damit verbraucht — ein neuer Anlauf braucht einen **neuen** Auftrag, und der nennt einen anderen Wert für den TXT-Eintrag.`
     )
   }
 
@@ -447,6 +476,35 @@ export function erzeugeAntrag(domain: string, privat: KeyObject, oeffentlich: Ke
 /** Denselben Antrag als PEM — zum Ansehen und Aufheben. */
 export function antragAlsPem(csr: Buffer): string {
   return pem('CERTIFICATE REQUEST', csr)
+}
+
+/* -------------------------------------------------------- Selbstprüfung */
+
+/**
+ * Steht der Eintrag schon im Namensystem?
+ *
+ * Gefragt werden **öffentliche** Namensserver und nicht der des eigenen
+ * Rechners: Der antwortet womöglich aus seinem Zwischenspeicher — und zwar
+ * mit dem Stand von vor dem Eintrag. Genau dieser Zwischenspeicher ist der
+ * Grund, warum „ich habe es doch eingetragen" und „die Prüfstelle findet
+ * nichts" so oft zugleich wahr sind.
+ *
+ * Ein Fehlschlag hier ist **keine** Absage, sondern ein „noch nicht".
+ */
+export async function eintragSichtbar(domain: string, erwartet: string): Promise<boolean> {
+  const name = `_acme-challenge.${domain}`
+  for (const server of [['1.1.1.1'], ['8.8.8.8'], ['9.9.9.9']]) {
+    try {
+      const frager = new Resolver()
+      frager.setServers(server)
+      const gefunden = await frager.resolveTxt(name)
+      if (gefunden.some((teile) => teile.join('') === erwartet)) return true
+    } catch {
+      /* Kein Eintrag, kein Server, keine Verbindung — alles dasselbe: noch
+         nicht so weit. Der nächste Versuch entscheidet. */
+    }
+  }
+  return false
 }
 
 /* ------------------------------------------------------------------ Helfer */
