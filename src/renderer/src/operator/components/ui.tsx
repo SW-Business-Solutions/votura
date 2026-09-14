@@ -1,6 +1,7 @@
 /** Kleine, wiederverwendete Bausteine der Operator-Oberfläche. */
 import { useEffect, useState, type ReactNode } from 'react'
 import { ROUND_STATUS_LABELS, type RoundStatus } from '@shared/types'
+import { istAdresse } from '@shared/netz'
 
 export function Tabs<T extends string>({
   eintraege,
@@ -238,15 +239,6 @@ export function Kpi({
  * Inhalt löschte, um eine andere Zahl zu tippen — man musste die 0 erst
  * wieder wegräumen.
  */
-/** Sieht das nach einer IPv4-Adresse aus? Vier Zahlen von 0 bis 255. */
-export function istAdresse(wert: string): boolean {
-  const teile = wert.trim().split('.')
-  return (
-    teile.length === 4 &&
-    teile.every((teil) => /^\d{1,3}$/.test(teil) && Number(teil) >= 0 && Number(teil) <= 255)
-  )
-}
-
 /**
  * Ein Feld für eine Netzwerkadresse.
  *

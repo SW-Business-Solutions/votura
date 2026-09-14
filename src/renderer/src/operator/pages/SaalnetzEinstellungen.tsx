@@ -16,7 +16,8 @@ import { useEffect, useState } from 'react'
 import type { SaalnetzStatus } from '@shared/ipc'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
-import { AdressFeld, Card, Checkbox, Field, istAdresse, NumberInput } from '../components/ui'
+import { istAdresse } from '@shared/netz'
+import { AdressFeld, Card, Checkbox, Field, NumberInput } from '../components/ui'
 
 export function SaalnetzEinstellungen(): React.JSX.Element {
   const app = useApp()

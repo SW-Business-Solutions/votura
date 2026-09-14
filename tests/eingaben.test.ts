@@ -6,7 +6,7 @@
  * Funktion — und die lässt sich ohne Browser prüfen.
  */
 import { describe, expect, it } from 'vitest'
-import { istAdresse } from '../src/renderer/src/operator/components/ui'
+import { istAdresse } from '../src/shared/netz'
 
 describe('Netzwerkadressen', () => {
   it('nimmt an, was eine Adresse ist', () => {

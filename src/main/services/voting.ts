@@ -634,6 +634,51 @@ export function votingLage(roundId: UUID): WahlLage | null {
   }
 }
 
+/**
+ * Alle digitalen Abstimmungen einer Versammlung, die noch etwas vorhaben.
+ *
+ * Für den Systemcheck: Was vorbereitet oder offen ist, muss vor der
+ * Versammlung geprüft werden — eine geheime Wahl ohne Verschlüsselung oder
+ * ein Ausschussgerät ohne gemeldeten Schlüssel fällt sonst erst auf, wenn der
+ * Saal wartet.
+ */
+export function anstehendeWahlgaenge(eventId: UUID): {
+  roundId: string
+  roundLabel: string
+  secrecy: string
+  devices: string
+  signer: string
+  status: string
+  hatSchluessel: boolean
+}[] {
+  return db()
+    .prepare(
+      `SELECT s.round_id, s.secrecy, s.devices, s.signer, s.status, s.public_key, r.round_label
+         FROM voting_sessions s
+         JOIN rounds r ON r.id = s.round_id
+        WHERE r.event_id = ? AND s.status IN ('prepared', 'open')
+        ORDER BY r.sequential_number`
+    )
+    .all<{
+      round_id: string
+      secrecy: string
+      devices: string
+      signer: string
+      status: string
+      public_key: string | null
+      round_label: string
+    }>(eventId)
+    .map((zeile) => ({
+      roundId: zeile.round_id,
+      roundLabel: zeile.round_label,
+      secrecy: zeile.secrecy,
+      devices: zeile.devices,
+      signer: zeile.signer,
+      status: zeile.status,
+      hatSchluessel: Boolean(zeile.public_key)
+    }))
+}
+
 /** Die gerade offene digitale Abstimmung einer Versammlung, falls es eine gibt. */
 export function offeneWahl(eventId: UUID): WahlLage | null {
   const zeile = db()
