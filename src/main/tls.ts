@@ -33,7 +33,7 @@ import { dirname, join } from 'node:path'
 
 /* ------------------------------------------------------------ DER-Bausteine */
 
-function laenge(bytes: number): Buffer {
+export function laenge(bytes: number): Buffer {
   /* Kurzform bis 127, sonst „wie viele Längenbytes folgen" und dann die
      Länge selbst — das ist die ganze Regel. */
   if (bytes < 0x80) return Buffer.from([bytes])
@@ -46,11 +46,11 @@ function laenge(bytes: number): Buffer {
   return Buffer.from([0x80 | roh.length, ...roh])
 }
 
-function feld(typ: number, inhalt: Buffer): Buffer {
+export function feld(typ: number, inhalt: Buffer): Buffer {
   return Buffer.concat([Buffer.from([typ]), laenge(inhalt.length), inhalt])
 }
 
-const folge = (...teile: Buffer[]): Buffer => feld(0x30, Buffer.concat(teile))
+export const folge = (...teile: Buffer[]): Buffer => feld(0x30, Buffer.concat(teile))
 const menge = (...teile: Buffer[]): Buffer => feld(0x31, Buffer.concat(teile))
 
 function ganzzahl(wert: number | Buffer): Buffer {
@@ -71,7 +71,7 @@ function ganzzahl(wert: number | Buffer): Buffer {
 }
 
 /** Ein Objektbezeichner wie `1.2.840.113549.1.1.11` in seiner DER-Form. */
-function oid(punkte: string): Buffer {
+export function oid(punkte: string): Buffer {
   const teile = punkte.split('.').map(Number)
   const roh: number[] = [teile[0] * 40 + teile[1]]
   for (const teil of teile.slice(2)) {
@@ -104,7 +104,7 @@ function zeitpunkt(wann: Date): Buffer {
   return feld(0x18, Buffer.from(text, 'ascii'))
 }
 
-function name(gemeinerName: string): Buffer {
+export function name(gemeinerName: string): Buffer {
   return folge(menge(folge(oid(OID_CN), feld(0x0c, Buffer.from(gemeinerName, 'utf8')))))
 }
 
@@ -133,7 +133,7 @@ export interface Zertifikat {
   fingerabdruck: string
 }
 
-function pem(bezeichnung: string, daten: Buffer): string {
+export function pem(bezeichnung: string, daten: Buffer): string {
   const b64 = daten.toString('base64').replace(/(.{64})/g, '$1\n')
   return `-----BEGIN ${bezeichnung}-----\n${b64}\n-----END ${bezeichnung}-----\n`
 }
