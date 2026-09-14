@@ -13,7 +13,7 @@
  *
  * 1. **Den Hauptrechner finden.** Hier ruft die Anwendung beim Start ins Netz
  *    und zeigt, wer geantwortet hat — niemand tippt eine IP-Adresse ab.
- * 2. **Ein Mikrofon geben.** `getUserMedia` verlangt eine sichere Herkunft,
+ * 2. **Kamera und Mikrofon geben.** `getUserMedia` verlangt eine sichere Herkunft,
  *    und der Projektionsserver spricht einfaches HTTP. Diese Anwendung führt
  *    die **eine** Adresse, die ihr genannt wurde, als vertrauenswürdig — mehr
  *    nicht, und nur solange sie eingestellt ist.
@@ -296,18 +296,39 @@ function haerten(einstellung: SaalEinstellung | null): void {
   })
 
   /*
-   * Das Mikrofon nur für den Hauptrechner, dem diese Anwendung zugeordnet
-   * ist — und nur, wenn sie als Prompter läuft. Eine Bühne hört nicht zu.
+   * **Kamera und Mikrofon werden getrennt entschieden**, und das ist keine
+   * Feinheit: Ein Mikrofon in einer Wahlkabine ist undenkbar, eine Kamera
+   * dort dagegen der Weg, den Ausweis zu scannen, ohne sechzehn Zeichen zu
+   * tippen. Chromium fasst beides unter „media" zusammen; welches gemeint
+   * ist, steht in den Einzelheiten der Anfrage.
+   *
+   * Vorher hing beides an derselben Bedingung — der Prompterrolle. Die
+   * Wahlkabine bekam die Kamera deshalb nie, und der Browser meldete das als
+   * verweigerte Erlaubnis. Gesucht wurde der Fehler dann im Gerät.
    */
-  const darfMikrofon = einstellung?.rolle.art === 'prompter'
-  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+  const rolle = einstellung?.rolle.art
+  const darfMikrofon = rolle === 'prompter'
+  const darfKamera = rolle === 'wahlkabine' || rolle === 'akkreditierung' || rolle === 'ausgabe'
+
+  /** Ist diese Art von Aufnahme für diese Rolle vorgesehen? */
+  const artErlaubt = (art: string): boolean =>
+    art === 'audio' ? darfMikrofon : art === 'video' ? darfKamera : false
+
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback, einzelheiten) => {
     const vomMaster = Boolean(erlaubteHerkunft && contents.getURL().startsWith(erlaubteHerkunft))
-    callback(vomMaster && darfMikrofon && permission === 'media')
+    if (!vomMaster || permission !== 'media') {
+      callback(false)
+      return
+    }
+    /* Jede angefragte Art muss erlaubt sein — wer Kamera *und* Mikrofon
+       verlangt, bekommt in der Kabine nichts. */
+    const arten = (einzelheiten as { mediaTypes?: string[] }).mediaTypes ?? []
+    callback(arten.length > 0 && arten.every(artErlaubt))
   })
-  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft) => {
-    return (
-      Boolean(erlaubteHerkunft && herkunft === erlaubteHerkunft) && darfMikrofon && permission === 'media'
-    )
+
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft, einzelheiten) => {
+    if (!erlaubteHerkunft || herkunft !== erlaubteHerkunft || permission !== 'media') return false
+    return artErlaubt((einzelheiten as { mediaType?: string }).mediaType ?? 'unknown')
   })
 }
 

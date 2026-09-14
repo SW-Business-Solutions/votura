@@ -116,9 +116,10 @@ describe('Was die Begleitanwendung darf — und was nicht', () => {
   })
 
   it('gibt das Mikrofon nur dem Prompter und nur dem eigenen Hauptrechner', () => {
-    expect(anwendung).toContain("rolle.art === 'prompter'")
+    expect(anwendung).toContain("darfMikrofon = rolle === 'prompter'")
     expect(anwendung).toContain('setPermissionRequestHandler')
-    expect(anwendung).toContain('vomMaster && darfMikrofon')
+    /* Von einer fremden Herkunft kommt nichts durch — gleich welche Rolle. */
+    expect(anwendung).toContain('!vomMaster')
   })
 
   it('lässt sich nicht anderswohin navigieren', () => {
@@ -206,5 +207,42 @@ describe('Die bedienenden Rollen', () => {
     expect(rollenName({ art: 'akkreditierung' })).toBe('Akkreditierung am Einlass')
     expect(rollenName({ art: 'ausgabe' })).toBe('Ausgabe der Stimmzettel')
     expect(rollenName({ art: 'wahlkabine' })).toBe('Wahlkabine')
+  })
+})
+
+/**
+ * Was die Begleitanwendung ihrer Seite erlaubt.
+ *
+ * **Kamera und Mikrofon sind zweierlei**, und in einer Wahlkabine ist der
+ * Unterschied nicht akademisch: Eine Kamera scannt dort den Ausweis, ein
+ * Mikrofon hätte dort nichts verloren. Chromium fasst beides unter „media"
+ * zusammen — die Unterscheidung muss die Anwendung selbst treffen.
+ */
+describe('Kamera und Mikrofon je Rolle', () => {
+  const quelle = readFileSync(join(__dirname, '..', 'src/saal/index.ts'), 'utf8')
+
+  it('trennt beide Arten, statt sie gemeinsam zu entscheiden', () => {
+    /*
+     * Vorher hing beides an der Prompterrolle. Die Wahlkabine bekam die
+     * Kamera deshalb nie, und der Browser meldete das als verweigerte
+     * Erlaubnis — gesucht wurde der Fehler dann im Gerät.
+     */
+    expect(quelle).toContain('darfKamera')
+    expect(quelle).toContain('darfMikrofon')
+    expect(quelle).toContain('mediaTypes')
+  })
+
+  it('gibt das Mikrofon nur dem Prompter', () => {
+    expect(quelle).toMatch(/darfMikrofon = rolle === 'prompter'/)
+  })
+
+  it('gibt die Kamera den scannenden Rollen', () => {
+    for (const rolle of ['wahlkabine', 'akkreditierung', 'ausgabe']) {
+      expect(quelle).toContain(`rolle === '${rolle}'`)
+    }
+  })
+
+  it('bleibt bei einer fremden Herkunft verschlossen', () => {
+    expect(quelle).toContain('herkunft !== erlaubteHerkunft')
   })
 })

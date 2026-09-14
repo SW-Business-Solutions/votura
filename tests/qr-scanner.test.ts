@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { codeAus } from '../src/renderer/src/qr-scanner'
+import { codeAus } from '../src/shared/ausweis-code'
 
 const quelle = readFileSync(join(__dirname, '..', 'src/renderer/src/qr-scanner.tsx'), 'utf8')
 

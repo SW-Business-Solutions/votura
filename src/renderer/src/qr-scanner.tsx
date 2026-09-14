@@ -33,6 +33,7 @@
  * einer toten Schaltfläche steht dann dort, woran es liegt.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { codeAus } from '@shared/ausweis-code'
 
 /** Der Erkenner von Chromium — in den Typen von TypeScript steht er nicht. */
 interface Strichcodeleser {
@@ -41,23 +42,6 @@ interface Strichcodeleser {
 declare const BarcodeDetector: {
   new (optionen?: { formats?: string[] }): Strichcodeleser
   getSupportedFormats?: () => Promise<string[]>
-}
-
-/**
- * Den Ausweis aus dem Gelesenen herausholen.
- *
- * Auf Karten und Bändchen steht der nackte Code. Steht dort eine Adresse —
- * etwa von einem selbst erzeugten Zettel —, zählt der Teil hinter `c=`; den
- * ganzen Link ins Feld zu schreiben wäre für jeden Prüfer ein Unbekannter.
- */
-export function codeAus(gelesen: string): string {
-  const roh = gelesen.trim()
-  if (!/^https?:\/\//i.test(roh)) return roh.toUpperCase()
-  try {
-    return (new URL(roh).searchParams.get('c') ?? roh).toUpperCase()
-  } catch {
-    return roh.toUpperCase()
-  }
 }
 
 /** Kann dieses Gerät überhaupt eine Kamera öffnen? */
