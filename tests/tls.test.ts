@@ -10,7 +10,7 @@ import { createPrivateKey, X509Certificate } from 'node:crypto'
 import { createServer } from 'node:https'
 import { get } from 'node:https'
 import { describe, expect, it } from 'vitest'
-import { erzeugeZertifikat, fingerabdruckVon } from '../src/main/tls'
+import { erzeugeZertifikat, fingerabdruckVon, sortiereAdressen } from '../src/main/tls'
 
 const zertifikat = erzeugeZertifikat(['192.168.1.5', '127.0.0.1'])
 const geparst = new X509Certificate(zertifikat.cert)
@@ -105,6 +105,38 @@ describe('Ein echter TLS-Server damit', () => {
       expect(text).toBe('Stimme')
     } finally {
       await new Promise<void>((fertig) => server.close(() => fertig()))
+    }
+  })
+})
+
+describe('Die Adressen dieses Rechners', () => {
+  it('nennt die erreichbaren zuerst', () => {
+    /*
+     * **Warum die Reihenfolge zählt.** Die erste Adresse steht nicht nur oben
+     * in der Liste — aus ihr werden die Links für Bühnen, Wahlseite und
+     * Wahlausschuss gebaut. Stand dort ein virtueller Netzwerkschalter,
+     * führte jeder dieser Links ins Leere, und im Saal sucht dann jemand den
+     * Fehler bei seinem Telefon.
+     */
+    const sortiert = sortiereAdressen([
+      { name: 'vEthernet (Default Switch)', address: '172.30.64.1' },
+      { name: 'vEthernet (WSL (Hyper-V firewall))', address: '192.168.224.1' },
+      { name: 'WLAN', address: '192.168.2.174' },
+      { name: 'Ethernet', address: '192.168.1.1' }
+    ])
+    expect(sortiert[0]).toBe('192.168.2.174')
+    expect(sortiert[1]).toBe('192.168.1.1')
+    /* Weg dürfen sie nicht: Wer in einer virtuellen Maschine arbeitet,
+       braucht genau diese Adresse. */
+    expect(sortiert).toContain('172.30.64.1')
+    expect(sortiert[sortiert.length - 1]).toBe('127.0.0.1')
+  })
+
+  it('erkennt die üblichen virtuellen Karten', () => {
+    for (const name of ['vEthernet (x)', 'VirtualBox Host-Only', 'VMware Network Adapter', 'Buero_VPN']) {
+      expect(sortiereAdressen([{ name, address: '10.1.2.3' }, { name: 'WLAN', address: '192.168.5.5' }])[0]).toBe(
+        '192.168.5.5'
+      )
     }
   })
 })

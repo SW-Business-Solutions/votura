@@ -138,15 +138,43 @@ export function pem(bezeichnung: string, daten: Buffer): string {
   return `-----BEGIN ${bezeichnung}-----\n${b64}\n-----END ${bezeichnung}-----\n`
 }
 
-/** Die Adressen dieses Rechners im Saalnetz — sie gehören ins Zertifikat. */
+/**
+ * Netzwerkkarten, die es nur im Rechner gibt.
+ *
+ * Hyper-V, WSL, VirtualBox, VMware und VPN-Zugänge tragen eigene Adressen —
+ * echte Adressen, die im Saal nur niemand erreicht. Sie gehören nach hinten,
+ * nicht weg: Wer in einer virtuellen Maschine arbeitet, braucht sie.
+ */
+const NUR_IM_RECHNER = /vethernet|hyper-v|wsl|virtualbox|vmware|vpn|loopback|docker|tailscale|zerotier/i
+
+/**
+ * Die Adressen dieses Rechners — die brauchbarste zuerst.
+ *
+ * **Warum die Reihenfolge zählt.** Die erste Adresse steht nicht nur oben in
+ * der Liste; aus ihr werden die Links für Bühnen, Wahlseite und Wahlausschuss
+ * gebaut. Stand dort die Adresse eines virtuellen Netzwerkschalters, führte
+ * jeder dieser Links ins Leere — und im Saal sucht dann jemand den Fehler bei
+ * seinem Telefon.
+ *
+ * Erkennbar ist das am Namen der Netzwerkkarte, nicht an der Adresse: Ein
+ * Hyper-V-Schalter vergibt dieselben privaten Adressen wie ein WLAN.
+ */
 export function eigeneAdressen(): string[] {
-  const gefunden = new Set<string>(['127.0.0.1'])
-  for (const eintraege of Object.values(networkInterfaces())) {
+  const gefunden: { name: string; address: string }[] = []
+  for (const [name, eintraege] of Object.entries(networkInterfaces())) {
     for (const eintrag of eintraege ?? []) {
-      if (eintrag.family === 'IPv4' && !eintrag.internal) gefunden.add(eintrag.address)
+      if (eintrag.family === 'IPv4' && !eintrag.internal) gefunden.push({ name, address: eintrag.address })
     }
   }
-  return [...gefunden]
+  return sortiereAdressen(gefunden)
+}
+
+/** Die Sortierung für sich — ohne Netzwerkkarten, damit sie prüfbar ist. */
+export function sortiereAdressen(eintraege: { name: string; address: string }[]): string[] {
+  const echte = eintraege.filter((eintrag) => !NUR_IM_RECHNER.test(eintrag.name))
+  const virtuelle = eintraege.filter((eintrag) => NUR_IM_RECHNER.test(eintrag.name))
+  /* Der eigene Rechner zuletzt: Er ist immer erreichbar und nie gemeint. */
+  return [...new Set([...echte, ...virtuelle].map((eintrag) => eintrag.address).concat('127.0.0.1'))]
 }
 
 /**
