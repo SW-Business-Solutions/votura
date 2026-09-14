@@ -1,0 +1,139 @@
+/**
+ * Die Brücke zwischen den Teilnehmergeräten und dem Wahldienst.
+ *
+ * Sie ist bewusst schmal: drei Funktionen, mehr geht über diesen Weg nicht.
+ * Über ihn kommen Anfragen **ohne Anmeldung** herein — wer abstimmt, hat kein
+ * Konto und darf keines brauchen. Was hier nicht aufgezählt ist, ist von außen
+ * nicht erreichbar.
+ *
+ * Jede Funktion prüft den Ausweis selbst, und zwar bei **jedem** Aufruf. Es
+ * gibt keine Sitzung, kein Merken, kein „eben war er doch noch da": Wer
+ * zwischen zwei Schritten den Saal verlässt, kann den zweiten nicht mehr tun.
+ */
+import type { WahlDispatcher } from './network-projection'
+import type { Stimmabgabe, WahlAuskunft } from '@shared/wahl'
+import { activeEvent } from './services/events'
+import { mayVote } from './services/participants'
+import { resolveScan } from './services/cards'
+import { berechtigungAusgeben, offeneWahl, stimmeEinlegen, votingLage } from './services/voting'
+
+/** Den Ausweis zu einer Person auflösen — Karte, Bändchen oder gedruckter Pass. */
+function personZu(code: string): { id: string; name: string; gewicht: number } | null {
+  const event = activeEvent()
+  if (!event) return null
+  const treffer = resolveScan(event.id, String(code ?? '').trim())
+  const person = treffer?.participant
+  if (!person) return null
+  return {
+    id: person.id,
+    name: `${person.firstName} ${person.lastName}`,
+    gewicht: person.weight
+  }
+}
+
+export const wahlBruecke: WahlDispatcher = {
+  /**
+   * Was dieses Gerät gerade tun kann.
+   *
+   * Die Antwort nennt den Namen der Person — damit am Gerät niemand
+   * versehentlich für einen anderen abstimmt, weil der falsche Ausweis oben
+   * auf lag.
+   */
+  async lage(code: string): Promise<WahlAuskunft> {
+    const event = activeEvent()
+    const lage = event ? offeneWahl(event.id) : null
+    const person = personZu(code)
+
+    if (!person) {
+      return {
+        lage,
+        berechtigt: false,
+        bereitsAusgegeben: false,
+        hindernis: 'Dieser Ausweis gehört zu niemandem in dieser Versammlung.'
+      }
+    }
+
+    const urteil = mayVote(person.id)
+    if (!lage) {
+      return {
+        lage: null,
+        berechtigt: false,
+        bereitsAusgegeben: false,
+        name: person.name,
+        hindernis: 'Gerade ist keine Abstimmung offen.'
+      }
+    }
+
+    return {
+      lage,
+      berechtigt: urteil.ok,
+      bereitsAusgegeben: false,
+      name: person.name,
+      gewicht: person.gewicht,
+      hindernis: urteil.ok ? undefined : urteil.reason
+    }
+  },
+
+  /**
+   * Eine Stimmberechtigung holen.
+   *
+   * Bei geheimer Wahl kommt ein verblendeter Wert herein und eine
+   * Blindsignatur zurück — was unterschrieben wird, erfährt der Rechner nicht.
+   */
+  async berechtigung(eingabe: Record<string, unknown>): Promise<unknown> {
+    const person = personZu(String(eingabe.code ?? ''))
+    if (!person) throw new Error('Dieser Ausweis gehört zu niemandem in dieser Versammlung.')
+
+    const roundId = String(eingabe.roundId ?? '')
+    const lage = votingLage(roundId)
+    if (!lage || lage.status !== 'open') throw new Error('Diese Abstimmung ist nicht geöffnet.')
+
+    return berechtigungAusgeben({
+      roundId,
+      participantId: person.id,
+      verblendet: typeof eingabe.verblendet === 'string' ? eingabe.verblendet : undefined
+    })
+  },
+
+  /**
+   * Die Stimme einlegen.
+   *
+   * Bei **geheimer** Wahl wird der Ausweis hier bewusst *nicht* mehr gefragt:
+   * Die Unterschrift ist der ganze Nachweis, und wer hier eine Person
+   * mitschickte, hätte die Trennung im letzten Schritt wieder aufgehoben.
+   *
+   * Bei offener und namentlicher Abstimmung wird er gebraucht — dort trägt
+   * die Stimme ihr Gewicht, und bei namentlicher gehört die Zuordnung ins
+   * Protokoll.
+   */
+  async abgeben(eingabe: Record<string, unknown>): Promise<unknown> {
+    const roundId = String(eingabe.roundId ?? '')
+    const lage = votingLage(roundId)
+    if (!lage || lage.status !== 'open') throw new Error('Diese Abstimmung ist nicht geöffnet.')
+
+    const choice = (eingabe.choice ?? {}) as Stimmabgabe
+    if (lage.geheimnis === 'secret') {
+      await stimmeEinlegen({
+        roundId,
+        serial: String(eingabe.serial ?? ''),
+        signatur: String(eingabe.signatur ?? ''),
+        choice
+      })
+      return {}
+    }
+
+    const person = personZu(String(eingabe.code ?? ''))
+    if (!person) throw new Error('Dieser Ausweis gehört zu niemandem in dieser Versammlung.')
+    const urteil = mayVote(person.id)
+    if (!urteil.ok) throw new Error(urteil.reason ?? 'Keine Stimmberechtigung.')
+
+    await stimmeEinlegen({
+      roundId,
+      serial: String(eingabe.serial ?? ''),
+      choice,
+      participantId: person.id,
+      gewicht: person.gewicht
+    })
+    return {}
+  }
+}

@@ -437,6 +437,65 @@ function GeneralSettings(): React.JSX.Element {
         </div>
       </Card>
 
+      <Card title="Versammlung">
+        {/*
+         * Wann eine Versammlung beschlussfähig ist, steht in der Satzung und
+         * nicht im Programm. Voreingestellt ist deshalb „keine Regel": Ohne
+         * ausdrückliche Angabe behauptet Votura dazu nichts — eine falsch
+         * geratene Schwelle wäre schlimmer als gar keine.
+         */}
+        <Field
+          label="Beschlussfähigkeit"
+          hint="Gilt für die Zahl der anwesenden Stimmberechtigten aus der Akkreditierung."
+        >
+          <select
+            value={config.assembly.quorum.kind}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                assembly: {
+                  quorum: {
+                    kind: e.target.value as 'none' | 'count' | 'share',
+                    value: e.target.value === 'share' ? 0.5 : config.assembly.quorum.value
+                  }
+                }
+              })
+            }
+          >
+            <option value="none">Keine Regel — Votura sagt dazu nichts</option>
+            <option value="count">Mindestens eine feste Anzahl</option>
+            <option value="share">Mindestens ein Anteil der Stimmberechtigten</option>
+          </select>
+        </Field>
+        {config.assembly.quorum.kind === 'count' && (
+          <Field label="Mindestens … stimmberechtigte Anwesende">
+            <NumberInput
+              value={config.assembly.quorum.value}
+              min={0}
+              onChange={(value) => setConfig({ ...config, assembly: { quorum: { kind: 'count', value } } })}
+            />
+          </Field>
+        )}
+        {config.assembly.quorum.kind === 'share' && (
+          <Field
+            label="Anteil in Prozent"
+            hint={'Aufgerundet: „Die Hälfte von 15“ sind acht, nicht siebeneinhalb.'}
+          >
+            <NumberInput
+              value={Math.round(config.assembly.quorum.value * 100)}
+              min={1}
+              max={100}
+              onChange={(value) =>
+                setConfig({
+                  ...config,
+                  assembly: { quorum: { kind: 'share', value: Math.min(1, value / 100) } }
+                })
+              }
+            />
+          </Field>
+        )}
+      </Card>
+
       <Card title="Sicherheit und Zeit">
         <Field label="Zeitzone" hint="Zeitpunkte werden intern in UTC gespeichert und lokal angezeigt.">
           <input

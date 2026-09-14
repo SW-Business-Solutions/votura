@@ -12,8 +12,13 @@ import type {
   PrinterConfig
 } from '../src/shared/types'
 import { encodeDocument, encodeText } from '../src/main/printing/escpos'
-import { buildBallotOps, buildResultSlipOps, renderPreviewLines } from '../src/main/printing/layout'
-import { countLines, wrapText } from '../src/main/printing/ops'
+import {
+  buildBallotOps,
+  buildResultSlipOps,
+  buildVotingPassOps,
+  renderPreviewLines
+} from '../src/main/printing/layout'
+import { countLines, qr, wrapText } from '../src/main/printing/ops'
 import { opsToEposXml } from '../src/main/printing/drivers/epson-epos'
 
 const printer: PrinterConfig = {
@@ -463,5 +468,127 @@ describe('Ergebnisbon', () => {
     const text = bon({ countingMode: 'declared', declaration: 'Einstimmig angenommen' })
     expect(text).toContain('Einstimmig angenommen')
     expect(text).not.toContain('Abgegebene Stimmzettel')
+  })
+})
+
+describe('QR-Code auf dem Bondrucker', () => {
+  /*
+   * Der Drucker zeichnet ihn selbst. Ein Bild zu rechnen und als Punktgrafik
+   * zu schicken wäre langsamer, gröber und brächte eine Bibliothek ins
+   * Projekt, die nur an dieser einen Stelle gebraucht würde.
+   */
+  const bytes = encodeDocument([qr('ABCD2345EFGH6789', 6)], printer)
+
+  it('wählt Modell 2', () => {
+    /* Das gebräuchliche — von jedem Telefon gelesen. */
+    expect([...bytes]).toContain(0x41)
+    expect(
+      Buffer.from([0x1d, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00]).every((b) => bytes.includes(b))
+    ).toBe(true)
+  })
+
+  it('legt die Daten mit richtiger Längenangabe in den Speicher', () => {
+    /*
+     * `pL + pH * 256` ist die Länge des Rests, also Daten + 3. Eine falsche
+     * Länge druckt entweder nichts oder Müll — und beides fällt erst auf dem
+     * Papier auf.
+     */
+    const daten = 'ABCD2345EFGH6789'
+    const laenge = daten.length + 3
+    const kopf = Buffer.from([0x1d, 0x28, 0x6b, laenge & 0xff, (laenge >> 8) & 0xff, 0x31, 0x50, 0x30])
+    expect(bytes.includes(kopf)).toBe(true)
+    expect(bytes.includes(Buffer.from(daten, 'ascii'))).toBe(true)
+  })
+
+  it('hält die Modulbreite im Bereich, den die Geräte annehmen', () => {
+    /* Zu groß passt nicht auf 80 mm, zu klein liest keine Kamera. */
+    const winzig = encodeDocument([qr('X'.repeat(16), 1)], printer)
+    const riesig = encodeDocument([qr('X'.repeat(16), 99)], printer)
+    const breite = (puffer: Buffer): number => {
+      const stelle = puffer.indexOf(Buffer.from([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43]))
+      return puffer[stelle + 7]
+    }
+    expect(breite(winzig)).toBe(3)
+    expect(breite(riesig)).toBe(8)
+  })
+
+  it('erscheint auch im ePOS-XML', () => {
+    const xml = opsToEposXml([qr('ABCD2345EFGH6789', 6)], printer)
+    expect(xml).toContain('qrcode_model_2')
+    expect(xml).toContain('ABCD2345EFGH6789')
+  })
+
+  it('zeigt in der Vorschau den Inhalt, nicht ein Bild', () => {
+    /*
+     * Wer die Vorschau liest, prüft, **was** kodiert wird — ein gezeichneter
+     * Code sagte darüber nichts.
+     */
+    const zeilen = renderPreviewLines([qr('ABCD2345EFGH6789', 6)], printer.charsPerLine)
+    expect(zeilen.join('\n')).toContain('[QR] ABCD2345EFGH6789')
+  })
+})
+
+describe('Der gedruckte Voting Pass', () => {
+  const ops = buildVotingPassOps(
+    {
+      organization: 'Musterverein',
+      eventTitle: 'Mitgliederversammlung 2026',
+      date: '2026-09-14',
+      lastName: 'Mustermann',
+      firstName: 'Max',
+      number: '042',
+      token: 'ABCD2345EFGH6789',
+      weight: 1
+    },
+    printer
+  )
+  const text = renderPreviewLines(ops, printer.charsPerLine).join('\n')
+
+  it('sagt ganz oben, dass er kein Stimmzettel ist', () => {
+    /*
+     * Am Einlass liegen beide Sorten Papier nebeneinander auf dem Tisch, und
+     * wer sie verwechselt, wirft einen Pass in die Urne.
+     */
+    expect(text.indexOf('KEIN STIMMZETTEL')).toBeGreaterThanOrEqual(0)
+    expect(text.indexOf('KEIN STIMMZETTEL')).toBeLessThan(text.indexOf('Mustermann'))
+  })
+
+  it('trägt den Code zweimal — als QR und in Zeichen', () => {
+    /* Für den Fall, dass die Kamera nicht mag oder das Papier einen Knick
+       hat. Abgetippt wird er nur im Ausnahmefall, aber dann unter Zeitdruck. */
+    expect(text).toContain('[QR] ABCD2345EFGH6789')
+    expect(text.split('ABCD2345EFGH6789').length - 1).toBeGreaterThanOrEqual(2)
+  })
+
+  it('nennt den Namen, damit ein Fundstück zurückkommt', () => {
+    expect(text).toContain('Mustermann, Max')
+    expect(text).toContain('Nr. 042')
+  })
+
+  it('schweigt über das Stimmgewicht, wo es eins ist', () => {
+    /* „1 Stimme" auf jedem Pass wäre Rauschen. */
+    expect(text).not.toContain('1 Stimmen')
+
+    const mehr = renderPreviewLines(
+      buildVotingPassOps(
+        {
+          organization: 'Landesverband',
+          eventTitle: 'Delegiertenversammlung',
+          date: '2026-09-14',
+          lastName: 'Beispiel',
+          firstName: 'Petra',
+          token: 'ABCD2345EFGH6789',
+          weight: 3
+        },
+        printer
+      ),
+      printer.charsPerLine
+    ).join('\n')
+    expect(mehr).toContain('3 Stimmen')
+  })
+
+  it('sagt, dass er nicht in die Urne gehört', () => {
+    expect(text).toContain('Nicht in die Urne werfen')
+    expect(text).toContain('Gilt nur für diese Versammlung')
   })
 })

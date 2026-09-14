@@ -138,8 +138,41 @@ import {
   reorderAgenda,
   updateAgendaItem
 } from './services/agenda'
+import {
+  addParticipant,
+  attendanceHistory,
+  blockParticipant,
+  findByPass,
+  issuePass,
+  listParticipants,
+  presenceSummary,
+  setAttendance,
+  unblockParticipant,
+  updateParticipant
+} from './services/participants'
+import {
+  assignCard,
+  cardStock,
+  importCards,
+  listCards,
+  resolveScan,
+  returnCard,
+  setCardStatus
+} from './services/cards'
+import { handoutCount, handoutFor, issueBallot, revokeIssue } from './services/handout'
+import { printUrnenListe, printVotingPass } from './services/printing'
+import {
+  closeVoting,
+  openVoting,
+  prepareVoting,
+  urnenListe,
+  votingLage,
+  votingStand,
+  zaehlung
+} from './services/voting'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
+  getConfig,
   getNetworkProjection,
   getProjectionTheme,
   getSettings,
@@ -480,6 +513,70 @@ const api: Api = {
   },
 
   /* ---------------------------------------------------------- Tagesordnung */
+  /* ---------------------------------------------- Digitale Abstimmung */
+  'voting.prepare': async (input) => prepareVoting(input),
+  'voting.open': async (roundId) => openVoting(roundId),
+  'voting.close': async (roundId) => closeVoting(roundId),
+  'voting.lage': async (roundId) => votingLage(roundId),
+  'voting.stand': async (roundId) => votingStand(roundId),
+  'voting.urne': async (roundId) => urnenListe(roundId),
+  /**
+   * Das Ergebnis der digitalen Abstimmung in den Wahlgang übernehmen.
+   *
+   * Ausgezählt wird die Urne, nicht ein laufender Zähler — dieselbe Rechnung,
+   * die auch jeder im Saal an der gedruckten Liste nachvollziehen kann.
+   */
+  'voting.uebernehmen': async (roundId) => {
+    const zaehlung_ = zaehlung(roundId)
+    const stand = votingStand(roundId)
+    saveResult({
+      electionRoundId: roundId,
+      countingMode: 'counted',
+      ballotsCast: zaehlung_.ballotsCast,
+      validBallots: zaehlung_.ballotsCast,
+      invalidBallots: 0,
+      eligibleVoters: stand.ausgegeben,
+      resultData: { candidates: zaehlung_.candidates, no: zaehlung_.no, abstentions: zaehlung_.abstentions }
+    })
+  },
+  'voting.drucken': async (input) => {
+    await printUrnenListe(input)
+  },
+
+  /* ----------------------------------------------- Ausgabe der Zettel */
+  'handout.issue': async (input) => issueBallot(input),
+  'handout.count': async (roundId) => handoutCount(roundId),
+  'handout.for': async (input) => handoutFor(input.roundId, input.participantId),
+  'handout.revoke': async (input) => {
+    revokeIssue(input.issueId, input.reason)
+  },
+
+  /* ------------------------------------------------ Karten und Bändchen */
+  'card.list': async () => listCards(),
+  'card.stock': async () => cardStock(),
+  'card.import': async (input) => importCards(input.entries, input.kind),
+  'card.assign': async (input) => assignCard(input.participantId, input.code),
+  'card.return': async (code) => returnCard(code),
+  'card.setStatus': async (input) => setCardStatus(input.id, input.status, input.note),
+  'card.resolve': async (input) => resolveScan(input.eventId, input.code),
+
+  /* ------------------------------------------------------- Akkreditierung */
+  'participant.list': async (eventId) => listParticipants(eventId),
+  'participant.add': async (input) => addParticipant(input),
+  'participant.update': async (input) => updateParticipant(input.id, input),
+  'participant.attendance': async (input) => setAttendance(input.id, input.kind, input.note),
+  'participant.history': async (id) => attendanceHistory(id),
+  'participant.issuePass': async (id) => issuePass(id),
+  'participant.findByPass': async (input) => findByPass(input.eventId, input.token),
+  'participant.block': async (input) => blockParticipant(input.id, input.reason),
+  'participant.unblock': async (id) => unblockParticipant(id),
+  'participant.presence': async (eventId) => presenceSummary(eventId, getConfig().assembly.quorum),
+  'participant.issueAndPrintPass': async (input) => {
+    const { participant, token } = issuePass(input.id)
+    await printVotingPass({ participantId: input.id, token, printerId: input.printerId })
+    return participant
+  },
+
   'agenda.list': async (eventId) => listAgenda(eventId),
   'agenda.add': async (input) => addAgendaItem(input),
   'agenda.update': async (input) => updateAgendaItem(input),

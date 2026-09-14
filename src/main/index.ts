@@ -22,8 +22,10 @@ import {
   networkStatus,
   setRemoteDispatcher,
   startNetworkProjection,
-  stopNetworkProjection
+  stopNetworkProjection,
+  setWahlDispatcher
 } from './network-projection'
+import { wahlBruecke } from './wahl-bruecke'
 import { appPaths } from './paths'
 import { getPresentation, presentationFileFor } from './services/presentations'
 import { getVideo, videoFileFor } from './services/videos'
@@ -411,6 +413,9 @@ async function bootstrap(): Promise<void> {
   registerIpc()
   // Der Fernzugriff nutzt dieselbe API wie das Hauptfenster.
   setRemoteDispatcher((method, args) => callApi(method, args))
+  /* Die Stimmabgabe bekommt eine eigene, schmale Brücke — sie kommt ohne
+     Anmeldung herein und darf deshalb nicht an `callApi`. */
+  setWahlDispatcher(wahlBruecke)
   watchDisplays()
 
   onPrintProgress((progress) => sendToOperator(IPC.printProgress, progress))

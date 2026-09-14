@@ -15,6 +15,7 @@ import type {
   ProjectionTheme
 } from './projection'
 import type { Buehnenwahl } from './projection'
+import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
 import type { SprachmodellInfo } from './sprachmodell'
 import type { Laufart, PrompterAnsicht, PrompterViewState, SpeechContent, SpeechInfo } from './speech'
@@ -23,13 +24,17 @@ import type {
   AgendaItem,
   AgendaItemInput,
   AppConfig,
+  AttendanceEntry,
   AuditChainCheck,
   AuditEntry,
   BallotAccounting,
   BallotDocument,
+  BallotIssue,
   BallotPreviewRow,
   BallotTemplateConfig,
   BallotVersionRecord,
+  Card,
+  CardStock,
   Candidate,
   CandidateOrderMode,
   CountingMode,
@@ -40,7 +45,10 @@ import type {
   ElectionRound,
   ElectionRuleSet,
   IsoDate,
+  Participant,
+  ParticipantInput,
   PreflightItem,
+  PresenceSummary,
   PrintBatch,
   PrinterConfig,
   PrinterTestResult,
@@ -374,6 +382,87 @@ export interface Api {
   }) => Promise<AgendaItem>
   'agenda.reorder': (input: { eventId: UUID; orderedIds: UUID[] }) => Promise<AgendaItem[]>
   'agenda.remove': (id: UUID) => Promise<AgendaItem[]>
+
+  /* --------------------------------------------------------- Akkreditierung */
+  'participant.list': (eventId: UUID) => Promise<Participant[]>
+  'participant.add': (input: ParticipantInput) => Promise<Participant>
+  'participant.update': (input: ParticipantInput & { id: UUID; rowVersion: number }) => Promise<Participant>
+  'participant.attendance': (input: { id: UUID; kind: 'in' | 'out'; note?: string }) => Promise<Participant>
+  'participant.history': (id: UUID) => Promise<AttendanceEntry[]>
+  /**
+   * Gibt einen Voting Pass aus und liefert ihn **einmalig** zurück.
+   *
+   * Der Wert erscheint nur in dieser einen Antwort; gespeichert wird nur sein
+   * Hash. Er gehört damit an genau eine Stelle — in den Druck.
+   */
+  'participant.issuePass': (id: UUID) => Promise<{ participant: Participant; token: string }>
+  'participant.findByPass': (input: { eventId: UUID; token: string }) => Promise<Participant | null>
+  'participant.block': (input: { id: UUID; reason: string }) => Promise<Participant>
+  'participant.unblock': (id: UUID) => Promise<Participant>
+  'participant.presence': (eventId: UUID) => Promise<PresenceSummary>
+  /**
+   * Pass ausgeben **und** drucken — in einem Aufruf.
+   *
+   * Getrennt wäre es ein Fehler mit Ansage: Zwischen Ausgeben und Drucken
+   * müsste der Wert durch die Oberfläche wandern, und wer dazwischen abbricht,
+   * hat einen gültigen Pass, den niemand hat.
+   */
+  'participant.issueAndPrintPass': (input: { id: UUID; printerId: string }) => Promise<Participant>
+
+  /* ------------------------------------------------ Digitale Abstimmung */
+  'voting.prepare': (input: {
+    roundId: UUID
+    geheimnis: Wahlgeheimnis
+    geraete: Geraetewahl
+  }) => Promise<WahlLage>
+  'voting.open': (roundId: UUID) => Promise<WahlLage>
+  'voting.close': (roundId: UUID) => Promise<WahlStand>
+  'voting.lage': (roundId: UUID) => Promise<WahlLage | null>
+  'voting.stand': (roundId: UUID) => Promise<WahlStand>
+  /** Zählt aus und schreibt das Ergebnis in den Wahlgang. */
+  'voting.uebernehmen': (roundId: UUID) => Promise<void>
+  /** Die Urne als Liste — Grundlage des Ausdrucks und der Nachzählung. */
+  'voting.urne': (roundId: UUID) => Promise<{ serial: string; text: string; weight: number }[]>
+  'voting.drucken': (input: { roundId: UUID; printerId: string }) => Promise<void>
+
+  /* ------------------------------------------------ Ausgabe der Zettel */
+  'handout.issue': (input: {
+    roundId: UUID
+    participantId: UUID
+    kind?: BallotIssue['kind']
+    reason?: string
+  }) => Promise<{ issue: BallotIssue; participant: Participant }>
+  'handout.count': (roundId: UUID) => Promise<{ initial: number; replacements: number }>
+  'handout.for': (input: { roundId: UUID; participantId: UUID }) => Promise<BallotIssue[]>
+  'handout.revoke': (input: { issueId: UUID; reason: string }) => Promise<void>
+
+  /* ------------------------------------------------- Karten und Bändchen */
+  'card.list': () => Promise<Card[]>
+  'card.stock': () => Promise<CardStock>
+  'card.import': (input: {
+    entries: { serial: string; code: string }[]
+    kind: Card['kind']
+  }) => Promise<{ added: number; skipped: number }>
+  'card.assign': (input: {
+    participantId: UUID
+    code: string
+  }) => Promise<{ card: Card; participant: Participant }>
+  'card.return': (code: string) => Promise<{ card: Card; participant: Participant | null }>
+  'card.setStatus': (input: { id: UUID; status: Card['status']; note?: string }) => Promise<Card>
+  /**
+   * Ein Scan am Einlass — was auch immer da gescannt wurde.
+   *
+   * Karte, Bändchen oder gedruckter Pass: Wer das Gerät hält, soll nicht
+   * vorher entscheiden müssen, was er gleich darüberzieht.
+   */
+  'card.resolve': (input: {
+    eventId: UUID
+    code: string
+  }) => Promise<
+    | { kind: 'card'; card: Card; participant: Participant | null }
+    | { kind: 'pass'; participant: Participant }
+    | null
+  >
 
   /* ------------------------------------------------------------ Kandidaten */
   'candidate.add': (input: { roundId: UUID; candidates: CandidateInput[] }) => Promise<Candidate[]>

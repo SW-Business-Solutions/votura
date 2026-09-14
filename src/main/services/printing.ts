@@ -21,7 +21,15 @@ import { db } from '../db'
 import { optionalNumber, optionalString } from '../db/driver'
 import { logger } from '../logger'
 import { createDriver, PrinterError } from '../printing/drivers'
-import { buildBallotOps, buildProtocolSlipOps, buildResultSlipOps } from '../printing/layout'
+import { getParticipant } from './participants'
+import { urnenListe, votingLage } from './voting'
+import {
+  buildBallotOps,
+  buildProtocolSlipOps,
+  buildResultSlipOps,
+  buildUrnenlisteOps,
+  buildVotingPassOps
+} from '../printing/layout'
 import { countLines, type PrintOp } from '../printing/ops'
 import { appendAudit } from './audit'
 import { requirePermission, requirePinIfConfigured } from './auth'
@@ -506,6 +514,96 @@ export async function printProtocolSlip(input: {
     failedCopies: batch.failedCopies,
     deduplicated: false
   }
+}
+
+/**
+ * Das Urnenverzeichnis drucken.
+ *
+ * Wie der Voting Pass **ohne Druckauftrag**: Es ist kein Stimmzettel und
+ * gehört nicht in die Stimmzettelbilanz. Und wie beim Ergebnisbeleg gibt es
+ * hier nichts zu schützen — die Liste gibt wieder, was ohnehin nachzuzählen
+ * sein soll.
+ */
+export async function printUrnenListe(input: { roundId: UUID; printerId: string }): Promise<void> {
+  const session = requirePermission('export.read')
+  const round = getRound(input.roundId)
+  const event = getEvent(round.eventId)
+  const printer = getPrinter(input.printerId)
+  if (!printer) throw new Error(`Der Drucker "${input.printerId}" ist nicht konfiguriert.`)
+
+  const lage = votingLage(input.roundId)
+  const ops = buildUrnenlisteOps(
+    {
+      organization: event.organization,
+      eventTitle: event.title,
+      date: event.date,
+      roundLabel: round.roundLabel,
+      roundCode: round.roundCode,
+      schluessel: lage?.schluessel?.n,
+      zettel: urnenListe(input.roundId)
+    },
+    printer
+  )
+
+  await createDriver(printer).submit(ops, { label: `urne-${round.roundCode}` })
+  appendAudit({
+    action: 'voting.urne_printed',
+    userId: session.user.id,
+    userName: session.user.displayName,
+    eventId: round.eventId,
+    electionRoundId: input.roundId,
+    newValue: { zettel: urnenListe(input.roundId).length }
+  })
+}
+
+/**
+ * Den Voting Pass drucken.
+ *
+ * **Bewusst ohne Druckauftrag.** Die Auftragsverwaltung dient der
+ * Stimmzettelbilanz: Sie zählt, wie viele Zettel den Drucker verlassen haben,
+ * und jeder Eintrag gehört zu einem Wahlgang. Ein Pass gehört zu keinem
+ * Wahlgang und ist kein Stimmzettel — ihn dort mitzuzählen hieße, die Bilanz
+ * zu verfälschen, und zwar an der Stelle, an der sie am meisten zählt.
+ *
+ * Gedruckt wird deshalb unmittelbar über den Treiber, und der Vorgang steht im
+ * Audit — mit Namen, ohne den Pass selbst.
+ */
+export async function printVotingPass(input: {
+  participantId: UUID
+  token: string
+  printerId: string
+}): Promise<void> {
+  const session = requirePermission('participant.manage')
+  const person = getParticipant(input.participantId)
+  if (!person) throw new Error('Unbekannter Teilnehmer.')
+  const event = getEvent(person.eventId)
+  const printer = getPrinter(input.printerId)
+  if (!printer) throw new Error(`Der Drucker "${input.printerId}" ist nicht konfiguriert.`)
+
+  const ops = buildVotingPassOps(
+    {
+      organization: event.organization,
+      eventTitle: event.title,
+      date: event.date,
+      lastName: person.lastName,
+      firstName: person.firstName,
+      number: person.number,
+      token: input.token,
+      weight: person.weight
+    },
+    printer
+  )
+
+  await createDriver(printer).submit(ops, { label: `voting-pass-${person.id}` })
+
+  /* Der Pass selbst steht nie im Protokoll — nur, dass einer gedruckt wurde. */
+  appendAudit({
+    action: 'participant.pass_printed',
+    userId: session.user.id,
+    userName: session.user.displayName,
+    eventId: person.eventId,
+    newValue: { name: `${person.lastName}, ${person.firstName}`, drucker: printer.name }
+  })
 }
 
 /**

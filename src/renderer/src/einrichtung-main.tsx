@@ -11,6 +11,7 @@
 import { StrictMode, useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { SaalEinstellung, SaalFund, SaalRolle } from '@shared/saal'
+import { rolleBrauchtAnmeldung } from '@shared/saal'
 import './styles/einrichtung.css'
 
 interface SaalBridge {
@@ -151,7 +152,28 @@ function EinrichtungsApp(): React.JSX.Element {
               {gewaehlt && !gewaehlt.prompterBedienung ? ' · nur anzeigend' : ' · mit Bedienung'}
             </span>
           </button>
+          <button
+            className={rolle.art === 'akkreditierung' ? 'gewaehlt' : ''}
+            onClick={() => setRolle({ art: 'akkreditierung' })}
+          >
+            Akkreditierung am Einlass
+            <span className="leise">Ausweise ausgeben und zurücknehmen · mit Anmeldung</span>
+          </button>
+          <button
+            className={rolle.art === 'ausgabe' ? 'gewaehlt' : ''}
+            onClick={() => setRolle({ art: 'ausgabe' })}
+          >
+            Ausgabe der Stimmzettel
+            <span className="leise">Zettel gegen Ausweis herausgeben · mit Anmeldung</span>
+          </button>
         </div>
+        {rolleBrauchtAnmeldung(rolle) && (
+          <p className="hinweis">
+            Dieses Gerät wird <strong>bedient</strong>, nicht nur angesehen: Es meldet sich am Hauptrechner
+            mit einem Konto an, und was dort ausgelöst wird, steht mit diesem Konto im Protokoll. Dafür muss
+            am Hauptrechner der Fernzugriff eingeschaltet sein.
+          </p>
+        )}
         {rolle.art === 'prompter' && (
           <p className="hinweis">
             Als Prompter darf dieses Gerät das Mikrofon nutzen — nur dann, und nur gegenüber dem oben

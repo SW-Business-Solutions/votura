@@ -1,7 +1,7 @@
 # Bedrohungsmodell der digitalen Stimmabgabe
 
-- **Stand:** 2026-09-14
-- **Gegenstand:** die in ADR-0006 beschriebene digitale Stimmabgabe
+- **Stand:** 2026-09-14 (Umsetzung nachgetragen)
+- **Gegenstand:** die in ADR-0006 beschriebene und inzwischen umgesetzte digitale Stimmabgabe
 - **Zweck:** festhalten, wogegen das Verfahren schützt, wogegen nicht, und woran das jeweils hängt
 
 Dieses Dokument ist keine Rechtsberatung und keine Sicherheitszertifizierung. Es ist die Grundlage
@@ -140,6 +140,25 @@ Vor einem produktiven Einsatz zu klären — von Menschen, nicht von diesem Doku
    umgesetzt ist, muss jemand anderes feststellen als der, der es gebaut hat.
 5. **Aufbewahrung.** Wie lange die gedruckte Urnenliste und die Bilanz aufzubewahren sind, richtet
    sich nach der jeweiligen Ordnung.
+
+## 5a. Was die Umsetzung inzwischen hält
+
+Die Maßnahmen dieses Dokuments sind gebaut. Was davon geprüft ist und wo:
+
+| Aussage                                                   | Geprüft durch                                                                                                                                                                             |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Die signierende Seite erfährt nichts                      | `tests/blindsignatur.test.ts` — verblendeter Wert und Blindsignatur haben mit Seriennummer und fertiger Signatur nichts gemein; zweimal dieselbe Nummer ergibt zwei verschiedene Anfragen |
+| Eine Signatur gilt nur für ihre Seriennummer              | ebenda — fremde Nummern, erfundene Signaturen, fremdes Schlüsselpaar und die entarteten Werte 0, 1 und n werden abgewiesen                                                                |
+| Berechtigung und Urne haben nichts gemeinsam              | `tests/wahl.test.ts` — die Spalten beider Tabellen werden namentlich festgehalten                                                                                                         |
+| In der Urne steht keine Person                            | ebenda, auch bei **offener** Abstimmung                                                                                                                                                   |
+| Die Betriebsart entscheidet, nicht der Absender           | ebenda — eine mitgeschickte Personenkennung wird verworfen, wo sie nicht hingehört                                                                                                        |
+| Der private Schlüssel verschwindet beim Schließen         | ebenda                                                                                                                                                                                    |
+| Nur wer im Saal ist, darf abstimmen                       | `tests/akkreditierung.test.ts` — auch mit gültigem gedrucktem Pass                                                                                                                        |
+| Je Wahlgang eine Berechtigung, je Stimmzettel eine Stimme | `tests/wahl.test.ts`                                                                                                                                                                      |
+
+**Was dabei nicht geprüft ist und nicht geprüft werden kann:** ob die Umsetzung der Kryptografie
+frei von Fehlern ist. Prüfungen zeigen, dass sie das Erwartete tut — nicht, dass sie nichts anderes
+tut. Das bleibt Punkt 4 der offenen Fragen.
 
 ## 6. Warum der Quelltext der Urne offen bleiben sollte
 

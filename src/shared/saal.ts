@@ -57,8 +57,28 @@ export interface SaalFund extends SaalAntwort {
   adresse: string
 }
 
-/** Was die Begleitanwendung sein soll. */
-export type SaalRolle = { art: 'buehne'; nummer: number } | { art: 'prompter' }
+/**
+ * Was die Begleitanwendung sein soll.
+ *
+ * Zwei Familien, und der Unterschied ist grundsätzlich:
+ *
+ * **Anzeigend** — Bühne und Prompter. Sie zeigen, was der Hauptrechner sagt,
+ * und niemand bedient sie (der Prompter höchstens sich selbst).
+ *
+ * **Bedienend** — Akkreditierung, Ausgabe und Wahlkabine. Hinter ihnen steht
+ * ein Mensch, der etwas auslöst: Ausweise ausgeben, Stimmzettel herausgeben,
+ * eine Stimme abgeben. Die ersten beiden verlangen deshalb eine Anmeldung wie
+ * jeder Fernzugriff (ADR-0005) — es sind Arbeitsplätze, keine Anzeigen.
+ */
+export type SaalRolle =
+  | { art: 'buehne'; nummer: number }
+  | { art: 'prompter' }
+  /** Einlass: Teilnehmer suchen, Ausweis ausgeben und zurücknehmen. */
+  | { art: 'akkreditierung' }
+  /** Ausgabe: Stimmzettel gegen Ausweis herausgeben. */
+  | { art: 'ausgabe' }
+  /** Wahlkabine: die digitale Stimmabgabe (ADR-0006). */
+  | { art: 'wahlkabine' }
 
 /** Was sie sich merkt, damit sie es beim nächsten Start nicht wieder fragt. */
 export interface SaalEinstellung {
@@ -92,15 +112,53 @@ export function istSaalAntwort(wert: unknown): wert is SaalAntwort {
 export function rollenAdresse(einstellung: SaalEinstellung): string {
   const basis = einstellung.master.replace(/\/+$/, '')
   const token = einstellung.token ? `&t=${encodeURIComponent(einstellung.token)}` : ''
-  if (einstellung.rolle.art === 'prompter') {
-    return `${basis}/prompter${einstellung.token ? `?t=${encodeURIComponent(einstellung.token)}` : ''}`
+  const frage = einstellung.token ? `?t=${encodeURIComponent(einstellung.token)}` : ''
+
+  switch (einstellung.rolle.art) {
+    case 'prompter':
+      return `${basis}/prompter${frage}`
+    /*
+     * Die bedienenden Rollen führen auf die Fernbedienung des Hauptrechners.
+     * Sie bauen nichts nach — es ist dieselbe Oberfläche, dieselbe Anmeldung,
+     * dieselbe Rechteprüfung. Ein zweiter, schwächerer Weg an dieselben Daten
+     * wäre genau die Abkürzung, die man später bereut.
+     */
+    case 'akkreditierung':
+      return `${basis}/operator${frage}#/akkreditierung`
+    case 'ausgabe':
+      return `${basis}/operator${frage}#/ausgabe`
+    case 'wahlkabine':
+      return `${basis}/wahl${frage}`
+    default:
+      return `${basis}/?buehne=${einstellung.rolle.nummer}${token}`
   }
-  return `${basis}/?buehne=${einstellung.rolle.nummer}${token}`
 }
 
 /** Klartext einer Rolle — für Auswahl, Fenstertitel und Meldungen. */
 export function rollenName(rolle: SaalRolle, buehnen: { id: number; name: string }[] = []): string {
-  if (rolle.art === 'prompter') return 'Prompter am Pult'
-  const treffer = buehnen.find((buehne) => buehne.id === rolle.nummer)
-  return treffer ? treffer.name : `Bühne ${rolle.nummer}`
+  switch (rolle.art) {
+    case 'prompter':
+      return 'Prompter am Pult'
+    case 'akkreditierung':
+      return 'Akkreditierung am Einlass'
+    case 'ausgabe':
+      return 'Ausgabe der Stimmzettel'
+    case 'wahlkabine':
+      return 'Wahlkabine'
+    default: {
+      const treffer = buehnen.find((buehne) => buehne.id === rolle.nummer)
+      return treffer ? treffer.name : `Bühne ${rolle.nummer}`
+    }
+  }
+}
+
+/**
+ * Braucht diese Rolle eine Anmeldung?
+ *
+ * Anzeigende Rollen nicht — sie zeigen, was ohnehin auf der Leinwand steht.
+ * Bedienende schon: Wer Ausweise ausgibt oder Stimmzettel herausgibt, handelt,
+ * und Handeln gehört einem Konto zugeordnet.
+ */
+export function rolleBrauchtAnmeldung(rolle: SaalRolle): boolean {
+  return rolle.art === 'akkreditierung' || rolle.art === 'ausgabe'
 }

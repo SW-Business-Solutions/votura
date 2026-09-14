@@ -48,6 +48,18 @@ export function opsToEposXml(ops: PrintOp[], printer: PrinterConfig): string {
       case 'spacing':
         parts.push(op.dots === 'default' ? '<feed unit="0"/>' : '')
         break
+      case 'qr':
+        /*
+         * ePOS kennt den Symbolbefehl unmittelbar — Modell 2, Fehlerkorrektur
+         * M, Modulbreite wie bei ESC/POS. `level="level_m"` deckt 15 %
+         * Beschädigung ab; der Pass wird eingesteckt und geknickt.
+         */
+        parts.push(`<text align="${op.align ?? 'center'}"/>`)
+        parts.push(
+          `<symbol type="qrcode_model_2" level="level_m" width="${Math.max(3, Math.min(8, Math.round(op.size ?? 6)))}" height="0">` +
+            `${escapeXml(op.data)}</symbol>`
+        )
+        break
       case 'cut':
         parts.push(`<feed line="${printer.feedLinesBeforeCut}"/>`)
         parts.push('<cut type="feed"/>')

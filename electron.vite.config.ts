@@ -46,7 +46,10 @@ export default defineConfig({
           audience: resolve(__dirname, 'src/renderer/audience.html'),
           prompter: resolve(__dirname, 'src/renderer/prompter.html'),
           teleprompter: resolve(__dirname, 'src/renderer/teleprompter.html'),
-          einrichtung: resolve(__dirname, 'src/renderer/einrichtung.html')
+          einrichtung: resolve(__dirname, 'src/renderer/einrichtung.html'),
+          /* Die Seite für das Telefon eines Teilnehmers. Sie wird nicht in
+             einem Fenster geöffnet, sondern über das Netz ausgeliefert. */
+          wahl: resolve(__dirname, 'src/renderer/wahl.html')
         }
       }
     },

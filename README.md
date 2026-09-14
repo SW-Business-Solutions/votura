@@ -20,21 +20,23 @@ Gesprochenen folgt.
 
 ## Überblick
 
-| Bereich          | Umsetzung                                                                                          |
-| ---------------- | -------------------------------------------------------------------------------------------------- |
-| Plattform        | Electron 43 (Chromium + Node 24), React 19, TypeScript                                             |
-| Datenhaltung     | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil                                           |
-| Druck            | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe      |
-| Bühnen           | Bis zu vier Anzeigeflächen, je eigenes Fenster und eigene Netzadresse, gemeinsam schaltbar         |
-| Beamer           | Rein lesende Fenster + optionale Netzwerkansicht im Browser                                        |
-| Präsentationen   | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster |
-| Video            | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr                                 |
-| Teleprompter     | Reden als Markdown, eigener Netzendpunkt, Spiegelung, Mitlaufen nach Gehör                         |
-| Ergebnis         | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten                         |
-| Betrieb          | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften                       |
-| Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst, wird Bühne oder Pult                             |
-| Installation     | Windows: Installer (NSIS) und portable Fassung · Linux: `tar.gz` für x64 und arm64                 |
-| Raspberry Pi     | Pi 4/5 als Anzeigegerät: ein Befehl richtet Kiosk und Neustart nach Absturz ein                    |
+| Bereich          | Umsetzung                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| Plattform        | Electron 43 (Chromium + Node 24), React 19, TypeScript                                                  |
+| Datenhaltung     | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil                                                |
+| Druck            | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe           |
+| Akkreditierung   | Wer da ist, wer mitstimmen darf, Beschlussfähigkeit — Stimmkarten, Bändchen oder gedruckte Pässe mit QR |
+| Ausgabe          | Ein Stimmzettel gegen einen Ausweis; je Wahlgang genau einer, die Bilanz wird gezählt statt getippt     |
+| Bühnen           | Bis zu vier Anzeigeflächen, je eigenes Fenster und eigene Netzadresse, gemeinsam schaltbar              |
+| Beamer           | Rein lesende Fenster + optionale Netzwerkansicht im Browser                                             |
+| Präsentationen   | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster      |
+| Video            | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr                                      |
+| Teleprompter     | Reden als Markdown, eigener Netzendpunkt, Spiegelung, Mitlaufen nach Gehör                              |
+| Ergebnis         | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten                              |
+| Betrieb          | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften                            |
+| Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst: Bühne, Pult, Einlass oder Ausgabe                     |
+| Installation     | Windows: Installer (NSIS) und portable Fassung · Linux: `tar.gz` für x64 und arm64                      |
+| Raspberry Pi     | Pi 4/5 als Anzeigegerät: ein Befehl richtet Kiosk und Neustart nach Absturz ein                         |
 
 ## Herunterladen
 

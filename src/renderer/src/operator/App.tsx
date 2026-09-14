@@ -3,6 +3,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { useApp } from './state'
 import { AgendaPage } from './pages/AgendaPage'
+import { AkkreditierungPage } from './pages/AkkreditierungPage'
+import { AusgabePage } from './pages/AusgabePage'
+import { DigitaleWahlPage } from './pages/DigitaleWahlPage'
 import { AuditPage } from './pages/AuditPage'
 import { BeamerPage } from './pages/BeamerPage'
 import { PrompterPage } from './pages/PrompterPage'
@@ -22,6 +25,9 @@ export type Route =
   | { name: 'dashboard' }
   | { name: 'event' }
   | { name: 'agenda' }
+  | { name: 'akkreditierung' }
+  | { name: 'ausgabe' }
+  | { name: 'digitalewahl' }
   | { name: 'round-new' }
   | { name: 'round'; id: string; tab?: string }
   | { name: 'beamer' }
@@ -38,6 +44,12 @@ function parseHash(): Route {
       return { name: 'event' }
     case 'agenda':
       return { name: 'agenda' }
+    case 'akkreditierung':
+      return { name: 'akkreditierung' }
+    case 'ausgabe':
+      return { name: 'ausgabe' }
+    case 'digitalewahl':
+      return { name: 'digitalewahl' }
     case 'round':
       return param === 'new' ? { name: 'round-new' } : { name: 'round', id: param, tab }
     case 'beamer':
@@ -136,6 +148,17 @@ export function App(): React.JSX.Element {
           hint="Strg+T"
         />
         <NavItem
+          label="Akkreditierung"
+          active={route.name === 'akkreditierung'}
+          onClick={() => navigate('akkreditierung')}
+        />
+        <NavItem label="Ausgabe" active={route.name === 'ausgabe'} onClick={() => navigate('ausgabe')} />
+        <NavItem
+          label="Digitale Abstimmung"
+          active={route.name === 'digitalewahl'}
+          onClick={() => navigate('digitalewahl')}
+        />
+        <NavItem
           label="Neuer Wahlgang"
           active={route.name === 'round-new'}
           onClick={() => navigate('round/new')}
@@ -217,6 +240,9 @@ export function App(): React.JSX.Element {
         {route.name === 'dashboard' && <DashboardPage />}
         {route.name === 'event' && <EventPage />}
         {route.name === 'agenda' && <AgendaPage />}
+        {route.name === 'akkreditierung' && <AkkreditierungPage />}
+        {route.name === 'ausgabe' && <AusgabePage />}
+        {route.name === 'digitalewahl' && <DigitaleWahlPage />}
         {route.name === 'round-new' && <RoundWizardPage />}
         {route.name === 'round' && <RoundDetailPage roundId={route.id} tab={route.tab} />}
         {route.name === 'beamer' && <BeamerPage />}

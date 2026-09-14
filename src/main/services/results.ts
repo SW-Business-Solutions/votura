@@ -12,6 +12,7 @@ import type { ElectionResult, ElectionRound, ResultData, UUID } from '@shared/ty
 import { db } from '../db'
 import { fromJson, optionalNumber, optionalString } from '../db/driver'
 import { appendAudit } from './audit'
+import { eligibleForRound } from './participants'
 import { requirePermission, requirePinIfConfigured, requireSession } from './auth'
 import { getRound } from './rounds'
 import { getConfig } from './settings'
@@ -115,6 +116,17 @@ export function saveResult(input: ResultInput): ElectionResult {
   const now = new Date().toISOString()
   const id = existing?.id ?? randomUUID()
 
+  /*
+   * Die Zahl der Stimmberechtigten kommt aus der Akkreditierung, wo eine
+   * geführt wird — und zwar aus dem Stand, der beim **Eröffnen** dieses
+   * Wahlgangs festgehalten wurde, nicht aus dem jetzigen. Wer inzwischen
+   * gegangen ist, hat trotzdem mitgewählt.
+   *
+   * Ohne Akkreditierung bleibt es bei dem, was die Oberfläche mitschickt: der
+   * Zahl am Ereignis. Für bestehende Versammlungen ändert sich nichts.
+   */
+  const eligibleVoters = eligibleForRound(input.electionRoundId, input.eligibleVoters)
+
   if (existing) {
     db()
       .prepare(
@@ -127,7 +139,7 @@ export function saveResult(input: ResultInput): ElectionResult {
       .run(
         countingMode,
         input.declaration?.trim() || null,
-        input.eligibleVoters ?? null,
+        eligibleVoters ?? null,
         input.ballotsCast,
         input.validBallots,
         input.invalidBallots,
@@ -155,7 +167,7 @@ export function saveResult(input: ResultInput): ElectionResult {
         input.electionRoundId,
         countingMode,
         input.declaration?.trim() || null,
-        input.eligibleVoters ?? null,
+        eligibleVoters ?? null,
         input.ballotsCast,
         input.validBallots,
         input.invalidBallots,

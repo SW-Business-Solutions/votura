@@ -36,6 +36,7 @@ export const PERMISSIONS = [
   'round.manage',
   'round.unlock',
   'candidate.manage',
+  'participant.manage',
   'ballot.approve',
   'print.execute',
   'print.reprint',
@@ -54,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'round.manage',
     'round.unlock',
     'candidate.manage',
+    'participant.manage',
     'ballot.approve',
     'print.execute',
     'print.reprint',
@@ -66,6 +68,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ],
   WAHLKOMMISSION: [
     'candidate.manage',
+    'participant.manage',
     'print.execute',
     'print.reprint',
     'accounting.edit',
@@ -130,6 +133,152 @@ export interface ElectionEvent {
   updatedAt: IsoDateTime
   closedAt?: IsoDateTime
   archivedAt?: IsoDateTime
+}
+
+/* ------------------------------------------------------- Akkreditierung */
+
+/**
+ * Ein Teilnehmer der Versammlung.
+ *
+ * Nicht jeder Anwesende ist stimmberechtigt — Gäste, Referenten und
+ * Mitarbeiter sitzen im selben Saal. `eligible` trennt das; für die
+ * Beschlussfähigkeit zählen nur die Stimmberechtigten.
+ *
+ * `weight` ist das Stimmgewicht. In Vereinen ist es durchweg 1, bei
+ * Delegiertenversammlungen kann ein Delegierter mehrere Stimmen führen.
+ */
+export interface Participant {
+  id: UUID
+  eventId: UUID
+  /** Mitglieds- oder Delegiertennummer, wie sie in der Einladung steht. */
+  number?: string
+  lastName: string
+  firstName: string
+  note?: string
+  weight: number
+  eligible: boolean
+  /** Anwesend, abgeleitet aus dem letzten Eintrag im Anwesenheitsverlauf. */
+  present: boolean
+  /** Zeitpunkt des letzten Kommens oder Gehens. */
+  lastSeenAt?: IsoDateTime
+  /** Der Voting Pass ist ausgegeben (der Wert selbst steht hier nie). */
+  passIssued: boolean
+  passIssuedAt?: IsoDateTime
+  blockedAt?: IsoDateTime
+  blockedReason?: string
+  rowVersion: number
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+export interface ParticipantInput {
+  eventId: UUID
+  number?: string
+  lastName: string
+  firstName: string
+  note?: string
+  weight?: number
+  eligible?: boolean
+}
+
+/** Kommen oder Gehen — ein Eintrag im fortschreibenden Anwesenheitsverlauf. */
+export interface AttendanceEntry {
+  id: UUID
+  participantId: UUID
+  kind: 'in' | 'out'
+  at: IsoDateTime
+  byUser?: string
+  note?: string
+}
+
+/**
+ * Wann die Versammlung beschlussfähig ist.
+ *
+ * Zwei Formen, weil Satzungen beide kennen: eine feste Zahl („mindestens
+ * sieben Mitglieder") oder ein Anteil der Stimmberechtigten („die Hälfte").
+ */
+export interface QuorumRule {
+  kind: 'none' | 'count' | 'share'
+  /** Bei `count` die Personenzahl, bei `share` der Anteil zwischen 0 und 1. */
+  value: number
+}
+
+/** Der Stand im Saal, wie ihn die Akkreditierung sieht. */
+export interface PresenceSummary {
+  /** Erfasste Teilnehmer insgesamt. */
+  total: number
+  /** Davon stimmberechtigt. */
+  eligibleTotal: number
+  /** Anwesend. */
+  present: number
+  /** Anwesend **und** stimmberechtigt — die Zahl, an der die Mehrheit hängt. */
+  eligiblePresent: number
+  /** Summe der Stimmgewichte der anwesenden Stimmberechtigten. */
+  weightPresent: number
+  /** Ausgegebene Voting Pässe. */
+  passesIssued: number
+  quorum: QuorumRule
+  /** Wie viele stimmberechtigte Anwesende die Regel verlangt. */
+  quorumRequired: number
+  quorumMet: boolean
+}
+
+/**
+ * Eine Stimmkarte aus dem Bestand.
+ *
+ * Sie gehört **nicht** zu einer Versammlung: Dieselben Karten werden nächstes
+ * Jahr wieder benutzt. `serial` steht sichtbar darauf und ist für Menschen
+ * („Karte 42 ist weg"); der QR trägt ein langes Zufallsgeheimnis, von dem hier
+ * nie die Rede ist.
+ */
+export interface Card {
+  id: UUID
+  /** Die aufgedruckte Nummer. */
+  serial: string
+  /**
+   * Karte oder Bändchen.
+   *
+   * Eine **Karte** kommt am Ausgang zurück in den Stapel. Ein **Bändchen**
+   * wird um das Handgelenk geklebt und beim Gehen abgerissen — der Ablauf ist
+   * derselbe, nur ist es danach verbraucht.
+   */
+  kind: 'card' | 'band'
+  status: 'available' | 'lost' | 'retired'
+  note?: string
+  /** Teilnehmer, der sie gerade hält — leer, wenn sie im Stapel liegt. */
+  heldBy?: UUID
+  heldSince?: IsoDateTime
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+/** Eine Ausgabe und ihre Rückgabe. Ohne `returnedAt` ist sie die laufende. */
+export interface CardAssignment {
+  id: UUID
+  cardId: UUID
+  participantId: UUID
+  eventId: UUID
+  assignedAt: IsoDateTime
+  returnedAt?: IsoDateTime
+  byUser?: string
+}
+
+/** Der Bestand auf einen Blick — „noch zwölf freie Karten". */
+export interface CardStock {
+  total: number
+  available: number
+  assigned: number
+  lost: number
+  retired: number
+}
+
+/** Der beim Eröffnen eines Wahlgangs festgehaltene Stand. */
+export interface RoundPresence {
+  roundId: UUID
+  present: number
+  eligible: number
+  weightSum: number
+  takenAt: IsoDateTime
 }
 
 /* ------------------------------------------------------- Tagesordnung */
@@ -562,12 +711,39 @@ export interface PrinterTestResult {
 
 /* ------------------------------------------------------- Stimmzettelbilanz */
 
+/**
+ * Eine Ausgabe am Tisch: Diese Person hat für diesen Wahlgang einen Zettel
+ * bekommen.
+ *
+ * Festgehalten wird, dass jemand einen **leeren** Zettel bekommen hat. Was
+ * damit geschieht, steht nirgends — sobald der Zettel über den Tisch ist, ist
+ * er anonym wie jeder andere.
+ */
+export interface BallotIssue {
+  id: UUID
+  roundId: UUID
+  participantId: UUID
+  issuedAt: IsoDateTime
+  /** `replacement` für einen Ersatzzettel nach einem verschriebenen (§23). */
+  kind: 'initial' | 'replacement'
+  byUser?: string
+}
+
 export interface BallotAccounting {
   electionRoundId: UUID
   /** Aus PrintBatches abgeleitet. */
   printed: number
   printFailures: number
   testPrints: number
+  /**
+   * Am Ausgabetisch erfasst — abgeleitet wie `printed`, nicht eingetippt.
+   *
+   * Wo ein Ausgabeplatz benutzt wird, ist das die maßgebliche Zahl; `issued`
+   * kann dann leer bleiben. Wo von Hand ausgeteilt wird, bleibt es bei der
+   * Eingabe.
+   */
+  handedOut: number
+  handedOutReplacements: number
   /** Manuell dokumentierte Mengen. */
   issued: number
   replacementsIssued: number
@@ -740,6 +916,16 @@ export interface AppConfig {
       endMarker: string
       cutMarker: string
     }
+  }
+  /**
+   * Die Versammlung selbst.
+   *
+   * Wann sie beschlussfähig ist, steht in der Satzung und nicht im Programm —
+   * deshalb einstellbar und mit `none` voreingestellt: Ohne ausdrückliche
+   * Regel behauptet Votura nichts über die Beschlussfähigkeit.
+   */
+  assembly: {
+    quorum: QuorumRule
   }
   security: {
     sessionTimeoutMinutes: number

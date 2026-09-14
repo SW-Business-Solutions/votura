@@ -261,6 +261,223 @@ ALTER TABLE results ADD COLUMN declaration TEXT;
     sql: `
 ALTER TABLE results ADD COLUMN rank_order_json TEXT;
 `
+  },
+  {
+    /*
+     * Akkreditierung: wer da ist, und wie viele davon stimmberechtigt sind.
+     *
+     * Bisher war die Zahl der Stimmberechtigten **eine Zahl am Ereignis**,
+     * einmal eingetippt. In einer Versammlung kommen und gehen aber Leute:
+     * Beim vierten Wahlgang sitzen andere im Saal als beim ersten, und damit
+     * ändert sich die nötige Mehrheit. Wer das von Hand nachhält, rechnet
+     * irgendwann mit einer veralteten Zahl.
+     *
+     * `attendance_log` ist **fortschreibend**, nicht überschreibend: Kommen
+     * und Gehen stehen je als eigene Zeile. Der aktuelle Zustand ist der
+     * jeweils letzte Eintrag. Nur so lässt sich später sagen, wer zum
+     * Zeitpunkt eines Wahlgangs im Saal war — ein Feld „anwesend ja/nein"
+     * könnte das nicht.
+     *
+     * `round_presence` hält den Stand **je Wahlgang** fest, sobald er
+     * eröffnet wird. Danach darf sich die Anwesenheit ändern, ohne das
+     * laufende Verfahren zu verschieben.
+     */
+    version: 6,
+    sql: `
+CREATE TABLE IF NOT EXISTS participants (
+  id             TEXT PRIMARY KEY,
+  event_id       TEXT NOT NULL REFERENCES events(id),
+  number         TEXT,
+  last_name      TEXT NOT NULL,
+  first_name     TEXT NOT NULL,
+  note           TEXT,
+  weight         INTEGER NOT NULL DEFAULT 1,
+  eligible       INTEGER NOT NULL DEFAULT 1,
+  pass_hash      TEXT UNIQUE,
+  pass_issued_at TEXT,
+  blocked_at     TEXT,
+  blocked_reason TEXT,
+  row_version    INTEGER NOT NULL DEFAULT 1,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_participants_event ON participants(event_id, last_name, first_name);
+
+CREATE TABLE IF NOT EXISTS attendance_log (
+  id             TEXT PRIMARY KEY,
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  kind           TEXT NOT NULL,
+  at             TEXT NOT NULL,
+  by_user        TEXT,
+  note           TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_teilnehmer ON attendance_log(participant_id, at);
+
+CREATE TABLE IF NOT EXISTS round_presence (
+  round_id   TEXT PRIMARY KEY REFERENCES rounds(id),
+  present    INTEGER NOT NULL,
+  eligible   INTEGER NOT NULL,
+  weight_sum INTEGER NOT NULL,
+  taken_at   TEXT NOT NULL
+);
+`
+  },
+  {
+    /*
+     * Stimmkarten: wiederverwendbar statt bedrucktes Papier.
+     *
+     * Ein Papierpass geht im Saal verloren — er bleibt auf einem Stuhl liegen,
+     * und niemand bemerkt es. Eine Karte wird beim Betreten **zugewiesen** und
+     * beim Verlassen **zurückgegeben**; sie wandert danach an die nächste
+     * Person. Das ist der Handgriff, den eine Garderobe seit hundert Jahren
+     * beherrscht.
+     *
+     * `cards` ist **Bestand** und gehört deshalb nicht zu einer Versammlung:
+     * Dieselben Karten werden nächstes Jahr wieder benutzt.
+     *
+     * `serial` steht sichtbar auf der Karte und ist für Menschen — „Karte 42
+     * ist weg". `code_hash` ist die Prüfsumme dessen, was im QR steht, und das
+     * ist ein langes Zufallsgeheimnis: Stünde dort die Nummer, ließe sich eine
+     * Karte nachdrucken.
+     *
+     * `card_assignments` ist fortschreibend wie der Anwesenheitsverlauf. Eine
+     * Zuweisung ohne `returned_at` ist die laufende — und nur eine laufende
+     * Zuweisung macht eine Karte gültig. Ein abfotografierter Code von
+     * vorletzter Versammlung ist damit wertlos.
+     */
+    version: 7,
+    sql: `
+CREATE TABLE IF NOT EXISTS cards (
+  id         TEXT PRIMARY KEY,
+  serial     TEXT NOT NULL UNIQUE,
+  code_hash  TEXT NOT NULL UNIQUE,
+  status     TEXT NOT NULL DEFAULT 'available',
+  note       TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS card_assignments (
+  id             TEXT PRIMARY KEY,
+  card_id        TEXT NOT NULL REFERENCES cards(id),
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  event_id       TEXT NOT NULL REFERENCES events(id),
+  assigned_at    TEXT NOT NULL,
+  returned_at    TEXT,
+  by_user        TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_karte_zuweisung ON card_assignments(card_id, assigned_at);
+CREATE INDEX IF NOT EXISTS idx_karte_teilnehmer ON card_assignments(participant_id, assigned_at);
+`
+  },
+  {
+    /*
+     * Bändchen neben Karten.
+     *
+     * Ein Einlassbändchen aus Papier wird um das Handgelenk geklebt und beim
+     * Gehen abgerissen. Der Ablauf ist derselbe wie bei der Karte — scannen,
+     * ausgeben, scannen, zurücknehmen —, nur kommt es nicht in den Bestand
+     * zurück: Es ist verbraucht.
+     *
+     * Deshalb eine Sorte und keine zweite Tabelle. Alles andere ist gleich,
+     * und zwei fast gleiche Tabellen liefen bei der ersten Änderung
+     * auseinander.
+     */
+    version: 8,
+    sql: `
+ALTER TABLE cards ADD COLUMN kind TEXT NOT NULL DEFAULT 'card';
+`
+  },
+  {
+    /*
+     * Wer für welchen Wahlgang einen Stimmzettel bekommen hat.
+     *
+     * Das Papieräquivalent zur einmaligen Stimmberechtigung: Je Wahlgang
+     * bekommt jeder genau einen Zettel. Bisher stand die ausgegebene Menge als
+     * **eine getippte Zahl** in der Bilanz — wer doppelt austeilte, merkte es
+     * beim Nachzählen oder gar nicht.
+     *
+     * Die Tabelle sagt **nicht**, wie jemand gestimmt hat. Sie sagt, dass er
+     * einen leeren Zettel bekommen hat; danach ist der Zettel anonym wie jeder
+     * andere. Genau diese Grenze trennt die Ausgabe von der Urne.
+     */
+    version: 9,
+    sql: `
+CREATE TABLE IF NOT EXISTS ballot_issues (
+  id             TEXT PRIMARY KEY,
+  round_id       TEXT NOT NULL REFERENCES rounds(id),
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  issued_at      TEXT NOT NULL,
+  kind           TEXT NOT NULL DEFAULT 'initial',
+  by_user        TEXT,
+  UNIQUE (round_id, participant_id, kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ausgabe_wahlgang ON ballot_issues(round_id);
+`
+  },
+  {
+    /*
+     * Digitale Stimmabgabe (ADR-0006).
+     *
+     * Drei Tabellen, und ihre Trennung ist der ganze Entwurf:
+     *
+     * `voting_sessions` — die Abstimmung selbst. Bei geheimer Wahl entsteht
+     * hier je Wahlgang ein eigenes Schlüsselpaar; der private Teil wird beim
+     * Schließen gelöscht, der öffentliche bleibt für die Nachprüfung stehen.
+     *
+     * `voting_rights` — wer eine Stimmberechtigung bekommen hat. **Nicht**,
+     * welche. Bei geheimer Wahl steht hier nichts über das Token: Die
+     * Berechtigungsseite hat es nie gesehen (Blindsignatur).
+     *
+     * `cast_ballots` — die Urne. Sie kennt Seriennummer und Stimme. Die Spalte
+     * `participant_id` bleibt bei geheimer und bei einfacher offener Wahl
+     * **leer**; gefüllt wird sie nur bei einer namentlichen Abstimmung, und
+     * dort ist die Zuordnung der ausdrückliche Zweck.
+     *
+     * Zwischen `voting_rights` und `cast_ballots` gibt es keinen
+     * Fremdschlüssel und keine gemeinsame Kennung. Das ist keine
+     * Nachlässigkeit, sondern die Aussage.
+     */
+    version: 10,
+    sql: `
+CREATE TABLE IF NOT EXISTS voting_sessions (
+  round_id    TEXT PRIMARY KEY REFERENCES rounds(id),
+  secrecy     TEXT NOT NULL,
+  devices     TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'prepared',
+  public_key  TEXT,
+  private_key TEXT,
+  opened_at   TEXT,
+  closed_at   TEXT,
+  created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS voting_rights (
+  id             TEXT PRIMARY KEY,
+  round_id       TEXT NOT NULL REFERENCES rounds(id),
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  weight         INTEGER NOT NULL DEFAULT 1,
+  issued_at      TEXT NOT NULL,
+  UNIQUE (round_id, participant_id)
+);
+
+CREATE TABLE IF NOT EXISTS cast_ballots (
+  id             TEXT PRIMARY KEY,
+  round_id       TEXT NOT NULL REFERENCES rounds(id),
+  serial         TEXT NOT NULL,
+  choice_json    TEXT NOT NULL,
+  weight         INTEGER NOT NULL DEFAULT 1,
+  participant_id TEXT REFERENCES participants(id),
+  ordnung        INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (round_id, serial)
+);
+
+CREATE INDEX IF NOT EXISTS idx_urne_wahlgang ON cast_ballots(round_id, ordnung);
+`
   }
 ]
 
