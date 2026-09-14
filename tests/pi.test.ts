@@ -209,6 +209,53 @@ describe('Die beiden Rollen', () => {
   })
 })
 
+describe('Die Frage nach der Rolle', () => {
+  /*
+   * `curl … | sudo bash` wählte stillschweigend den Saal. Wer den
+   * Hauptrechner wollte, musste `-s -- --rolle hauptrechner` kennen — eine
+   * Angabe, die nirgends steht, wo jemand sie sucht.
+   */
+  it('fragt, wenn niemand die Rolle angegeben hat', () => {
+    expect(install).toContain("rolle=''")
+    expect(install).toContain('rolle="$(frage_rolle)"')
+  })
+
+  it('fragt über /dev/tty, nicht über die Standardeingabe', () => {
+    /*
+     * Bei `curl … | sudo bash` **ist** die Standardeingabe das Skript selbst.
+     * Ein `read` dort läse die nächste Zeile des Skripts statt der Antwort —
+     * und verschluckte sie obendrein.
+     */
+    expect(install).toContain('exec 3<>/dev/tty')
+    expect(install).toMatch(/read -r antwort <&3/)
+    expect(install).not.toMatch(/read -r antwort\s*$/m)
+  })
+
+  it('wartet nicht, wenn kein Mensch davorsitzt', () => {
+    /* Im chroot des Abbildbaus und in jedem unbeaufsichtigten Lauf gibt es
+       kein Terminal — dort darf nichts auf eine Antwort warten, die nie
+       kommt. */
+    expect(install).toMatch(/if ! \{ exec 3<>\/dev\/tty; \} 2>\/dev\/null; then\s*\n\s*printf 'saal'/)
+  })
+
+  it('fragt nicht, wenn die Rolle angegeben wurde', () => {
+    /* Der Abbildbau gibt sie mit — er darf nie gefragt werden. */
+    expect(install).toContain('[[ -n "$rolle" ]] || rolle="$(frage_rolle)"')
+    expect(abbild).toContain('/tmp/votura/install.sh --rolle')
+  })
+
+  it('prüft die Berechtigung, bevor es fragt', () => {
+    /* Erst antworten und dann an `sudo` scheitern wäre die falsche
+       Reihenfolge. */
+    expect(install.indexOf('[[ $EUID -eq 0 ]]')).toBeLessThan(install.indexOf('frage_rolle()'))
+  })
+
+  it('nimmt bei bloßem Enter die häufige Rolle', () => {
+    /* Von Bühnen gibt es viele, Hauptrechner genau einen. */
+    expect(install).toContain('"${antwort:-1}"')
+  })
+})
+
 describe('Was Raspberry Pi OS britisch mitbringt', () => {
   /*
    * Zeitzone Europe/London, Tastatur `gb`, Sprache en_GB. Für eine
