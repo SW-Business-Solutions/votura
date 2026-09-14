@@ -24,10 +24,24 @@ import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Field } from '../components/ui'
 
-export function DigitaleWahlPage(): React.JSX.Element {
+export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.JSX.Element {
   const app = useApp()
   const event = app.event
+  /*
+   * **Zwei Wege in dieselbe Seite.**
+   *
+   * Über die Navigation: Dann gehört die Wahl des Wahlgangs dazu, denn man
+   * kommt von außen. Aus einem Wahlgang heraus: Dann steht er schon fest, und
+   * eine zweite Auswahl daneben wäre eine Frage, die niemand gestellt hat.
+   */
   const [wahlgang, setWahlgang] = useState<RoundSummary | null>(null)
+  const imWahlgang = Boolean(roundId)
+
+  useEffect(() => {
+    if (!roundId) return
+    const gefunden = app.rounds.find((runde) => runde.id === roundId)
+    if (gefunden) setWahlgang(gefunden)
+  }, [roundId, app.rounds])
   const [lage, setLage] = useState<WahlLage | null>(null)
   const [stand, setStand] = useState<WahlStand | null>(null)
   const [geheimnis, setGeheimnis] = useState<Wahlgeheimnis>('open')
@@ -110,33 +124,37 @@ export function DigitaleWahlPage(): React.JSX.Element {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Digitale Abstimmung</h1>
-          <div className="subtitle">
-            Teilnehmer stimmen mit ihrem eigenen Gerät oder in einer Wahlkabine ab. Die Papierwahl bleibt
-            davon unberührt — je Wahlgang entscheidet die Wahlleitung.
+      {!imWahlgang && (
+        <>
+          <div className="page-header">
+            <div>
+              <h1>Digitale Abstimmung</h1>
+              <div className="subtitle">
+                Teilnehmer stimmen mit ihrem eigenen Gerät oder in einer Wahlkabine ab. Die Papierwahl
+                bleibt davon unberührt — je Wahlgang entscheidet die Wahlleitung.
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <Card title="Wahlgang">
-        {app.rounds.length === 0 ? (
-          <EmptyState text="Noch kein Wahlgang angelegt." />
-        ) : (
-          <div className="row">
-            {app.rounds.map((runde) => (
-              <button
-                key={runde.id}
-                className={wahlgang?.id === runde.id ? 'primary' : ''}
-                onClick={() => setWahlgang(runde)}
-              >
-                {runde.roundLabel} — {runde.title}
-              </button>
-            ))}
-          </div>
-        )}
-      </Card>
+          <Card title="Wahlgang">
+            {app.rounds.length === 0 ? (
+              <EmptyState text="Noch kein Wahlgang angelegt." />
+            ) : (
+              <div className="row">
+                {app.rounds.map((runde) => (
+                  <button
+                    key={runde.id}
+                    className={wahlgang?.id === runde.id ? 'primary' : ''}
+                    onClick={() => setWahlgang(runde)}
+                  >
+                    {runde.roundLabel} — {runde.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
+        </>
+      )}
 
       {wahlgang && (
         <>

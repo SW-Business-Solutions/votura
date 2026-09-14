@@ -16,7 +16,7 @@ import type { Card as Ausweis, CardStock, Participant, PresenceSummary } from '@
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
-import { Card, EmptyState, Field } from '../components/ui'
+import { Card, EmptyState, Field, NumberInput } from '../components/ui'
 import { kameraVerfuegbar, QrScanner } from '../../qr-scanner'
 
 /** Wie ein Zeitpunkt am Einlass aussehen soll: kurz. */
@@ -457,11 +457,13 @@ export function AkkreditierungPage(): React.JSX.Element {
             />
           </Field>
           <Field label="Stimmgewicht">
-            <input
-              type="number"
+            {/* Kein rohes Zahlenfeld: Eine 0 oder eine −1 nahm es bisher an,
+                und eine Stimme, die nichts wiegt, gibt es nicht. */}
+            <NumberInput
+              value={Number.parseInt(neu.weight, 10) || 1}
               min={1}
-              value={neu.weight}
-              onChange={(ereignis) => setNeu({ ...neu, weight: ereignis.target.value })}
+              max={999}
+              onChange={(wert) => setNeu({ ...neu, weight: String(wert) })}
             />
           </Field>
           <button className="primary" onClick={() => void aufnehmen()}>

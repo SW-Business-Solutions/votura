@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import type { SaalnetzStatus } from '@shared/ipc'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
-import { Card, Checkbox, Field, NumberInput } from '../components/ui'
+import { AdressFeld, Card, Checkbox, Field, istAdresse, NumberInput } from '../components/ui'
 
 export function SaalnetzEinstellungen(): React.JSX.Element {
   const app = useApp()
@@ -224,7 +224,44 @@ function NetzdiensteKarte({
   const [entwurf, setEntwurf] = useState(stand)
   const eigenes = app.settings?.eigenesZertifikat
 
+  /*
+   * **Vor dem Speichern nachrechnen.** Eine Adressvergabe mit vertauschten
+   * Grenzen startet zwar — und vergibt dann nichts. Das fiele erst auf, wenn
+   * im Saal die ersten Geräte ohne Adresse dastehen, und dort sucht um 19 Uhr
+   * niemand nach so etwas.
+   */
+  const beanstandung = (): string | null => {
+    if (entwurf.dns && !app.settings?.eigenesZertifikat) {
+      return 'Ohne hinterlegtes Zertifikat weiß der Namensdienst nicht, welchen Namen er beantworten soll.'
+    }
+    if (entwurf.dnsWeiterleitung && !istAdresse(entwurf.dnsWeiterleitung)) {
+      return 'Die Weiterleitung ist keine gültige Adresse.'
+    }
+    if (!entwurf.dhcp) return null
+    for (const [was, wert] of [
+      ['Von', entwurf.dhcpVon],
+      ['Bis', entwurf.dhcpBis],
+      ['Netzmaske', entwurf.dhcpMaske]
+    ] as const) {
+      if (!istAdresse(wert)) return `„${was}" ist keine gültige Adresse.`
+    }
+    if (entwurf.dhcpRouter && !istAdresse(entwurf.dhcpRouter)) {
+      return 'Die Adresse des Routers ist nicht gültig.'
+    }
+    const zahl = (adresse: string): number =>
+      adresse.split('.').reduce((summe, teil) => summe * 256 + Number(teil), 0)
+    if (zahl(entwurf.dhcpVon) > zahl(entwurf.dhcpBis)) {
+      return 'Der Bereich läuft rückwärts: „Von" liegt hinter „Bis".'
+    }
+    return null
+  }
+
   const speichern = async (): Promise<void> => {
+    const fehlt = beanstandung()
+    if (fehlt) {
+      app.notify('warning', fehlt)
+      return
+    }
     try {
       const neu = await api('saalnetz.set', {
         dns: entwurf.dns,
@@ -301,25 +338,25 @@ function NetzdiensteKarte({
         <div className="row">
           <div className="col">
             <Field label="Von">
-              <input
+              <AdressFeld
                 value={entwurf.dhcpVon}
-                onChange={(e) => setEntwurf({ ...entwurf, dhcpVon: e.target.value })}
+                onChange={(wert) => setEntwurf({ ...entwurf, dhcpVon: wert })}
               />
             </Field>
           </div>
           <div className="col">
             <Field label="Bis">
-              <input
+              <AdressFeld
                 value={entwurf.dhcpBis}
-                onChange={(e) => setEntwurf({ ...entwurf, dhcpBis: e.target.value })}
+                onChange={(wert) => setEntwurf({ ...entwurf, dhcpBis: wert })}
               />
             </Field>
           </div>
           <div className="col">
             <Field label="Netzmaske">
-              <input
+              <AdressFeld
                 value={entwurf.dhcpMaske}
-                onChange={(e) => setEntwurf({ ...entwurf, dhcpMaske: e.target.value })}
+                onChange={(wert) => setEntwurf({ ...entwurf, dhcpMaske: wert })}
               />
             </Field>
           </div>
@@ -327,10 +364,11 @@ function NetzdiensteKarte({
         <div className="row">
           <div className="col">
             <Field label="Router (Weg nach draußen)" hint="Leer: Die Gäste haben im Saalnetz kein Internet.">
-              <input
+              <AdressFeld
                 value={entwurf.dhcpRouter}
                 placeholder="192.168.50.254"
-                onChange={(e) => setEntwurf({ ...entwurf, dhcpRouter: e.target.value })}
+                optional
+                onChange={(wert) => setEntwurf({ ...entwurf, dhcpRouter: wert })}
               />
             </Field>
           </div>

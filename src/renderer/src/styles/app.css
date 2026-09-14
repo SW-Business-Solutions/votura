@@ -1290,3 +1290,15 @@ tr.aktionen.active > td {
 .nav-gruppe:first-of-type {
   margin-top: 4px;
 }
+
+/*
+ * Eine unzulässige Eingabe sieht man, bevor jemand auf „Speichern" drückt.
+ *
+ * Vorher nahm das Feld sie stumm an, und die Absage kam später vom Dienst —
+ * oder gar nicht.
+ */
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-input));
+}
