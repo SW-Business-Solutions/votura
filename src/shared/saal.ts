@@ -79,6 +79,14 @@ export type SaalRolle =
   | { art: 'ausgabe' }
   /** Wahlkabine: die digitale Stimmabgabe (ADR-0006). */
   | { art: 'wahlkabine' }
+  /**
+   * Wahlausschuss: Dieses Gerät hält den Schlüssel und unterschreibt.
+   *
+   * Es ist weder anzeigend noch bedienend im gewohnten Sinn — es arbeitet für
+   * sich. Eine Anmeldung braucht es nicht, wohl aber das Zugriffstoken: Hier
+   * hängt kein Ausweis als Nachweis dran, sondern ein eingerichtetes Gerät.
+   */
+  | { art: 'wahlausschuss' }
 
 /** Was sie sich merkt, damit sie es beim nächsten Start nicht wieder fragt. */
 export interface SaalEinstellung {
@@ -129,6 +137,8 @@ export function rollenAdresse(einstellung: SaalEinstellung): string {
       return `${basis}/operator${frage}#/ausgabe`
     case 'wahlkabine':
       return `${basis}/wahl${frage}`
+    case 'wahlausschuss':
+      return `${basis}/ausschuss${frage}`
     default:
       return `${basis}/?buehne=${einstellung.rolle.nummer}${token}`
   }
@@ -145,6 +155,8 @@ export function rollenName(rolle: SaalRolle, buehnen: { id: number; name: string
       return 'Ausgabe der Stimmzettel'
     case 'wahlkabine':
       return 'Wahlkabine'
+    case 'wahlausschuss':
+      return 'Wahlausschuss'
     default: {
       const treffer = buehnen.find((buehne) => buehne.id === rolle.nummer)
       return treffer ? treffer.name : `Bühne ${rolle.nummer}`

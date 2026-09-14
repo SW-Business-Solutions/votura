@@ -414,6 +414,8 @@ export interface Api {
     roundId: UUID
     geheimnis: Wahlgeheimnis
     geraete: Geraetewahl
+    /** Wer unterschreibt — dieser Rechner oder das Gerät des Wahlausschusses. */
+    signer?: 'hub' | 'committee'
   }) => Promise<WahlLage>
   'voting.open': (roundId: UUID) => Promise<WahlLage>
   'voting.close': (roundId: UUID) => Promise<WahlStand>

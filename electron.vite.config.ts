@@ -49,7 +49,9 @@ export default defineConfig({
           einrichtung: resolve(__dirname, 'src/renderer/einrichtung.html'),
           /* Die Seite für das Telefon eines Teilnehmers. Sie wird nicht in
              einem Fenster geöffnet, sondern über das Netz ausgeliefert. */
-          wahl: resolve(__dirname, 'src/renderer/wahl.html')
+          wahl: resolve(__dirname, 'src/renderer/wahl.html'),
+          /* Das Gerät des Wahlausschusses — es hält den Schlüssel. */
+          ausschuss: resolve(__dirname, 'src/renderer/ausschuss.html')
         }
       }
     },

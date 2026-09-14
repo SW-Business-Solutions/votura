@@ -326,6 +326,27 @@ export function urnenListe(roundId: UUID): { serial: string; text: string; weigh
 /* ================================================== Der Wahlausschuss (M3) */
 
 /**
+ * Der Wahlgang, auf den das Ausschussgerät gerade wartet.
+ *
+ * Es bekommt ihn gesagt, statt ihn eingestellt zu bekommen: Am Tisch des
+ * Wahlausschusses soll niemand Kennungen abtippen. Gesucht wird die eine
+ * geheime Abstimmung dieser Versammlung, die über den Ausschuss unterschreibt
+ * und noch nicht geschlossen ist.
+ */
+export function ausschussWahlgang(eventId: UUID): WahlLage | null {
+  const zeile = db()
+    .prepare(
+      `SELECT s.round_id FROM voting_sessions s
+         JOIN rounds r ON r.id = s.round_id
+        WHERE r.event_id = ? AND s.signer = 'committee' AND s.secrecy = 'secret'
+          AND s.status IN ('prepared', 'open')
+        ORDER BY s.created_at DESC LIMIT 1`
+    )
+    .get<{ round_id: string }>(eventId)
+  return zeile ? votingLage(zeile.round_id) : null
+}
+
+/**
  * Das Gerät des Wahlausschusses meldet seinen öffentlichen Schlüssel.
  *
  * **Nur einmal.** Steht schon einer da, wird die Meldung abgewiesen — ein

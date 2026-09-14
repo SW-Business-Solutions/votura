@@ -15,7 +15,7 @@ import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
 import { BUEHNEN_MAX, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { PROMPTER_PFAD, type PrompterViewState } from '@shared/speech'
-import { WAHL_PFAD } from '@shared/wahl'
+import { AUSSCHUSS_PFAD, WAHL_PFAD } from '@shared/wahl'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
 import { getPresentation, presentationFileFor } from './services/presentations'
@@ -83,6 +83,10 @@ export interface WahlDispatcher {
   lage(code: string): Promise<unknown>
   berechtigung(eingabe: Record<string, unknown>): Promise<unknown>
   abgeben(eingabe: Record<string, unknown>): Promise<unknown>
+  /** Das Gerät des Wählers holt seine Unterschrift ab (Ausschussbetrieb). */
+  warten(eingabe: Record<string, unknown>): Promise<unknown>
+  /** Der Wahlausschuss: Lage, Schlüssel melden, offene Anfragen, Unterschrift. */
+  ausschuss(was: string, eingabe: Record<string, unknown>): Promise<unknown>
 }
 
 let wahlRuf: WahlDispatcher | null = null
@@ -217,6 +221,14 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
    * Nur erreichbar, solange eine Abstimmung offen ist; das prüft der Dienst
    * dahinter bei jedem Aufruf.
    */
+  if (url.pathname.startsWith('/api/ausschuss/')) {
+    if (!wahlRuf) {
+      deny(response, 503, 'Die digitale Stimmabgabe ist nicht bereit.')
+      return
+    }
+    if (await handleAusschuss(request, response, url, wahlRuf)) return
+  }
+
   if (url.pathname.startsWith('/api/stimme/')) {
     if (!wahlRuf) {
       deny(response, 503, 'Die digitale Stimmabgabe ist nicht bereit.')
@@ -235,6 +247,12 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
      Saalnetz laden kann. */
   if (url.pathname === WAHL_PFAD || url.pathname === `${WAHL_PFAD}/`) {
     serveFile(response, join(rendererRoot(), 'wahl.html'))
+    return
+  }
+
+  /* Die Seite des Wahlausschusses — sie hält den Schlüssel und unterschreibt. */
+  if (url.pathname === AUSSCHUSS_PFAD || url.pathname === `${AUSSCHUSS_PFAD}/`) {
+    serveFile(response, join(rendererRoot(), 'ausschuss.html'))
     return
   }
 
@@ -532,7 +550,11 @@ async function handleWahl(
     return true
   }
 
-  if (url.pathname === '/api/stimme/berechtigung' || url.pathname === '/api/stimme/abgeben') {
+  if (
+    url.pathname === '/api/stimme/berechtigung' ||
+    url.pathname === '/api/stimme/abgeben' ||
+    url.pathname === '/api/stimme/warten'
+  ) {
     if (request.method !== 'POST') {
       sendeFehler(response, 405, 'Diese Stelle nimmt nur POST an.')
       return true
@@ -543,7 +565,9 @@ async function handleWahl(
       const ergebnis =
         url.pathname === '/api/stimme/berechtigung'
           ? await ruf.berechtigung(koerper)
-          : await ruf.abgeben(koerper)
+          : url.pathname === '/api/stimme/warten'
+            ? await ruf.warten(koerper)
+            : await ruf.abgeben(koerper)
       sendeJson(response, 200, ergebnis ?? {})
     } catch (fehler) {
       sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
@@ -552,6 +576,42 @@ async function handleWahl(
   }
 
   return false
+}
+
+/**
+ * Die Endpunkte des Wahlausschusses.
+ *
+ * Anders als die Stimmabgabe **verlangen sie das Zugriffstoken**: Hier hängt
+ * kein Ausweis als Nachweis dran, sondern ein Gerät, das den Schlüssel hält.
+ * Wer es betreibt, hat es eingerichtet und kennt das Token.
+ *
+ * Über diesen Weg gehen nur verblendete Werte und Unterschriften. Auch wer
+ * mitliest, erfährt daraus nichts.
+ */
+async function handleAusschuss(
+  request: IncomingMessage,
+  response: ServerResponse,
+  url: URL,
+  ruf: WahlDispatcher
+): Promise<boolean> {
+  const was = url.pathname.slice('/api/ausschuss/'.length)
+  if (!['lage', 'schluessel', 'offen', 'signatur'].includes(was)) return false
+
+  if (!tokenValid(request, url)) {
+    sendeFehler(response, 401, 'Zugriffstoken fehlt oder ist falsch.')
+    return true
+  }
+
+  const koerper =
+    request.method === 'POST' ? await leseKoerper(request, response, 65536) : Object.create(null)
+  if (koerper === null) return true
+
+  try {
+    sendeJson(response, 200, (await ruf.ausschuss(was, koerper as Record<string, unknown>)) ?? {})
+  } catch (fehler) {
+    sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
+  }
+  return true
 }
 
 async function handlePrompterControl(

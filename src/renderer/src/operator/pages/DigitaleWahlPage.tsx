@@ -32,6 +32,7 @@ export function DigitaleWahlPage(): React.JSX.Element {
   const [stand, setStand] = useState<WahlStand | null>(null)
   const [geheimnis, setGeheimnis] = useState<Wahlgeheimnis>('open')
   const [geraete, setGeraete] = useState<Geraetewahl>('both')
+  const [signer, setSigner] = useState<'hub' | 'committee'>('hub')
 
   const laden = useCallback(async () => {
     if (!wahlgang) return
@@ -153,11 +154,37 @@ export function DigitaleWahlPage(): React.JSX.Element {
                 ))}
               </select>
             </Field>
+            {geheimnis === 'secret' && (
+              <Field label="Wer unterschreibt">
+                <select
+                  disabled={lage?.status === 'open' || lage?.status === 'closed'}
+                  value={signer}
+                  onChange={(e) => setSigner(e.target.value as 'hub' | 'committee')}
+                >
+                  <option value="hub">Dieser Rechner</option>
+                  <option value="committee">Der Wahlausschuss auf eigenem Gerät</option>
+                </select>
+              </Field>
+            )}
+            {geheimnis === 'secret' && signer === 'hub' && (
+              <div className="notice warn">
+                Der Schlüssel liegt dann <strong>auf diesem Rechner</strong>. Wer ihn vollständig
+                kontrolliert, kann zusätzliche Stimmberechtigungen erzeugen — die Bilanz macht das sichtbar,
+                verhindert es aber nicht. Beim Wahlausschuss auf eigenem Gerät kann er es nicht.
+              </div>
+            )}
+            {geheimnis === 'secret' && signer === 'committee' && (
+              <div className="notice">
+                Das Gerät des Wahlausschusses erzeugt den Schlüssel und meldet nur den öffentlichen Teil
+                hierher. <strong>Eröffnen lässt sich erst danach.</strong> Votura Saal hat dafür die Rolle
+                „Wahlausschuss".
+              </div>
+            )}
             <button
               className="primary"
               disabled={lage?.status === 'open' || lage?.status === 'closed'}
               onClick={() =>
-                void tue(() => api('voting.prepare', { roundId: wahlgang.id, geheimnis, geraete }))
+                void tue(() => api('voting.prepare', { roundId: wahlgang.id, geheimnis, geraete, signer }))
               }
             >
               Vorbereiten

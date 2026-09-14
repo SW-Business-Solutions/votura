@@ -11,6 +11,9 @@ import type { IsoDateTime, UUID } from './types'
 /** Pfad der Wahlseite auf dem Projektionsserver. */
 export const WAHL_PFAD = '/stimme'
 
+/** Pfad der Seite des Wahlausschusses — sie hält den Schlüssel. */
+export const AUSSCHUSS_PFAD = '/ausschuss'
+
 /**
  * Wie geheim die Abstimmung ist.
  *

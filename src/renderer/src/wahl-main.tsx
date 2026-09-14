@@ -58,6 +58,7 @@ function Wahlseite(): React.JSX.Element {
   const [antwort, setAntwort] = useState<'ja' | 'nein' | 'enthaltung' | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const [laeuft, setLaeuft] = useState(false)
+  const [wartet, setWartet] = useState(false)
 
   const pruefen = useCallback(async (wert: string) => {
     setFehler(null)
@@ -102,11 +103,36 @@ function Wahlseite(): React.JSX.Element {
         const seriennummer = zufall(32)
         const { verblendet, faktor } = await verblenden(seriennummer, schluessel, sha256, zufall)
 
-        const { signatur } = await hole<{ signatur: string }>('/api/stimme/berechtigung', {
+        const berechtigung = await hole<{ signatur?: string; ticket?: string }>('/api/stimme/berechtigung', {
           code,
           roundId: lage.roundId,
           verblendet
         })
+
+        /*
+         * Unterschreibt der Wahlausschuss, kommt statt der Unterschrift eine
+         * Wartenummer zurück: Der Schlüssel liegt auf einem anderen Gerät.
+         * Also nachfragen, bis sie da ist — ein paar Sekunden, in denen der
+         * Wähler vor dem Bildschirm steht und lesen soll, warum.
+         */
+        let signatur = berechtigung.signatur
+        if (!signatur && berechtigung.ticket) {
+          setWartet(true)
+          for (let versuch = 0; versuch < 120 && !signatur; versuch++) {
+            await new Promise((weiter) => setTimeout(weiter, 500))
+            const antwort = await hole<{ signatur?: string }>('/api/stimme/warten', {
+              ticket: berechtigung.ticket
+            })
+            signatur = antwort.signatur
+          }
+          setWartet(false)
+        }
+        if (!signatur) {
+          throw new Error(
+            'Der Wahlausschuss hat nicht geantwortet. Bitte beim Wahlvorstand melden — Ihre Stimme ist noch nicht abgegeben.'
+          )
+        }
+
         const echte = entblenden(signatur, faktor, schluessel)
 
         await hole('/api/stimme/abgeben', {
@@ -240,11 +266,18 @@ function Wahlseite(): React.JSX.Element {
         disabled={laeuft || zuviele || (lage.sachabstimmung && !antwort)}
         onClick={() => void abgeben()}
       >
-        {laeuft ? 'Wird abgegeben …' : 'Stimme abgeben'}
+        {wartet ? 'Der Wahlausschuss unterschreibt …' : laeuft ? 'Wird abgegeben …' : 'Stimme abgeben'}
       </button>
       <p className="leise">
         Nach dem Absenden lässt sich nichts mehr ändern — wie ein Zettel, der in der Urne ist.
       </p>
+      {wartet && (
+        <p className="leise">
+          Ihre Stimmberechtigung wird gerade vom Wahlausschuss unterschrieben — auf einem eigenen Gerät, damit
+          niemand allein Berechtigungen erzeugen kann. Was er dabei sieht, ist eine Zufallszahl: Ihre Wahl
+          erfährt er nicht.
+        </p>
+      )}
     </main>
   )
 }

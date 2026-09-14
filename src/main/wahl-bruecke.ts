@@ -15,7 +15,18 @@ import type { Stimmabgabe, WahlAuskunft } from '@shared/wahl'
 import { activeEvent } from './services/events'
 import { mayVote } from './services/participants'
 import { resolveScan } from './services/cards'
-import { berechtigungAusgeben, offeneWahl, stimmeEinlegen, votingLage } from './services/voting'
+import {
+  ausschussWahlgang,
+  berechtigungAusgeben,
+  committeeKeyMelden,
+  offeneSignaturen,
+  offeneWahl,
+  signaturAbholen,
+  signaturEintragen,
+  signaturZaehler,
+  stimmeEinlegen,
+  votingLage
+} from './services/voting'
 
 /** Den Ausweis zu einer Person auflösen — Karte, Bändchen oder gedruckter Pass. */
 function personZu(code: string): { id: string; name: string; gewicht: number } | null {
@@ -135,5 +146,48 @@ export const wahlBruecke: WahlDispatcher = {
       gewicht: person.gewicht
     })
     return {}
+  },
+
+  /**
+   * Auf die Unterschrift warten — nur im Ausschussbetrieb.
+   *
+   * Das Gerät des Wählers fragt mit seiner Wartenummer nach. Sie ist ein
+   * Zufallswert und sagt über niemanden etwas aus; eine Anmeldung wäre hier
+   * sogar schädlich, denn sie verbände wieder Person und Stimmzettel.
+   */
+  async warten(eingabe: Record<string, unknown>): Promise<unknown> {
+    return signaturAbholen(String(eingabe.ticket ?? ''))
+  },
+
+  /**
+   * Die Gegenseite: das Gerät des Wahlausschusses.
+   *
+   * Vier Vorgänge, mehr nicht — die Lage erfragen, den Prüfschlüssel melden,
+   * offene Anfragen abholen, eine Unterschrift zurückgeben.
+   */
+  async ausschuss(was: string, eingabe: Record<string, unknown>): Promise<unknown> {
+    const event = activeEvent()
+    if (!event) throw new Error('Es läuft keine Versammlung.')
+
+    if (was === 'lage') {
+      const lage = ausschussWahlgang(event.id)
+      return { lage, zaehler: lage ? signaturZaehler(lage.roundId) : null }
+    }
+    if (was === 'schluessel') {
+      committeeKeyMelden(String(eingabe.roundId ?? ''), {
+        n: String(eingabe.n ?? ''),
+        e: String(eingabe.e ?? '')
+      })
+      return {}
+    }
+    if (was === 'offen') {
+      const lage = ausschussWahlgang(event.id)
+      return { offen: lage ? offeneSignaturen(lage.roundId) : [] }
+    }
+    if (was === 'signatur') {
+      signaturEintragen(String(eingabe.id ?? ''), String(eingabe.signatur ?? ''))
+      return {}
+    }
+    throw new Error('Unbekannter Vorgang.')
   }
 }
