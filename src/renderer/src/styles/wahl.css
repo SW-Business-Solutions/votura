@@ -1,0 +1,138 @@
+/*
+ * Die Stimmabgabe auf einem Telefon.
+ *
+ * Wer hier steht, hält das Gerät in einer Hand, hat die Lesebrille im Mantel
+ * und dreißig Leute hinter sich. Deshalb: große Flächen, große Schrift, keine
+ * Farbe ohne Text daneben — und nichts, was scrollt, wenn es nicht muss.
+ */
+:root {
+  color-scheme: dark light;
+  --grund: #0f1214;
+  --flaeche: #171b1f;
+  --rahmen: #3d474f;
+  --schrift: #eef2f5;
+  --leise: #9fadb8;
+  --akzent: #2f81f7;
+  --fehler: #f85149;
+  --gut: #2ea043;
+}
+
+.wahl-body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--schrift);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.wahl {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wahl h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.wahl p {
+  margin: 0;
+}
+
+.wahl .leise {
+  color: var(--leise);
+  font-size: 16px;
+}
+
+.wahl .fehler {
+  color: var(--fehler);
+  font-weight: 700;
+}
+
+/* Mindestens 56 px hoch: Eine Schaltfläche, die ein Daumen im Stehen trifft. */
+.wahl .gross {
+  min-height: 56px;
+  font-size: 20px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid var(--rahmen);
+  background: var(--flaeche);
+  color: var(--schrift);
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.wahl input.gross {
+  letter-spacing: 3px;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  text-align: center;
+}
+
+.wahl .auswahl {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/*
+ * Das Kreuz steht im Text, nicht nur in der Farbe. Wer Farben schlecht
+ * unterscheidet, sieht trotzdem, was angekreuzt ist.
+ */
+.wahl .kreuz {
+  display: inline-block;
+  width: 1.4em;
+  font-size: 22px;
+}
+
+.wahl .gross.gewaehlt {
+  border-color: var(--akzent);
+  background: color-mix(in srgb, var(--akzent) 18%, var(--flaeche));
+}
+
+.wahl .abgeben {
+  margin-top: 10px;
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.wahl .abgeben:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wahl.fertig {
+  min-height: 100dvh;
+  justify-content: center;
+  text-align: center;
+}
+
+.wahl .haken {
+  font-size: 72px;
+  color: var(--gut);
+  line-height: 1;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --grund: #f6f8fa;
+    --flaeche: #fff;
+    --rahmen: #c7d0d8;
+    --schrift: #101417;
+    --leise: #57636d;
+  }
+}

@@ -15,6 +15,7 @@ import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
 import { BUEHNEN_MAX, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { PROMPTER_PFAD, type PrompterViewState } from '@shared/speech'
+import { WAHL_PFAD } from '@shared/wahl'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
 import { getPresentation, presentationFileFor } from './services/presentations'
@@ -69,6 +70,25 @@ function buehneAus(url: URL): number {
 /** Verbindet den Netzwerkserver mit der API des Hauptprozesses. */
 export function setRemoteDispatcher(next: RemoteDispatcher): void {
   dispatcher = next
+}
+
+/**
+ * Was die Stimmabgabe vom Hauptprozess braucht.
+ *
+ * Bewusst **drei** Funktionen und keine allgemeine Brücke: Über diesen Weg
+ * kommen Anfragen ohne Anmeldung herein. Was er kann, steht hier vollständig;
+ * alles andere ist nicht erreichbar, weil es nicht aufgezählt ist.
+ */
+export interface WahlDispatcher {
+  lage(code: string): Promise<unknown>
+  berechtigung(eingabe: Record<string, unknown>): Promise<unknown>
+  abgeben(eingabe: Record<string, unknown>): Promise<unknown>
+}
+
+let wahlRuf: WahlDispatcher | null = null
+
+export function setWahlDispatcher(next: WahlDispatcher): void {
+  wahlRuf = next
 }
 
 function rendererRoot(): string {
@@ -192,9 +212,29 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
+  /*
+   * Die Stimmabgabe — ohne Anmeldung, weil der Ausweis der Nachweis ist.
+   * Nur erreichbar, solange eine Abstimmung offen ist; das prüft der Dienst
+   * dahinter bei jedem Aufruf.
+   */
+  if (url.pathname.startsWith('/api/stimme/')) {
+    if (!wahlRuf) {
+      deny(response, 503, 'Die digitale Stimmabgabe ist nicht bereit.')
+      return
+    }
+    if (await handleWahl(request, response, url, wahlRuf)) return
+  }
+
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     // Alles Übrige ist ausschließlich lesend.
     deny(response, 405, 'Diese Ansicht ist nur zum Lesen.')
+    return
+  }
+
+  /* Die Wahlseite selbst — eine gewöhnliche Seite, die jedes Telefon im
+     Saalnetz laden kann. */
+  if (url.pathname === WAHL_PFAD || url.pathname === `${WAHL_PFAD}/`) {
+    serveFile(response, join(rendererRoot(), 'wahl.html'))
     return
   }
 
@@ -423,6 +463,96 @@ const PROMPTER_BEFEHLE = new Set([
   'prompter.setAnsicht',
   'prompter.setLaufart'
 ])
+
+/* ------------------------------------------------------- Stimmabgabe */
+
+/**
+ * Die Endpunkte der digitalen Stimmabgabe.
+ *
+ * **Sie verlangen keine Anmeldung, und das ist kein Versehen.** Wer hier
+ * abstimmt, hat kein Konto und darf keines brauchen — sein Ausweis ist der
+ * Nachweis, und der wird bei jedem Aufruf geprüft. Eine Anmeldung wäre an
+ * dieser Stelle sogar falsch: Bei einer geheimen Wahl darf der Rechner nicht
+ * wissen, wer gerade seine Stimme abgibt.
+ *
+ * Die Endpunkte antworten nur, solange eine Abstimmung **offen** ist. Ist
+ * keine offen, gibt es nichts zu holen und nichts einzulegen.
+ */
+async function leseKoerper(
+  request: IncomingMessage,
+  response: ServerResponse,
+  grenze = 16384
+): Promise<Record<string, unknown> | null> {
+  const stuecke: Buffer[] = []
+  let bytes = 0
+  for await (const stueck of request) {
+    bytes += (stueck as Buffer).length
+    if (bytes > grenze) {
+      deny(response, 413, 'Die Anfrage ist zu groß.')
+      return null
+    }
+    stuecke.push(stueck as Buffer)
+  }
+  try {
+    return JSON.parse(Buffer.concat(stuecke).toString('utf8')) as Record<string, unknown>
+  } catch {
+    deny(response, 400, 'Die Anfrage ist kein gültiges JSON.')
+    return null
+  }
+}
+
+function sendeJson(response: ServerResponse, status: number, daten: unknown): void {
+  const inhalt = Buffer.from(JSON.stringify(daten), 'utf8')
+  response.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': inhalt.length,
+    'Cache-Control': 'no-store'
+  })
+  response.end(inhalt)
+}
+
+/** Fehler als JSON — die Wahlseite liest `fehler` und zeigt ihn im Klartext. */
+function sendeFehler(response: ServerResponse, status: number, text: string): void {
+  sendeJson(response, status, { fehler: text })
+}
+
+async function handleWahl(
+  request: IncomingMessage,
+  response: ServerResponse,
+  url: URL,
+  ruf: WahlDispatcher
+): Promise<boolean> {
+  if (url.pathname === '/api/stimme/lage') {
+    const code = url.searchParams.get('code') ?? ''
+    try {
+      sendeJson(response, 200, await ruf.lage(code))
+    } catch (fehler) {
+      sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
+    }
+    return true
+  }
+
+  if (url.pathname === '/api/stimme/berechtigung' || url.pathname === '/api/stimme/abgeben') {
+    if (request.method !== 'POST') {
+      sendeFehler(response, 405, 'Diese Stelle nimmt nur POST an.')
+      return true
+    }
+    const koerper = await leseKoerper(request, response)
+    if (!koerper) return true
+    try {
+      const ergebnis =
+        url.pathname === '/api/stimme/berechtigung'
+          ? await ruf.berechtigung(koerper)
+          : await ruf.abgeben(koerper)
+      sendeJson(response, 200, ergebnis ?? {})
+    } catch (fehler) {
+      sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
+    }
+    return true
+  }
+
+  return false
+}
 
 async function handlePrompterControl(
   request: IncomingMessage,
