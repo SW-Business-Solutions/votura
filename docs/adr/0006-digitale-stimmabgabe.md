@@ -1,6 +1,6 @@
 # ADR-0006: Digitale Stimmabgabe neben der Papierwahl
 
-- **Status:** angenommen und umgesetzt (M0–M2)
+- **Status:** angenommen und umgesetzt (M0–M3)
 - **Datum:** 2026-09-14, Umsetzung nachgetragen am 2026-09-14
 
 ## Kontext
@@ -161,10 +161,13 @@ Stimmabgabe, ohne für 500 Teilnehmer Geräte zu beschaffen.
 
 ## Bewusste Grenzen
 
-- **Der Hauptrechner hält den privaten Schlüssel.** Wer ihn vollständig kontrolliert, kann
-  zusätzliche Unterschriften erzeugen. Die Bilanz macht das sichtbar, verhindert es aber nicht.
-  Wirklich ausgeschlossen wird es erst, wenn die Berechtigungsseite auf einem Gerät des
-  Wahlausschusses läuft — dafür ist die Schnittstelle vorbereitet, mehr nicht.
+- **Der Hauptrechner hält den privaten Schlüssel — sofern man ihn lässt.** In der einfachen
+  Betriebsart entsteht er dort; wer den Rechner vollständig kontrolliert, kann dann zusätzliche
+  Unterschriften erzeugen, und die Bilanz macht das sichtbar, ohne es zu verhindern. Mit
+  `signer: 'committee'` entsteht er stattdessen auf dem Gerät des Wahlausschusses und verlässt es
+  nie (M3). Die einfache Betriebsart bleibt die Voreinstellung: Sie braucht ein Gerät weniger, und
+  wer sie wählt, soll wissen, worauf er verzichtet — die Oberfläche sagt es an der Stelle, an der
+  entschieden wird.
 - **Netzkennungen bleiben ein Rest.** Die Blindsignatur trennt Pass und Stimme; die IP-Adresse des
   absendenden Geräts trennt sie nicht. Die Urne speichert keine Herkunft, aber wer den
   WLAN-Controller betreibt, sieht Zeitpunkte. Für geheime Wahlen ist das der Grund, die Kabine zu
@@ -203,7 +206,7 @@ bleibt in der Urne leer — außer bei einer namentlichen Abstimmung, wo die Zuo
 | **M0** ✓ | Akkreditierung: Mitglieder, Anwesenheit, Kommen und Gehen, Beschlussfähigkeit, Voting Pass als gedruckter QR-Code, Karten und Bändchen, Ausgabe der Stimmzettel | Fundament. `eligible_voters` ist heute **eine getippte Zahl am Ereignis** — beim vierten Wahlgang sind andere Leute im Saal als beim ersten. Verbessert sofort die Papierwahl, ganz ohne digitale Stimme. |
 | **M1** ✓ | Offene und namentliche Abstimmungen digital                                                                                                                     | Kein Wahlgeheimnis, also ohne Blindsignaturen. Erprobt Netz, Pass, Oberfläche und Bilanz unter echten Bedingungen — 500 Geräte im WLAN sind ein Problem für sich.                                         |
 | **M2** ✓ | Geheime Wahl: Blindsignaturen, Kabinenrolle in Votura Saal, gedrucktes Urnenverzeichnis                                                                         | Erst jetzt, mit erprobter Infrastruktur, der Teil mit der höchsten Fallhöhe.                                                                                                                              |
-| **M3**   | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                                                                    | Setzt M2 voraus — **offen**.                                                                                                                                                                              |
+| **M3** ✓ | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                                                                    | Setzt M2 voraus.                                                                                                                                                                                          |
 
 ## Verworfene Alternativen
 
