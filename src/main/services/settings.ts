@@ -3,6 +3,9 @@ import {
   DEFAULT_CONFIG,
   DEFAULT_NETWORK_PROJECTION,
   DEFAULT_PRINTERS,
+  DEFAULT_SAALNETZ,
+  type EigenesZertifikat,
+  type SaalnetzConfig,
   type NetworkProjectionConfig,
   type SystemSettings
 } from '@shared/config'
@@ -77,6 +80,24 @@ export function saveNetworkProjection(config: NetworkProjectionConfig): NetworkP
   return getNetworkProjection()
 }
 
+export function getSaalnetz(): SaalnetzConfig {
+  return { ...DEFAULT_SAALNETZ, ...read<Partial<SaalnetzConfig>>('saalnetz', {}) }
+}
+
+export function saveSaalnetz(config: SaalnetzConfig): SaalnetzConfig {
+  write('saalnetz', config)
+  return getSaalnetz()
+}
+
+/** Was über ein hinterlegtes echtes Zertifikat anzuzeigen ist. */
+export function getEigenesZertifikat(): EigenesZertifikat | undefined {
+  return read<EigenesZertifikat | undefined>('eigenesZertifikat', undefined)
+}
+
+export function saveEigenesZertifikat(wert: EigenesZertifikat | undefined): void {
+  write('eigenesZertifikat', wert ?? null)
+}
+
 export function getProjectionTheme(): ProjectionTheme {
   return normalizeProjectionTheme(read<Partial<ProjectionTheme>>('projectionTheme', {}))
 }
@@ -99,6 +120,8 @@ export function getSettings(): SystemSettings {
     config: getConfig(),
     printers: getPrinters(),
     networkProjection: getNetworkProjection(),
-    projectionTheme: getProjectionTheme()
+    projectionTheme: getProjectionTheme(),
+    saalnetz: getSaalnetz(),
+    eigenesZertifikat: getEigenesZertifikat()
   }
 }

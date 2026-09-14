@@ -134,7 +134,14 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'system.printers_saved': 'Drucker gespeichert',
   'system.update_started': 'Neue Fassung eingespielt',
   'backup.created': 'Backup erstellt',
-  'export.copied': 'Export kopiert'
+  'export.copied': 'Export kopiert',
+  /* Zertifikat und Netzdienste: Wer nachliest, warum im Saal plötzlich etwas
+     anders war, findet es hier — mit Namen und Uhrzeit. */
+  'cert.issued': 'Echtes Zertifikat ausgestellt',
+  'cert.imported': 'Eigenes Zertifikat hinterlegt',
+  'cert.removed': 'Eigenes Zertifikat entfernt',
+  'saalnetz.changed': 'Netzdienste im Saal geändert',
+  'voting.right.voided': 'Digitale Stimmberechtigung entwertet'
 }
 
 /**

@@ -486,6 +486,49 @@ Mit dem Abschluss **verfällt alles Ausgegebene**: Karten, Bändchen und gedruck
 mitgenommen hat, ist danach kein Ausweis mehr. Die Anwesenheit bleibt, wie sie war — wer am Ende im
 Saal war, war am Ende im Saal, und das gehört ins Protokoll.
 
+## Ohne Zertifikatswarnung auf mitgebrachten Geräten
+
+Für Abstimmungen ist die verschlüsselte Übertragung Pflicht. Mit dem selbst ausgestellten Zertifikat
+warnt dabei jedes mitgebrachte Telefon — unvermeidlich, denn für eine Adresse wie `192.168.1.5`
+bürgt niemand. Wer eine eigene Domain hat, kommt da heraus. Der Weg, **vor** der Versammlung:
+
+1. **A-Eintrag anlegen:** `saal.mein-verband.de` zeigt auf die Adresse des Rechners im Saal. Das
+   darf eine private Adresse sein.
+2. **Einstellungen → Netzwerk → Echtes Zertifikat:** Namen und E-Mail eintragen. Beim ersten Mal die
+   **Übungsumgebung** ankreuzen — die echte Prüfstelle erlaubt nur wenige Fehlversuche je Stunde.
+3. **TXT-Eintrag setzen**, den Votura anzeigt, und warten, bis der DNS-Anbieter ihn übernommen hat.
+   Je nach Anbieter Minuten. Zu früh geprüft zählt als Fehlversuch.
+4. **Prüfen lassen.** Danach liegt das Zertifikat als Datei auf dem Rechner; im Saal braucht Votura
+   kein Internet mehr.
+
+Das Zertifikat gilt **90 Tage**. Die Einstellungen zeigen das Ablaufdatum und warnen in den letzten
+zwei Wochen. Wer einmal im Jahr tagt, holt es vor jeder Versammlung neu.
+
+Wer das Zertifikat anderswo erzeugt, lädt es über **Vorhandenes aus Dateien laden** (Zertifikat und
+Schlüssel als PEM). Votura prüft beim Ablegen, dass beide zusammengehören und das Zertifikat noch
+gilt — ein Fehler dabei fiele sonst erst auf, wenn im Saal die erste Verbindung scheitert.
+
+### Namensdienst und Adressvergabe
+
+Ein Zertifikat auf einen Namen nützt nur, wenn im Saal jemand diesen Namen auflösen kann — und ein
+abgeschottetes Netz erreicht das öffentliche Namensystem nicht. Zwei Wege:
+
+| Aufbau | Was zu tun ist |
+| --- | --- |
+| **Router der Location** | Dort einen statischen Namenseintrag setzen. In Votura bleibt alles aus. |
+| **Votura spannt das Netz selbst auf** (Raspberry Pi mit Zugangspunkt) | Namensdienst **und** Adressvergabe einschalten. |
+
+Beim Namensdienst gehört die **Weiterleitung** bedacht: Ohne sie gilt im Saalnetz der eine Name und
+sonst nichts — die Gäste sind den Abend ohne Internet, und manche Telefone verlassen ein WLAN von
+selbst, in dem nichts geht. Mit ihr läuft ihr gewöhnlicher Namensverkehr durch den Wahlrechner;
+aufgezeichnet wird nichts, aber es geht dort durch. Das ist eine Entscheidung der
+Versammlungsleitung, keine technische Feinheit.
+
+Die **Adressvergabe** gehört nur in ein Netz, das Votura selbst aufspannt. In einem fremden Netz
+wäre ein zweiter Verteiler ein Störfall. Votura hört vor dem Start hin und verweigert den Dienst,
+wenn dort bereits jemand Adressen vergibt. Die **Adresse des Routers** gehört eingetragen, sonst
+haben die Gäste im Saalnetz kein Internet.
+
 ## Wenn eine Seite im Saal schwarz bleibt
 
 Das Zugriffstoken steht in der Adresse (`?t=…`), die Skripte und Stile einer Seite werden aber unter

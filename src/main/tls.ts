@@ -26,8 +26,8 @@
  * Dort erscheint eine Warnung. Deshalb wird der Fingerabdruck angezeigt, und
  * deshalb bleibt für geheime Wahlen die Kabine die Empfehlung.
  */
-import { createHash, createSign, generateKeyPairSync } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash, createPrivateKey, createSign, generateKeyPairSync, X509Certificate } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -204,14 +204,78 @@ export function fingerabdruckVon(zertifikat: Buffer): string {
   return (createHash('sha256').update(zertifikat).digest('hex').toUpperCase().match(/.{2}/g) ?? []).join(':')
 }
 
+/** Wo ein eigenes, echtes Zertifikat liegt, wenn es eines gibt. */
+export function eigenesZertifikatPfade(ordner: string): { cert: string; key: string } {
+  return { cert: join(ordner, 'eigenes-zertifikat.pem'), key: join(ordner, 'eigener-schluessel.pem') }
+}
+
 /**
- * Das Zertifikat dieses Rechners — beim ersten Mal erzeugt, danach gelesen.
+ * Ein eigenes Zertifikat hinterlegen — von Let's Encrypt oder von woher auch
+ * immer.
  *
- * Neu erzeugt wird es, wenn sich die Adressen geändert haben: Ein Zertifikat
- * für ein anderes Netz nützt im Saal nichts, und der Fehler fiele erst auf,
- * wenn das erste Telefon sich weigert.
+ * Geprüft wird beim Ablegen, nicht erst beim Ausliefern: Ein Schlüssel, der
+ * nicht zum Zertifikat gehört, fiele sonst erst auf, wenn im Saal die erste
+ * Verbindung scheitert. Dann ist es zu spät, um es zu bemerken, und zu früh,
+ * um es zu beheben.
+ */
+export function eigenesZertifikatAblegen(
+  ordner: string,
+  cert: string,
+  key: string
+): { domain: string; laeuftAbAm: string } {
+  const geprueft = new X509Certificate(cert)
+  if (!geprueft.checkPrivateKey(createPrivateKey(key))) {
+    throw new Error('Der Schlüssel gehört nicht zu diesem Zertifikat.')
+  }
+  if (new Date(geprueft.validTo).getTime() < Date.now()) {
+    throw new Error(`Dieses Zertifikat ist am ${new Date(geprueft.validTo).toLocaleDateString('de-DE')} abgelaufen.`)
+  }
+
+  const pfade = eigenesZertifikatPfade(ordner)
+  mkdirSync(dirname(pfade.cert), { recursive: true })
+  writeFileSync(pfade.cert, cert, 'utf8')
+  writeFileSync(pfade.key, key, { encoding: 'utf8', mode: 0o600 })
+
+  /* Der Name, für den es gilt — aus den alternativen Namen, nicht aus dem
+     gemeinen Namen: Auf den greift seit Jahren kein Browser mehr zurück. */
+  const ersterName = /DNS:([^,\s]+)/.exec(geprueft.subjectAltName ?? '')?.[1] ?? geprueft.subject
+  return { domain: ersterName, laeuftAbAm: new Date(geprueft.validTo).toISOString() }
+}
+
+/** Ein hinterlegtes eigenes Zertifikat wieder entfernen. */
+export function eigenesZertifikatEntfernen(ordner: string): void {
+  for (const pfad of Object.values(eigenesZertifikatPfade(ordner))) {
+    if (existsSync(pfad)) rmSync(pfad)
+  }
+}
+
+/**
+ * Das Zertifikat dieses Rechners.
+ *
+ * **Ein hinterlegtes eigenes hat Vorrang.** Es ist der einzige Weg, auf dem
+ * ein mitgebrachtes Telefon ohne Warnung hereinkommt; das selbst ausgestellte
+ * ist der Notnagel, nicht die Absicht.
+ *
+ * Sonst: beim ersten Mal erzeugt, danach gelesen. Neu erzeugt wird es, wenn
+ * sich die Adressen geändert haben — ein Zertifikat für ein anderes Netz
+ * nützt im Saal nichts, und der Fehler fiele erst auf, wenn das erste Telefon
+ * sich weigert.
  */
 export function zertifikatFuer(ordner: string): Zertifikat {
+  const eigen = eigenesZertifikatPfade(ordner)
+  if (existsSync(eigen.cert) && existsSync(eigen.key)) {
+    const cert = readFileSync(eigen.cert, 'utf8')
+    const roh = Buffer.from(
+      (/-----BEGIN CERTIFICATE-----([^-]+)-----END CERTIFICATE-----/.exec(cert)?.[1] ?? '').replace(/\s/g, ''),
+      'base64'
+    )
+    return { cert, key: readFileSync(eigen.key, 'utf8'), fingerabdruck: fingerabdruckVon(roh) }
+  }
+  return selbstAusgestellt(ordner)
+}
+
+/** Das selbst ausgestellte Zertifikat — der Notnagel ohne eigene Domain. */
+function selbstAusgestellt(ordner: string): Zertifikat {
   const certPfad = join(ordner, 'saal-zertifikat.pem')
   const keyPfad = join(ordner, 'saal-schluessel.pem')
   const adressen = eigeneAdressen()

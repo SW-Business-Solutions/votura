@@ -9,7 +9,7 @@ import { app, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import { IPC, type Api, type ApiMethod } from '@shared/ipc'
+import { IPC, type Api, type ApiMethod, type SaalnetzStatus } from '@shared/ipc'
 import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type Buehnenwahl } from '@shared/projection'
 import { db } from './db'
 import { appPaths } from './paths'
@@ -179,15 +179,23 @@ import {
   reopenResult,
   saveResult
 } from './services/results'
+import { ACME_ECHT, ACME_UEBUNG, auftragAbschliessen, auftragBeginnen } from './acme'
+import { dhcpLaeuft, starteDhcp, stoppeDhcp, vergebeneAdressen } from './dhcp'
+import { dnsLaeuft, starteDns, stoppeDns } from './dns'
+import { eigenesZertifikatAblegen, eigenesZertifikatEntfernen, eigeneAdressen } from './tls'
 import {
   getConfig,
+  getEigenesZertifikat,
   getNetworkProjection,
   getProjectionTheme,
+  getSaalnetz,
   getSettings,
   saveConfig,
+  saveEigenesZertifikat,
   saveNetworkProjection,
   savePrinters,
-  saveProjectionTheme
+  saveProjectionTheme,
+  saveSaalnetz
 } from './services/settings'
 import {
   eventArchiveFolderName,
@@ -302,6 +310,30 @@ export function suchrufQuelle(): SuchrufQuelle {
   }
 }
 
+/** Der Stand der Netzdienste — für die Oberfläche. */
+function saalnetzStatus(): SaalnetzStatus {
+  return {
+    ...getSaalnetz(),
+    dnsLaeuft: dnsLaeuft(),
+    dhcpLaeuft: dhcpLaeuft(),
+    vergeben: dhcpLaeuft() ? vergebeneAdressen() : []
+  }
+}
+
+/**
+ * Den Projektionsserver neu starten, damit ein gewechseltes Zertifikat gilt.
+ *
+ * Ein Zertifikat wird beim Start des Servers gelesen. Ohne Neustart läuft er
+ * mit dem alten weiter, und die Oberfläche zeigte etwas anderes an, als über
+ * die Leitung geht.
+ */
+async function netzNeu(): Promise<void> {
+  const netz = getNetworkProjection()
+  if (!netz.enabled) return
+  await stopNetworkProjection()
+  await startNetworkProjection(netz)
+}
+
 const api: Api = {
   /* --------------------------------------------------------------- System */
   'system.setupState': async () => ({
@@ -355,6 +387,19 @@ const api: Api = {
       ? await dialog.showOpenDialog(window, { title, properties: ['openDirectory', 'createDirectory'] })
       : await dialog.showOpenDialog({ title, properties: ['openDirectory', 'createDirectory'] })
     return result.canceled ? undefined : result.filePaths[0]
+  },
+
+  'system.chooseFile': async (input) => {
+    const window = getOperatorWindow()
+    const options = {
+      title: input.titel,
+      properties: ['openFile' as const],
+      filters: [{ name: 'Dateien', extensions: input.endungen }]
+    }
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
+    return result.canceled || result.filePaths.length === 0 ? undefined : result.filePaths[0]
   },
 
   'system.chooseImage': async (title) => {
@@ -878,6 +923,114 @@ const api: Api = {
     return aufBuehnen(stage, (buehne) => openAudienceWindow(displayId, buehne))
   },
   'projection.closeAudience': async (stage) => aufBuehnen(stage, (buehne) => closeAudienceWindow(buehne)),
+  /* ------------------------------------------------ Saalnetz und Zertifikat */
+
+  /**
+   * Ein echtes Zertifikat beantragen — der Weg aus der Zertifikatswarnung.
+   *
+   * Schritt 1 stellt den Auftrag und nennt den Wert für das
+   * Domain-Namensystem. Danach ist ein Mensch an der Reihe; erst wenn der
+   * Eintrag steht **und übernommen ist**, folgt Schritt 2. Zu früh gefragt
+   * zählt bei der Prüfstelle als Fehlversuch, und davon erlaubt sie wenige.
+   */
+  'cert.acmeBeginnen': async (input) => {
+    requirePermission('system.manage')
+    return auftragBeginnen({
+      domain: input.domain,
+      email: input.email,
+      ordner: join(app.getPath('userData'), 'netz'),
+      verzeichnisUrl: input.uebung ? ACME_UEBUNG : ACME_ECHT
+    })
+  },
+
+  'cert.acmeAbschliessen': async (faden) => {
+    requirePermission('system.manage')
+    const ordner = join(app.getPath('userData'), 'netz')
+    const { cert, key } = await auftragAbschliessen(faden)
+    const angaben = eigenesZertifikatAblegen(ordner, cert, key)
+    saveEigenesZertifikat(angaben)
+    appendAudit({
+      action: 'cert.issued',
+      newValue: { domain: angaben.domain, laeuftAbAm: angaben.laeuftAbAm }
+    })
+    await netzNeu()
+    return angaben
+  },
+
+  'cert.ausDateien': async (input) => {
+    requirePermission('system.manage')
+    const ordner = join(app.getPath('userData'), 'netz')
+    const angaben = eigenesZertifikatAblegen(
+      ordner,
+      readFileSync(input.certPfad, 'utf8'),
+      readFileSync(input.keyPfad, 'utf8')
+    )
+    saveEigenesZertifikat(angaben)
+    appendAudit({ action: 'cert.imported', newValue: { domain: angaben.domain } })
+    await netzNeu()
+    return angaben
+  },
+
+  'cert.entfernen': async () => {
+    requirePermission('system.manage')
+    eigenesZertifikatEntfernen(join(app.getPath('userData'), 'netz'))
+    saveEigenesZertifikat(undefined)
+    appendAudit({ action: 'cert.removed' })
+    await netzNeu()
+  },
+
+  'saalnetz.get': async () => saalnetzStatus(),
+
+  'saalnetz.set': async (config) => {
+    requirePermission('system.manage')
+    const gespeichert = saveSaalnetz(config)
+    let fehler: string | undefined
+
+    /*
+     * Jeder Dienst für sich: Scheitert die Adressvergabe — etwa weil in
+     * diesem Netz schon jemand verteilt —, soll der Namensdienst trotzdem
+     * laufen. Beides zusammen abzubrechen hieße, wegen des riskanteren Teils
+     * auch den harmlosen zu verlieren.
+     */
+    try {
+      if (gespeichert.dns) {
+        await starteDns({
+          name: getEigenesZertifikat()?.domain ?? '',
+          adresse: eigeneAdressen().find((adresse) => adresse !== '127.0.0.1') ?? '127.0.0.1',
+          weiterleitung: gespeichert.dnsWeiterleitung || undefined
+        })
+      } else {
+        await stoppeDns()
+      }
+    } catch (grund) {
+      fehler = grund instanceof Error ? grund.message : String(grund)
+    }
+
+    try {
+      if (gespeichert.dhcp) {
+        await starteDhcp({
+          von: gespeichert.dhcpVon,
+          bis: gespeichert.dhcpBis,
+          maske: gespeichert.dhcpMaske,
+          eigene: eigeneAdressen().find((adresse) => adresse !== '127.0.0.1') ?? '127.0.0.1',
+          router: gespeichert.dhcpRouter || undefined,
+          laufzeit: gespeichert.dhcpLaufzeit
+        })
+      } else {
+        await stoppeDhcp()
+      }
+    } catch (grund) {
+      const text = grund instanceof Error ? grund.message : String(grund)
+      fehler = fehler ? `${fehler}\n${text}` : text
+    }
+
+    appendAudit({
+      action: 'saalnetz.changed',
+      newValue: { dns: gespeichert.dns, dhcp: gespeichert.dhcp, router: gespeichert.dhcpRouter || null }
+    })
+    return { ...saalnetzStatus(), fehler }
+  },
+
   'projection.network': async () => {
     const settings = getSettings()
     return { ...settings.networkProjection, ...networkStatus() }

@@ -4,7 +4,7 @@
  * Der Operator-Renderer erreicht das Main ausschließlich über diese Methoden.
  * Der Audience-Renderer bekommt eine eigene, rein lesende Brücke (§31).
  */
-import type { NetworkProjectionConfig, SystemSettings } from './config'
+import type { EigenesZertifikat, NetworkProjectionConfig, SaalnetzConfig, SystemSettings } from './config'
 import type {
   AudienceWindowState,
   Buehne,
@@ -279,6 +279,16 @@ export interface RoundDetail {
   document: BallotDocument
 }
 
+/** Was die Oberfläche über die Netzdienste im Saal wissen muss. */
+export interface SaalnetzStatus extends SaalnetzConfig {
+  dnsLaeuft: boolean
+  dhcpLaeuft: boolean
+  /** Warum ein Dienst nicht läuft — im Klartext, nicht als Kode. */
+  fehler?: string
+  /** Vergebene Adressen, solange die Vergabe läuft. */
+  vergeben: { mac: string; adresse: string; bis: string }[]
+}
+
 export interface NetworkProjectionStatus extends NetworkProjectionConfig {
   running: boolean
   urls: string[]
@@ -322,6 +332,8 @@ export interface Api {
   'system.chooseDirectory': (title: string) => Promise<string | undefined>
   /** Bilddatei wählen und als eingebettete Data-URL zurückgeben (für das Beamer-Logo). */
   'system.chooseImage': (title: string) => Promise<string | undefined>
+  /** Eine Datei auswählen — für Zertifikat und Schlüssel. Zurück kommt der Pfad. */
+  'system.chooseFile': (input: { titel: string; endungen: string[] }) => Promise<string | undefined>
   /** Ordner oder Datei im Explorer anzeigen. */
   'system.revealPath': (path: string) => Promise<void>
   /** Eine Adresse im Standardbrowser öffnen – nur für die Veröffentlichungsseite. */
@@ -634,6 +646,28 @@ export interface Api {
   'projection.audienceState': (stage?: Buehnenwahl) => Promise<AudienceWindowState>
   'projection.openAudience': (displayId?: number, stage?: Buehnenwahl) => Promise<AudienceWindowState>
   'projection.closeAudience': (stage?: Buehnenwahl) => Promise<AudienceWindowState>
+  /* ------------------------------------------------- Saalnetz und Zertifikat */
+  /**
+   * Ein echtes Zertifikat beantragen — Schritt 1 von 2.
+   *
+   * Zurück kommt der Wert, der ins Domain-Namensystem gehört. Eintragen muss
+   * ihn ein Mensch; danach `cert.acmeAbschliessen`.
+   */
+  'cert.acmeBeginnen': (input: {
+    domain: string
+    email: string
+    uebung: boolean
+  }) => Promise<{ domain: string; eintrag: { name: string; wert: string }; faden: string }>
+  /** Schritt 2: prüfen lassen, Zertifikat holen und ablegen. */
+  'cert.acmeAbschliessen': (faden: string) => Promise<EigenesZertifikat>
+  /** Ein vorhandenes Zertifikat aus zwei Dateien übernehmen. */
+  'cert.ausDateien': (input: { certPfad: string; keyPfad: string }) => Promise<EigenesZertifikat>
+  /** Das eigene Zertifikat entfernen — zurück zum selbst ausgestellten. */
+  'cert.entfernen': () => Promise<void>
+  /** Namensdienst und Adressvergabe. */
+  'saalnetz.get': () => Promise<SaalnetzStatus>
+  'saalnetz.set': (config: SaalnetzConfig) => Promise<SaalnetzStatus>
+
   'projection.network': () => Promise<NetworkProjectionStatus>
   'projection.setNetwork': (config: NetworkProjectionConfig) => Promise<NetworkProjectionStatus>
   'projection.demo': (enabled: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>

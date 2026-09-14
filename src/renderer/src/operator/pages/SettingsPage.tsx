@@ -15,6 +15,7 @@ import { useApp } from '../state'
 import { Card, Checkbox, ConfirmDialog, Field, Modal, NumberInput, Tabs } from '../components/ui'
 import { ProjectionDesign } from './ProjectionDesign'
 import { NetzwerkEinstellungen } from './NetzwerkEinstellungen'
+import { SaalnetzEinstellungen } from './SaalnetzEinstellungen'
 import { SprachmodellEinstellungen } from './SprachmodellEinstellungen'
 
 /** Die Reiter der Einstellungen — einmal beschrieben, nicht fünfmal getippt. */
@@ -51,7 +52,15 @@ export function SettingsPage(): React.JSX.Element {
       {tab === 'printers' && <PrinterSettings />}
       {tab === 'general' && <GeneralSettings />}
       {tab === 'beamer' && <ProjectionDesign />}
-      {tab === 'netzwerk' && <NetzwerkEinstellungen />}
+      {tab === 'netzwerk' && (
+        <>
+          <NetzwerkEinstellungen />
+          {/* Zertifikat und Netzdienste beantworten dieselbe Frage wie die
+              Verschlüsselung darüber: wie ein mitgebrachtes Telefon ohne
+              Warnung an die Wahlseite kommt. */}
+          <SaalnetzEinstellungen />
+        </>
+      )}
       {tab === 'prompter' && <SprachmodellEinstellungen />}
       {tab === 'users' && <UserSettings />}
       {tab === 'backup' && <BackupSettings />}
