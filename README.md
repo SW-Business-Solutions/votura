@@ -525,4 +525,5 @@ Wer den Code nutzen möchte, wendet sich bitte an den Autor.
 - `docs/praesentationen.md` — wie eine HTML-Präsentation aufgebaut sein muss
 - `docs/beispiel-praesentation.html` — lauffähige Vorlage dazu
 - `docs/beispiel-video.mp4` — kleine Probedatei für die Videowiedergabe
+- `docs/bedrohungsmodell-digitale-wahl.md` — wogegen die digitale Stimmabgabe schützt und wogegen nicht
 - `docs/adr/` — Architekturentscheidungen mit Begründung
