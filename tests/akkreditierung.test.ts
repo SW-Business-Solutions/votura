@@ -311,3 +311,34 @@ describe('Der Stand je Wahlgang', () => {
     expect(teilnehmer.eligibleForRound('runde-ohne-stand')).toBeUndefined()
   })
 })
+
+describe('Ohne Akkreditierung ändert sich nichts', () => {
+  it('hält keinen Stand fest, wo niemand erfasst ist', () => {
+    /*
+     * Der gefährlichste Fall dieser Erweiterung: Stünde für eine Versammlung
+     * ohne Teilnehmerliste eine Null im Stand, sähe sie aus wie eine Messung
+     * — und ginge als „null Stimmberechtigte" ins Ergebnis. Das wäre
+     * schlimmer als die eingetippte Zahl, die es vorher gab.
+     */
+    const leeres = events.createEvent({
+      title: 'Ohne Liste',
+      organization: 'Musterverein',
+      orgCode: 'OL',
+      date: '2026-09-14',
+      location: 'Saal',
+      ruleSet: { name: 'Satzung', version: '1', snapshotDate: '2026-09-14' }
+    }).id
+    expect(teilnehmer.hasAccreditation(leeres)).toBe(false)
+
+    const mitListe = events.createEvent({
+      title: 'Mit Liste',
+      organization: 'Musterverein',
+      orgCode: 'ML',
+      date: '2026-09-14',
+      location: 'Saal',
+      ruleSet: { name: 'Satzung', version: '1', snapshotDate: '2026-09-14' }
+    }).id
+    teilnehmer.addParticipant({ eventId: mitListe, lastName: 'G', firstName: 'T' })
+    expect(teilnehmer.hasAccreditation(mitListe)).toBe(true)
+  })
+})

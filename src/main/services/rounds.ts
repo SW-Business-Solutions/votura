@@ -23,6 +23,8 @@ import type {
 import { db } from '../db'
 import { fromJson, optionalNumber, optionalString } from '../db/driver'
 import { appendAudit } from './audit'
+import { hasAccreditation, takeRoundPresence } from './participants'
+import { getConfig } from './settings'
 import { requirePermission } from './auth'
 import { getEvent } from './events'
 import { accountingFor } from './accounting'
@@ -649,6 +651,19 @@ export function setRoundStatus(roundId: UUID, status: RoundStatus, reason?: stri
   db()
     .prepare(`UPDATE rounds SET status = ?, row_version = row_version + 1 WHERE id = ?`)
     .run(status, roundId)
+
+  /*
+   * Beim Eröffnen den Saal zählen.
+   *
+   * Ab hier wird gewählt; ändert sich die Zahl der stimmberechtigten
+   * Anwesenden danach noch, änderte sich sonst die nötige Mehrheit mitten im
+   * Verfahren. Nur wo eine Akkreditierung geführt wird — sonst stünde dort
+   * eine Null, und die sähe aus wie eine Messung.
+   */
+  if (status === 'open' && hasAccreditation(round.eventId)) {
+    takeRoundPresence(roundId, round.eventId, getConfig().assembly.quorum)
+  }
+
   const after = getRound(roundId)
   appendAudit({
     action: `round.status_${status}`,

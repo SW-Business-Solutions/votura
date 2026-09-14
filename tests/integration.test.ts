@@ -40,6 +40,7 @@ const printing = await import('../src/main/services/printing')
 const accounting = await import('../src/main/services/accounting')
 const results = await import('../src/main/services/results')
 const audit = await import('../src/main/services/audit')
+const teilnehmer = await import('../src/main/services/participants')
 const settings = await import('../src/main/services/settings')
 const projection = await import('../src/main/services/projection')
 const { HAUPTBUEHNE } = await import('../src/shared/projection')
@@ -320,7 +321,26 @@ describe('Vollständige Mitgliederversammlung (Abnahmeszenario)', () => {
   })
 
   it('erfasst und bestätigt das Ergebnis', () => {
+    /*
+     * Vor dem Eröffnen drei Teilnehmer akkreditieren, zwei davon anwesend.
+     * Damit muss die Zahl der Stimmberechtigten im Ergebnis aus dem
+     * festgehaltenen Stand kommen und nicht aus der Zahl am Ereignis — das
+     * ist der ganze Zweck der Akkreditierung.
+     */
+    const anwesendA = teilnehmer.addParticipant({ eventId, lastName: 'Anwesend', firstName: 'Eins' })
+    const anwesendB = teilnehmer.addParticipant({ eventId, lastName: 'Anwesend', firstName: 'Zwei' })
+    teilnehmer.addParticipant({ eventId, lastName: 'Zuhause', firstName: 'Drei' })
+    teilnehmer.setAttendance(anwesendA.id, 'in')
+    teilnehmer.setAttendance(anwesendB.id, 'in')
+
     rounds.setRoundStatus(roundId, 'open')
+    expect(teilnehmer.roundPresence(roundId)?.eligible).toBe(2)
+
+    /* Nach dem Eröffnen geht jemand — der festgehaltene Stand darf sich davon
+       nicht rühren, sonst änderte sich die Mehrheit mitten im Wahlgang. */
+    teilnehmer.setAttendance(anwesendB.id, 'out')
+    expect(teilnehmer.roundPresence(roundId)?.eligible).toBe(2)
+
     rounds.setRoundStatus(roundId, 'counting')
 
     const liste = candidates.listCandidates(roundId)
@@ -347,6 +367,10 @@ describe('Vollständige Mitgliederversammlung (Abnahmeszenario)', () => {
       electedCandidateIds: liste.slice(0, 8).map((candidate) => candidate.id),
       determination: 'Erforderliche Mehrheit erreicht'
     })
+
+    /* Die Zahl stammt aus dem Stand beim Eröffnen, nicht aus der Oberfläche
+       und nicht aus dem jetzigen Saal. */
+    expect(results.getResult(roundId)?.eligibleVoters).toBe(2)
 
     const confirmed = results.confirmResult(roundId)
     expect(confirmed.confirmedAt).toBeDefined()

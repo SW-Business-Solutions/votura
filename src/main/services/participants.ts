@@ -391,6 +391,21 @@ export function presenceSummary(eventId: UUID, quorum: QuorumRule): PresenceSumm
 /* ------------------------------------------------------ Stand je Wahlgang */
 
 /**
+ * Führt diese Versammlung überhaupt eine Akkreditierung?
+ *
+ * Entscheidend vor dem Festhalten eines Standes: Ohne Teilnehmerliste stünde
+ * dort eine Null — und die wäre schlimmer als die Zahl am Ereignis, denn sie
+ * sähe aus wie eine Messung. Wer keine Liste führt, soll weiterarbeiten wie
+ * bisher.
+ */
+export function hasAccreditation(eventId: UUID): boolean {
+  const row = db()
+    .prepare(`SELECT COUNT(*) AS anzahl FROM participants WHERE event_id = ?`)
+    .get<{ anzahl: number }>(eventId)
+  return Number(row?.anzahl ?? 0) > 0
+}
+
+/**
  * Hält den Stand im Saal für einen Wahlgang fest.
  *
  * Aufgerufen beim Eröffnen. Danach darf sich die Anwesenheit ändern, ohne das
