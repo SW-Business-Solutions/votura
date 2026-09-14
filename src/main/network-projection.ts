@@ -9,6 +9,9 @@
  * im lokalen Netz der Veranstaltung – kein Internetzugang, keine Cloud.
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { createServer as createSecureServer } from 'node:https'
+import { app } from 'electron'
+import { zertifikatFuer } from './tls'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { extname, join, normalize } from 'node:path'
@@ -42,6 +45,8 @@ let server: Server | null = null
 let config: NetworkProjectionConfig | null = null
 let lastError: string | undefined
 let dispatcher: RemoteDispatcher | null = null
+/** Fingerabdruck des laufenden Zertifikats — zum Vergleichen am Gerät. */
+let fingerabdruck: string | undefined
 /**
  * Offene SSE-Leitungen samt der Bühne, die sie abonniert haben.
  *
@@ -674,19 +679,28 @@ export interface NetworkStatus {
   running: boolean
   urls: string[]
   error?: string
+  /**
+   * Fingerabdruck des Zertifikats, wenn verschlüsselt ausgeliefert wird.
+   *
+   * Bei einem selbst ausgestellten Zertifikat ist sein Vergleich die
+   * einzige Prüfmöglichkeit, die ein Mensch hat — deshalb gehört er
+   * sichtbar in die Oberfläche und nicht in eine Protokolldatei.
+   */
+  fingerabdruck?: string
 }
 
-export function localUrls(port: number, token: string): string[] {
+export function localUrls(port: number, token: string, tls = config?.tls ?? false): string[] {
   const urls: string[] = []
+  const schema = tls ? 'https' : 'http'
   const suffix = token ? `/?t=${encodeURIComponent(token)}` : '/'
   for (const [, addresses] of Object.entries(networkInterfaces())) {
     for (const address of addresses ?? []) {
       if (address.family === 'IPv4' && !address.internal) {
-        urls.push(`http://${address.address}:${port}${suffix}`)
+        urls.push(`${schema}://${address.address}:${port}${suffix}`)
       }
     }
   }
-  urls.push(`http://127.0.0.1:${port}${suffix}`)
+  urls.push(`${schema}://127.0.0.1:${port}${suffix}`)
   return urls
 }
 
@@ -723,12 +737,28 @@ export async function startNetworkProjection(next: NetworkProjectionConfig): Pro
   }
 
   return new Promise<NetworkStatus>((resolve) => {
-    const instance = createServer((request, response) => {
+    const bearbeite = (request: IncomingMessage, response: ServerResponse): void => {
       void handle(request, response).catch((error) => {
         logger.error(`Netzwerkanfrage fehlgeschlagen: ${String(error)}`)
         if (!response.headersSent) deny(response, 500, 'Interner Fehler.')
       })
-    })
+    }
+
+    /*
+     * Mit Verschlüsselung ein anderer Server, sonst derselbe wie bisher.
+     * Das Zertifikat entsteht beim ersten Einschalten und bleibt liegen —
+     * ein neues bei jedem Start hieße eine neue Warnung bei jedem Start,
+     * und Warnungen, die sich ständig ändern, liest niemand mehr.
+     */
+    let instance: Server
+    if (next.tls) {
+      const zertifikat = zertifikatFuer(join(app.getPath('userData'), 'netz'))
+      fingerabdruck = zertifikat.fingerabdruck
+      instance = createSecureServer({ cert: zertifikat.cert, key: zertifikat.key }, bearbeite)
+    } else {
+      fingerabdruck = undefined
+      instance = createServer(bearbeite)
+    }
     instance.on('error', (error: NodeJS.ErrnoException) => {
       lastError =
         error.code === 'EADDRINUSE'
@@ -750,7 +780,8 @@ export async function startNetworkProjection(next: NetworkProjectionConfig): Pro
 export function networkStatus(): NetworkStatus {
   return {
     running: server !== null,
-    urls: server && config ? localUrls(config.port, config.token) : [],
-    error: lastError
+    urls: server && config ? localUrls(config.port, config.token, config.tls) : [],
+    error: lastError,
+    fingerabdruck
   }
 }

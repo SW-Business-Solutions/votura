@@ -42,6 +42,7 @@ function NetworkSection({
   const [lanWide, setLanWide] = useState(status.bindAddress !== '127.0.0.1')
   const [allowRemoteOperator, setAllowRemoteOperator] = useState(status.allowRemoteOperator)
   const [allowPrompterControl, setAllowPrompterControl] = useState(status.allowPrompterControl)
+  const [tls, setTls] = useState(status.tls)
 
   const save = async (): Promise<void> => {
     try {
@@ -50,6 +51,7 @@ function NetworkSection({
         port,
         bindAddress: lanWide ? '0.0.0.0' : '127.0.0.1',
         token,
+        tls,
         allowRemoteOperator,
         allowPrompterControl
       })
@@ -107,6 +109,30 @@ function NetworkSection({
           Nur in einem abgeschotteten Veranstaltungsnetz verwenden. Die Verbindung ist unverschlüsselt (HTTP);
           über ein fremdes oder offenes WLAN darf sie nicht laufen.
         </div>
+      )}
+
+      <h3>Verschlüsselte Übertragung</h3>
+      <p className="hint">
+        Ohne sie reisen alle Inhalte im Klartext durch das Saalnetz — bei einer{' '}
+        <strong>digitalen Abstimmung</strong> also auch die Stimme, zusammen mit der Adresse des Geräts. Bei
+        WLAN mit gemeinsamem Passwort kann jeder Teilnehmer den Verkehr jedes anderen entschlüsseln. Für
+        Abstimmungen ist die Verschlüsselung deshalb Pflicht, nicht Zierde.
+      </p>
+      <p className="hint">
+        Votura stellt das Zertifikat selbst aus. Gegen <strong>Mitlesen</strong> hilft das vollständig. Gegen
+        einen aktiven Angreifer nur dort, wo das Gerät den Fingerabdruck kennt — auf mitgebrachten Telefonen
+        erscheint eine Warnung. Das ist der Grund, warum für geheime Wahlen Wahlkabinen empfohlen sind: Die
+        gehören der Veranstaltung.
+      </p>
+      <Checkbox
+        checked={tls}
+        onChange={setTls}
+        label="Verschlüsselt ausliefern (HTTPS mit selbst ausgestelltem Zertifikat)"
+      />
+      {status.fingerabdruck && (
+        <p className="hint mono" style={{ wordBreak: 'break-all' }}>
+          Fingerabdruck: {status.fingerabdruck}
+        </p>
       )}
 
       <h3>Bedienung der Prompteransicht</h3>

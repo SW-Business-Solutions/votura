@@ -1,0 +1,240 @@
+/**
+ * Ein selbst ausgestelltes Zertifikat für das Saalnetz.
+ *
+ * ## Warum das hier steht und nicht aus einer Bibliothek kommt
+ *
+ * Node kann Schlüssel erzeugen, aber keine Zertifikate — `crypto.X509Certificate`
+ * liest sie nur. `openssl` liegt auf einem Windows-Rechner im Vereinsheim
+ * nicht, und eine Bibliothek für diese eine Aufgabe wäre die zweite
+ * Laufzeitabhängigkeit des Projekts.
+ *
+ * Bleibt, die paar hundert Bytes selbst zu kodieren. X.509 ist ASN.1 in
+ * DER-Form, und DER ist übersichtlich: Typ, Länge, Inhalt. Der öffentliche
+ * Schlüssel kommt fertig kodiert aus Node (`spki`), unterschrieben wird mit
+ * `crypto.sign` — nichts davon muss nachgebaut werden.
+ *
+ * ## Was ein solches Zertifikat leistet und was nicht
+ *
+ * Gegen **Mitlesen** hilft es vollständig: Ein passiver Zuhörer im WLAN kann
+ * nichts entschlüsseln, ganz gleich, wer das Zertifikat ausgestellt hat. Genau
+ * das ist die Bedrohung im Saal — bei WPA2 mit gemeinsamem Passwort kann jeder
+ * Teilnehmer den Verkehr jedes anderen entschlüsseln.
+ *
+ * Gegen einen **aktiven** Angreifer, der sich dazwischenschaltet, hilft es
+ * nur, wenn das Gerät das Zertifikat wiedererkennt. Für Wahlkabinen ist das
+ * lösbar — sie gehören der Veranstaltung. Für mitgebrachte Telefone nicht:
+ * Dort erscheint eine Warnung. Deshalb wird der Fingerabdruck angezeigt, und
+ * deshalb bleibt für geheime Wahlen die Kabine die Empfehlung.
+ */
+import { createHash, createSign, generateKeyPairSync } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { networkInterfaces } from 'node:os'
+import { dirname, join } from 'node:path'
+
+/* ------------------------------------------------------------ DER-Bausteine */
+
+function laenge(bytes: number): Buffer {
+  /* Kurzform bis 127, sonst „wie viele Längenbytes folgen" und dann die
+     Länge selbst — das ist die ganze Regel. */
+  if (bytes < 0x80) return Buffer.from([bytes])
+  const roh: number[] = []
+  let rest = bytes
+  while (rest > 0) {
+    roh.unshift(rest & 0xff)
+    rest >>= 8
+  }
+  return Buffer.from([0x80 | roh.length, ...roh])
+}
+
+function feld(typ: number, inhalt: Buffer): Buffer {
+  return Buffer.concat([Buffer.from([typ]), laenge(inhalt.length), inhalt])
+}
+
+const folge = (...teile: Buffer[]): Buffer => feld(0x30, Buffer.concat(teile))
+const menge = (...teile: Buffer[]): Buffer => feld(0x31, Buffer.concat(teile))
+
+function ganzzahl(wert: number | Buffer): Buffer {
+  if (typeof wert === 'number') {
+    const roh: number[] = []
+    let rest = wert
+    do {
+      roh.unshift(rest & 0xff)
+      rest >>= 8
+    } while (rest > 0)
+    /* Führendes Nullbyte, wenn das oberste Bit gesetzt ist: DER-Ganzzahlen
+       sind vorzeichenbehaftet, und ohne das wäre die Zahl negativ. */
+    if (roh[0] & 0x80) roh.unshift(0)
+    return feld(0x02, Buffer.from(roh))
+  }
+  const bytes = wert[0] & 0x80 ? Buffer.concat([Buffer.from([0]), wert]) : wert
+  return feld(0x02, bytes)
+}
+
+/** Ein Objektbezeichner wie `1.2.840.113549.1.1.11` in seiner DER-Form. */
+function oid(punkte: string): Buffer {
+  const teile = punkte.split('.').map(Number)
+  const roh: number[] = [teile[0] * 40 + teile[1]]
+  for (const teil of teile.slice(2)) {
+    const stuecke: number[] = []
+    let rest = teil
+    do {
+      stuecke.unshift(rest & 0x7f)
+      rest >>= 7
+    } while (rest > 0)
+    for (let i = 0; i < stuecke.length - 1; i++) stuecke[i] |= 0x80
+    roh.push(...stuecke)
+  }
+  return feld(0x06, Buffer.from(roh))
+}
+
+const OID_SHA256_RSA = '1.2.840.113549.1.1.11'
+const OID_CN = '2.5.4.3'
+const OID_SAN = '2.5.29.17'
+const OID_BASIC = '2.5.29.19'
+const OID_KEYUSAGE = '2.5.29.15'
+const OID_EXTKEYUSAGE = '2.5.29.37'
+const OID_SERVERAUTH = '1.3.6.1.5.5.7.3.1'
+
+/** Zeitpunkt als `GeneralizedTime` — gilt auch nach 2049, anders als UTCTime. */
+function zeitpunkt(wann: Date): Buffer {
+  const zwei = (wert: number): string => String(wert).padStart(2, '0')
+  const text =
+    `${wann.getUTCFullYear()}${zwei(wann.getUTCMonth() + 1)}${zwei(wann.getUTCDate())}` +
+    `${zwei(wann.getUTCHours())}${zwei(wann.getUTCMinutes())}${zwei(wann.getUTCSeconds())}Z`
+  return feld(0x18, Buffer.from(text, 'ascii'))
+}
+
+function name(gemeinerName: string): Buffer {
+  return folge(menge(folge(oid(OID_CN), feld(0x0c, Buffer.from(gemeinerName, 'utf8')))))
+}
+
+/**
+ * Die alternativen Namen — ohne sie beanstandet jeder heutige Browser das
+ * Zertifikat, auch wenn der gemeine Name passt.
+ *
+ * Adressen kommen als vier Bytes hinein (Typ 7), Namen als Text (Typ 2).
+ */
+function altNamen(namen: string[], adressen: string[]): Buffer {
+  const teile = [
+    ...namen.map((wert) => feld(0x82, Buffer.from(wert, 'ascii'))),
+    ...adressen.map((wert) => feld(0x87, Buffer.from(wert.split('.').map(Number))))
+  ]
+  return folge(oid(OID_SAN), feld(0x04, folge(...teile)))
+}
+
+/* ------------------------------------------------------------- Zertifikat */
+
+export interface Zertifikat {
+  /** PEM des Zertifikats. */
+  cert: string
+  /** PEM des privaten Schlüssels. */
+  key: string
+  /** SHA-256 über das Zertifikat, in Zweiergruppen — zum Vergleichen. */
+  fingerabdruck: string
+}
+
+function pem(bezeichnung: string, daten: Buffer): string {
+  const b64 = daten.toString('base64').replace(/(.{64})/g, '$1\n')
+  return `-----BEGIN ${bezeichnung}-----\n${b64}\n-----END ${bezeichnung}-----\n`
+}
+
+/** Die Adressen dieses Rechners im Saalnetz — sie gehören ins Zertifikat. */
+export function eigeneAdressen(): string[] {
+  const gefunden = new Set<string>(['127.0.0.1'])
+  for (const eintraege of Object.values(networkInterfaces())) {
+    for (const eintrag of eintraege ?? []) {
+      if (eintrag.family === 'IPv4' && !eintrag.internal) gefunden.add(eintrag.address)
+    }
+  }
+  return [...gefunden]
+}
+
+/**
+ * Ein Zertifikat erzeugen, das für dieses Gerät im Saalnetz gilt.
+ *
+ * Zwei Jahre Laufzeit: lang genug, dass es nicht mitten in einer Versammlung
+ * abläuft, kurz genug, dass ein liegengebliebener Schlüssel nicht ewig gilt.
+ */
+export function erzeugeZertifikat(adressen = eigeneAdressen()): Zertifikat {
+  const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+  /* Unmittelbar exportieren: `createPublicKey` auf einen bereits öffentlichen
+     Schlüssel anzuwenden lehnt Node ab. */
+  const spki = publicKey.export({ type: 'spki', format: 'der' })
+
+  const jetzt = new Date()
+  const bis = new Date(jetzt.getTime() + 2 * 365 * 24 * 3600 * 1000)
+  const algorithmus = folge(oid(OID_SHA256_RSA), feld(0x05, Buffer.alloc(0)))
+
+  const tbs = folge(
+    feld(0xa0, ganzzahl(2)), // Fassung 3
+    ganzzahl(Buffer.from(createHash('sha256').update(String(jetzt.getTime())).digest().subarray(0, 8))),
+    algorithmus,
+    name('Votura'),
+    folge(zeitpunkt(jetzt), zeitpunkt(bis)),
+    name('Votura'),
+    spki,
+    feld(
+      0xa3,
+      folge(
+        altNamen(['localhost'], adressen),
+        /* Kein Zwischenzertifikat: Dieses Zertifikat steht für sich. */
+        folge(oid(OID_BASIC), feld(0x01, Buffer.from([0xff])), feld(0x04, folge())),
+        folge(
+          oid(OID_KEYUSAGE),
+          feld(0x01, Buffer.from([0xff])),
+          feld(0x04, feld(0x03, Buffer.from([0x05, 0xa0])))
+        ),
+        folge(oid(OID_EXTKEYUSAGE), feld(0x04, folge(oid(OID_SERVERAUTH))))
+      )
+    )
+  )
+
+  const unterschrift = createSign('sha256').update(tbs).sign(privateKey)
+  const zertifikat = folge(tbs, algorithmus, feld(0x03, Buffer.concat([Buffer.from([0]), unterschrift])))
+
+  return {
+    cert: pem('CERTIFICATE', zertifikat),
+    key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+    fingerabdruck: fingerabdruckVon(zertifikat)
+  }
+}
+
+/** Der Fingerabdruck, wie ihn ein Browser zeigt: SHA-256 in Zweiergruppen. */
+export function fingerabdruckVon(zertifikat: Buffer): string {
+  return (createHash('sha256').update(zertifikat).digest('hex').toUpperCase().match(/.{2}/g) ?? []).join(':')
+}
+
+/**
+ * Das Zertifikat dieses Rechners — beim ersten Mal erzeugt, danach gelesen.
+ *
+ * Neu erzeugt wird es, wenn sich die Adressen geändert haben: Ein Zertifikat
+ * für ein anderes Netz nützt im Saal nichts, und der Fehler fiele erst auf,
+ * wenn das erste Telefon sich weigert.
+ */
+export function zertifikatFuer(ordner: string): Zertifikat {
+  const certPfad = join(ordner, 'saal-zertifikat.pem')
+  const keyPfad = join(ordner, 'saal-schluessel.pem')
+  const adressen = eigeneAdressen()
+
+  if (existsSync(certPfad) && existsSync(keyPfad)) {
+    const cert = readFileSync(certPfad, 'utf8')
+    const key = readFileSync(keyPfad, 'utf8')
+    const roh = Buffer.from(cert.replace(/-----[^-]+-----|\s/g, ''), 'base64')
+    if (adressen.every((adresse) => cert.includes('') && passtAdresse(roh, adresse))) {
+      return { cert, key, fingerabdruck: fingerabdruckVon(roh) }
+    }
+  }
+
+  const frisch = erzeugeZertifikat(adressen)
+  mkdirSync(dirname(certPfad), { recursive: true })
+  writeFileSync(certPfad, frisch.cert, 'utf8')
+  writeFileSync(keyPfad, frisch.key, { encoding: 'utf8', mode: 0o600 })
+  return frisch
+}
+
+/** Steht diese Adresse in den alternativen Namen des Zertifikats? */
+function passtAdresse(zertifikat: Buffer, adresse: string): boolean {
+  const gesucht = Buffer.from(adresse.split('.').map(Number))
+  if (gesucht.length !== 4) return true
+  return zertifikat.includes(Buffer.concat([Buffer.from([0x87, 0x04]), gesucht]))
+}

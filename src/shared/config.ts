@@ -16,6 +16,20 @@ export interface NetworkProjectionConfig {
    * Netz anbieten. Erfordert eine Anmeldung mit einem lokalen Konto und ist
    * ebenfalls standardmäßig AUS (§51, §70 Phase 3).
    */
+  /**
+   * Verschlüsselte Übertragung (HTTPS).
+   *
+   * **Für digitale Abstimmungen ist sie Pflicht, nicht Zierde.** Ohne sie
+   * reisen Stimme und Absenderadresse im Klartext durch das Saal-WLAN — und
+   * bei WPA2 mit gemeinsamem Passwort kann jeder Teilnehmer den Verkehr jedes
+   * anderen entschlüsseln.
+   *
+   * Das Zertifikat stellt Votura selbst aus. Gegen **Mitlesen** hilft das
+   * vollständig; gegen einen aktiven Angreifer nur dort, wo das Gerät den
+   * Fingerabdruck kennt. Auf mitgebrachten Telefonen erscheint eine Warnung —
+   * das ist der Preis und steht so in der Oberfläche.
+   */
+  tls: boolean
   allowRemoteOperator: boolean
   /**
    * Darf die Prompteransicht im Netz auch **bedienen**?
@@ -125,6 +139,9 @@ export const DEFAULT_NETWORK_PROJECTION: NetworkProjectionConfig = {
   port: 8477,
   bindAddress: '0.0.0.0',
   token: '',
+  /* Aus, weil die Beameransicht ohne auskommt und eine Zertifikatswarnung
+     ohne Not niemandem hilft. Die digitale Abstimmung schaltet sie ein. */
+  tls: false,
   allowRemoteOperator: false,
   allowPrompterControl: false
 }

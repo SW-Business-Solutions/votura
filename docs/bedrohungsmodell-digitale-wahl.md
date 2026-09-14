@@ -28,6 +28,7 @@ deshalb der Grund, warum es Wahlkabinen gibt.
 | **Teilnehmer**             | eigenes Gerät vollständig kontrollieren, im WLAN mitlesen, Pässe fotografieren | mehrfach abstimmen, fremde Stimme abgeben, Ergebnis stören |
 | **Beobachter im Saal**     | zusehen, Druck ausüben                                                         | erfahren, wie jemand gestimmt hat                          |
 | **Netzbetreiber**          | WLAN-Controller, Adressen, Zeitpunkte                                          | Stimme einer Person zuordnen                               |
+| **Mitleser im Saal**       | Laptop im selben WLAN, mitgeschnittener Verkehr                                | Stimmen **im Klartext** mitlesen                           |
 | **Wahlleitung am Rechner** | alles auf dem Hauptrechner                                                     | Ergebnis verändern, Stimmen zuordnen                       |
 | **Späterer Auswerter**     | Datenbank und Sicherungen nach der Versammlung                                 | rekonstruieren, wer wie gestimmt hat                       |
 
@@ -52,6 +53,36 @@ hilft technisch wenig und räumlich viel: In der Wahlkabine gehört das Gerät n
 
 Deshalb: **Für geheime Wahlen ist der Kabinenbetrieb die Empfehlung, nicht nur eine Möglichkeit.**
 Wer eigene Geräte zulässt, sollte wissen, worauf er verzichtet.
+
+### 3.1a Die Stimme unterwegs mitlesen
+
+**Der schwerste Befund dieses Dokuments, und er wurde zu spät gefunden.**
+
+Die Blindsignatur schützt davor, dass die _Wahlleitung_ Tabellen
+nebeneinanderlegt. Sie schützt nicht davor, dass jemand mit einem Laptop im
+Saal mitliest. Die frühere Fassung dieses Modells behandelte den Netzbetreiber
+und Zeitpunkte — den Mitleser und den **Inhalt** behandelte sie nicht.
+
+| Weg                                | Warum er funktioniert                                                                                                          | Gegenmaßnahme                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Unverschlüsseltes HTTP im Saalnetz | Stimme und Absenderadresse stehen nebeneinander im Klartext                                                                    | **Verschlüsselte Übertragung**                                           |
+| WPA2 mit gemeinsamem Passwort      | Alle Teilnehmer kennen denselben Schlüssel; wer den Verbindungsaufbau eines anderen mitschneidet, entschlüsselt dessen Verkehr | WPA3 (eigener Schlüssel je Gerät) oder Geräte-Isolierung am Zugangspunkt |
+| Offenes WLAN                       | jeder liest alles                                                                                                              | kommt für eine Abstimmung nicht in Frage                                 |
+
+**Was verschlüsselte Übertragung leistet und was nicht.** Gegen das
+**Mitlesen** hilft sie vollständig — auch mit einem selbst ausgestellten
+Zertifikat, denn ein passiver Mitleser kann nichts entschlüsseln. Gegen einen
+**aktiven** Angreifer, der sich dazwischenschaltet, hilft sie nur, wenn das
+Gerät das Zertifikat wiedererkennt. Für **Wahlkabinen** ist das lösbar: Sie
+gehören der Veranstaltung, und ihr Zertifikat lässt sich fest hinterlegen. Für
+**mitgebrachte Telefone** ist es das nicht — dort erscheint eine Warnung, und
+wer Menschen beibringt, solche Warnungen wegzuklicken, hat den Gewinn wieder
+verspielt.
+
+Daraus folgt dieselbe Empfehlung wie aus 3.1, nur schärfer: **Für geheime
+Wahlen gehören Wahlkabinen dazu.** Eigene Geräte bleiben für offene und
+namentliche Abstimmungen richtig — dort gibt es kein Wahlgeheimnis, das ein
+Mitleser brechen könnte.
 
 ### 3.2 Mehrfach oder unberechtigt abstimmen
 

@@ -274,6 +274,14 @@ export interface NetworkProjectionStatus extends NetworkProjectionConfig {
   running: boolean
   urls: string[]
   error?: string
+  /**
+   * Fingerabdruck des Zertifikats, wenn verschlüsselt ausgeliefert wird.
+   *
+   * Bei einem selbst ausgestellten Zertifikat ist sein Vergleich die einzige
+   * Prüfmöglichkeit, die ein Mensch hat — deshalb gehört er sichtbar in die
+   * Oberfläche und nicht in eine Protokolldatei.
+   */
+  fingerabdruck?: string
 }
 
 export interface SetupState {
