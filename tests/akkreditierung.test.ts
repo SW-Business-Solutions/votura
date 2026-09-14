@@ -484,3 +484,92 @@ describe('Stimmkarten', () => {
     expect(audit.listAudit({ eventId: eigenes }).map((e) => e.action)).toContain('participant.passes_expired')
   })
 })
+
+describe('Nur wer im Saal ist, darf abstimmen', () => {
+  /*
+   * Der Grund, warum am Ausgang die Karte abgenommen wird. Bei einer Karte
+   * fällt beides zusammen — wer keine hat, ist gegangen. Bei einem gedruckten
+   * Pass fällt es *nicht* zusammen: Der Zettel funktionierte sonst auch vom
+   * Parkplatz aus.
+   */
+  it('lässt niemanden abstimmen, der nicht da ist', () => {
+    const person = anlegen('Draussen')
+    expect(teilnehmer.mayVote(person.id)).toEqual({ ok: false, reason: 'Nicht im Saal.' })
+    teilnehmer.setAttendance(person.id, 'in')
+    expect(teilnehmer.mayVote(person.id).ok).toBe(true)
+    teilnehmer.setAttendance(person.id, 'out')
+    expect(teilnehmer.mayVote(person.id).ok).toBe(false)
+  })
+
+  it('gilt auch für den gedruckten Pass', () => {
+    /* Der Pass bleibt derselbe — die Berechtigung hängt an der Anwesenheit,
+       nicht am Zettel. */
+    const person = anlegen('Passgänger')
+    const { token } = teilnehmer.issuePass(person.id)
+    teilnehmer.setAttendance(person.id, 'in')
+    expect(teilnehmer.mayVote(teilnehmer.findByPass(eventId, token)!.id).ok).toBe(true)
+
+    teilnehmer.setAttendance(person.id, 'out')
+    /* Der Pass wird weiterhin erkannt — aber er berechtigt nicht mehr. */
+    expect(teilnehmer.findByPass(eventId, token)?.id).toBe(person.id)
+    expect(teilnehmer.mayVote(person.id).ok).toBe(false)
+  })
+
+  it('nennt den Grund im Klartext', () => {
+    /* Am Einlass muss jemand in zwei Sekunden sagen können, woran es liegt. */
+    const gast = anlegen('Zuschauer', { eligible: false })
+    teilnehmer.setAttendance(gast.id, 'in')
+    expect(teilnehmer.mayVote(gast.id).reason).toMatch(/Gast/)
+
+    const gesperrt = anlegen('Ruhend')
+    teilnehmer.setAttendance(gesperrt.id, 'in')
+    teilnehmer.blockParticipant(gesperrt.id, 'Beitrag offen')
+    expect(teilnehmer.mayVote(gesperrt.id).reason).toMatch(/Beitrag offen/)
+  })
+
+  it('bricht ab, wo eine Stimme ausgelöst würde', () => {
+    const person = anlegen('Abbruch')
+    expect(() => teilnehmer.assertMayVote(person.id)).toThrow(/Nicht im Saal/)
+  })
+})
+
+describe('Einlassbändchen', () => {
+  /*
+   * Derselbe Ablauf wie bei der Karte, ein Unterschied: Das Bändchen wird um
+   * das Handgelenk geklebt und beim Gehen abgerissen. Es kommt nicht zurück in
+   * den Stapel.
+   */
+  const bandCode = (n: number): string => `BAND-GEHEIM-${String(n).padStart(6, '0')}`
+
+  it('wird mit der Rückgabe verbraucht, nicht frei', () => {
+    karten.importCards([{ serial: 'B-001', code: bandCode(1) }], 'band')
+    const person = anlegen('Bändchenträger')
+    karten.assignCard(person.id, bandCode(1))
+    expect(teilnehmer.getParticipant(person.id)?.present).toBe(true)
+
+    karten.returnCard(bandCode(1))
+    const danach = karten.findCardByCode(bandCode(1))
+    expect(danach?.kind).toBe('band')
+    /* Die Karte wäre jetzt „available" — das Bändchen ist verbraucht. */
+    expect(danach?.status).toBe('retired')
+    expect(danach?.heldBy).toBeUndefined()
+  })
+
+  it('lässt sich nicht erneut ausgeben', () => {
+    const wiederkommer = anlegen('Wiederkommer')
+    expect(() => karten.assignCard(wiederkommer.id, bandCode(1))).toThrow(/verbraucht/)
+  })
+
+  it('wer wiederkommt, bekommt ein neues', () => {
+    karten.importCards([{ serial: 'B-002', code: bandCode(2) }], 'band')
+    const person = anlegen('Zurück')
+    karten.assignCard(person.id, bandCode(2))
+    expect(teilnehmer.mayVote(person.id).ok).toBe(true)
+  })
+
+  it('zählt Bändchen und Karten im selben Bestand', () => {
+    const stand = karten.cardStock()
+    expect(stand.total).toBeGreaterThan(0)
+    expect(stand.available + stand.assigned + stand.lost + stand.retired).toBe(stand.total)
+  })
+})

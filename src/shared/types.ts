@@ -235,6 +235,14 @@ export interface Card {
   id: UUID
   /** Die aufgedruckte Nummer. */
   serial: string
+  /**
+   * Karte oder Bändchen.
+   *
+   * Eine **Karte** kommt am Ausgang zurück in den Stapel. Ein **Bändchen**
+   * wird um das Handgelenk geklebt und beim Gehen abgerissen — der Ablauf ist
+   * derselbe, nur ist es danach verbraucht.
+   */
+  kind: 'card' | 'band'
   status: 'available' | 'lost' | 'retired'
   note?: string
   /** Teilnehmer, der sie gerade hält — leer, wenn sie im Stapel liegt. */

@@ -43,6 +43,7 @@ interface CardRow {
   id: string
   serial: string
   code_hash: string
+  kind: string
   status: string
   note: string | null
   created_at: string
@@ -73,6 +74,7 @@ function mapCard(row: CardRow): Card {
   return {
     id: row.id,
     serial: row.serial,
+    kind: row.kind === 'band' ? 'band' : 'card',
     status: row.status === 'lost' ? 'lost' : row.status === 'retired' ? 'retired' : 'available',
     note: optionalString(row.note),
     heldBy: optionalString(row.held_by ?? null),
@@ -119,7 +121,10 @@ export function cardStock(): CardStock {
  * Wer eine Lieferung zweimal einliest, soll nicht abbrechen, sondern die neuen
  * dazubekommen.
  */
-export function importCards(entries: { serial: string; code: string }[]): {
+export function importCards(
+  entries: { serial: string; code: string }[],
+  kind: Card['kind'] = 'card'
+): {
   added: number
   skipped: number
 } {
@@ -145,10 +150,10 @@ export function importCards(entries: { serial: string; code: string }[]): {
       }
       db()
         .prepare(
-          `INSERT INTO cards (id, serial, code_hash, status, created_at, updated_at)
-           VALUES (?, ?, ?, 'available', ?, ?)`
+          `INSERT INTO cards (id, serial, code_hash, kind, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'available', ?, ?)`
         )
-        .run(randomUUID(), serial, codeHash(code), jetzt, jetzt)
+        .run(randomUUID(), serial, codeHash(code), kind, jetzt, jetzt)
       added++
     }
   })
@@ -157,7 +162,7 @@ export function importCards(entries: { serial: string; code: string }[]): {
     action: 'card.imported',
     userId: session.user.id,
     userName: session.user.displayName,
-    newValue: { aufgenommen: added, uebersprungen: skipped }
+    newValue: { art: kind === 'band' ? 'Bändchen' : 'Karten', aufgenommen: added, uebersprungen: skipped }
   })
   return { added, skipped }
 }
@@ -193,7 +198,12 @@ export function assignCard(participantId: UUID, code: string): { card: Card; par
   const karte = findCardByCode(code)
   if (!karte) throw new Error('Diese Karte gehört nicht zum Bestand.')
   if (karte.status === 'lost') throw new Error(`Karte ${karte.serial} ist als verloren gemeldet.`)
-  if (karte.status === 'retired') throw new Error(`Karte ${karte.serial} ist ausgemustert.`)
+  if (karte.status === 'retired')
+    throw new Error(
+      karte.kind === 'band'
+        ? `Bändchen ${karte.serial} ist verbraucht.`
+        : `Karte ${karte.serial} ist ausgemustert.`
+    )
   if (karte.heldBy && karte.heldBy !== participantId) {
     const andere = getParticipant(karte.heldBy)
     throw new Error(
@@ -281,6 +291,17 @@ export function returnCard(code: string): { card: Card; participant: Participant
       name: person ? `${person.lastName}, ${person.firstName}` : undefined
     }
   })
+
+  /*
+   * Ein Bändchen kommt nicht zurück in den Stapel — es wurde abgerissen. Es
+   * bleibt im Bestand stehen, damit sein Code nie wieder gilt und die Zahl
+   * der ausgegebenen Bändchen nachvollziehbar bleibt.
+   */
+  if (karte.kind === 'band') {
+    db()
+      .prepare(`UPDATE cards SET status = 'retired', updated_at = ? WHERE id = ?`)
+      .run(new Date().toISOString(), karte.id)
+  }
 
   const gegangen = person ? setAttendance(person.id, 'out') : null
   return { card: findCardByCode(code)!, participant: gegangen }

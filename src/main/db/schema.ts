@@ -372,6 +372,24 @@ CREATE TABLE IF NOT EXISTS card_assignments (
 CREATE INDEX IF NOT EXISTS idx_karte_zuweisung ON card_assignments(card_id, assigned_at);
 CREATE INDEX IF NOT EXISTS idx_karte_teilnehmer ON card_assignments(participant_id, assigned_at);
 `
+  },
+  {
+    /*
+     * Bändchen neben Karten.
+     *
+     * Ein Einlassbändchen aus Papier wird um das Handgelenk geklebt und beim
+     * Gehen abgerissen. Der Ablauf ist derselbe wie bei der Karte — scannen,
+     * ausgeben, scannen, zurücknehmen —, nur kommt es nicht in den Bestand
+     * zurück: Es ist verbraucht.
+     *
+     * Deshalb eine Sorte und keine zweite Tabelle. Alles andere ist gleich,
+     * und zwei fast gleiche Tabellen liefen bei der ersten Änderung
+     * auseinander.
+     */
+    version: 8,
+    sql: `
+ALTER TABLE cards ADD COLUMN kind TEXT NOT NULL DEFAULT 'card';
+`
   }
 ]
 

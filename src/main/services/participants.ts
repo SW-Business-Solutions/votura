@@ -391,6 +391,43 @@ export function presenceSummary(eventId: UUID, quorum: QuorumRule): PresenceSumm
 /* ------------------------------------------------------ Stand je Wahlgang */
 
 /**
+ * Darf diese Person **jetzt** eine Stimme abgeben?
+ *
+ * Vier Bedingungen, und die vierte ist die, die man vergisst:
+ *
+ * 1. Sie ist erfasst.
+ * 2. Sie ist stimmberechtigt — Gäste sind es nicht.
+ * 3. Sie ist nicht gesperrt.
+ * 4. **Sie ist im Saal.**
+ *
+ * Der vierte Punkt ist der Grund, warum am Ausgang die Karte abgenommen wird.
+ * Bei einer Karte fällt beides zusammen: Wer keine hat, ist gegangen. Bei
+ * einem gedruckten Pass fällt es *nicht* zusammen — der Zettel funktionierte
+ * sonst auch vom Parkplatz aus. Deshalb steht die Bedingung hier und nicht in
+ * einer Betriebsanweisung.
+ *
+ * Die Auskunft ist Klartext und keine Ja/Nein-Antwort: Am Einlass muss jemand
+ * in zwei Sekunden sagen können, woran es liegt.
+ */
+export function mayVote(participantId: UUID): { ok: boolean; reason?: string } {
+  const person = getParticipant(participantId)
+  if (!person) return { ok: false, reason: 'Unbekannter Teilnehmer.' }
+  if (!person.eligible) return { ok: false, reason: 'Gast — nicht stimmberechtigt.' }
+  if (person.blockedAt) {
+    return { ok: false, reason: `Gesperrt${person.blockedReason ? `: ${person.blockedReason}` : '.'}` }
+  }
+  if (!person.present) return { ok: false, reason: 'Nicht im Saal.' }
+  return { ok: true }
+}
+
+/** Dieselbe Prüfung, aber sie bricht ab — für alles, was eine Stimme auslöst. */
+export function assertMayVote(participantId: UUID): Participant {
+  const urteil = mayVote(participantId)
+  if (!urteil.ok) throw new Error(urteil.reason ?? 'Keine Stimmberechtigung.')
+  return getParticipant(participantId)!
+}
+
+/**
  * Mit dem Abschluss der Versammlung verfallen alle Voting Pässe.
  *
  * Ein gedruckter Pass ist zwar für eine Versammlung ausgestellt, seine
