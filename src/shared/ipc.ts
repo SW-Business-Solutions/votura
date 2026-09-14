@@ -665,6 +665,13 @@ export interface Api {
   /** Das eigene Zertifikat entfernen — zurück zum selbst ausgestellten. */
   'cert.entfernen': () => Promise<void>
   /** Namensdienst und Adressvergabe. */
+  /**
+   * Die Netzwerkkarten dieses Rechners.
+   *
+   * Für die Auswahl, welche davon das Saalnetz ist — bei Hyper-V, WSL oder
+   * VPN sind schnell vier im Rechner, und nur eine führt zu den Telefonen.
+   */
+  'system.netzwerkkarten': () => Promise<{ name: string; adresse: string; virtuell: boolean }[]>
   'saalnetz.get': () => Promise<SaalnetzStatus>
   'saalnetz.set': (config: SaalnetzConfig) => Promise<SaalnetzStatus>
 

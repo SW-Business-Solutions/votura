@@ -39,16 +39,30 @@ function NetworkSection({
   const [port, setPort] = useState(status.port)
   const [token, setToken] = useState(status.token)
   const [lanWide, setLanWide] = useState(status.bindAddress !== '127.0.0.1')
+  const [bindAddress, setBindAddress] = useState(status.bindAddress)
   const [allowRemoteOperator, setAllowRemoteOperator] = useState(status.allowRemoteOperator)
   const [allowPrompterControl, setAllowPrompterControl] = useState(status.allowPrompterControl)
   const [tls, setTls] = useState(status.tls)
+  /*
+   * Welche Netzwerkkarte das Saalnetz ist.
+   *
+   * Bei Hyper-V, WSL oder einem VPN stecken schnell vier im Rechner, und nur
+   * eine führt zu den Telefonen. Vorher war die Wahl „nur dieser Rechner"
+   * oder „alle" — und alles Weitere, von den angezeigten Adressen bis zum
+   * Namensdienst, riet sich die erste zusammen.
+   */
+  const [karten, setKarten] = useState<{ name: string; adresse: string; virtuell: boolean }[]>([])
+
+  useEffect(() => {
+    void api('system.netzwerkkarten').then(setKarten).catch(app.reportError)
+  }, [])
 
   const save = async (): Promise<void> => {
     try {
       const next = await api('projection.setNetwork', {
         enabled,
         port,
-        bindAddress: lanWide ? '0.0.0.0' : '127.0.0.1',
+        bindAddress: lanWide ? bindAddress : '127.0.0.1',
         token,
         tls,
         allowRemoteOperator,
@@ -112,11 +126,31 @@ function NetworkSection({
             Token erzeugen
           </button>
         </div>
-        <Checkbox
-          checked={lanWide}
-          onChange={setLanWide}
-          label="Im gesamten lokalen Netz erreichbar (sonst nur auf diesem Rechner)"
-        />
+        <Field
+          label="Netzwerkkarte für das Saalnetz"
+          hint={
+            'Gilt für die Beameransicht, die Bedienung, die Wahlseite und die Netzdienste darunter. ' +
+            'Eine feste Karte ist genauer als „alle“ — und im Zweifel die, an der auch die Telefone hängen.'
+          }
+        >
+          <select
+            value={lanWide ? bindAddress : '127.0.0.1'}
+            onChange={(ereignis) => {
+              const wert = ereignis.target.value
+              setLanWide(wert !== '127.0.0.1')
+              setBindAddress(wert)
+            }}
+          >
+            <option value="127.0.0.1">Nur dieser Rechner — kein Zugriff aus dem Netz</option>
+            <option value="0.0.0.0">Alle Netzwerkkarten</option>
+            {karten.map((karte) => (
+              <option key={karte.adresse} value={karte.adresse}>
+                {karte.name} — {karte.adresse}
+                {karte.virtuell ? ' (virtuell, im Saal nicht erreichbar)' : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
       </Card>
 
       <Card title="Verschlüsselte Übertragung">

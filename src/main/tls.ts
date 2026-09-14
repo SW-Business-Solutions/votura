@@ -169,6 +169,36 @@ export function eigeneAdressen(): string[] {
   return sortiereAdressen(gefunden)
 }
 
+/**
+ * Die Netzwerkkarten dieses Rechners, mit Namen — für die Auswahl.
+ *
+ * Erst der Name macht sie unterscheidbar: Ein Hyper-V-Schalter vergibt
+ * dieselben privaten Adressen wie ein WLAN, und aus `192.168.224.1` allein
+ * kann niemand ablesen, ob das der Saal ist oder eine virtuelle Maschine.
+ */
+export function netzwerkkarten(): { name: string; adresse: string; virtuell: boolean }[] {
+  const gefunden: { name: string; adresse: string; virtuell: boolean }[] = []
+  for (const [name, eintraege] of Object.entries(networkInterfaces())) {
+    for (const eintrag of eintraege ?? []) {
+      if (eintrag.family !== 'IPv4' || eintrag.internal) continue
+      gefunden.push({ name, adresse: eintrag.address, virtuell: NUR_IM_RECHNER.test(name) })
+    }
+  }
+  return gefunden.sort((a, b) => Number(a.virtuell) - Number(b.virtuell))
+}
+
+/**
+ * Die Adresse, unter der Votura im Saal zu erreichen ist.
+ *
+ * Ist eine Netzwerkkarte fest eingestellt, gilt deren Adresse. Sonst die
+ * erste brauchbare — das ist eine Annahme, und sie steht in der Oberfläche
+ * auch als solche da.
+ */
+export function saaladresse(bindAddress?: string): string {
+  if (bindAddress && bindAddress !== '0.0.0.0' && bindAddress !== '127.0.0.1') return bindAddress
+  return eigeneAdressen().find((adresse) => adresse !== '127.0.0.1') ?? '127.0.0.1'
+}
+
 /** Die Sortierung für sich — ohne Netzwerkkarten, damit sie prüfbar ist. */
 export function sortiereAdressen(eintraege: { name: string; address: string }[]): string[] {
   const echte = eintraege.filter((eintrag) => !NUR_IM_RECHNER.test(eintrag.name))

@@ -11,9 +11,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { createServer as createSecureServer } from 'node:https'
 import { app } from 'electron'
-import { zertifikatFuer } from './tls'
+import { eigeneAdressen, zertifikatFuer } from './tls'
 import { createReadStream, existsSync, statSync } from 'node:fs'
-import { networkInterfaces } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
 import { BUEHNEN_MAX, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
@@ -733,19 +732,29 @@ export interface NetworkStatus {
   fingerabdruck?: string
 }
 
+/**
+ * Die Adressen, unter denen diese Ansicht zu erreichen ist.
+ *
+ * **Die erste ist die wichtigste**: Aus ihr baut die Oberfläche die Links für
+ * Bühnen, Wahlseite und Wahlausschuss. Deshalb kommt die Reihenfolge aus
+ * `eigeneAdressen` — erst die Karten, die es wirklich gibt, dann die
+ * virtuellen, zuletzt der eigene Rechner.
+ *
+ * Ist eine **feste Netzwerkkarte** eingestellt, steht nur deren Adresse da.
+ * Alles andere wäre eine Einladung, eine Adresse abzuschreiben, unter der der
+ * Server gar nicht lauscht.
+ */
 export function localUrls(port: number, token: string, tls = config?.tls ?? false): string[] {
-  const urls: string[] = []
   const schema = tls ? 'https' : 'http'
   const suffix = token ? `/?t=${encodeURIComponent(token)}` : '/'
-  for (const [, addresses] of Object.entries(networkInterfaces())) {
-    for (const address of addresses ?? []) {
-      if (address.family === 'IPv4' && !address.internal) {
-        urls.push(`${schema}://${address.address}:${port}${suffix}`)
-      }
-    }
-  }
-  urls.push(`${schema}://127.0.0.1:${port}${suffix}`)
-  return urls
+  const gebunden = config?.bindAddress
+  const adressen =
+    gebunden && gebunden !== '0.0.0.0' && gebunden !== '127.0.0.1'
+      ? [gebunden, '127.0.0.1']
+      : gebunden === '127.0.0.1'
+        ? ['127.0.0.1']
+        : eigeneAdressen()
+  return adressen.map((adresse) => `${schema}://${adresse}:${port}${suffix}`)
 }
 
 export async function stopNetworkProjection(): Promise<void> {

@@ -106,3 +106,28 @@ describe('Ohne Token', () => {
     expect(antwort.status).toBe(401)
   })
 })
+
+describe('Die angezeigten Adressen', () => {
+  it('nennen bei fester Netzwerkkarte nur diese', async () => {
+    /*
+     * **Der Fehler, den das verhindert.** Aus der ersten Adresse baut die
+     * Oberfläche die Links für Bühnen, Wahlseite und Wahlausschuss. Stünde
+     * dort eine Adresse, an der der Server gar nicht lauscht, wäre jeder
+     * dieser Links eine Einladung ins Leere.
+     */
+    const stand = await netz.startNetworkProjection({
+      enabled: true,
+      port: 18478,
+      bindAddress: '127.0.0.1',
+      token: '',
+      tls: false,
+      allowRemoteOperator: false,
+      allowPrompterControl: false
+    })
+    try {
+      expect(stand.urls).toEqual(['http://127.0.0.1:18478/'])
+    } finally {
+      await netz.stopNetworkProjection()
+    }
+  })
+})

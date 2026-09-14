@@ -182,7 +182,12 @@ import {
 import { ACME_ECHT, ACME_UEBUNG, auftragAbschliessen, auftragBeginnen } from './acme'
 import { dhcpLaeuft, starteDhcp, stoppeDhcp, vergebeneAdressen } from './dhcp'
 import { dnsLaeuft, starteDns, stoppeDns } from './dns'
-import { eigenesZertifikatAblegen, eigenesZertifikatEntfernen, eigeneAdressen } from './tls'
+import {
+  eigenesZertifikatAblegen,
+  eigenesZertifikatEntfernen,
+  netzwerkkarten,
+  saaladresse
+} from './tls'
 import {
   getConfig,
   getEigenesZertifikat,
@@ -979,6 +984,8 @@ const api: Api = {
     await netzNeu()
   },
 
+  'system.netzwerkkarten': async () => netzwerkkarten(),
+
   'saalnetz.get': async () => saalnetzStatus(),
 
   'saalnetz.set': async (config) => {
@@ -994,9 +1001,13 @@ const api: Api = {
      */
     try {
       if (gespeichert.dns) {
+        const gebunden = getNetworkProjection().bindAddress
         await starteDns({
           name: getEigenesZertifikat()?.domain ?? '',
-          adresse: eigeneAdressen().find((adresse) => adresse !== '127.0.0.1') ?? '127.0.0.1',
+          adresse: saaladresse(gebunden),
+          /* An dieselbe Karte gebunden wie der Rest: Ein Namensdienst, der
+             auch im Büronetz antwortet, wurde nicht bestellt. */
+          bindAddress: gebunden === '127.0.0.1' ? '127.0.0.1' : '0.0.0.0',
           weiterleitung: gespeichert.dnsWeiterleitung || undefined
         })
       } else {
@@ -1012,7 +1023,7 @@ const api: Api = {
           von: gespeichert.dhcpVon,
           bis: gespeichert.dhcpBis,
           maske: gespeichert.dhcpMaske,
-          eigene: eigeneAdressen().find((adresse) => adresse !== '127.0.0.1') ?? '127.0.0.1',
+          eigene: saaladresse(getNetworkProjection().bindAddress),
           router: gespeichert.dhcpRouter || undefined,
           laufzeit: gespeichert.dhcpLaufzeit
         })
