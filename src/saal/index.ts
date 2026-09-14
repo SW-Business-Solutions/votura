@@ -33,6 +33,20 @@ import { join } from 'node:path'
 import { rollenAdresse, rollenName, type SaalEinstellung, type SaalFund } from '@shared/saal'
 import { sucheHauptrechner } from '../main/suchruf'
 
+/**
+ * Diese Anwendung benennt sich selbst — und zwar, bevor irgendetwas anderes
+ * geschieht.
+ *
+ * Der Name bestimmt den Ordner für die Einstellung **und** die Sperre, die
+ * verhindert, dass zweimal dasselbe läuft. Ohne ihn übernimmt Electron den
+ * Namen aus `package.json`, und der gehört dem Hauptprogramm: Saal schriebe
+ * seine Einstellung in dessen Ordner und beendete sich beim Start
+ * kommentarlos, weil es sich für eine zweite Ausgabe des Hauptprogramms
+ * hielte. Im gepackten Bau stimmt der Name ohnehin — hier steht er für alle
+ * anderen Startwege, und er kostet nichts.
+ */
+app.setName('Votura Saal')
+
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
 let fenster: BrowserWindow | null = null

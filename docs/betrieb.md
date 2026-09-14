@@ -458,6 +458,20 @@ Mit dem Abschluss **verfällt alles Ausgegebene**: Karten, Bändchen und gedruck
 mitgenommen hat, ist danach kein Ausweis mehr. Die Anwesenheit bleibt, wie sie war — wer am Ende im
 Saal war, war am Ende im Saal, und das gehört ins Protokoll.
 
+## Wenn eine Seite im Saal schwarz bleibt
+
+Das Zugriffstoken steht in der Adresse (`?t=…`), die Skripte und Stile einer Seite werden aber unter
+ihren eigenen Pfaden nachgeladen und tragen keines. Der Server heftet es deshalb beim ersten Aufruf
+als Keks an das Gerät. Kommt eine Seite trotzdem leer an, hilft in dieser Reihenfolge:
+
+1. **Adresse mit Token öffnen** — `http://<Hauptrechner>:8477/stimme?t=<Token>`. Ohne `?t=` ist die
+   Antwort ein blankes „Zugriffstoken fehlt oder ist falsch".
+2. **Token in Votura Saal eintragen** (Einrichtung, Feld _Zugriffstoken_) — es muss mit
+   Einstellungen → Netzwerk auf dem Hauptrechner übereinstimmen.
+3. **Richtige Adresse wählen.** Der Suchruf antwortet auf allen Netzwerkkarten; auf Rechnern mit
+   virtuellen Adaptern (Hyper-V, WSL, VPN) steht in der Auswahl womöglich eine Adresse, die die
+   Geräte im Saal nicht erreichen. Die Adresse des WLANs ist die richtige.
+
 ## Digitale Stimmabgabe
 
 Die digitale Abstimmung ist **je Wahlgang** zuschaltbar und ersetzt das Papier nicht: Wer kein Gerät

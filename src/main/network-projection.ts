@@ -128,6 +128,7 @@ function rendererRoot(): string {
  * mitsamt der Abfrage, damit das Token nicht unterwegs verloren geht.
  */
 function seiteAusliefern(response: ServerResponse, datei: string, url: URL): void {
+  tokenKeks(response, url)
   const gebaut = join(rendererRoot(), datei)
   if (existsSync(gebaut)) {
     serveFile(response, gebaut)
@@ -149,6 +150,26 @@ function tokenValid(request: IncomingMessage, url: URL): boolean {
   const cookie = request.headers.cookie ?? ''
   const match = /(?:^|;\s*)wz_token=([^;]+)/.exec(cookie)
   return match?.[1] === config.token
+}
+
+/**
+ * Das Zugriffstoken als Keks an die Herkunft heften.
+ *
+ * **Warum das sein muss.** Eine Seite wird mit `?t=…` geholt, ihre Bausteine
+ * — Skripte, Stile — aber unter ihren eigenen Pfaden, und die tragen kein
+ * Token. Ohne Keks antwortet der Server darauf mit 401, und das Ergebnis ist
+ * eine **weiße oder schwarze Fläche ohne Meldung**: Das Gerüst der Seite ist
+ * da, ihr Inhalt kam nie an. Genau so verschwand die Wahlseite auf jedem
+ * Gerät, das nicht vorher die Beamerseite geöffnet hatte — dort wurde der
+ * Keks nämlich gesetzt, und nur dort.
+ *
+ * Deshalb steht er jetzt an einer Stelle: Wer ein gültiges Token mitbringt,
+ * bekommt es als Keks zurück, gleich welche Seite er geholt hat.
+ */
+function tokenKeks(response: ServerResponse, url: URL): void {
+  if (!config?.token || url.searchParams.get('t') !== config.token) return
+  if (response.headersSent) return
+  response.setHeader('Set-Cookie', `wz_token=${config.token}; Path=/; SameSite=Strict`)
 }
 
 function deny(response: ServerResponse, status: number, message: string): void {
@@ -289,13 +310,13 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   /* Die Wahlseite selbst — eine gewöhnliche Seite, die jedes Telefon im
      Saalnetz laden kann. */
   if (url.pathname === WAHL_PFAD || url.pathname === `${WAHL_PFAD}/`) {
-    serveFile(response, join(rendererRoot(), 'wahl.html'))
+    seiteAusliefern(response, 'wahl.html', url)
     return
   }
 
   /* Die Seite des Wahlausschusses — sie hält den Schlüssel und unterschreibt. */
   if (url.pathname === AUSSCHUSS_PFAD || url.pathname === `${AUSSCHUSS_PFAD}/`) {
-    serveFile(response, join(rendererRoot(), 'ausschuss.html'))
+    seiteAusliefern(response, 'ausschuss.html', url)
     return
   }
 
@@ -312,6 +333,9 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     deny(response, 401, 'Zugriffstoken fehlt oder ist falsch.')
     return
   }
+  /* Ab hier steht fest, dass dieses Gerät hereindarf — der Keks sorgt dafür,
+     dass es auch die Bausteine der Seite bekommt. */
+  tokenKeks(response, url)
 
   /*
    * Kurzadresse je Bühne: `/b/2` ist das, was auf einem Zettel neben dem
@@ -461,20 +485,12 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
-  const headers: Record<string, string> = {}
-  if (config?.token && url.searchParams.get('t') === config.token) {
-    headers['Set-Cookie'] = `wz_token=${config.token}; Path=/; SameSite=Strict`
-  }
 
   const requestedPath = url.pathname === '/' ? '/audience.html' : url.pathname
   const filePath = join(rendererRoot(), normalize(requestedPath).replace(/^(\.\.[/\\])+/, ''))
   if (!filePath.startsWith(rendererRoot())) {
     deny(response, 403, 'Zugriff verweigert.')
     return
-  }
-  if (Object.keys(headers).length > 0) {
-    // Cookie zuerst setzen, dann Datei ausliefern.
-    response.setHeader('Set-Cookie', headers['Set-Cookie'])
   }
   if (!existsSync(filePath) && url.pathname === '/') {
     seiteAusliefern(response, 'audience.html', url)
