@@ -261,6 +261,68 @@ ALTER TABLE results ADD COLUMN declaration TEXT;
     sql: `
 ALTER TABLE results ADD COLUMN rank_order_json TEXT;
 `
+  },
+  {
+    /*
+     * Akkreditierung: wer da ist, und wie viele davon stimmberechtigt sind.
+     *
+     * Bisher war die Zahl der Stimmberechtigten **eine Zahl am Ereignis**,
+     * einmal eingetippt. In einer Versammlung kommen und gehen aber Leute:
+     * Beim vierten Wahlgang sitzen andere im Saal als beim ersten, und damit
+     * ändert sich die nötige Mehrheit. Wer das von Hand nachhält, rechnet
+     * irgendwann mit einer veralteten Zahl.
+     *
+     * `attendance_log` ist **fortschreibend**, nicht überschreibend: Kommen
+     * und Gehen stehen je als eigene Zeile. Der aktuelle Zustand ist der
+     * jeweils letzte Eintrag. Nur so lässt sich später sagen, wer zum
+     * Zeitpunkt eines Wahlgangs im Saal war — ein Feld „anwesend ja/nein"
+     * könnte das nicht.
+     *
+     * `round_presence` hält den Stand **je Wahlgang** fest, sobald er
+     * eröffnet wird. Danach darf sich die Anwesenheit ändern, ohne das
+     * laufende Verfahren zu verschieben.
+     */
+    version: 6,
+    sql: `
+CREATE TABLE IF NOT EXISTS participants (
+  id             TEXT PRIMARY KEY,
+  event_id       TEXT NOT NULL REFERENCES events(id),
+  number         TEXT,
+  last_name      TEXT NOT NULL,
+  first_name     TEXT NOT NULL,
+  note           TEXT,
+  weight         INTEGER NOT NULL DEFAULT 1,
+  eligible       INTEGER NOT NULL DEFAULT 1,
+  pass_hash      TEXT UNIQUE,
+  pass_issued_at TEXT,
+  blocked_at     TEXT,
+  blocked_reason TEXT,
+  row_version    INTEGER NOT NULL DEFAULT 1,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_participants_event ON participants(event_id, last_name, first_name);
+
+CREATE TABLE IF NOT EXISTS attendance_log (
+  id             TEXT PRIMARY KEY,
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  kind           TEXT NOT NULL,
+  at             TEXT NOT NULL,
+  by_user        TEXT,
+  note           TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_teilnehmer ON attendance_log(participant_id, at);
+
+CREATE TABLE IF NOT EXISTS round_presence (
+  round_id   TEXT PRIMARY KEY REFERENCES rounds(id),
+  present    INTEGER NOT NULL,
+  eligible   INTEGER NOT NULL,
+  weight_sum INTEGER NOT NULL,
+  taken_at   TEXT NOT NULL
+);
+`
   }
 ]
 

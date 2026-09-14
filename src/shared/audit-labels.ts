@@ -50,6 +50,15 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'candidate.numbers_assigned': 'Bewerbernummern vergeben',
 
   /* --------------------------------------------------------- Tagesordnung */
+  'participant.added': 'Teilnehmer aufgenommen',
+  'participant.updated': 'Teilnehmer geändert',
+  'participant.arrived': 'Teilnehmer eingetroffen',
+  'participant.left': 'Teilnehmer hat den Saal verlassen',
+  'participant.pass_issued': 'Voting Pass ausgegeben',
+  'participant.pass_reissued': 'Voting Pass neu ausgegeben',
+  'participant.blocked': 'Teilnehmer gesperrt',
+  'participant.unblocked': 'Sperre aufgehoben',
+  'round.presence_taken': 'Anwesenheit für den Wahlgang festgehalten',
   'agenda.item_added': 'Tagesordnungspunkt hinzugefügt',
   'agenda.item_updated': 'Tagesordnungspunkt geändert',
   'agenda.item_removed': 'Tagesordnungspunkt entfernt',

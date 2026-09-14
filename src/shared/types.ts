@@ -36,6 +36,7 @@ export const PERMISSIONS = [
   'round.manage',
   'round.unlock',
   'candidate.manage',
+  'participant.manage',
   'ballot.approve',
   'print.execute',
   'print.reprint',
@@ -54,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'round.manage',
     'round.unlock',
     'candidate.manage',
+    'participant.manage',
     'ballot.approve',
     'print.execute',
     'print.reprint',
@@ -66,6 +68,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ],
   WAHLKOMMISSION: [
     'candidate.manage',
+    'participant.manage',
     'print.execute',
     'print.reprint',
     'accounting.edit',
@@ -130,6 +133,103 @@ export interface ElectionEvent {
   updatedAt: IsoDateTime
   closedAt?: IsoDateTime
   archivedAt?: IsoDateTime
+}
+
+/* ------------------------------------------------------- Akkreditierung */
+
+/**
+ * Ein Teilnehmer der Versammlung.
+ *
+ * Nicht jeder Anwesende ist stimmberechtigt — Gäste, Referenten und
+ * Mitarbeiter sitzen im selben Saal. `eligible` trennt das; für die
+ * Beschlussfähigkeit zählen nur die Stimmberechtigten.
+ *
+ * `weight` ist das Stimmgewicht. In Vereinen ist es durchweg 1, bei
+ * Delegiertenversammlungen kann ein Delegierter mehrere Stimmen führen.
+ */
+export interface Participant {
+  id: UUID
+  eventId: UUID
+  /** Mitglieds- oder Delegiertennummer, wie sie in der Einladung steht. */
+  number?: string
+  lastName: string
+  firstName: string
+  note?: string
+  weight: number
+  eligible: boolean
+  /** Anwesend, abgeleitet aus dem letzten Eintrag im Anwesenheitsverlauf. */
+  present: boolean
+  /** Zeitpunkt des letzten Kommens oder Gehens. */
+  lastSeenAt?: IsoDateTime
+  /** Der Voting Pass ist ausgegeben (der Wert selbst steht hier nie). */
+  passIssued: boolean
+  passIssuedAt?: IsoDateTime
+  blockedAt?: IsoDateTime
+  blockedReason?: string
+  rowVersion: number
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+export interface ParticipantInput {
+  eventId: UUID
+  number?: string
+  lastName: string
+  firstName: string
+  note?: string
+  weight?: number
+  eligible?: boolean
+}
+
+/** Kommen oder Gehen — ein Eintrag im fortschreibenden Anwesenheitsverlauf. */
+export interface AttendanceEntry {
+  id: UUID
+  participantId: UUID
+  kind: 'in' | 'out'
+  at: IsoDateTime
+  byUser?: string
+  note?: string
+}
+
+/**
+ * Wann die Versammlung beschlussfähig ist.
+ *
+ * Zwei Formen, weil Satzungen beide kennen: eine feste Zahl („mindestens
+ * sieben Mitglieder") oder ein Anteil der Stimmberechtigten („die Hälfte").
+ */
+export interface QuorumRule {
+  kind: 'none' | 'count' | 'share'
+  /** Bei `count` die Personenzahl, bei `share` der Anteil zwischen 0 und 1. */
+  value: number
+}
+
+/** Der Stand im Saal, wie ihn die Akkreditierung sieht. */
+export interface PresenceSummary {
+  /** Erfasste Teilnehmer insgesamt. */
+  total: number
+  /** Davon stimmberechtigt. */
+  eligibleTotal: number
+  /** Anwesend. */
+  present: number
+  /** Anwesend **und** stimmberechtigt — die Zahl, an der die Mehrheit hängt. */
+  eligiblePresent: number
+  /** Summe der Stimmgewichte der anwesenden Stimmberechtigten. */
+  weightPresent: number
+  /** Ausgegebene Voting Pässe. */
+  passesIssued: number
+  quorum: QuorumRule
+  /** Wie viele stimmberechtigte Anwesende die Regel verlangt. */
+  quorumRequired: number
+  quorumMet: boolean
+}
+
+/** Der beim Eröffnen eines Wahlgangs festgehaltene Stand. */
+export interface RoundPresence {
+  roundId: UUID
+  present: number
+  eligible: number
+  weightSum: number
+  takenAt: IsoDateTime
 }
 
 /* ------------------------------------------------------- Tagesordnung */
