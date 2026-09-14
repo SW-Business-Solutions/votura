@@ -338,6 +338,56 @@ export function urnenListe(roundId: UUID): { serial: string; text: string; weigh
   })
 }
 
+/**
+ * Die digitale Auszählung zu einem von Hand erfassten Ergebnis hinzurechnen.
+ *
+ * **Der hybride Fall, und er ist der Grund für diese Funktion.** Läuft ein
+ * Wahlgang auf Papier und digital, zählt jemand die Zettel aus und trägt sie
+ * ein — die Urne im Rechner kommt dazu. Würde die digitale Übernahme das
+ * Ergebnis einfach überschreiben, wäre die Handauszählung weg, und zwar
+ * lautlos.
+ *
+ * Was eingetragen wird, ist deshalb immer der **von Hand gezählte Anteil**.
+ * Addiert wird hier, an einer Stelle, deterministisch: Dasselbe Ergebnis
+ * zweimal zu speichern ergibt zweimal dasselbe und nicht das Doppelte.
+ *
+ * Ohne geschlossene digitale Abstimmung ändert sich nichts — für jede
+ * bisherige Versammlung bleibt alles, wie es war.
+ */
+export function mitUrneZusammengefuehrt(
+  roundId: UUID,
+  handgezaehlt: ResultData & { ballotsCast: number; validBallots: number }
+): ResultData & { ballotsCast: number; validBallots: number } {
+  const zeile = session(roundId)
+  /* Nur eine **geschlossene** Urne wird gezählt. Solange die Abstimmung läuft,
+     wäre jede Zwischensumme ein Ergebnis, das noch keines ist. */
+  if (!zeile || zeile.status !== 'closed') return handgezaehlt
+
+  const digital = zaehlung(roundId)
+  const summe = new Map<string, { candidateId: string; name: string; votes: number }>()
+  for (const eintrag of [...(handgezaehlt.candidates ?? []), ...digital.candidates]) {
+    const bisher = summe.get(eintrag.candidateId)
+    summe.set(eintrag.candidateId, {
+      candidateId: eintrag.candidateId,
+      name: eintrag.name ?? bisher?.name ?? '',
+      votes: (bisher?.votes ?? 0) + (eintrag.votes ?? 0)
+    })
+  }
+
+  return {
+    ...handgezaehlt,
+    /* Die Reihenfolge des Stimmzettels bleibt erhalten: erst die Einträge der
+       Handauszählung, dann was nur digital vorkam. */
+    candidates: [...summe.values()],
+    no: (handgezaehlt.no ?? 0) + (digital.no ?? 0),
+    abstentions: (handgezaehlt.abstentions ?? 0) + (digital.abstentions ?? 0),
+    ballotsCast: handgezaehlt.ballotsCast + digital.ballotsCast,
+    /* Eine digitale Stimme ist immer gültig — ungültig entsteht auf Papier,
+       durch Durchstreichen, Mehrfachkreuze, Bemerkungen. */
+    validBallots: handgezaehlt.validBallots + digital.ballotsCast
+  }
+}
+
 /* ================================================== Der Wahlausschuss (M3) */
 
 /**

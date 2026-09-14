@@ -46,6 +46,7 @@ const ausgabe = await import('../src/main/services/handout')
 const bilanz = await import('../src/main/services/accounting')
 const einstellungen = await import('../src/main/services/settings')
 const bruecke = await import('../src/main/wahl-bruecke')
+const ergebnisse = await import('../src/main/services/results')
 
 const sha256: Pruefsumme = async (daten) => new Uint8Array(createHash('sha256').update(daten).digest())
 const zufall = (laenge: number): Uint8Array => new Uint8Array(randomBytes(laenge))
@@ -551,5 +552,125 @@ describe('„Nur Wahlkabinen" ist eine Zusage, keine Angabe', () => {
     /* Ohne Token abgewiesen zu werden, wäre hier falsch — die Meldung dreht
        sich um den fehlenden Ausweis, nicht um die Kabine. */
     await expect(bruecke.wahlBruecke.berechtigung({ roundId, code: '' }, false)).rejects.toThrow(/Ausweis/)
+  })
+})
+
+/**
+ * Papier und Urne im selben Wahlgang.
+ *
+ * Der Fall, an dem die Rechnung zerbrechen kann: Ein Teil der Versammlung
+ * stimmt auf Papier ab, ein Teil am Gerät. Wer beides getrennt zählt und dann
+ * eines von beiden speichert, verliert die Hälfte des Ergebnisses — lautlos,
+ * und niemand sieht es dem Beleg an.
+ */
+describe('Hybride Auszählung (M3)', () => {
+  let roundId = ''
+  let bewerber: { id: string; displayName: string }[] = []
+
+  beforeAll(async () => {
+    roundId = wahlgangMitBewerbern(['Gamma', 'Delta'])
+    bewerber = candidates.listCandidates(roundId)
+    wahl.prepareVoting({ roundId, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(roundId)
+
+    /* Zwei Stimmen digital: einmal Gamma, einmal Delta. */
+    for (const kandidat of bewerber) {
+      const person = anwesend(`Digital-${kandidat.displayName}`)
+      const { serial } = wahl.berechtigungAusgeben({ roundId, participantId: person.id })
+      await wahl.stimmeEinlegen({ roundId, serial: serial!, choice: { kandidaten: [kandidat.id] } })
+    }
+    wahl.closeVoting(roundId)
+  })
+
+  function papierEintragen(): void {
+    ergebnisse.saveResult({
+      electionRoundId: roundId,
+      countingMode: 'counted',
+      ballotsCast: 5,
+      validBallots: 5,
+      invalidBallots: 0,
+      resultData: {
+        candidates: [
+          { candidateId: bewerber[0].id, name: bewerber[0].displayName, votes: 3 },
+          { candidateId: bewerber[1].id, name: bewerber[1].displayName, votes: 2 }
+        ]
+      }
+    })
+  }
+
+  it('zählt Papier und Urne zusammen', () => {
+    papierEintragen()
+    const ergebnis = ergebnisse.getResult(roundId)!
+    expect(ergebnis.ballotsCast).toBe(7)
+    expect(ergebnis.validBallots).toBe(7)
+    const stimmen = new Map(ergebnis.resultData.candidates.map((e) => [e.candidateId, e.votes]))
+    expect(stimmen.get(bewerber[0].id)).toBe(4)
+    expect(stimmen.get(bewerber[1].id)).toBe(3)
+  })
+
+  it('bleibt gleich, wie oft man auch speichert', () => {
+    /*
+     * Die Prüfung, die den eigentlichen Fehler ausschließt: Wird beim
+     * Speichern addiert, schlägt die Urne bei jeder Korrektur erneut auf. Die
+     * Zeile trägt deshalb nur den Papieranteil.
+     */
+    papierEintragen()
+    papierEintragen()
+    expect(ergebnisse.getResult(roundId)!.ballotsCast).toBe(7)
+    expect(ergebnisse.getPapierergebnis(roundId)!.ballotsCast).toBe(5)
+  })
+
+  it('lässt die Handauszählung stehen, wenn die Urne übernommen wird', () => {
+    /* Früher überschrieb die Übernahme das Ergebnis mit den digitalen Zahlen
+       allein — die ausgezählten Zettel waren danach weg. */
+    const vorher = ergebnisse.getPapierergebnis(roundId)!
+    expect(vorher.ballotsCast).toBe(5)
+    expect(ergebnisse.getResult(roundId)!.resultData.candidates[0].votes).toBe(4)
+  })
+
+  it('rechnet nichts hinzu, solange die Abstimmung läuft', async () => {
+    const offenerRound = wahlgangMitBewerbern(['Epsilon', 'Zeta'])
+    const offeneBewerber = candidates.listCandidates(offenerRound)
+    wahl.prepareVoting({ roundId: offenerRound, geheimnis: 'open', geraete: 'both' })
+    wahl.openVoting(offenerRound)
+    const person = anwesend('Laeuft-Noch')
+    const { serial } = wahl.berechtigungAusgeben({ roundId: offenerRound, participantId: person.id })
+    await wahl.stimmeEinlegen({
+      roundId: offenerRound,
+      serial: serial!,
+      choice: { kandidaten: [offeneBewerber[0].id] }
+    })
+
+    ergebnisse.saveResult({
+      electionRoundId: offenerRound,
+      countingMode: 'counted',
+      ballotsCast: 2,
+      validBallots: 2,
+      invalidBallots: 0,
+      resultData: {
+        candidates: [
+          { candidateId: offeneBewerber[0].id, name: offeneBewerber[0].displayName, votes: 2 },
+          { candidateId: offeneBewerber[1].id, name: offeneBewerber[1].displayName, votes: 0 }
+        ]
+      }
+    })
+    /* Eine laufende Abstimmung ist kein Ergebnis — eine Zwischensumme gehört
+       nicht in die Feststellung. */
+    expect(ergebnisse.getResult(offenerRound)!.ballotsCast).toBe(2)
+  })
+
+  it('trägt ohne Papierauszählung die Urne allein', () => {
+    /* Der rein digitale Wahlgang: Es gibt nichts von Hand zu zählen, die
+       Zeile entsteht mit null und die Urne füllt sie. */
+    const nurDigital = wahlgangMitBewerbern(['Eta', 'Theta'])
+    ergebnisse.saveResult({
+      electionRoundId: nurDigital,
+      countingMode: 'counted',
+      ballotsCast: 0,
+      validBallots: 0,
+      invalidBallots: 0,
+      resultData: { candidates: [] }
+    })
+    expect(ergebnisse.getResult(nurDigital)!.ballotsCast).toBe(0)
   })
 })

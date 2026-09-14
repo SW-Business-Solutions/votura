@@ -107,6 +107,7 @@ wirksamste — die Kabine, in der der Pass gescannt und sofort verbraucht wird.
 | Stimmen unterschlagen           | ausgegebene Unterschriften laufen öffentlich mit; eine Lücke fällt auf | Teilnehmer müssen hinsehen                                                            |
 | Schlüssel austauschen           | öffentlicher Teil wird vor Öffnung angezeigt und gedruckt              | —                                                                                     |
 | Auszählung fälschen             | die Liste ist gedruckt und von Hand nachzählbar                        | —                                                                                     |
+| Papierauszählung verschwindet   | Urne wird beim Lesen addiert, nie beim Speichern; die Zeile trägt nur den Papieranteil | —                                                                     |
 
 **Der offene Punkt ist der private Schlüssel auf dem Hauptrechner.** Wer ihn kontrolliert, kann
 gültige Unterschriften erzeugen und die Urne füllen. Die Bilanz macht das sichtbar — aber nur, wenn
@@ -127,6 +128,13 @@ Ein Rest bleibt auch dann: Läuft das Ausschussgerät nicht, kann niemand mehr e
 Stimmberechtigung bekommen. Der Schlüssel lebt in der geöffneten Seite; wird sie geschlossen, ist
 er weg und der Wahlgang muss neu vorbereitet werden. Das ist der Preis dafür, dass er nirgends
 sonst liegt — und es steht auf dem Gerät.
+
+**Der hybride Wahlgang war die gefährlichste Stelle dieser Zeile**, und zwar ohne Angreifer: Die
+Übernahme der digitalen Urne hat das eingetragene Papierergebnis überschrieben. Ein Teil der
+Stimmen wäre lautlos verschwunden — kein Fehler, keine Warnung, nur eine kleinere Zahl. Gespeichert
+wird deshalb ausschließlich die Handauszählung, addiert wird erst beim Lesen (`getResult`), und die
+Erfassungsmaske sagt, dass eine geschlossene Urne dazukommt. Eine Prüfung hält beides fest: dass
+die Summe stimmt und dass mehrfaches Speichern sie nicht verändert.
 
 ### 3.4 Beobachtung und Druck
 
@@ -199,6 +207,8 @@ Die Maßnahmen dieses Dokuments sind gebaut. Was davon geprüft ist und wo:
 | Der Schlüssel liegt beim Ausschuss nicht auf dem Hauptrechner | ebenda — und ohne gemeldeten Prüfschlüssel lässt sich nicht eröffnen                                                                                                                      |
 | Der Prüfschlüssel lässt sich nicht austauschen                | ebenda — er wird genau einmal angenommen                                                                                                                                                  |
 | In der Warteschlange steht nur Verblendetes                   | ebenda — die Spalten werden namentlich festgehalten                                                                                                                                       |
+| Papier und Urne ergeben zusammen das Ergebnis                 | ebenda — und mehrfaches Speichern verändert die Summe nicht                                                                                                                               |
+| Eine laufende Abstimmung wird nicht mitgezählt                | ebenda — eine Zwischensumme ist kein Ergebnis                                                                                                                                             |
 
 **Was dabei nicht geprüft ist und nicht geprüft werden kann:** ob die Umsetzung der Kryptografie
 frei von Fehlern ist. Prüfungen zeigen, dass sie das Erwartete tut — nicht, dass sie nichts anderes

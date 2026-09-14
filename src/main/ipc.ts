@@ -167,10 +167,16 @@ import {
   prepareVoting,
   urnenListe,
   votingLage,
-  votingStand,
-  zaehlung
+  votingStand
 } from './services/voting'
-import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
+import {
+  confirmResult,
+  emergencyReopen,
+  getPapierergebnis,
+  getResult,
+  reopenResult,
+  saveResult
+} from './services/results'
 import {
   getConfig,
   getNetworkProjection,
@@ -478,6 +484,7 @@ const api: Api = {
       batches: listBatches(roundId),
       versions: listVersions(roundId),
       result: getResult(roundId) ?? undefined,
+      papierergebnis: getPapierergebnis(roundId) ?? undefined,
       document: currentDocument(roundId)
     }
   },
@@ -525,18 +532,27 @@ const api: Api = {
    *
    * Ausgezählt wird die Urne, nicht ein laufender Zähler — dieselbe Rechnung,
    * die auch jeder im Saal an der gedruckten Liste nachvollziehen kann.
+   *
+   * **Was hier nicht passiert: Zahlen schreiben.** Die geschlossene Urne wird
+   * beim Lesen des Ergebnisses hinzugerechnet (`getResult`). Dieser Aufruf
+   * legt nur die Zeile an, falls es noch keine gibt — bei einem rein digitalen
+   * Wahlgang, in dem nichts von Hand zu zählen war. Wurde daneben auf Papier
+   * abgestimmt und ausgezählt, bleibt diese Auszählung unangetastet; früher
+   * hat diese Stelle sie überschrieben.
    */
   'voting.uebernehmen': async (roundId) => {
-    const zaehlung_ = zaehlung(roundId)
+    if (getPapierergebnis(roundId)) return
     const stand = votingStand(roundId)
     saveResult({
       electionRoundId: roundId,
       countingMode: 'counted',
-      ballotsCast: zaehlung_.ballotsCast,
-      validBallots: zaehlung_.ballotsCast,
+      /* Der Papieranteil eines rein digitalen Wahlgangs ist null — alles
+         Weitere kommt aus der Urne dazu. */
+      ballotsCast: 0,
+      validBallots: 0,
       invalidBallots: 0,
       eligibleVoters: stand.ausgegeben,
-      resultData: { candidates: zaehlung_.candidates, no: zaehlung_.no, abstentions: zaehlung_.abstentions }
+      resultData: { candidates: [] }
     })
   },
   'voting.drucken': async (input) => {
@@ -614,6 +630,7 @@ const api: Api = {
 
   /* -------------------------------------------------------------- Ergebnis */
   'result.get': async (roundId) => getResult(roundId),
+  'result.papier': async (roundId) => getPapierergebnis(roundId),
   'result.save': async (input) => saveResult(input),
   'result.confirm': async (input) => {
     const result = confirmResult(input.roundId, input.pin)

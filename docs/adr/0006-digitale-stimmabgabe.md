@@ -130,6 +130,26 @@ Der Preis: Eine einzelne Person kann nicht überprüfen, dass ihre Stimme in der
 zusammen können überprüfen, dass die Liste zum Ergebnis passt und nicht mehr Stimmen enthält als
 Berechtigungen ausgegeben wurden.
 
+### Papier und Urne ergeben zusammen das Ergebnis
+
+Ein Wahlgang kann **beides** sein: Wer ein Gerät hat, stimmt digital ab, wer keines will, bekommt
+einen Zettel. Die Doppelausgabe ist ausgeschlossen — wer eine digitale Berechtigung hat, bekommt
+keinen Zettel, und umgekehrt (`handout.ts`, `voting.ts`). Damit sind es zwei getrennte Stapel, die
+am Ende addiert werden müssen.
+
+**Gespeichert wird nur die Handauszählung; die geschlossene Urne kommt beim Lesen hinzu**
+(`getResult` in `src/main/services/results.ts`). Das ist bewusst die Leseseite und nicht die
+Schreibseite: Beim Speichern addiert, würde die Urne bei jeder Korrektur des Papieranteils erneut
+aufschlagen — ein zweiter Klick auf „Speichern" hätte das Ergebnis verfälscht. So ist die Rechnung
+unabhängig davon, wie oft sie ausgeführt wird, und beide Teile bleiben getrennt nachvollziehbar:
+`getPapierergebnis` liefert die Zettel, `getResult` die Summe.
+
+Die Erfassungsmaske zeigt an, dass eine geschlossene Urne vorliegt und mit wie vielen Stimmen. Was
+dort eingetragen wird, ist immer der von Hand gezählte Anteil.
+
+Eine **laufende** Abstimmung wird nicht mitgezählt. Eine Zwischensumme ist kein Ergebnis, und sie
+gehört nicht in eine Feststellung.
+
 ### Je Wahlgang entscheidet die Wahlleitung
 
 ```
@@ -190,6 +210,7 @@ Stimmabgabe, ohne für 500 Teilnehmer Geräte zu beschaffen.
 | Ausgabe der Stimmzettel            | `src/main/services/handout.ts`                                                                            |
 | Seite auf dem Teilnehmergerät      | `src/renderer/src/wahl-main.tsx`                                                                          |
 | Brücke ohne Anmeldung              | `src/main/wahl-bruecke.ts` — drei Funktionen, mehr ist von außen nicht erreichbar                         |
+| Papier und Urne zusammenrechnen    | `mitUrneZusammengefuehrt` in `voting.ts`, angewendet von `getResult` in `results.ts`                      |
 
 **Die Prüfsumme kommt von außen herein.** Das Rechenwerk hasht nicht selbst; im Hauptprozess liefert
 `node:crypto` sie, im Browser `crypto.subtle`. Eine eigene SHA-256-Implementierung wäre die Art Rad,

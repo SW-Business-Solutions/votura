@@ -266,7 +266,16 @@ export interface RoundDetail {
   accounting: BallotAccounting
   batches: PrintBatch[]
   versions: BallotVersionRecord[]
+  /** Das Ergebnis, wie es gilt: Papierauszählung **und** digitale Urne. */
   result?: ElectionResult
+  /**
+   * Nur der von Hand gezählte Anteil — das, was im Formular steht.
+   *
+   * Ohne diese Trennung bekäme die Maske die Summe vorgelegt und schriebe sie
+   * beim nächsten Speichern als Papierauszählung zurück; die digitalen
+   * Stimmen lägen danach doppelt im Ergebnis.
+   */
+  papierergebnis?: ElectionResult
   document: BallotDocument
 }
 
@@ -522,6 +531,8 @@ export interface Api {
 
   /* ----------------------------------------------------------------- Ergebnis */
   'result.get': (roundId: UUID) => Promise<ElectionResult | null>
+  /** Nur der von Hand gezählte Anteil — für das Formular, nicht für die Anzeige. */
+  'result.papier': (roundId: UUID) => Promise<ElectionResult | null>
   'result.save': (input: ResultInput) => Promise<ElectionResult>
   'result.confirm': (input: { roundId: UUID; pin?: string }) => Promise<ElectionResult>
   'result.reopen': (input: { roundId: UUID; reason: string }) => Promise<ElectionResult>

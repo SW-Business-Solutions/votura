@@ -457,3 +457,51 @@ muss zurückkommen.
 Mit dem Abschluss **verfällt alles Ausgegebene**: Karten, Bändchen und gedruckte Pässe. Was jemand
 mitgenommen hat, ist danach kein Ausweis mehr. Die Anwesenheit bleibt, wie sie war — wer am Ende im
 Saal war, war am Ende im Saal, und das gehört ins Protokoll.
+
+## Digitale Stimmabgabe
+
+Die digitale Abstimmung ist **je Wahlgang** zuschaltbar und ersetzt das Papier nicht: Wer kein Gerät
+hat oder keines will, bekommt weiter einen Zettel. Voraussetzung ist die Akkreditierung — ohne
+Ausweis gibt es keine Stimmberechtigung.
+
+### Vorbereiten
+
+Im Reiter _Digitale Wahl_ wird entschieden, und zwar für jeden Wahlgang neu:
+
+| Frage              | Auswahl                                        | Wann was                                                                                              |
+| ------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Wie geheim?        | offen · namentlich · geheim                    | „namentlich" nur auf Beschluss der Versammlung; „geheim" rechnet mit Blindsignaturen                  |
+| Womit?             | eigene Geräte · nur Wahlkabinen · beides       | „nur Wahlkabinen" verlangt ein eingerichtetes Zugriffstoken, sonst wäre eine Kabine nicht erkennbar   |
+| Wer unterschreibt? | Hauptrechner · Wahlausschuss auf eigenem Gerät | Für eine geheime Wahl gehört der Schlüssel auf ein zweites Gerät — sonst hält ihn, wer den Saal führt |
+
+Beim Wahlausschuss auf eigenem Gerät: Die Seite `/ausschuss` auf dem zweiten Gerät öffnen, dort den
+Schlüssel erzeugen lassen und den **Prüfschlüssel vor der Eröffnung auf die Leinwand bringen**.
+Danach lässt er sich nicht mehr unbemerkt austauschen. Diese Seite darf bis zum Schließen nicht
+geschlossen werden — der Schlüssel lebt nur dort.
+
+### Während der Abstimmung
+
+Die Leinwand zeigt mit, wie viele Berechtigungen ausgegeben und wie viele Stimmen angenommen
+wurden. Das ist die öffentliche Rechnung: **In der Urne dürfen nie mehr Stimmen liegen, als
+Berechtigungen ausgegeben wurden.**
+
+Wer am Ausgabetisch bereits einen Papierzettel bekommen hat, bekommt keine digitale Berechtigung —
+und umgekehrt. Beide Seiten prüfen die jeweils andere; niemand stimmt doppelt ab.
+
+### Schließen und auszählen
+
+Beim Schließen wird der private Schlüssel gelöscht und die Urne gemischt. Sie wird als **Liste
+gedruckt**: je Zeile eine Seriennummer und die Stimme im Klartext, nachzählbar wie ein Stapel
+Zettel, von jedem im Saal.
+
+### Papier und Urne zusammenrechnen
+
+Wurde im selben Wahlgang auch auf Papier abgestimmt, zählt die Wahlkommission die Zettel wie immer
+aus. Im Reiter _Ergebnis_ wird eingetragen, **was von Hand gezählt wurde** — nicht die Summe. Ein
+Hinweis über der Maske nennt die Stimmen der geschlossenen Urne; sie kommen automatisch hinzu.
+
+Im Ergebnis, auf dem Beleg und im Protokoll steht die Summe aus beidem. Mehrfaches Speichern ändert
+daran nichts: Die gespeicherte Zeile trägt nur den Papieranteil, addiert wird beim Anzeigen.
+
+Bei einem rein digitalen Wahlgang genügt **Auszählung übernehmen** — dann gibt es nichts von Hand zu
+zählen, und die Urne steht allein im Ergebnis.
