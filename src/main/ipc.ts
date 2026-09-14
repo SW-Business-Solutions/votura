@@ -160,7 +160,16 @@ import {
   setCardStatus
 } from './services/cards'
 import { handoutCount, handoutFor, issueBallot, revokeIssue } from './services/handout'
-import { printVotingPass } from './services/printing'
+import { printUrnenListe, printVotingPass } from './services/printing'
+import {
+  closeVoting,
+  openVoting,
+  prepareVoting,
+  urnenListe,
+  votingLage,
+  votingStand,
+  zaehlung
+} from './services/voting'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
   getConfig,
@@ -504,6 +513,36 @@ const api: Api = {
   },
 
   /* ---------------------------------------------------------- Tagesordnung */
+  /* ---------------------------------------------- Digitale Abstimmung */
+  'voting.prepare': async (input) => prepareVoting(input),
+  'voting.open': async (roundId) => openVoting(roundId),
+  'voting.close': async (roundId) => closeVoting(roundId),
+  'voting.lage': async (roundId) => votingLage(roundId),
+  'voting.stand': async (roundId) => votingStand(roundId),
+  'voting.urne': async (roundId) => urnenListe(roundId),
+  /**
+   * Das Ergebnis der digitalen Abstimmung in den Wahlgang übernehmen.
+   *
+   * Ausgezählt wird die Urne, nicht ein laufender Zähler — dieselbe Rechnung,
+   * die auch jeder im Saal an der gedruckten Liste nachvollziehen kann.
+   */
+  'voting.uebernehmen': async (roundId) => {
+    const zaehlung_ = zaehlung(roundId)
+    const stand = votingStand(roundId)
+    saveResult({
+      electionRoundId: roundId,
+      countingMode: 'counted',
+      ballotsCast: zaehlung_.ballotsCast,
+      validBallots: zaehlung_.ballotsCast,
+      invalidBallots: 0,
+      eligibleVoters: stand.ausgegeben,
+      resultData: { candidates: zaehlung_.candidates, no: zaehlung_.no, abstentions: zaehlung_.abstentions }
+    })
+  },
+  'voting.drucken': async (input) => {
+    await printUrnenListe(input)
+  },
+
   /* ----------------------------------------------- Ausgabe der Zettel */
   'handout.issue': async (input) => issueBallot(input),
   'handout.count': async (roundId) => handoutCount(roundId),

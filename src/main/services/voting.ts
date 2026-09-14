@@ -270,6 +270,32 @@ export function zaehlung(roundId: UUID): ResultData & { ballotsCast: number } {
   }
 }
 
+/**
+ * Die Urne als lesbare Liste — für den Ausdruck und die Nachzählung.
+ *
+ * Je Zeile eine Seriennummer und die Stimme im Klartext. Mehr steht nicht
+ * darin, und mehr darf nicht darin stehen: Das Verzeichnis ist genauso
+ * nachzählbar wie ein Stapel Zettel und genauso wenig einer Person
+ * zuzuordnen.
+ */
+export function urnenListe(roundId: UUID): { serial: string; text: string; weight: number }[] {
+  const bewerber = new Map(listCandidates(roundId).map((k) => [k.id, k.displayName]))
+  return urne(roundId).map((zettel) => {
+    const teile: string[] = []
+    if (zettel.choice.antwort) {
+      teile.push(
+        zettel.choice.antwort === 'ja' ? 'JA' : zettel.choice.antwort === 'nein' ? 'NEIN' : 'ENTHALTUNG'
+      )
+    }
+    for (const id of zettel.choice.kandidaten ?? []) teile.push(bewerber.get(id) ?? id)
+    return {
+      serial: zettel.serial,
+      text: teile.length > 0 ? teile.join(', ') : 'leer',
+      weight: zettel.weight
+    }
+  })
+}
+
 /* ====================================================== Teilnehmergeräte */
 
 /**

@@ -505,6 +505,78 @@ export function buildVotingPassOps(input: VotingPassInput, printer: PrinterConfi
   return ops
 }
 
+/* ----------------------------------------------------------- Urnenliste */
+
+export interface UrnenlisteInput {
+  organization: string
+  eventTitle: string
+  date: string
+  roundLabel: string
+  roundCode: string
+  /** Der öffentliche Schlüssel des Wahlgangs, damit sich alles nachprüfen lässt. */
+  schluessel?: string
+  zettel: { serial: string; text: string; weight: number }[]
+}
+
+/**
+ * Die elektronische Urne, ausgedruckt.
+ *
+ * **Der Grund, warum es sie gibt:** Ein Ergebnis, das nur der Rechner kennt,
+ * ist keines. Diese Liste macht die digitale Wahl genauso nachzählbar wie
+ * einen Stapel Zettel — von jedem im Saal, ohne Zugriff auf das Gerät.
+ *
+ * Jede Zeile trägt eine Seriennummer und die Stimme. Eine Person steht
+ * nirgends, und das ist keine Auslassung: Auch bei Papier kann niemand später
+ * auf einen Zettel zeigen und sagen „der ist meiner".
+ *
+ * Die Seriennummer wird gekürzt gedruckt. Vollständig wäre sie 32 Zeichen
+ * lang und der Bon dreimal so lang; zum Unterscheiden genügen zwölf, und wer
+ * genau nachrechnen will, nimmt ohnehin die Datei.
+ */
+export function buildUrnenlisteOps(input: UrnenlisteInput, printer: PrinterConfig): PrintOp[] {
+  const width = printer.charsPerLine
+  const ops: PrintOp[] = []
+
+  ops.push(text(ruler(width, '='), { align: 'center' }))
+  ops.push(text('URNENVERZEICHNIS', { align: 'center', bold: true, doubleHeight: true }))
+  ops.push(text(ruler(width, '='), { align: 'center' }))
+  ops.push(feed(1))
+  for (const line of wrapText(input.organization, width))
+    ops.push(text(line, { align: 'center', bold: true }))
+  for (const line of wrapText(input.eventTitle, width)) ops.push(text(line, { align: 'center' }))
+  ops.push(text(formatDateDe(input.date), { align: 'center' }))
+  ops.push(text(`Wahlgang ${input.roundLabel} (${input.roundCode})`, { align: 'center' }))
+  ops.push(feed(1))
+
+  ops.push(text(`Stimmzettel: ${input.zettel.length}`, { bold: true }))
+  const gewicht = input.zettel.reduce((summe, zettel) => summe + zettel.weight, 0)
+  if (gewicht !== input.zettel.length) ops.push(text(`Stimmen mit Gewicht: ${gewicht}`, { bold: true }))
+  ops.push(text(ruler(width)))
+
+  for (const zettel of input.zettel) {
+    ops.push(text(zettel.serial.slice(0, 12)))
+    for (const line of wrapText(zettel.text, width - 2, 2)) ops.push(text(`  ${line}`))
+    if (zettel.weight > 1) ops.push(text(`  (${zettel.weight} Stimmen)`))
+  }
+
+  ops.push(text(ruler(width)))
+  if (input.schluessel) {
+    ops.push(feed(1))
+    ops.push(text('Prüfschlüssel des Wahlgangs:', { bold: true }))
+    /* Nur der Anfang: Der vollständige Modulus wären 350 Zeichen. Er steht
+       im Protokoll und auf der Leinwand; hier genügt, was zum Abgleichen
+       reicht. */
+    for (const line of wrapText(input.schluessel.slice(0, 64), width)) ops.push(text(line))
+  }
+  ops.push(feed(1))
+  ops.push(text('Nachgezählt:', {}))
+  ops.push(text('_'.repeat(width)))
+  ops.push(feed(1))
+  if (printer.cutEveryBallot) ops.push(cut())
+  else ops.push(feed(printer.feedLinesBeforeCut))
+  return ops
+}
+
 /* ------------------------------------------------------------- Ergebnisbon */
 
 export interface ResultSlipInput {

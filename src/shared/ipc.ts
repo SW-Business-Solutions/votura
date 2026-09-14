@@ -15,6 +15,7 @@ import type {
   ProjectionTheme
 } from './projection'
 import type { Buehnenwahl } from './projection'
+import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
 import type { SprachmodellInfo } from './sprachmodell'
 import type { Laufart, PrompterAnsicht, PrompterViewState, SpeechContent, SpeechInfo } from './speech'
@@ -407,6 +408,22 @@ export interface Api {
    * hat einen gültigen Pass, den niemand hat.
    */
   'participant.issueAndPrintPass': (input: { id: UUID; printerId: string }) => Promise<Participant>
+
+  /* ------------------------------------------------ Digitale Abstimmung */
+  'voting.prepare': (input: {
+    roundId: UUID
+    geheimnis: Wahlgeheimnis
+    geraete: Geraetewahl
+  }) => Promise<WahlLage>
+  'voting.open': (roundId: UUID) => Promise<WahlLage>
+  'voting.close': (roundId: UUID) => Promise<WahlStand>
+  'voting.lage': (roundId: UUID) => Promise<WahlLage | null>
+  'voting.stand': (roundId: UUID) => Promise<WahlStand>
+  /** Zählt aus und schreibt das Ergebnis in den Wahlgang. */
+  'voting.uebernehmen': (roundId: UUID) => Promise<void>
+  /** Die Urne als Liste — Grundlage des Ausdrucks und der Nachzählung. */
+  'voting.urne': (roundId: UUID) => Promise<{ serial: string; text: string; weight: number }[]>
+  'voting.drucken': (input: { roundId: UUID; printerId: string }) => Promise<void>
 
   /* ------------------------------------------------ Ausgabe der Zettel */
   'handout.issue': (input: {

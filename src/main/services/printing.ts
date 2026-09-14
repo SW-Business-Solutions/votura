@@ -22,10 +22,12 @@ import { optionalNumber, optionalString } from '../db/driver'
 import { logger } from '../logger'
 import { createDriver, PrinterError } from '../printing/drivers'
 import { getParticipant } from './participants'
+import { urnenListe, votingLage } from './voting'
 import {
   buildBallotOps,
   buildProtocolSlipOps,
   buildResultSlipOps,
+  buildUrnenlisteOps,
   buildVotingPassOps
 } from '../printing/layout'
 import { countLines, type PrintOp } from '../printing/ops'
@@ -512,6 +514,46 @@ export async function printProtocolSlip(input: {
     failedCopies: batch.failedCopies,
     deduplicated: false
   }
+}
+
+/**
+ * Das Urnenverzeichnis drucken.
+ *
+ * Wie der Voting Pass **ohne Druckauftrag**: Es ist kein Stimmzettel und
+ * gehört nicht in die Stimmzettelbilanz. Und wie beim Ergebnisbeleg gibt es
+ * hier nichts zu schützen — die Liste gibt wieder, was ohnehin nachzuzählen
+ * sein soll.
+ */
+export async function printUrnenListe(input: { roundId: UUID; printerId: string }): Promise<void> {
+  const session = requirePermission('export.read')
+  const round = getRound(input.roundId)
+  const event = getEvent(round.eventId)
+  const printer = getPrinter(input.printerId)
+  if (!printer) throw new Error(`Der Drucker "${input.printerId}" ist nicht konfiguriert.`)
+
+  const lage = votingLage(input.roundId)
+  const ops = buildUrnenlisteOps(
+    {
+      organization: event.organization,
+      eventTitle: event.title,
+      date: event.date,
+      roundLabel: round.roundLabel,
+      roundCode: round.roundCode,
+      schluessel: lage?.schluessel?.n,
+      zettel: urnenListe(input.roundId)
+    },
+    printer
+  )
+
+  await createDriver(printer).submit(ops, { label: `urne-${round.roundCode}` })
+  appendAudit({
+    action: 'voting.urne_printed',
+    userId: session.user.id,
+    userName: session.user.displayName,
+    eventId: round.eventId,
+    electionRoundId: input.roundId,
+    newValue: { zettel: urnenListe(input.roundId).length }
+  })
 }
 
 /**
