@@ -17,7 +17,7 @@ import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Field } from '../components/ui'
-import { QrScanner } from '../../qr-scanner'
+import { kameraVerfuegbar, QrScanner } from '../../qr-scanner'
 
 /** Wie ein Zeitpunkt am Einlass aussehen soll: kurz. */
 function uhrzeit(wert?: string): string {
@@ -338,7 +338,7 @@ export function AkkreditierungPage(): React.JSX.Element {
               }}
             />
           </div>
-          <button onClick={() => setKamera(true)}>Mit der Kamera</button>
+          {kameraVerfuegbar() && <button onClick={() => setKamera(true)}>Mit der Kamera</button>}
         </div>
         {kamera && (
           <QrScanner

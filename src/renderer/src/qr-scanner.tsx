@@ -65,6 +65,17 @@ function kameraMoeglich(): boolean {
   return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
 }
 
+/**
+ * Hat es Sinn, den Knopf „Mit der Kamera" überhaupt anzubieten?
+ *
+ * Auf gewöhnlichem HTTP sperrt der Browser die Kamera grundsätzlich. Eine
+ * Schaltfläche, die dann nur eine Erklärung ausspuckt, ist eine Enttäuschung
+ * mit Vorlauf — besser, es steht gleich da, woran es liegt (ADR-0007).
+ */
+export function kameraVerfuegbar(): boolean {
+  return typeof window !== 'undefined' && window.isSecureContext && kameraMoeglich()
+}
+
 export function QrScanner({
   aufCode,
   aufSchliessen,
@@ -100,12 +111,23 @@ export function QrScanner({
     let takt: number | null = null
 
     const starten = async (): Promise<void> => {
-      if (!kameraMoeglich()) {
+      /*
+       * **Zuerst die Herkunft, dann erst die Kamera.**
+       *
+       * Auf gewöhnlichem HTTP sperrt der Browser die Kamera grundsätzlich —
+       * und meldet das je nach Fassung als „nicht erlaubt". Wer das für eine
+       * verweigerte Erlaubnis hält, sucht den Fehler in den Einstellungen
+       * seines Telefons und findet dort nichts. Deshalb wird gar nicht erst
+       * gefragt, sondern gesagt, woran es liegt.
+       */
+      if (!window.isSecureContext) {
         setFehler(
-          window.isSecureContext
-            ? 'Dieses Gerät stellt keine Kamera zur Verfügung.'
-            : 'Die Kamera braucht eine verschlüsselte Verbindung. Bitte den Code eintippen — oder in den Einstellungen des Hauptrechners die verschlüsselte Übertragung einschalten.'
+          'Die Kamera ist gesperrt, weil diese Seite unverschlüsselt ausgeliefert wird — das entscheidet der Browser, nicht das Wahlprogramm. Bitte den Code eintippen. Dauerhaft behoben wird es am Hauptrechner unter Einstellungen → Netzwerk → Verschlüsselte Übertragung.'
         )
+        return
+      }
+      if (!kameraMoeglich()) {
+        setFehler('Dieses Gerät stellt keine Kamera zur Verfügung. Bitte den Code eintippen.')
         return
       }
 

@@ -29,7 +29,7 @@ import {
   type Pruefsumme
 } from '@shared/blindsignatur'
 import { GEHEIMNIS_LABELS, type Stimmabgabe, type WahlAuskunft, type WahlLage } from '@shared/wahl'
-import { QrScanner } from './qr-scanner'
+import { kameraVerfuegbar, QrScanner } from './qr-scanner'
 import './styles/wahl.css'
 
 /** SHA-256 aus dem Browser — selbst zu hashen wäre die Art Rad, die man nicht neu erfindet. */
@@ -473,11 +473,11 @@ function Wahlseite(): React.JSX.Element {
                   void pruefen(code, gelesen)
                 }}
               />
-            ) : (
+            ) : kameraVerfuegbar() ? (
               <button className="gross" onClick={() => setScannt(true)}>
                 Mit der Kamera scannen
               </button>
-            )}
+            ) : null}
             <input
               className="gross"
               autoCapitalize="characters"
@@ -505,10 +505,15 @@ function Wahlseite(): React.JSX.Element {
                   void pruefen(gelesen)
                 }}
               />
-            ) : (
+            ) : kameraVerfuegbar() ? (
               <button className="gross" onClick={() => setScannt(true)}>
                 Mit der Kamera scannen
               </button>
+            ) : (
+              <p className="leise">
+                Der QR-Code lässt sich auf diesem Gerät nicht scannen: Dafür müsste die Seite verschlüsselt
+                ausgeliefert werden. Bitte den aufgedruckten Code eingeben.
+              </p>
             )}
             <input
               className="gross"

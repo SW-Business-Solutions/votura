@@ -61,7 +61,17 @@ describe('Der Scanner selbst', () => {
   })
 
   it('erklärt die fehlende Verschlüsselung, statt eine tote Schaltfläche zu zeigen', () => {
+    /*
+     * Auf gewöhnlichem HTTP sperrt der Browser die Kamera — und meldet das je
+     * nach Fassung als „nicht erlaubt". Wer das für eine verweigerte Erlaubnis
+     * hält, sucht den Fehler in seinem Telefon und findet dort nichts.
+     * Geprüft wird deshalb die **Reihenfolge**: erst die Herkunft, dann die
+     * Kamera.
+     */
     expect(quelle).toContain('isSecureContext')
-    expect(quelle).toContain('verschlüsselte Verbindung')
+    expect(quelle).toContain('unverschlüsselt ausgeliefert')
+    expect(quelle.indexOf('isSecureContext')).toBeLessThan(quelle.indexOf('getUserMedia({'))
+    /* Und der Knopf erscheint gar nicht erst, wo er nichts ausrichten kann. */
+    expect(quelle).toContain('export function kameraVerfuegbar')
   })
 })

@@ -16,7 +16,7 @@ import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Field } from '../components/ui'
-import { QrScanner } from '../../qr-scanner'
+import { kameraVerfuegbar, QrScanner } from '../../qr-scanner'
 
 type Antwort =
   | { art: 'gut'; text: string; person: Participant }
@@ -216,7 +216,7 @@ export function AusgabePage(): React.JSX.Element {
                     }}
                   />
                 </div>
-                <button onClick={() => setKamera(true)}>Mit der Kamera</button>
+                {kameraVerfuegbar() && <button onClick={() => setKamera(true)}>Mit der Kamera</button>}
               </div>
               {kamera && (
                 <QrScanner
