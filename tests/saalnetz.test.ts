@@ -9,6 +9,8 @@
  * Entwicklungsrechner belegt oder gesperrt, und ein Test, der davon abhängt,
  * ist ein Test, der irgendwann übersprungen wird.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { antwortAuf, ausDemSaalnetz, nameLesen, nameSchreiben } from '../src/main/dns'
 import {
@@ -178,5 +180,33 @@ describe('Die Adressvergabe', () => {
   it('vergibt weder die eigene noch die Adresse des Routers', () => {
     const eng: DhcpEinstellung = { ...netz, von: '192.168.50.1', bis: '192.168.50.3', router: '192.168.50.2' }
     expect(adresseFuer('ff:ff:ff:00:00:01', eng)).toBe('192.168.50.3')
+  })
+})
+
+describe('Die Netzdienste beim Start', () => {
+  const start = readFileSync(join(__dirname, '..', 'src/main/index.ts'), 'utf8')
+
+  it('werden wiederhergestellt, nicht nur eingeschaltet', () => {
+    /*
+     * **Der Fehler, den das verhindert.** Sie liefen nur, solange niemand den
+     * Rechner neu startete — also genau bis zum Morgen der Versammlung. Die
+     * Einstellung sagte „an", der Namensdienst schwieg, und im Saal löste
+     * niemand mehr den Namen auf, für den das Zertifikat gilt.
+     */
+    expect(start).toContain('starteDns(')
+    expect(start).toContain('starteDhcp(')
+    expect(start).toContain('getSaalnetz()')
+  })
+
+  it('reißen einander nicht mit', () => {
+    /* Die Adressvergabe braucht Rechte, die der Namensdienst nicht braucht.
+       Wegen des einen auf den anderen zu verzichten wäre falsch. */
+    const abschnitt = start.slice(start.indexOf('const saalnetz = getSaalnetz()'))
+    expect((abschnitt.match(/try \{/g) ?? []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('werden beim Beenden abgeräumt', () => {
+    expect(start).toContain('stoppeDns()')
+    expect(start).toContain('stoppeDhcp()')
   })
 })

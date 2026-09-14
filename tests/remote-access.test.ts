@@ -6,7 +6,7 @@
  * angemeldeten Benutzer zugeordnet, und Fehlversuche werden gebremst.
  */
 import { EventEmitter } from 'node:events'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
@@ -197,5 +197,40 @@ describe('Fernzugriff', () => {
     })
     expect(response.status).toBe(429)
     expect(response.json.error).toMatch(/Fehlversuche/i)
+  })
+})
+
+describe('Systemdialoge auf dem Zweitgerät', () => {
+  const ipc = readFileSync(join(__dirname, '..', 'src/main/ipc.ts'), 'utf8')
+  const fern = readFileSync(join(__dirname, '..', 'src/main/remote-access.ts'), 'utf8')
+
+  /** Jeder Endpunkt, der ein Fenster auf dem Hauptrechner aufzieht. */
+  function dialogEndpunkte(): string[] {
+    const teile = ipc.split(/\n {2}'([a-zA-Z.]+)': async/)
+    const gefunden: string[] = []
+    for (let i = 1; i < teile.length; i += 2) {
+      const rumpf = teile[i + 1].split("\n  '")[0]
+      if (/showOpenDialog|showSaveDialog|chooseDirectory\(/.test(rumpf)) gefunden.push(teile[i])
+    }
+    return gefunden
+  }
+
+  it('sind über das Netz gesperrt — alle', () => {
+    /*
+     * **Warum das zählt.** Ein Auswahlfenster erscheint auf dem
+     * *Hauptrechner* und blockiert ihn, bis jemand dort steht und es
+     * wegklickt. Mitten in einer Versammlung ist damit die Bedienung des
+     * Beamers lahmgelegt — ausgelöst von einem Gerät, das im Saal steht.
+     *
+     * Die Liste war unvollständig: Sie kannte Ordner- und Bildauswahl, aber
+     * weder die Dateiauswahl für Zertifikate noch den Import von
+     * Präsentationen, Videos, Manuskripten und Sprachmodellen. Diese Prüfung
+     * hält sie vollständig, auch für den nächsten Dialog, den jemand ergänzt.
+     */
+    const endpunkte = dialogEndpunkte()
+    expect(endpunkte.length).toBeGreaterThan(4)
+
+    const fehlend = endpunkte.filter((name) => !fern.includes(`'${name}'`))
+    expect(fehlend).toEqual([])
   })
 })

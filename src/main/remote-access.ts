@@ -197,9 +197,30 @@ export async function handleRemoteRequest(
     }
 
     const method = payload.method ?? ''
-    // Auf dem Zweitgerät sind Systemdialoge des Hauptrechners sinnlos oder
-    // irreführend – sie bleiben dem Gerät vor Ort vorbehalten.
-    const blocked = ['system.chooseDirectory', 'system.chooseImage', 'system.revealPath', 'system.saveCopy']
+    /*
+     * **Systemdialoge bleiben dem Gerät vor Ort vorbehalten.**
+     *
+     * Auf dem Zweitgerät sind sie nicht nur sinnlos — sie sind störend: Ein
+     * Auswahlfenster erscheint auf dem **Hauptrechner** und blockiert ihn,
+     * bis jemand dort steht und es wegklickt. Mitten in einer Versammlung ist
+     * das die Bedienung des Beamers lahmgelegt.
+     *
+     * Die Liste war unvollständig: Sie kannte die Ordner- und Bildauswahl,
+     * aber weder die Dateiauswahl für Zertifikate noch den Import von
+     * Präsentationen, Videos, Manuskripten und Sprachmodellen. Eine Prüfung
+     * hält sie jetzt vollständig (`tests/remote-access.test.ts`).
+     */
+    const blocked = [
+      'system.chooseDirectory',
+      'system.chooseFile',
+      'system.chooseImage',
+      'system.revealPath',
+      'system.saveCopy',
+      'presentation.import',
+      'video.import',
+      'speech.import',
+      'speechmodel.install'
+    ]
     if (blocked.includes(method)) {
       json(response, 403, {
         ok: false,
