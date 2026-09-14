@@ -9,6 +9,7 @@ import { app, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
+import type { Permission } from '@shared/types'
 import { IPC, type Api, type ApiMethod, type SaalnetzStatus } from '@shared/ipc'
 import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type Buehnenwahl } from '@shared/projection'
 import { db } from './db'
@@ -345,6 +346,42 @@ async function netzNeu(): Promise<void> {
   await startNetworkProjection(netz)
 }
 
+/**
+ * Darf der Aufrufer das sehen — ohne dass eine Absage fliegt?
+ *
+ * `requirePermission` wirft und verlängert nebenbei die Sitzung. Beides ist
+ * hier falsch: Gefragt wird nicht, ob jemand handeln darf, sondern ob er
+ * etwas zu sehen bekommt.
+ */
+function darfSehen(recht: Permission): boolean {
+  return getSession()?.permissions.includes(recht) ?? false
+}
+
+/**
+ * Das Zugriffstoken aus einer Antwort nehmen, wenn der Aufrufer es nichts
+ * angeht.
+ *
+ * **Warum das zählt.** Mit dem Token kommt jedes Gerät im Saalnetz an die
+ * Beameransicht, an die Wahlseite und — bei „nur Wahlkabinen" — an die
+ * Unterscheidung zwischen Kabine und mitgebrachtem Telefon. Es ist kein
+ * Anzeigewert, sondern ein Schlüssel.
+ *
+ * Herausgegeben wurde es bisher an jeden Aufrufer, auch vor der Anmeldung.
+ * Praktisch braucht das den entsperrten Rechner — und dort ist ohnehin alles
+ * verloren. Sauber ist es trotzdem nicht.
+ *
+ * Die Adressen werden gleich mit bereinigt: Eine Adresse, die das Token in
+ * der Abfrage trägt, wäre dasselbe noch einmal.
+ */
+function ohneGeheimnis<T extends { token: string; urls?: string[] }>(wert: T): T {
+  if (darfSehen('system.manage')) return wert
+  return {
+    ...wert,
+    token: '',
+    ...(wert.urls ? { urls: wert.urls.map((url) => url.split('?')[0]) } : {})
+  }
+}
+
 const api: Api = {
   /* --------------------------------------------------------------- System */
   'system.setupState': async () => ({
@@ -375,7 +412,11 @@ const api: Api = {
     return listUsers()[0]
   },
 
-  'system.settings': async () => getSettings(),
+  'system.settings': async () => {
+    const einstellungen = getSettings()
+    return { ...einstellungen, networkProjection: ohneGeheimnis(einstellungen.networkProjection) }
+  },
+
   'system.saveConfig': async (config) => {
     requirePermission('system.manage')
     const saved = saveConfig(config)
@@ -1050,7 +1091,7 @@ const api: Api = {
 
   'projection.network': async () => {
     const settings = getSettings()
-    return { ...settings.networkProjection, ...networkStatus() }
+    return ohneGeheimnis({ ...settings.networkProjection, ...networkStatus() })
   },
   'projection.setNetwork': async (config) => {
     requirePermission('system.manage')

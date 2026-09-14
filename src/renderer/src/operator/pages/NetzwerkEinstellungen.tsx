@@ -101,6 +101,13 @@ function NetworkSection({
   return (
     <>
       <Card title="Beamer im Netzwerk">
+        {!app.can('system.manage') && (
+          <div className="notice warn">
+            Das Zugriffstoken wird nur der Systemverwaltung angezeigt — es ist kein Anzeigewert, sondern ein
+            Schlüssel: Wer es hat, kommt an Beameransicht und Wahlseite. Ändern lässt sich hier ohnehin
+            nichts; die Angaben stehen zum Nachsehen.
+          </div>
+        )}
         <p className="hint">
           Zeigt dieselbe Beameransicht im Browser eines anderen Geräts im Veranstaltungsnetz an –
           ausschließlich lesend, ohne Bedienelemente. Standardmäßig deaktiviert; nur in einem abgeschotteten
