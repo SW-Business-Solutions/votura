@@ -22,6 +22,11 @@ const EINSTELLUNGS_REITER = [
   { id: 'printers', label: 'Drucker' },
   { id: 'general', label: 'Allgemein' },
   { id: 'beamer', label: 'Beamer' },
+  /* Eigene Reiter, weil es eigene Fragen sind: „Wie sieht die Wand aus",
+     „wer darf über das Netz heran", „was hört am Pult mit". Zusammen in
+     einem Reiter war es eine Seite, an deren Ende niemand ankam. */
+  { id: 'netzwerk', label: 'Netzwerk' },
+  { id: 'prompter', label: 'Prompter' },
   { id: 'users', label: 'Benutzer' },
   { id: 'backup', label: 'Backup' }
 ] as const
@@ -45,16 +50,9 @@ export function SettingsPage(): React.JSX.Element {
 
       {tab === 'printers' && <PrinterSettings />}
       {tab === 'general' && <GeneralSettings />}
-      {tab === 'beamer' && (
-        <>
-          <ProjectionDesign />
-          {/* Erscheinungsbild und Netzwerkansicht gehören beide zur Frage
-              „Wie kommt das Bild an die Wand" — und beide stellt man vor der
-              Versammlung ein, nicht während. */}
-          <NetzwerkEinstellungen />
-          <SprachmodellEinstellungen />
-        </>
-      )}
+      {tab === 'beamer' && <ProjectionDesign />}
+      {tab === 'netzwerk' && <NetzwerkEinstellungen />}
+      {tab === 'prompter' && <SprachmodellEinstellungen />}
       {tab === 'users' && <UserSettings />}
       {tab === 'backup' && <BackupSettings />}
     </>

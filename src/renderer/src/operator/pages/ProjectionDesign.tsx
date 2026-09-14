@@ -21,7 +21,7 @@ const COLOR_FIELDS: { key: keyof ProjectionTheme; label: string; hint?: string }
   { key: 'success', label: 'Erfolg', hint: 'z. B. „GEWÄHLT"' },
   { key: 'warning', label: 'Warnung', hint: 'z. B. „AUSZÄHLUNG LÄUFT"' },
   { key: 'danger', label: 'Ablehnung', hint: 'z. B. „NICHT GEWÄHLT"' },
-  { key: 'surface', label: 'Flaechen' }
+  { key: 'surface', label: 'Flächen' }
 ]
 
 const PRESETS: { name: string; theme: Partial<ProjectionTheme> }[] = [
