@@ -443,10 +443,26 @@ textarea {
   align-items: center;
   gap: 8px;
 }
-.field-inline input[type='checkbox'] {
+/*
+ * Ankreuzfelder und Auswahlknöpfe nehmen sich aus der Regel für Eingabefelder
+ * heraus.
+ *
+ * Die gilt weiter oben für `input` insgesamt und gibt jedem Feld volle Breite
+ * und Innenabstand — für ein Textfeld richtig, für ein rundes Knöpfchen
+ * verheerend: Es zog die ganze Zeile auf, und die Beschriftung daneben wurde
+ * in eine handtuchschmale Spalte gequetscht, in der jedes Wort umbrach.
+ *
+ * Die Ausnahme steht deshalb nicht bei `.field-inline`, sondern hier: Sie
+ * gilt, wo immer jemand ein solches Feld setzt.
+ */
+input[type='checkbox'],
+input[type='radio'] {
   width: 18px;
   height: 18px;
   flex: none;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--primary);
 }
 .field-inline label {
   margin: 0;

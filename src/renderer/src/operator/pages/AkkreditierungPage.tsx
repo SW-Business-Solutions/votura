@@ -24,6 +24,11 @@ function uhrzeit(wert?: string): string {
   return new Date(wert).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
 }
 
+/** Wie viele nicht leere Zeilen stehen im Kasten? — die Zahl beruhigt vor dem Klick. */
+function zeilenZahl(text: string): number {
+  return text.split(/\r?\n/).filter((zeile) => zeile.trim()).length
+}
+
 export function AkkreditierungPage(): React.JSX.Element {
   const app = useApp()
   const event = app.event
@@ -370,14 +375,24 @@ export function AkkreditierungPage(): React.JSX.Element {
           sie ist ein Stapel gültiger Ausweise in Textform.
         </div>
         <div className="row mt-2">
-          <label className="field-inline">
-            <input type="radio" checked={importArt === 'card'} onChange={() => setImportArt('card')} />
-            Karten (kommen zurück)
-          </label>
-          <label className="field-inline">
-            <input type="radio" checked={importArt === 'band'} onChange={() => setImportArt('band')} />
-            Bändchen (werden abgerissen)
-          </label>
+          {/* Breit genug, dass beide Wahlmöglichkeiten in einer Zeile stehen —
+              in einer Reihe schrumpft ein Feld sonst auf seinen Inhalt. */}
+          <div style={{ minWidth: '320px' }}>
+            <Field label="Art des Ausweises">
+              <select
+                value={importArt}
+                onChange={(ereignis) => setImportArt(ereignis.target.value as Ausweis['kind'])}
+              >
+                <option value="card">Karten — kommen am Ausgang zurück</option>
+                <option value="band">Bändchen — werden abgerissen</option>
+              </select>
+            </Field>
+          </div>
+          <div className="hint" style={{ flex: 1, minWidth: '240px' }}>
+            {importArt === 'card'
+              ? 'Eine zurückgegebene Karte geht wieder in den Stapel — sie lässt sich an diesem Abend erneut ausgeben.'
+              : 'Ein abgerissenes Bändchen ist verbraucht. Wer den Saal verlässt und wiederkommt, bekommt ein neues.'}
+          </div>
         </div>
         <textarea
           className="mt-2"
@@ -387,9 +402,16 @@ export function AkkreditierungPage(): React.JSX.Element {
           value={importText}
           onChange={(ereignis) => setImportText(ereignis.target.value)}
         />
-        <button className="mt-2" onClick={() => void kartenEinlesen()}>
-          Einlesen
-        </button>
+        <div className="row mt-2">
+          <button className="primary" disabled={!importText.trim()} onClick={() => void kartenEinlesen()}>
+            Einlesen
+          </button>
+          <div className="hint">
+            {importText.trim()
+              ? `${zeilenZahl(importText)} Zeilen`
+              : 'Noch keine Liste eingefügt.'}
+          </div>
+        </div>
       </Card>
 
       <Card title="Teilnehmer aufnehmen">
