@@ -86,6 +86,23 @@ async function mitWiederholung<T>(was: () => Promise<T>, versuche = 4): Promise<
 
 type Schritt = 'ausweis' | 'wahl' | 'fertig'
 
+/**
+ * Wann sich der Bildschirm von selbst zurücksetzt.
+ *
+ * **In der Wahlkabine ist das keine Bequemlichkeit, sondern Teil des
+ * Wahlgeheimnisses.** Wer fertig ist, geht — und ließe sonst seinen Namen,
+ * seine Auswahl und die Bestätigung für den Nächsten stehen. Schlimmer noch
+ * der Fall, dass jemand mitten in der Auswahl weggerufen wird: Der Nächste
+ * fände einen angemeldeten Ausweis und einen halb ausgefüllten Stimmzettel
+ * vor und könnte ihn absenden.
+ *
+ * Deshalb zwei Zeiten: nach der Abgabe kurz, weil niemand mehr etwas zu lesen
+ * hat, und während der Auswahl lang genug, dass niemand beim Nachdenken
+ * herausfliegt.
+ */
+const RUECKSETZEN_NACH_ABGABE = 15
+const RUECKSETZEN_BEI_STILLE = 120
+
 function Wahlseite(): React.JSX.Element {
   const [schritt, setSchritt] = useState<Schritt>('ausweis')
   const [code, setCode] = useState('')
@@ -103,6 +120,9 @@ function Wahlseite(): React.JSX.Element {
   const [zweiterCode, setZweiterCode] = useState('')
   const [fehler, setFehler] = useState<string | null>(null)
   const [laeuft, setLaeuft] = useState(false)
+  /* Sichtbarer Rückwärtszähler: Ein Bildschirm, der ohne Ankündigung
+     umspringt, sieht aus wie ein Absturz. */
+  const [restzeit, setRestzeit] = useState(RUECKSETZEN_NACH_ABGABE)
   /*
    * **Was bei einem zweiten Versuch nicht noch einmal passieren darf.**
    * Die Berechtigung gibt es je Wahlgang genau einmal. Bricht die Abgabe ab,
@@ -142,6 +162,76 @@ function Wahlseite(): React.JSX.Element {
       setFehler(error instanceof Error ? error.message : String(error))
     }
   }, [])
+
+  /**
+   * Alles vergessen und von vorn anfangen.
+   *
+   * Vollständig: Ausweise, Auswahl, Name, die geholte Berechtigung. Was hier
+   * stehen bliebe, gehörte dem Vorigen — in einer Wahlkabine ist das der
+   * Unterschied zwischen einem Gerät und einem Zeugen.
+   *
+   * Auch die Adresse wird gesäubert: Ein `?c=…` darin würde beim nächsten
+   * Laden den Ausweis des Vorigen wieder einsetzen.
+   */
+  const zuruecksetzen = useCallback(() => {
+    setSchritt('ausweis')
+    setCode('')
+    setZweiterCode('')
+    setAuskunft(null)
+    setGewaehlt(new Set())
+    setAntwort(null)
+    setFehler(null)
+    setRestzeit(RUECKSETZEN_NACH_ABGABE)
+    berechtigung.current = null
+    if (location.search) history.replaceState(null, '', location.pathname)
+  }, [])
+
+  /**
+   * Der Rückwärtszähler nach der Abgabe.
+   *
+   * Er läuft nur auf dem Bestätigungsbildschirm; solange jemand auswählt,
+   * hat er dort nichts zu suchen.
+   */
+  useEffect(() => {
+    if (schritt !== 'fertig') return
+    setRestzeit(RUECKSETZEN_NACH_ABGABE)
+    const takt = setInterval(() => {
+      setRestzeit((übrig) => {
+        if (übrig <= 1) {
+          clearInterval(takt)
+          zuruecksetzen()
+          return 0
+        }
+        return übrig - 1
+      })
+    }, 1000)
+    return () => clearInterval(takt)
+  }, [schritt, zuruecksetzen])
+
+  /**
+   * Der Bildschirm, an dem niemand mehr steht.
+   *
+   * Jede Berührung setzt die Uhr neu. Bleibt es still, wird zurückgesetzt —
+   * sonst fände der Nächste einen angemeldeten Ausweis und eine fremde
+   * Auswahl vor und könnte sie absenden.
+   */
+  useEffect(() => {
+    if (schritt !== 'wahl') return
+    let uhr = window.setTimeout(zuruecksetzen, RUECKSETZEN_BEI_STILLE * 1000)
+    const neuStarten = (): void => {
+      window.clearTimeout(uhr)
+      uhr = window.setTimeout(zuruecksetzen, RUECKSETZEN_BEI_STILLE * 1000)
+    }
+    for (const art of ['pointerdown', 'keydown'] as const) {
+      window.addEventListener(art, neuStarten)
+    }
+    return () => {
+      window.clearTimeout(uhr)
+      for (const art of ['pointerdown', 'keydown'] as const) {
+        window.removeEventListener(art, neuStarten)
+      }
+    }
+  }, [schritt, zuruecksetzen])
 
   /* Ein Aufruf mit `?c=…` kommt vom Scan eines QR-Codes — dann ist der Ausweis
      schon da und der erste Schritt entfällt. */
@@ -278,6 +368,13 @@ function Wahlseite(): React.JSX.Element {
             erzwingen. Nachgezählt wird die Urne als Ganzes.
           </p>
         )}
+        <p className="leise">
+          Der Bildschirm wird in {restzeit} {restzeit === 1 ? 'Sekunde' : 'Sekunden'} für die nächste Person
+          zurückgesetzt.
+        </p>
+        <button className="gross" onClick={zuruecksetzen}>
+          Für die nächste Person freigeben
+        </button>
       </main>
     )
   }
