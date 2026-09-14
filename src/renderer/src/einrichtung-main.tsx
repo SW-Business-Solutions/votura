@@ -54,7 +54,18 @@ function EinrichtungsApp(): React.JSX.Element {
     void suchen()
   }, [suchen])
 
-  const master = gewaehlt ? `http://${gewaehlt.adresse}:${gewaehlt.port}` : handAdresse.trim()
+  /*
+   * **Mit echtem Zertifikat zählt der Name.**
+   *
+   * Ein Zertifikat gilt für einen Namen, nie für eine Adresse — eine Adresse
+   * ergäbe auch bei tadellosem Zertifikat eine Warnung, und in dieser
+   * Anwendung nicht einmal eine wegklickbare. Aufgelöst wird der Name nicht
+   * über das Namensystem, sondern über die Adresse, unter der der
+   * Hauptrechner gerade geantwortet hat (siehe `saal/index.ts`).
+   */
+  const master = gewaehlt
+    ? `${gewaehlt.tls ? 'https' : 'http'}://${gewaehlt.zertifikatsName ?? gewaehlt.adresse}:${gewaehlt.port}`
+    : handAdresse.trim()
   const buehnen = gewaehlt?.buehnen ?? []
   const tokenNoetig = gewaehlt?.tokenNoetig ?? true
 
@@ -66,7 +77,15 @@ function EinrichtungsApp(): React.JSX.Element {
       setPruefung({ laeuft: false, fehler: ergebnis?.fehler ?? 'Der Rechner antwortet nicht.' })
       return
     }
-    await window.saal?.uebernehmen({ master, token, rolle, name: gewaehlt?.name })
+    await window.saal?.uebernehmen({
+      master,
+      /* Nur mitgeben, wenn die Adresse auf einen Namen lautet — sonst gäbe es
+         nichts aufzulösen. */
+      masterAdresse: gewaehlt?.zertifikatsName ? gewaehlt.adresse : undefined,
+      token,
+      rolle,
+      name: gewaehlt?.name
+    })
   }
 
   return (
@@ -166,7 +185,34 @@ function EinrichtungsApp(): React.JSX.Element {
             Ausgabe der Stimmzettel
             <span className="leise">Zettel gegen Ausweis herausgeben · mit Anmeldung</span>
           </button>
+          <button
+            className={rolle.art === 'wahlkabine' ? 'gewaehlt' : ''}
+            onClick={() => setRolle({ art: 'wahlkabine' })}
+          >
+            Wahlkabine
+            <span className="leise">Digitale Stimmabgabe · ohne Anmeldung</span>
+          </button>
+          <button
+            className={rolle.art === 'wahlausschuss' ? 'gewaehlt' : ''}
+            onClick={() => setRolle({ art: 'wahlausschuss' })}
+          >
+            Wahlausschuss
+            <span className="leise">Hält den Schlüssel und unterschreibt</span>
+          </button>
         </div>
+        {rolle.art === 'wahlausschuss' && (
+          <p className="hinweis">
+            Dieses Gerät erzeugt den Schlüssel der geheimen Wahl und <strong>behält ihn</strong>. Der
+            Hauptrechner kann dann keine Stimmberechtigungen erzeugen, die der Ausschuss nicht gesehen hat.
+            Die Seite darf während der Abstimmung nicht geschlossen werden — der Schlüssel lebt nur dort.
+          </p>
+        )}
+        {rolle.art === 'wahlkabine' && (
+          <p className="hinweis">
+            In der Kabine sorgt der <strong>Raum</strong> für die Unbeobachtetheit — das Gerät gehört dort
+            nicht zu einer Person. Deshalb meldet es sich nicht an und merkt sich nichts.
+          </p>
+        )}
         {rolleBrauchtAnmeldung(rolle) && (
           <p className="hinweis">
             Dieses Gerät wird <strong>bedient</strong>, nicht nur angesehen: Es meldet sich am Hauptrechner

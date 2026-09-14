@@ -28,6 +28,7 @@ deshalb der Grund, warum es Wahlkabinen gibt.
 | **Teilnehmer**             | eigenes Gerät vollständig kontrollieren, im WLAN mitlesen, Pässe fotografieren | mehrfach abstimmen, fremde Stimme abgeben, Ergebnis stören |
 | **Beobachter im Saal**     | zusehen, Druck ausüben                                                         | erfahren, wie jemand gestimmt hat                          |
 | **Netzbetreiber**          | WLAN-Controller, Adressen, Zeitpunkte                                          | Stimme einer Person zuordnen                               |
+| **Mitleser im Saal**       | Laptop im selben WLAN, mitgeschnittener Verkehr                                | Stimmen **im Klartext** mitlesen                           |
 | **Wahlleitung am Rechner** | alles auf dem Hauptrechner                                                     | Ergebnis verändern, Stimmen zuordnen                       |
 | **Späterer Auswerter**     | Datenbank und Sicherungen nach der Versammlung                                 | rekonstruieren, wer wie gestimmt hat                       |
 
@@ -53,40 +54,108 @@ hilft technisch wenig und räumlich viel: In der Wahlkabine gehört das Gerät n
 Deshalb: **Für geheime Wahlen ist der Kabinenbetrieb die Empfehlung, nicht nur eine Möglichkeit.**
 Wer eigene Geräte zulässt, sollte wissen, worauf er verzichtet.
 
+### 3.1a Die Stimme unterwegs mitlesen
+
+**Der schwerste Befund dieses Dokuments, und er wurde zu spät gefunden.**
+
+Die Blindsignatur schützt davor, dass die _Wahlleitung_ Tabellen
+nebeneinanderlegt. Sie schützt nicht davor, dass jemand mit einem Laptop im
+Saal mitliest. Die frühere Fassung dieses Modells behandelte den Netzbetreiber
+und Zeitpunkte — den Mitleser und den **Inhalt** behandelte sie nicht.
+
+| Weg                                | Warum er funktioniert                                                                                                          | Gegenmaßnahme                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Unverschlüsseltes HTTP im Saalnetz | Stimme und Absenderadresse stehen nebeneinander im Klartext                                                                    | **Verschlüsselte Übertragung**                                           |
+| WPA2 mit gemeinsamem Passwort      | Alle Teilnehmer kennen denselben Schlüssel; wer den Verbindungsaufbau eines anderen mitschneidet, entschlüsselt dessen Verkehr | WPA3 (eigener Schlüssel je Gerät) oder Geräte-Isolierung am Zugangspunkt |
+| Offenes WLAN                       | jeder liest alles                                                                                                              | kommt für eine Abstimmung nicht in Frage                                 |
+
+**Was verschlüsselte Übertragung leistet und was nicht.** Gegen das
+**Mitlesen** hilft sie vollständig — auch mit einem selbst ausgestellten
+Zertifikat, denn ein passiver Mitleser kann nichts entschlüsseln. Gegen einen
+**aktiven** Angreifer, der sich dazwischenschaltet, hilft sie nur, wenn das
+Gerät das Zertifikat wiedererkennt. Für **Wahlkabinen** ist das lösbar: Sie
+gehören der Veranstaltung, und ihr Zertifikat lässt sich fest hinterlegen. Für
+**mitgebrachte Telefone** ist es das nicht — dort erscheint eine Warnung, und
+wer Menschen beibringt, solche Warnungen wegzuklicken, hat den Gewinn wieder
+verspielt.
+
+Daraus folgt dieselbe Empfehlung wie aus 3.1, nur schärfer: **Für geheime
+Wahlen gehören Wahlkabinen dazu.** Eigene Geräte bleiben für offene und
+namentliche Abstimmungen richtig — dort gibt es kein Wahlgeheimnis, das ein
+Mitleser brechen könnte.
+
 ### 3.2 Mehrfach oder unberechtigt abstimmen
 
 | Weg                                      | Gegenmaßnahme                                                                                                        |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Pass zweimal verwenden                   | je Pass und Wahlgang genau eine Unterschrift                                                                         |
 | Unterschrift zweimal einlösen            | jede Seriennummer wird genau einmal angenommen                                                                       |
-| Fremden Pass fotografieren und verwenden | Pass wird bei der Akkreditierung gegen Ausweis ausgegeben; Sperrung möglich; **bei eigenen Geräten bleibt ein Rest** |
-| Seriennummer erfinden                    | ohne gültige Unterschrift nimmt die Urne nichts an                                                                   |
+| Fremden Pass fotografieren und verwenden | Pass wird bei der Akkreditierung gegen Ausweis ausgegeben; Sperrung möglich; ein neuer Pass macht den alten ungültig |
+| Aufgedruckten Kartencode fotografieren  | zum Abstimmen gehört zusätzlich der gedruckte Pass — ein Foto der Karte allein nützt nichts |
+| Seriennummer erfinden                    | geheim: ohne gültige Unterschrift nimmt die Urne nichts an · offen und namentlich: die Berechtigung gilt genau einmal |
 | Unterschrift fälschen                    | RSA; Schlüssel je Wahlgang, öffentlicher Teil vorher veröffentlicht                                                  |
 
-Der Passdiebstahl ist der schwächste Punkt bei eigenen Geräten: Ein QR-Code lässt sich über die
-Schulter fotografieren. Gegenmaßnahmen: Ausgabe erst im Saal, Sperrmöglichkeit, und — die
-wirksamste — die Kabine, in der der Pass gescannt und sofort verbraucht wird.
+**Eine Lücke bestand hier bis zuletzt, und zwar in der harmlos aussehenden Betriebsart.** Bei
+offener und namentlicher Abstimmung kommt die Seriennummer vom Rechner — gespeichert wurde sie
+nirgends, und die Urne wies nur dieselbe Nummer zweimal ab. Wer eine zweite erfand und mit
+demselben Pass schickte, kam durch; die Unterschrift, die das im geheimen Fall verhindert, gibt es
+dort nicht. Jetzt wird die Stimmberechtigung verbraucht (`voting_rights.used_at`), und die gibt es
+je Person und Wahlgang genau einmal.
+
+**Die Wiederholung nach einem Verbindungsabbruch ist davon ausgenommen** — sie muss es sein, sonst
+wäre die Gegenmaßnahme selbst das Problem: Wessen Stimme angenommen wurde, während die Antwort
+verloren ging, drückt noch einmal. Dieselbe Seriennummer mit derselben Auswahl gilt deshalb als
+das, was sie ist: schon geschehen. Dieselbe Seriennummer mit **anderer** Auswahl wird abgewiesen.
+
+Der Ausweisdiebstahl ist der schwächste Punkt bei eigenen Geräten: Ein QR-Code lässt sich über die
+Schulter fotografieren. Bei der **Stimmkarte** wiegt das besonders schwer, denn ihr Code ist
+aufgedruckt, unveränderlich und wird nach der Rückgabe an die nächste Person weitergereicht.
+
+Deshalb zählen beide Ausweise zusammen: **Wer eine Karte hält und einen Pass hat, muss beide
+vorzeigen.** Der Pass ist der ersetzbare Teil — ein neuer macht den alten im selben Augenblick
+ungültig. Damit ist ein fotografierter Kartencode für sich wertlos, und ein fotografierter Pass
+verliert seinen Wert, sobald der Bestohlene einen neuen bekommt.
+
+Weitere Gegenmaßnahmen: Ausgabe erst im Saal, Sperrmöglichkeit, und — die wirksamste — die Kabine,
+in der der Ausweis gescannt und sofort verbraucht wird.
 
 ### 3.3 Ergebnis verändern
 
-| Weg                             | Gegenmaßnahme                                                          | Rest                                                         |
-| ------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Stimmen in der Datenbank ändern | gedruckte Urnenliste; wer nachzählt, merkt es                          | nur, wenn jemand nachzählt                                   |
-| Zusätzliche Stimmen einlegen    | Bilanz: angenommene Stimmen ≤ ausgegebene Unterschriften               | **die Wahlleitung kann zusätzliche Unterschriften erzeugen** |
-| Stimmen unterschlagen           | ausgegebene Unterschriften laufen öffentlich mit; eine Lücke fällt auf | Teilnehmer müssen hinsehen                                   |
-| Schlüssel austauschen           | öffentlicher Teil wird vor Öffnung angezeigt und gedruckt              | —                                                            |
-| Auszählung fälschen             | die Liste ist gedruckt und von Hand nachzählbar                        | —                                                            |
+| Weg                             | Gegenmaßnahme                                                          | Rest                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Stimmen in der Datenbank ändern | gedruckte Urnenliste; wer nachzählt, merkt es                          | nur, wenn jemand nachzählt                                                            |
+| Zusätzliche Stimmen einlegen    | Bilanz: angenommene Stimmen ≤ ausgegebene Unterschriften               | nur in der einfachen Betriebsart; beim Wahlausschuss auf eigenem Gerät ausgeschlossen |
+| Stimmen unterschlagen           | ausgegebene Unterschriften laufen öffentlich mit; eine Lücke fällt auf | Teilnehmer müssen hinsehen                                                            |
+| Schlüssel austauschen           | öffentlicher Teil wird vor Öffnung angezeigt und gedruckt              | —                                                                                     |
+| Auszählung fälschen             | die Liste ist gedruckt und von Hand nachzählbar                        | —                                                                                     |
+| Papierauszählung verschwindet   | Urne wird beim Lesen addiert, nie beim Speichern; die Zeile trägt nur den Papieranteil | —                                                                     |
 
 **Der offene Punkt ist der private Schlüssel auf dem Hauptrechner.** Wer ihn kontrolliert, kann
 gültige Unterschriften erzeugen und die Urne füllen. Die Bilanz macht das sichtbar — aber nur, wenn
 die Zahl der ausgegebenen Unterschriften selbst vertrauenswürdig ist, und die stammt vom selben
 Rechner.
 
-Das ist die bauartbedingte Grenze einer Ein-Rechner-Lösung und sie gehört offen benannt. Aufgelöst
-wird sie erst, wenn die Berechtigungsseite auf einem Gerät des Wahlausschusses läuft und beide
-Seiten unabhängig Zahlen nennen, die zusammenpassen müssen (M3). Bis dahin gilt dieselbe Annahme wie
-bei der Papierwahl: Die Wahlleitung ist nicht der Angreifer, und das Verfahren macht es sichtbar,
-wenn sie es doch ist.
+Das ist die bauartbedingte Grenze einer Ein-Rechner-Lösung, und sie ist **auflösbar**: Mit
+`signer: 'committee'` entsteht der Schlüssel auf dem Gerät des Wahlausschusses und verlässt es nie.
+Der Hauptrechner sammelt dann nur verblendete Werte in einer Warteschlange; unterschreiben kann er
+nicht. Der Ausschuss zählt unabhängig mit, und in der Urne dürfen nie mehr Stimmen liegen, als er
+unterschrieben hat.
+
+Das ist der Kern des Vier-Augen-Prinzips: **nicht, dass der Hauptrechner nichts kann, sondern dass
+jemand anderes nachrechnet.** Wer die einfache Betriebsart wählt, verzichtet darauf — und die
+Oberfläche sagt es an der Stelle, an der entschieden wird.
+
+Ein Rest bleibt auch dann: Läuft das Ausschussgerät nicht, kann niemand mehr eine
+Stimmberechtigung bekommen. Der Schlüssel lebt in der geöffneten Seite; wird sie geschlossen, ist
+er weg und der Wahlgang muss neu vorbereitet werden. Das ist der Preis dafür, dass er nirgends
+sonst liegt — und es steht auf dem Gerät.
+
+**Der hybride Wahlgang war die gefährlichste Stelle dieser Zeile**, und zwar ohne Angreifer: Die
+Übernahme der digitalen Urne hat das eingetragene Papierergebnis überschrieben. Ein Teil der
+Stimmen wäre lautlos verschwunden — kein Fehler, keine Warnung, nur eine kleinere Zahl. Gespeichert
+wird deshalb ausschließlich die Handauszählung, addiert wird erst beim Lesen (`getResult`), und die
+Erfassungsmaske sagt, dass eine geschlossene Urne dazukommt. Eine Prüfung hält beides fest: dass
+die Summe stimmt und dass mehrfaches Speichern sie nicht verändert.
 
 ### 3.4 Beobachtung und Druck
 
@@ -145,16 +214,26 @@ Vor einem produktiven Einsatz zu klären — von Menschen, nicht von diesem Doku
 
 Die Maßnahmen dieses Dokuments sind gebaut. Was davon geprüft ist und wo:
 
-| Aussage                                                   | Geprüft durch                                                                                                                                                                             |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Die signierende Seite erfährt nichts                      | `tests/blindsignatur.test.ts` — verblendeter Wert und Blindsignatur haben mit Seriennummer und fertiger Signatur nichts gemein; zweimal dieselbe Nummer ergibt zwei verschiedene Anfragen |
-| Eine Signatur gilt nur für ihre Seriennummer              | ebenda — fremde Nummern, erfundene Signaturen, fremdes Schlüsselpaar und die entarteten Werte 0, 1 und n werden abgewiesen                                                                |
-| Berechtigung und Urne haben nichts gemeinsam              | `tests/wahl.test.ts` — die Spalten beider Tabellen werden namentlich festgehalten                                                                                                         |
-| In der Urne steht keine Person                            | ebenda, auch bei **offener** Abstimmung                                                                                                                                                   |
-| Die Betriebsart entscheidet, nicht der Absender           | ebenda — eine mitgeschickte Personenkennung wird verworfen, wo sie nicht hingehört                                                                                                        |
-| Der private Schlüssel verschwindet beim Schließen         | ebenda                                                                                                                                                                                    |
-| Nur wer im Saal ist, darf abstimmen                       | `tests/akkreditierung.test.ts` — auch mit gültigem gedrucktem Pass                                                                                                                        |
-| Je Wahlgang eine Berechtigung, je Stimmzettel eine Stimme | `tests/wahl.test.ts`                                                                                                                                                                      |
+| Aussage                                                       | Geprüft durch                                                                                                                                                                             |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Die signierende Seite erfährt nichts                          | `tests/blindsignatur.test.ts` — verblendeter Wert und Blindsignatur haben mit Seriennummer und fertiger Signatur nichts gemein; zweimal dieselbe Nummer ergibt zwei verschiedene Anfragen |
+| Eine Signatur gilt nur für ihre Seriennummer                  | ebenda — fremde Nummern, erfundene Signaturen, fremdes Schlüsselpaar und die entarteten Werte 0, 1 und n werden abgewiesen                                                                |
+| Berechtigung und Urne haben nichts gemeinsam                  | `tests/wahl.test.ts` — die Spalten beider Tabellen werden namentlich festgehalten                                                                                                         |
+| In der Urne steht keine Person                                | ebenda, auch bei **offener** Abstimmung                                                                                                                                                   |
+| Die Betriebsart entscheidet, nicht der Absender               | ebenda — eine mitgeschickte Personenkennung wird verworfen, wo sie nicht hingehört                                                                                                        |
+| Der private Schlüssel verschwindet beim Schließen             | ebenda                                                                                                                                                                                    |
+| Nur wer im Saal ist, darf abstimmen                           | `tests/akkreditierung.test.ts` — auch mit gültigem gedrucktem Pass                                                                                                                        |
+| Je Wahlgang eine Berechtigung, je Stimmzettel eine Stimme     | `tests/wahl.test.ts`                                                                                                                                                                      |
+| Niemand bekommt Papier **und** digital                        | `tests/wahl.test.ts` — beide Seiten prüfen die jeweils andere                                                                                                                             |
+| Der Schlüssel liegt beim Ausschuss nicht auf dem Hauptrechner | ebenda — und ohne gemeldeten Prüfschlüssel lässt sich nicht eröffnen                                                                                                                      |
+| Der Prüfschlüssel lässt sich nicht austauschen                | ebenda — er wird genau einmal angenommen                                                                                                                                                  |
+| In der Warteschlange steht nur Verblendetes                   | ebenda — die Spalten werden namentlich festgehalten                                                                                                                                       |
+| Papier und Urne ergeben zusammen das Ergebnis                 | ebenda — und mehrfaches Speichern verändert die Summe nicht                                                                                                                               |
+| Eine laufende Abstimmung wird nicht mitgezählt                | ebenda — eine Zwischensumme ist kein Ergebnis                                                                                                                                             |
+| Die Berechtigung gilt genau einmal                            | ebenda — auch mit erfundener zweiter Seriennummer                                                                                                                                         |
+| Dieselbe Stimme zweimal zählt einmal                          | ebenda — bei offener und geheimer Wahl, auch bei anderer Reihenfolge der Kreuze; andere Auswahl wird abgewiesen                                                                           |
+| Das Stimmgewicht kommt von der Berechtigung                   | ebenda — nicht aus der Anfrage des Geräts                                                                                                                                                 |
+| Karte allein genügt nicht                                     | ebenda — mit beiden Ausweisen in beliebiger Reihenfolge frei, mit einem nicht; ein neuer Pass entwertet den alten                                                                             |
 
 **Was dabei nicht geprüft ist und nicht geprüft werden kann:** ob die Umsetzung der Kryptografie
 frei von Fehlern ist. Prüfungen zeigen, dass sie das Erwartete tut — nicht, dass sie nichts anderes

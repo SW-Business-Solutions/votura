@@ -16,12 +16,18 @@ import type { Card as Ausweis, CardStock, Participant, PresenceSummary } from '@
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
-import { Card, EmptyState, Field } from '../components/ui'
+import { Card, EmptyState, Field, NumberInput } from '../components/ui'
+import { kameraVerfuegbar, QrScanner } from '../../qr-scanner'
 
 /** Wie ein Zeitpunkt am Einlass aussehen soll: kurz. */
 function uhrzeit(wert?: string): string {
   if (!wert) return '—'
   return new Date(wert).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+}
+
+/** Wie viele nicht leere Zeilen stehen im Kasten? — die Zahl beruhigt vor dem Klick. */
+function zeilenZahl(text: string): number {
+  return text.split(/\r?\n/).filter((zeile) => zeile.trim()).length
 }
 
 export function AkkreditierungPage(): React.JSX.Element {
@@ -43,6 +49,9 @@ export function AkkreditierungPage(): React.JSX.Element {
   const [wartendeKarte, setWartendeKarte] = useState<{ card: Ausweis; code: string } | null>(null)
   const [importText, setImportText] = useState('')
   const [importArt, setImportArt] = useState<Ausweis['kind']>('card')
+  /* Die Kamera als zweiter Weg neben dem Handscanner — für Geräte, an denen
+     keiner steckt (ADR-0007). */
+  const [kamera, setKamera] = useState(false)
   const sucheFeld = useRef<HTMLInputElement | null>(null)
 
   const laden = useCallback(async () => {
@@ -149,8 +158,11 @@ export function AkkreditierungPage(): React.JSX.Element {
    * dahintersteckt, entscheidet das System: Karte, Bändchen oder gedruckter
    * Pass.
    */
-  const scannen = async (): Promise<void> => {
-    const wert = suche.trim()
+  const scannen = async (roh = suche): Promise<void> => {
+    /* Kommt der Code aus der Kamera, steht er noch nicht im Feld — React
+       setzt den Zustand erst zum nächsten Bild. Deshalb der Umweg über das
+       Argument. */
+    const wert = roh.trim()
     if (wert.length < 10 || /\s/.test(wert)) return
 
     try {
@@ -313,17 +325,32 @@ export function AkkreditierungPage(): React.JSX.Element {
           Pass scannen oder Namen tippen. Ein Scanner gibt den Pass als Tastatureingabe ein und schließt mit
           der Eingabetaste ab — es muss niemand die Maus anfassen.
         </div>
-        <input
-          ref={sucheFeld}
-          autoFocus
-          className="mt-2"
-          placeholder="Voting Pass scannen oder Namen suchen …"
-          value={suche}
-          onChange={(ereignis) => setSuche(ereignis.target.value)}
-          onKeyDown={(ereignis) => {
-            if (ereignis.key === 'Enter') void scannen()
-          }}
-        />
+        <div className="row mt-2">
+          <div className="col">
+            <input
+              ref={sucheFeld}
+              autoFocus
+              placeholder="Voting Pass scannen oder Namen suchen …"
+              value={suche}
+              onChange={(ereignis) => setSuche(ereignis.target.value)}
+              onKeyDown={(ereignis) => {
+                if (ereignis.key === 'Enter') void scannen()
+              }}
+            />
+          </div>
+          {kameraVerfuegbar() && <button onClick={() => setKamera(true)}>Mit der Kamera</button>}
+        </div>
+        {kamera && (
+          <QrScanner
+            titel="Ausweis scannen"
+            aufSchliessen={() => setKamera(false)}
+            aufCode={(gelesen) => {
+              setKamera(false)
+              setSuche(gelesen)
+              void scannen(gelesen)
+            }}
+          />
+        )}
         {(ausgewaehlt || wartendeKarte) && (
           <div className="notice mt-2">
             {wartendeKarte
@@ -370,14 +397,24 @@ export function AkkreditierungPage(): React.JSX.Element {
           sie ist ein Stapel gültiger Ausweise in Textform.
         </div>
         <div className="row mt-2">
-          <label className="field-inline">
-            <input type="radio" checked={importArt === 'card'} onChange={() => setImportArt('card')} />
-            Karten (kommen zurück)
-          </label>
-          <label className="field-inline">
-            <input type="radio" checked={importArt === 'band'} onChange={() => setImportArt('band')} />
-            Bändchen (werden abgerissen)
-          </label>
+          {/* Breit genug, dass beide Wahlmöglichkeiten in einer Zeile stehen —
+              in einer Reihe schrumpft ein Feld sonst auf seinen Inhalt. */}
+          <div style={{ minWidth: '320px' }}>
+            <Field label="Art des Ausweises">
+              <select
+                value={importArt}
+                onChange={(ereignis) => setImportArt(ereignis.target.value as Ausweis['kind'])}
+              >
+                <option value="card">Karten — kommen am Ausgang zurück</option>
+                <option value="band">Bändchen — werden abgerissen</option>
+              </select>
+            </Field>
+          </div>
+          <div className="hint" style={{ flex: 1, minWidth: '240px' }}>
+            {importArt === 'card'
+              ? 'Eine zurückgegebene Karte geht wieder in den Stapel — sie lässt sich an diesem Abend erneut ausgeben.'
+              : 'Ein abgerissenes Bändchen ist verbraucht. Wer den Saal verlässt und wiederkommt, bekommt ein neues.'}
+          </div>
         </div>
         <textarea
           className="mt-2"
@@ -387,9 +424,16 @@ export function AkkreditierungPage(): React.JSX.Element {
           value={importText}
           onChange={(ereignis) => setImportText(ereignis.target.value)}
         />
-        <button className="mt-2" onClick={() => void kartenEinlesen()}>
-          Einlesen
-        </button>
+        <div className="row mt-2">
+          <button className="primary" disabled={!importText.trim()} onClick={() => void kartenEinlesen()}>
+            Einlesen
+          </button>
+          <div className="hint">
+            {importText.trim()
+              ? `${zeilenZahl(importText)} Zeilen`
+              : 'Noch keine Liste eingefügt.'}
+          </div>
+        </div>
       </Card>
 
       <Card title="Teilnehmer aufnehmen">
@@ -413,11 +457,13 @@ export function AkkreditierungPage(): React.JSX.Element {
             />
           </Field>
           <Field label="Stimmgewicht">
-            <input
-              type="number"
+            {/* Kein rohes Zahlenfeld: Eine 0 oder eine −1 nahm es bisher an,
+                und eine Stimme, die nichts wiegt, gibt es nicht. */}
+            <NumberInput
+              value={Number.parseInt(neu.weight, 10) || 1}
               min={1}
-              value={neu.weight}
-              onChange={(ereignis) => setNeu({ ...neu, weight: ereignis.target.value })}
+              max={999}
+              onChange={(wert) => setNeu({ ...neu, weight: String(wert) })}
             />
           </Field>
           <button className="primary" onClick={() => void aufnehmen()}>

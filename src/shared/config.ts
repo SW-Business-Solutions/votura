@@ -16,6 +16,20 @@ export interface NetworkProjectionConfig {
    * Netz anbieten. Erfordert eine Anmeldung mit einem lokalen Konto und ist
    * ebenfalls standardmäßig AUS (§51, §70 Phase 3).
    */
+  /**
+   * Verschlüsselte Übertragung (HTTPS).
+   *
+   * **Für digitale Abstimmungen ist sie Pflicht, nicht Zierde.** Ohne sie
+   * reisen Stimme und Absenderadresse im Klartext durch das Saal-WLAN — und
+   * bei WPA2 mit gemeinsamem Passwort kann jeder Teilnehmer den Verkehr jedes
+   * anderen entschlüsseln.
+   *
+   * Das Zertifikat stellt Votura selbst aus. Gegen **Mitlesen** hilft das
+   * vollständig; gegen einen aktiven Angreifer nur dort, wo das Gerät den
+   * Fingerabdruck kennt. Auf mitgebrachten Telefonen erscheint eine Warnung —
+   * das ist der Preis und steht so in der Oberfläche.
+   */
+  tls: boolean
   allowRemoteOperator: boolean
   /**
    * Darf die Prompteransicht im Netz auch **bedienen**?
@@ -33,11 +47,56 @@ export interface NetworkProjectionConfig {
   allowPrompterControl: boolean
 }
 
+/**
+ * Die Netzdienste im Saal — beide aus, bis jemand sie einschaltet.
+ *
+ * Sie gehören zusammen, weil sie **eine** Aufgabe haben: dafür zu sorgen,
+ * dass ein Gerät im Saal den Namen auflösen kann, für den das Zertifikat
+ * gilt. Ohne Namen kein gültiges Zertifikat, ohne Zertifikat eine Warnung auf
+ * jedem Telefon (ADR-0008).
+ */
+export interface SaalnetzConfig {
+  /** Beantwortet Votura den eigenen Namen im Saalnetz? */
+  dns: boolean
+  /**
+   * Namensserver für alles Übrige — üblicherweise der Router.
+   *
+   * Leer heißt: Es gilt der eine Name und sonst nichts. Dann sind die Gäste
+   * im Saalnetz ohne Internet, und manche Telefone verlassen ein WLAN von
+   * selbst, in dem nichts geht.
+   */
+  dnsWeiterleitung: string
+  /** Verteilt Votura Adressen? Nur in einem Netz, das es selbst aufspannt. */
+  dhcp: boolean
+  dhcpVon: string
+  dhcpBis: string
+  dhcpMaske: string
+  /** Der Wegweiser nach draußen. Leer heißt: kein Internet im Saalnetz. */
+  dhcpRouter: string
+  /** Geltungsdauer einer Adresse in Sekunden. */
+  dhcpLaufzeit: number
+}
+
+/**
+ * Ein hinterlegtes echtes Zertifikat — was davon anzuzeigen ist.
+ *
+ * Zertifikat und Schlüssel liegen als Dateien; hier steht nur, wofür sie
+ * gelten und wie lange. Ein abgelaufenes Zertifikat ist im Saal dasselbe wie
+ * gar keines, und das soll man sehen, bevor die Versammlung beginnt.
+ */
+export interface EigenesZertifikat {
+  domain: string
+  laeuftAbAm: string
+}
+
 export interface SystemSettings {
   config: AppConfig
   printers: PrinterConfig[]
   networkProjection: NetworkProjectionConfig
   projectionTheme: ProjectionTheme
+  saalnetz: SaalnetzConfig
+  /** Fehlt, solange nur das selbst ausgestellte Zertifikat vorliegt. */
+  eigenesZertifikat?: EigenesZertifikat
 }
 
 export { DEFAULT_PROJECTION_THEME }
@@ -125,8 +184,31 @@ export const DEFAULT_NETWORK_PROJECTION: NetworkProjectionConfig = {
   port: 8477,
   bindAddress: '0.0.0.0',
   token: '',
+  /* Aus, weil die Beameransicht ohne auskommt und eine Zertifikatswarnung
+     ohne Not niemandem hilft. Die digitale Abstimmung schaltet sie ein. */
+  tls: false,
   allowRemoteOperator: false,
   allowPrompterControl: false
+}
+
+/**
+ * Netzdienste: aus.
+ *
+ * Ein zweiter Adressverteiler in einem fremden Netz legt es lahm, und ein
+ * Namensdienst, den niemand bestellt hat, verwirrt. Beides ist eine bewusste
+ * Entscheidung für einen Aufbau, in dem Votura das Netz selbst aufspannt.
+ */
+export const DEFAULT_SAALNETZ: SaalnetzConfig = {
+  dns: false,
+  dnsWeiterleitung: '',
+  dhcp: false,
+  dhcpVon: '192.168.50.100',
+  dhcpBis: '192.168.50.200',
+  dhcpMaske: '255.255.255.0',
+  dhcpRouter: '',
+  /* Zwei Stunden: lang genug für eine Versammlung, kurz genug, dass ein Saal
+     nicht am nächsten Tag noch belegte Adressen führt. */
+  dhcpLaufzeit: 7200
 }
 
 /*

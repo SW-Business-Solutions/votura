@@ -1,5 +1,5 @@
 /** Rahmen der Operator-Oberfläche: Navigation, Tastatur, Meldungen. */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { api } from '../lib/api'
 import { useApp } from './state'
 import { AgendaPage } from './pages/AgendaPage'
@@ -67,6 +67,86 @@ function parseHash(): Route {
   }
 }
 
+/**
+ * Die Navigation als Beschreibung, nicht als Abschrift.
+ *
+ * Vorher stand jeder Eintrag zweimal da — einmal als Knopf, einmal in der
+ * Route. Hier steht er einmal, und die Reihenfolge ist die des Abends.
+ */
+const GRUPPEN: {
+  titel: string
+  punkte: { label: string; ziel: string; route: Route['name']; hint?: string }[]
+}[] = [
+  {
+    titel: 'Versammlung',
+    punkte: [
+      { label: 'Übersicht', ziel: 'dashboard', route: 'dashboard' },
+      { label: 'Veranstaltung', ziel: 'event', route: 'event' },
+      { label: 'Tagesordnung', ziel: 'agenda', route: 'agenda', hint: 'Strg+T' }
+    ]
+  },
+  {
+    titel: 'Einlass',
+    punkte: [
+      { label: 'Akkreditierung', ziel: 'akkreditierung', route: 'akkreditierung' },
+      { label: 'Stimmzettel ausgeben', ziel: 'ausgabe', route: 'ausgabe' }
+    ]
+  },
+  {
+    titel: 'Wahlgänge',
+    punkte: [
+      { label: 'Neuer Wahlgang', ziel: 'round/new', route: 'round-new', hint: 'Strg+N' },
+      /* Die digitale Abstimmung gehört zu einem Wahlgang, nicht neben ihn —
+         im Wahlgang selbst ist sie ein Reiter, hier der Weg von außen. */
+      { label: 'Digitale Abstimmung', ziel: 'digitalewahl', route: 'digitalewahl' }
+    ]
+  },
+  {
+    titel: 'Anzeige',
+    punkte: [
+      { label: 'Beamer', ziel: 'beamer', route: 'beamer', hint: 'Strg+B' },
+      { label: 'Prompter', ziel: 'prompter', route: 'prompter', hint: 'Strg+P' }
+    ]
+  },
+  {
+    titel: 'Verwaltung',
+    punkte: [
+      { label: 'Audit-Trail', ziel: 'audit', route: 'audit' },
+      { label: 'Systemcheck', ziel: 'preflight', route: 'preflight' },
+      { label: 'Einstellungen', ziel: 'settings', route: 'settings' }
+    ]
+  }
+]
+
+/**
+ * Eine Gruppe in der Navigation — zuklappbar.
+ *
+ * Die Überschrift ordnet und ist zugleich der Griff. Zugeklappt bleibt sie
+ * es über Neustarts hinweg: Wer den Prompter nie benutzt, soll ihn nicht
+ * jeden Abend wegscrollen müssen.
+ */
+function NavGruppe({
+  titel,
+  offen,
+  aufKlappen,
+  children
+}: {
+  titel: string
+  offen: boolean
+  aufKlappen: () => void
+  children: ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="nav-gruppe-block">
+      <button className="nav-gruppe" onClick={aufKlappen} aria-expanded={offen}>
+        <span className={`nav-pfeil${offen ? ' offen' : ''}`}>›</span>
+        {titel}
+      </button>
+      {offen && children}
+    </div>
+  )
+}
+
 export function navigate(path: string): void {
   window.location.hash = `#/${path.replace(/^\/+/, '')}`
 }
@@ -106,6 +186,27 @@ export function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  /* Welche Gruppen zugeklappt sind — überdauert den Neustart. */
+  const [offeneGruppen, setOffeneGruppen] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('wz-nav') ?? '{}') as Record<string, boolean>
+    } catch {
+      return {}
+    }
+  })
+
+  const klappen = useCallback((titel: string) => {
+    setOffeneGruppen((bisher) => {
+      const naechste = { ...bisher, [titel]: bisher[titel] === false }
+      try {
+        localStorage.setItem('wz-nav', JSON.stringify(naechste))
+      } catch {
+        /* Ohne Gedächtnis ist es unbequem, aber nicht kaputt. */
+      }
+      return naechste
+    })
+  }, [])
+
   const logout = useCallback(async () => {
     await api('auth.logout')
     await app.refreshAll()
@@ -135,78 +236,57 @@ export function App(): React.JSX.Element {
           <small>Software für die Mitgliederversammlung</small>
         </div>
 
-        <NavItem
-          label="Übersicht"
-          active={route.name === 'dashboard'}
-          onClick={() => navigate('dashboard')}
-        />
-        <NavItem label="Veranstaltung" active={route.name === 'event'} onClick={() => navigate('event')} />
-        <NavItem
-          label="Tagesordnung"
-          active={route.name === 'agenda'}
-          onClick={() => navigate('agenda')}
-          hint="Strg+T"
-        />
-        <NavItem
-          label="Akkreditierung"
-          active={route.name === 'akkreditierung'}
-          onClick={() => navigate('akkreditierung')}
-        />
-        <NavItem label="Ausgabe" active={route.name === 'ausgabe'} onClick={() => navigate('ausgabe')} />
-        <NavItem
-          label="Digitale Abstimmung"
-          active={route.name === 'digitalewahl'}
-          onClick={() => navigate('digitalewahl')}
-        />
-        <NavItem
-          label="Neuer Wahlgang"
-          active={route.name === 'round-new'}
-          onClick={() => navigate('round/new')}
-          hint="Strg+N"
-        />
+        {/*
+          **Die Navigation erzählt den Abend — und trägt inzwischen viel.**
 
-        {app.rounds.length > 0 && (
-          <div className="nav-section">
-            {app.rounds.map((round) => (
-              <button
-                key={round.id}
-                className={`nav-round${route.name === 'round' && route.id === round.id ? ' active' : ''}${
-                  round.status === 'completed' || round.status === 'cancelled' ? ' done' : ''
-                }`}
-                onClick={() => navigate(`round/${round.id}`)}
-                title={round.title}
-              >
-                <span className="nav-round-label">{round.sequentialNumber > 0 ? round.roundLabel : '–'}</span>
-                <span className="nav-round-title">{round.title}</span>
-                {round.id === activeRound?.id && <span className="nav-round-dot" title="aktuell" />}
-              </button>
+          Sie steht in der Reihenfolge, in der ein Abend abläuft: vorbereiten,
+          einlassen, abstimmen, anzeigen. Verwaltung zuletzt, denn die braucht
+          man selten und nie in Eile.
+
+          Mit den zuletzt dazugekommenen Funktionen wurde die Spalte zu lang:
+          zwölf Einträge, fünf Überschriften und dazu die Wahlgänge. Deshalb
+          lassen sich Gruppen zuklappen, und was zugeklappt war, ist es beim
+          nächsten Start wieder — wer den Prompter nie benutzt, soll ihn nicht
+          jeden Abend wegscrollen müssen.
+        */}
+        {GRUPPEN.map((gruppe) => (
+          <NavGruppe
+            key={gruppe.titel}
+            titel={gruppe.titel}
+            offen={offeneGruppen[gruppe.titel] !== false}
+            aufKlappen={() => klappen(gruppe.titel)}
+          >
+            {gruppe.punkte.map((punkt) => (
+              <NavItem
+                key={punkt.ziel}
+                label={punkt.label}
+                active={route.name === punkt.route}
+                onClick={() => navigate(punkt.ziel)}
+                hint={punkt.hint}
+              />
             ))}
-          </div>
-        )}
-        <NavItem
-          label="Beamer"
-          active={route.name === 'beamer'}
-          onClick={() => navigate('beamer')}
-          hint="Strg+B"
-        />
-        <NavItem
-          label="Prompter"
-          active={route.name === 'prompter'}
-          onClick={() => navigate('prompter')}
-          hint="Strg+P"
-        />
-        <NavItem label="Audit-Trail" active={route.name === 'audit'} onClick={() => navigate('audit')} />
-        <NavItem
-          label="Systemcheck"
-          active={route.name === 'preflight'}
-          onClick={() => navigate('preflight')}
-        />
-        <NavItem
-          label="Einstellungen"
-          active={route.name === 'settings'}
-          onClick={() => navigate('settings')}
-        />
-
+            {gruppe.titel === 'Wahlgänge' && app.rounds.length > 0 && (
+              <div className="nav-section">
+                {app.rounds.map((round) => (
+                  <button
+                    key={round.id}
+                    className={`nav-round${route.name === 'round' && route.id === round.id ? ' active' : ''}${
+                      round.status === 'completed' || round.status === 'cancelled' ? ' done' : ''
+                    }`}
+                    onClick={() => navigate(`round/${round.id}`)}
+                    title={round.title}
+                  >
+                    <span className="nav-round-label">
+                      {round.sequentialNumber > 0 ? round.roundLabel : '–'}
+                    </span>
+                    <span className="nav-round-title">{round.title}</span>
+                    {round.id === activeRound?.id && <span className="nav-round-dot" title="aktuell" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </NavGruppe>
+        ))}
         <div className="sidebar-footer">
           <div>
             <strong>{app.session.user.displayName}</strong>
@@ -228,10 +308,19 @@ export function App(): React.JSX.Element {
           <div
             key={notice.id}
             className={`notice ${notice.level === 'ok' ? 'ok' : notice.level === 'error' ? 'error' : notice.level === 'warning' ? 'warn' : ''}`}
-            onClick={() => app.dismissNotice(notice.id)}
             role="status"
           >
-            {notice.message}
+            <span>{notice.message}</span>
+            {/* Sichtbar, nicht bloß möglich: Dass die ganze Fläche klickbar
+                war, wusste niemand — und Fehler blieben deshalb stehen. */}
+            <button
+              className="notice-zu"
+              title="Meldung schließen"
+              aria-label="Meldung schließen"
+              onClick={() => app.dismissNotice(notice.id)}
+            >
+              ×
+            </button>
           </div>
         ))}
 

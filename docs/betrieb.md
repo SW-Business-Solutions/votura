@@ -427,6 +427,34 @@ Karten und Bändchen kommen vom Hersteller mit einer Liste aus Nummer und Code. 
 eingelesen — **und danach vernichtet**: Sie ist ein Stapel gültiger Ausweise in Textform. Gespeichert
 wird nur die Prüfsumme.
 
+### Zwei Ausweise, eine Stimme
+
+Karte und Pass gehören zusammen: **Wer eine Stimmkarte oder ein Bändchen hält und einen gedruckten
+Pass bekommen hat, braucht zum Abstimmen am eigenen Gerät beide.** Die Reihenfolge ist gleich — das
+Gerät fragt nach dem zweiten, sobald der erste gelesen ist.
+
+Der Grund steht auf der Karte: Ihr Code ist aufgedruckt, lässt sich fotografieren und nicht ändern.
+Der Pass dagegen wird bei Verlust neu gedruckt, und der alte gilt im selben Augenblick nicht mehr.
+Erst zusammen sind sie etwas wert.
+
+Wer keine Karten benutzt, merkt davon nichts: Verlangt wird nur, was tatsächlich ausgegeben wurde.
+Am Ausgabetisch genügt weiterhin ein Ausweis — dort steht ein Mensch, der die Person vor sich hat.
+
+### Womit gescannt wird
+
+Drei Wege, und alle drei führen zum selben Feld:
+
+| | |
+| --- | --- |
+| **Handscanner am USB-Anschluss** | Der schnellste Weg an Einlass und Ausgabe. Er arbeitet als Tastatur: tippt den Code ins Feld und schließt mit der Eingabetaste ab. Niemand muss die Maus anfassen. |
+| **Kamera des Geräts** | Der Knopf _Mit der Kamera_ an Einlass, Ausgabe und auf der Wahlseite. Erkannt wird im Gerät; es wird nichts aufgenommen und nichts gespeichert. |
+| **Eintippen** | Funktioniert immer — bei schlechtem Licht, zerkratzter Karte oder verweigerter Kameraerlaubnis. |
+
+Die Kamera verlangt eine **verschlüsselte Verbindung**. In Votura Saal ist das eingerichtet; auf
+mitgebrachten Telefonen muss dafür in den Einstellungen → Netzwerk die verschlüsselte Übertragung
+eingeschaltet sein — was für Abstimmungen ohnehin gilt. Ist sie aus, steht auf dem Gerät, woran es
+liegt, statt einer Schaltfläche, die nichts tut.
+
 ### Der Ablauf am Einlass
 
 Ein Scan genügt, und er entscheidet selbst, was er ist:
@@ -457,3 +485,137 @@ muss zurückkommen.
 Mit dem Abschluss **verfällt alles Ausgegebene**: Karten, Bändchen und gedruckte Pässe. Was jemand
 mitgenommen hat, ist danach kein Ausweis mehr. Die Anwesenheit bleibt, wie sie war — wer am Ende im
 Saal war, war am Ende im Saal, und das gehört ins Protokoll.
+
+## Ohne Zertifikatswarnung auf mitgebrachten Geräten
+
+Für Abstimmungen ist die verschlüsselte Übertragung Pflicht. Mit dem selbst ausgestellten Zertifikat
+warnt dabei jedes mitgebrachte Telefon — unvermeidlich, denn für eine Adresse wie `192.168.1.5`
+bürgt niemand. Wer eine eigene Domain hat, kommt da heraus. Der Weg, **vor** der Versammlung:
+
+1. **A-Eintrag anlegen:** `saal.mein-verband.de` zeigt auf die Adresse des Rechners im Saal. Das
+   darf eine private Adresse sein.
+2. **Einstellungen → Netzwerk → Echtes Zertifikat:** Namen und E-Mail eintragen. Beim ersten Mal die
+   **Übungsumgebung** ankreuzen — die echte Prüfstelle erlaubt nur wenige Fehlversuche je Stunde.
+3. **TXT-Eintrag setzen**, den Votura anzeigt, und warten, bis der DNS-Anbieter ihn übernommen hat.
+   Je nach Anbieter Minuten. Zu früh geprüft zählt als Fehlversuch.
+4. **Prüfen lassen.** Danach liegt das Zertifikat als Datei auf dem Rechner; im Saal braucht Votura
+   kein Internet mehr.
+
+Das Zertifikat gilt **90 Tage**. Die Einstellungen zeigen das Ablaufdatum und warnen in den letzten
+zwei Wochen. Wer einmal im Jahr tagt, holt es vor jeder Versammlung neu.
+
+Wer das Zertifikat anderswo erzeugt, lädt es über **Vorhandenes aus Dateien laden** (Zertifikat und
+Schlüssel als PEM). Votura prüft beim Ablegen, dass beide zusammengehören und das Zertifikat noch
+gilt — ein Fehler dabei fiele sonst erst auf, wenn im Saal die erste Verbindung scheitert.
+
+### Namensdienst und Adressvergabe
+
+Ein Zertifikat auf einen Namen nützt nur, wenn im Saal jemand diesen Namen auflösen kann — und ein
+abgeschottetes Netz erreicht das öffentliche Namensystem nicht. Zwei Wege:
+
+| Aufbau | Was zu tun ist |
+| --- | --- |
+| **Router der Location** | Dort einen statischen Namenseintrag setzen. In Votura bleibt alles aus. |
+| **Votura spannt das Netz selbst auf** (Raspberry Pi mit Zugangspunkt) | Namensdienst **und** Adressvergabe einschalten. |
+
+Beim Namensdienst gehört die **Weiterleitung** bedacht: Ohne sie gilt im Saalnetz der eine Name und
+sonst nichts — die Gäste sind den Abend ohne Internet, und manche Telefone verlassen ein WLAN von
+selbst, in dem nichts geht. Mit ihr läuft ihr gewöhnlicher Namensverkehr durch den Wahlrechner;
+aufgezeichnet wird nichts, aber es geht dort durch. Das ist eine Entscheidung der
+Versammlungsleitung, keine technische Feinheit.
+
+Die **Adressvergabe** gehört nur in ein Netz, das Votura selbst aufspannt. In einem fremden Netz
+wäre ein zweiter Verteiler ein Störfall. Votura hört vor dem Start hin und verweigert den Dienst,
+wenn dort bereits jemand Adressen vergibt. Die **Adresse des Routers** gehört eingetragen, sonst
+haben die Gäste im Saalnetz kein Internet.
+
+## Wenn eine Seite im Saal schwarz bleibt
+
+Das Zugriffstoken steht in der Adresse (`?t=…`), die Skripte und Stile einer Seite werden aber unter
+ihren eigenen Pfaden nachgeladen und tragen keines. Der Server heftet es deshalb beim ersten Aufruf
+als Keks an das Gerät. Kommt eine Seite trotzdem leer an, hilft in dieser Reihenfolge:
+
+1. **Adresse mit Token öffnen** — `http://<Hauptrechner>:8477/stimme?t=<Token>`. Ohne `?t=` ist die
+   Antwort ein blankes „Zugriffstoken fehlt oder ist falsch".
+2. **Token in Votura Saal eintragen** (Einrichtung, Feld _Zugriffstoken_) — es muss mit
+   Einstellungen → Netzwerk auf dem Hauptrechner übereinstimmen.
+3. **Richtige Adresse wählen.** Der Suchruf antwortet auf allen Netzwerkkarten; auf Rechnern mit
+   virtuellen Adaptern (Hyper-V, WSL, VPN) steht in der Auswahl womöglich eine Adresse, die die
+   Geräte im Saal nicht erreichen. Die Adresse des WLANs ist die richtige.
+
+## Digitale Stimmabgabe
+
+Die digitale Abstimmung ist **je Wahlgang** zuschaltbar und ersetzt das Papier nicht: Wer kein Gerät
+hat oder keines will, bekommt weiter einen Zettel. Voraussetzung ist die Akkreditierung — ohne
+Ausweis gibt es keine Stimmberechtigung.
+
+### Vorbereiten
+
+Im Reiter _Digitale Wahl_ wird entschieden, und zwar für jeden Wahlgang neu:
+
+| Frage              | Auswahl                                        | Wann was                                                                                              |
+| ------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Wie geheim?        | offen · namentlich · geheim                    | „namentlich" nur auf Beschluss der Versammlung; „geheim" rechnet mit Blindsignaturen                  |
+| Womit?             | eigene Geräte · nur Wahlkabinen · beides       | „nur Wahlkabinen" verlangt ein eingerichtetes Zugriffstoken, sonst wäre eine Kabine nicht erkennbar   |
+| Wer unterschreibt? | Hauptrechner · Wahlausschuss auf eigenem Gerät | Für eine geheime Wahl gehört der Schlüssel auf ein zweites Gerät — sonst hält ihn, wer den Saal führt |
+
+Beim Wahlausschuss auf eigenem Gerät: Die Seite `/ausschuss` auf dem zweiten Gerät öffnen, dort den
+Schlüssel erzeugen lassen und den **Prüfschlüssel vor der Eröffnung auf die Leinwand bringen**.
+Danach lässt er sich nicht mehr unbemerkt austauschen. Diese Seite darf bis zum Schließen nicht
+geschlossen werden — der Schlüssel lebt nur dort.
+
+### Während der Abstimmung
+
+Die Leinwand zeigt mit, wie viele Berechtigungen ausgegeben und wie viele Stimmen angenommen
+wurden. Das ist die öffentliche Rechnung: **In der Urne dürfen nie mehr Stimmen liegen, als
+Berechtigungen ausgegeben wurden.**
+
+Wer am Ausgabetisch bereits einen Papierzettel bekommen hat, bekommt keine digitale Berechtigung —
+und umgekehrt. Beide Seiten prüfen die jeweils andere; niemand stimmt doppelt ab.
+
+### Wenn die Verbindung abreißt
+
+Auf dem Gerät des Wählers steht dann: erneut auf **Stimme abgeben** tippen, die Seite **nicht** neu
+laden. Das Gerät schickt dieselbe Stimme noch einmal; liegt sie bereits in der Urne, wird sie
+wiedererkannt und nicht doppelt gezählt.
+
+Wer die Seite doch neu geladen hat, bekommt bei **offener und namentlicher** Abstimmung einfach eine
+neue Seriennummer — abgestimmt wird gegen die Berechtigung, und die gilt genau einmal.
+
+Bei **geheimer Wahl** geht das nicht: Eine zweite Unterschrift wäre eine zweite Stimme, die niemand
+mehr zuordnen kann. Diese Person geht an den Ausgabetisch. Dort erscheint nach dem Scan der Hinweis
+_Digital abstimmen war nicht möglich?_ — die digitale Berechtigung wird **mit Begründung entwertet**
+und der Papierzettel ausgegeben. Beides gehört zusammen und passiert in einem Schritt.
+
+Wichtig: Nur wenn wirklich keine Stimme abgegeben wurde. Bei geheimer Wahl kann der Rechner das
+nicht feststellen — das ist ihr Zweck —, deshalb ist es eine Entscheidung der Wahlleitung, und sie
+steht im Protokoll. Der Stand der Abstimmung weist entwertete Berechtigungen eigens aus, damit die
+Lücke zwischen ausgegeben und abgegeben erklärt ist.
+
+### Das Gerät in der Kabine
+
+Es setzt sich von selbst zurück: **15 Sekunden** nach der Abgabe, und nach **zwei Minuten** ohne
+Berührung auch mitten in der Auswahl. Damit findet niemand den Namen, die Auswahl oder die
+Bestätigung des Vorigen vor — und niemand kann einen halb ausgefüllten Stimmzettel absenden, den ein
+anderer stehen gelassen hat.
+
+Läuft gerade kein Wahlgang, sagt das Gerät genau das und fragt nicht nach einem Ausweis. Sobald die
+Wahlleitung eröffnet, wird es von selbst bereit; die Seite muss nicht neu geladen werden.
+
+### Schließen und auszählen
+
+Beim Schließen wird der private Schlüssel gelöscht und die Urne gemischt. Sie wird als **Liste
+gedruckt**: je Zeile eine Seriennummer und die Stimme im Klartext, nachzählbar wie ein Stapel
+Zettel, von jedem im Saal.
+
+### Papier und Urne zusammenrechnen
+
+Wurde im selben Wahlgang auch auf Papier abgestimmt, zählt die Wahlkommission die Zettel wie immer
+aus. Im Reiter _Ergebnis_ wird eingetragen, **was von Hand gezählt wurde** — nicht die Summe. Ein
+Hinweis über der Maske nennt die Stimmen der geschlossenen Urne; sie kommen automatisch hinzu.
+
+Im Ergebnis, auf dem Beleg und im Protokoll steht die Summe aus beidem. Mehrfaches Speichern ändert
+daran nichts: Die gespeicherte Zeile trägt nur den Papieranteil, addiert wird beim Anzeigen.
+
+Bei einem rein digitalen Wahlgang genügt **Auszählung übernehmen** — dann gibt es nichts von Hand zu
+zählen, und die Urne steht allein im Ergebnis.

@@ -9,7 +9,8 @@ import { app, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import { IPC, type Api, type ApiMethod } from '@shared/ipc'
+import type { Permission } from '@shared/types'
+import { IPC, type Api, type ApiMethod, type SaalnetzStatus } from '@shared/ipc'
 import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type Buehnenwahl } from '@shared/projection'
 import { db } from './db'
 import { appPaths } from './paths'
@@ -168,18 +169,40 @@ import {
   urnenListe,
   votingLage,
   votingStand,
+  berechtigungEntwerten,
   zaehlung
 } from './services/voting'
-import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
+import {
+  confirmResult,
+  emergencyReopen,
+  getPapierergebnis,
+  getResult,
+  reopenResult,
+  saveResult
+} from './services/results'
+import { ACME_ECHT, ACME_UEBUNG, auftragAbschliessen, auftragBeginnen } from './acme'
+import { dhcpLaeuft, starteDhcp, stoppeDhcp, vergebeneAdressen } from './dhcp'
+import { dnsLaeuft, starteDns, stoppeDns } from './dns'
+import {
+  eigenesZertifikatAblegen,
+  eigenesZertifikatEntfernen,
+  netzwerkkarten,
+  saaladresse,
+  zertifikatsName
+} from './tls'
 import {
   getConfig,
+  getEigenesZertifikat,
   getNetworkProjection,
   getProjectionTheme,
+  getSaalnetz,
   getSettings,
   saveConfig,
+  saveEigenesZertifikat,
   saveNetworkProjection,
   savePrinters,
-  saveProjectionTheme
+  saveProjectionTheme,
+  saveSaalnetz
 } from './services/settings'
 import {
   eventArchiveFolderName,
@@ -290,7 +313,72 @@ export function suchrufQuelle(): SuchrufQuelle {
     version: () => app.getVersion(),
     tokenNoetig: () => Boolean(getNetworkProjection().token),
     buehnen: () => listBuehnen().map((buehne) => ({ id: buehne.id, name: buehne.name })),
-    prompterBedienung: () => getNetworkProjection().allowPrompterControl
+    prompterBedienung: () => getNetworkProjection().allowPrompterControl,
+    tls: () => getNetworkProjection().tls,
+    zertifikatsName: () =>
+      getNetworkProjection().tls
+        ? (zertifikatsName(join(app.getPath('userData'), 'netz')) ?? undefined)
+        : undefined
+  }
+}
+
+/** Der Stand der Netzdienste — für die Oberfläche. */
+function saalnetzStatus(): SaalnetzStatus {
+  return {
+    ...getSaalnetz(),
+    dnsLaeuft: dnsLaeuft(),
+    dhcpLaeuft: dhcpLaeuft(),
+    vergeben: dhcpLaeuft() ? vergebeneAdressen() : []
+  }
+}
+
+/**
+ * Den Projektionsserver neu starten, damit ein gewechseltes Zertifikat gilt.
+ *
+ * Ein Zertifikat wird beim Start des Servers gelesen. Ohne Neustart läuft er
+ * mit dem alten weiter, und die Oberfläche zeigte etwas anderes an, als über
+ * die Leitung geht.
+ */
+async function netzNeu(): Promise<void> {
+  const netz = getNetworkProjection()
+  if (!netz.enabled) return
+  await stopNetworkProjection()
+  await startNetworkProjection(netz)
+}
+
+/**
+ * Darf der Aufrufer das sehen — ohne dass eine Absage fliegt?
+ *
+ * `requirePermission` wirft und verlängert nebenbei die Sitzung. Beides ist
+ * hier falsch: Gefragt wird nicht, ob jemand handeln darf, sondern ob er
+ * etwas zu sehen bekommt.
+ */
+function darfSehen(recht: Permission): boolean {
+  return getSession()?.permissions.includes(recht) ?? false
+}
+
+/**
+ * Das Zugriffstoken aus einer Antwort nehmen, wenn der Aufrufer es nichts
+ * angeht.
+ *
+ * **Warum das zählt.** Mit dem Token kommt jedes Gerät im Saalnetz an die
+ * Beameransicht, an die Wahlseite und — bei „nur Wahlkabinen" — an die
+ * Unterscheidung zwischen Kabine und mitgebrachtem Telefon. Es ist kein
+ * Anzeigewert, sondern ein Schlüssel.
+ *
+ * Herausgegeben wurde es bisher an jeden Aufrufer, auch vor der Anmeldung.
+ * Praktisch braucht das den entsperrten Rechner — und dort ist ohnehin alles
+ * verloren. Sauber ist es trotzdem nicht.
+ *
+ * Die Adressen werden gleich mit bereinigt: Eine Adresse, die das Token in
+ * der Abfrage trägt, wäre dasselbe noch einmal.
+ */
+function ohneGeheimnis<T extends { token: string; urls?: string[] }>(wert: T): T {
+  if (darfSehen('system.manage')) return wert
+  return {
+    ...wert,
+    token: '',
+    ...(wert.urls ? { urls: wert.urls.map((url) => url.split('?')[0]) } : {})
   }
 }
 
@@ -324,7 +412,11 @@ const api: Api = {
     return listUsers()[0]
   },
 
-  'system.settings': async () => getSettings(),
+  'system.settings': async () => {
+    const einstellungen = getSettings()
+    return { ...einstellungen, networkProjection: ohneGeheimnis(einstellungen.networkProjection) }
+  },
+
   'system.saveConfig': async (config) => {
     requirePermission('system.manage')
     const saved = saveConfig(config)
@@ -347,6 +439,19 @@ const api: Api = {
       ? await dialog.showOpenDialog(window, { title, properties: ['openDirectory', 'createDirectory'] })
       : await dialog.showOpenDialog({ title, properties: ['openDirectory', 'createDirectory'] })
     return result.canceled ? undefined : result.filePaths[0]
+  },
+
+  'system.chooseFile': async (input) => {
+    const window = getOperatorWindow()
+    const options = {
+      title: input.titel,
+      properties: ['openFile' as const],
+      filters: [{ name: 'Dateien', extensions: input.endungen }]
+    }
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
+    return result.canceled || result.filePaths.length === 0 ? undefined : result.filePaths[0]
   },
 
   'system.chooseImage': async (title) => {
@@ -478,6 +583,7 @@ const api: Api = {
       batches: listBatches(roundId),
       versions: listVersions(roundId),
       result: getResult(roundId) ?? undefined,
+      papierergebnis: getPapierergebnis(roundId) ?? undefined,
       document: currentDocument(roundId)
     }
   },
@@ -525,19 +631,38 @@ const api: Api = {
    *
    * Ausgezählt wird die Urne, nicht ein laufender Zähler — dieselbe Rechnung,
    * die auch jeder im Saal an der gedruckten Liste nachvollziehen kann.
+   *
+   * **Was hier nicht passiert: Zahlen schreiben.** Die geschlossene Urne wird
+   * beim Lesen des Ergebnisses hinzugerechnet (`getResult`). Dieser Aufruf
+   * legt nur die Zeile an, falls es noch keine gibt — bei einem rein digitalen
+   * Wahlgang, in dem nichts von Hand zu zählen war. Wurde daneben auf Papier
+   * abgestimmt und ausgezählt, bleibt diese Auszählung unangetastet; früher
+   * hat diese Stelle sie überschrieben.
    */
   'voting.uebernehmen': async (roundId) => {
-    const zaehlung_ = zaehlung(roundId)
+    const digital = zaehlung(roundId).ballotsCast
+    /*
+     * Gibt es schon ein Ergebnis, ist nichts zu tun: Die Urne wird beim Lesen
+     * hinzugerechnet, und die eingetragene Papierauszählung bleibt unangetastet.
+     * Gemeldet wird es trotzdem — ein stiller Klick sieht aus wie ein Fehler.
+     */
+    if (getPapierergebnis(roundId)) return { digital, hatteErgebnis: true }
     const stand = votingStand(roundId)
     saveResult({
       electionRoundId: roundId,
       countingMode: 'counted',
-      ballotsCast: zaehlung_.ballotsCast,
-      validBallots: zaehlung_.ballotsCast,
+      /* Der Papieranteil eines rein digitalen Wahlgangs ist null — alles
+         Weitere kommt aus der Urne dazu. */
+      ballotsCast: 0,
+      validBallots: 0,
       invalidBallots: 0,
       eligibleVoters: stand.ausgegeben,
-      resultData: { candidates: zaehlung_.candidates, no: zaehlung_.no, abstentions: zaehlung_.abstentions }
+      resultData: { candidates: [] }
     })
+    return { digital, hatteErgebnis: false }
+  },
+  'voting.entwerten': async (input) => {
+    berechtigungEntwerten(input)
   },
   'voting.drucken': async (input) => {
     await printUrnenListe(input)
@@ -614,6 +739,7 @@ const api: Api = {
 
   /* -------------------------------------------------------------- Ergebnis */
   'result.get': async (roundId) => getResult(roundId),
+  'result.papier': async (roundId) => getPapierergebnis(roundId),
   'result.save': async (input) => saveResult(input),
   'result.confirm': async (input) => {
     const result = confirmResult(input.roundId, input.pin)
@@ -849,9 +975,123 @@ const api: Api = {
     return aufBuehnen(stage, (buehne) => openAudienceWindow(displayId, buehne))
   },
   'projection.closeAudience': async (stage) => aufBuehnen(stage, (buehne) => closeAudienceWindow(buehne)),
+  /* ------------------------------------------------ Saalnetz und Zertifikat */
+
+  /**
+   * Ein echtes Zertifikat beantragen — der Weg aus der Zertifikatswarnung.
+   *
+   * Schritt 1 stellt den Auftrag und nennt den Wert für das
+   * Domain-Namensystem. Danach ist ein Mensch an der Reihe; erst wenn der
+   * Eintrag steht **und übernommen ist**, folgt Schritt 2. Zu früh gefragt
+   * zählt bei der Prüfstelle als Fehlversuch, und davon erlaubt sie wenige.
+   */
+  'cert.acmeBeginnen': async (input) => {
+    requirePermission('system.manage')
+    return auftragBeginnen({
+      domain: input.domain,
+      email: input.email,
+      ordner: join(app.getPath('userData'), 'netz'),
+      verzeichnisUrl: input.uebung ? ACME_UEBUNG : ACME_ECHT
+    })
+  },
+
+  'cert.acmeAbschliessen': async (faden) => {
+    requirePermission('system.manage')
+    const ordner = join(app.getPath('userData'), 'netz')
+    const { cert, key } = await auftragAbschliessen(faden)
+    const angaben = eigenesZertifikatAblegen(ordner, cert, key)
+    saveEigenesZertifikat(angaben)
+    appendAudit({
+      action: 'cert.issued',
+      newValue: { domain: angaben.domain, laeuftAbAm: angaben.laeuftAbAm }
+    })
+    await netzNeu()
+    return angaben
+  },
+
+  'cert.ausDateien': async (input) => {
+    requirePermission('system.manage')
+    const ordner = join(app.getPath('userData'), 'netz')
+    const angaben = eigenesZertifikatAblegen(
+      ordner,
+      readFileSync(input.certPfad, 'utf8'),
+      readFileSync(input.keyPfad, 'utf8')
+    )
+    saveEigenesZertifikat(angaben)
+    appendAudit({ action: 'cert.imported', newValue: { domain: angaben.domain } })
+    await netzNeu()
+    return angaben
+  },
+
+  'cert.entfernen': async () => {
+    requirePermission('system.manage')
+    eigenesZertifikatEntfernen(join(app.getPath('userData'), 'netz'))
+    saveEigenesZertifikat(undefined)
+    appendAudit({ action: 'cert.removed' })
+    await netzNeu()
+  },
+
+  'system.netzwerkkarten': async () => netzwerkkarten(),
+
+  'saalnetz.get': async () => saalnetzStatus(),
+
+  'saalnetz.set': async (config) => {
+    requirePermission('system.manage')
+    const gespeichert = saveSaalnetz(config)
+    let fehler: string | undefined
+
+    /*
+     * Jeder Dienst für sich: Scheitert die Adressvergabe — etwa weil in
+     * diesem Netz schon jemand verteilt —, soll der Namensdienst trotzdem
+     * laufen. Beides zusammen abzubrechen hieße, wegen des riskanteren Teils
+     * auch den harmlosen zu verlieren.
+     */
+    try {
+      if (gespeichert.dns) {
+        const gebunden = getNetworkProjection().bindAddress
+        await starteDns({
+          name: getEigenesZertifikat()?.domain ?? '',
+          adresse: saaladresse(gebunden),
+          /* An dieselbe Karte gebunden wie der Rest: Ein Namensdienst, der
+             auch im Büronetz antwortet, wurde nicht bestellt. */
+          bindAddress: gebunden === '127.0.0.1' ? '127.0.0.1' : '0.0.0.0',
+          weiterleitung: gespeichert.dnsWeiterleitung || undefined
+        })
+      } else {
+        await stoppeDns()
+      }
+    } catch (grund) {
+      fehler = grund instanceof Error ? grund.message : String(grund)
+    }
+
+    try {
+      if (gespeichert.dhcp) {
+        await starteDhcp({
+          von: gespeichert.dhcpVon,
+          bis: gespeichert.dhcpBis,
+          maske: gespeichert.dhcpMaske,
+          eigene: saaladresse(getNetworkProjection().bindAddress),
+          router: gespeichert.dhcpRouter || undefined,
+          laufzeit: gespeichert.dhcpLaufzeit
+        })
+      } else {
+        await stoppeDhcp()
+      }
+    } catch (grund) {
+      const text = grund instanceof Error ? grund.message : String(grund)
+      fehler = fehler ? `${fehler}\n${text}` : text
+    }
+
+    appendAudit({
+      action: 'saalnetz.changed',
+      newValue: { dns: gespeichert.dns, dhcp: gespeichert.dhcp, router: gespeichert.dhcpRouter || null }
+    })
+    return { ...saalnetzStatus(), fehler }
+  },
+
   'projection.network': async () => {
     const settings = getSettings()
-    return { ...settings.networkProjection, ...networkStatus() }
+    return ohneGeheimnis({ ...settings.networkProjection, ...networkStatus() })
   },
   'projection.setNetwork': async (config) => {
     requirePermission('system.manage')

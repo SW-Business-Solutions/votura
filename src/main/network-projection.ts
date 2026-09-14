@@ -9,13 +9,15 @@
  * im lokalen Netz der Veranstaltung – kein Internetzugang, keine Cloud.
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { createServer as createSecureServer } from 'node:https'
+import { app } from 'electron'
+import { eigeneAdressen, zertifikatFuer, zertifikatsName } from './tls'
 import { createReadStream, existsSync, statSync } from 'node:fs'
-import { networkInterfaces } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
 import { BUEHNEN_MAX, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { PROMPTER_PFAD, type PrompterViewState } from '@shared/speech'
-import { WAHL_PFAD } from '@shared/wahl'
+import { AUSSCHUSS_PFAD, WAHL_PFAD } from '@shared/wahl'
 import { logger } from './logger'
 import { handleRemoteRequest, type RemoteDispatcher } from './remote-access'
 import { getPresentation, presentationFileFor } from './services/presentations'
@@ -42,6 +44,8 @@ let server: Server | null = null
 let config: NetworkProjectionConfig | null = null
 let lastError: string | undefined
 let dispatcher: RemoteDispatcher | null = null
+/** Fingerabdruck des laufenden Zertifikats — zum Vergleichen am Gerät. */
+let fingerabdruck: string | undefined
 /**
  * Offene SSE-Leitungen samt der Bühne, die sie abonniert haben.
  *
@@ -80,9 +84,21 @@ export function setRemoteDispatcher(next: RemoteDispatcher): void {
  * alles andere ist nicht erreichbar, weil es nicht aufgezählt ist.
  */
 export interface WahlDispatcher {
-  lage(code: string): Promise<unknown>
-  berechtigung(eingabe: Record<string, unknown>): Promise<unknown>
-  abgeben(eingabe: Record<string, unknown>): Promise<unknown>
+  /**
+   * `mitToken` sagt, ob die Anfrage das Zugriffstoken mitbrachte.
+   *
+   * Daran erkennt der Hauptrechner eine **Wahlkabine**: Sie gehört der
+   * Veranstaltung und wurde eingerichtet, ein mitgebrachtes Telefon nicht.
+   * Mehr ist es nicht — wer das Token an die Wand schreibt, hat den
+   * Unterschied wieder aufgehoben.
+   */
+  lage(code: string, mitToken: boolean, code2?: string): Promise<unknown>
+  berechtigung(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown>
+  abgeben(eingabe: Record<string, unknown>, mitToken: boolean): Promise<unknown>
+  /** Das Gerät des Wählers holt seine Unterschrift ab (Ausschussbetrieb). */
+  warten(eingabe: Record<string, unknown>): Promise<unknown>
+  /** Der Wahlausschuss: Lage, Schlüssel melden, offene Anfragen, Unterschrift. */
+  ausschuss(was: string, eingabe: Record<string, unknown>): Promise<unknown>
 }
 
 let wahlRuf: WahlDispatcher | null = null
@@ -95,6 +111,37 @@ function rendererRoot(): string {
   return join(__dirname, '../renderer')
 }
 
+/**
+ * Eine Seite an ein Gerät im Saal ausliefern.
+ *
+ * **Warum das im Entwicklungsmodus nicht einfach eine Weiterleitung ist.**
+ * Vite liefert die Oberfläche unter einer eigenen Adresse aus, und eine
+ * Weiterleitung dorthin schickt das Gerät auf eine **andere Herkunft**: Das
+ * Zugriffstoken steht als Keks an dieser hier, `/api/…` gibt es dort nicht,
+ * und `localhost` ist auf einem anderen Gerät ohnehin es selbst. Für den
+ * Entwickler im eigenen Browser ging das gut — für die Begleitanwendung im
+ * Saal brach die Verbindung sofort ab, und zwar ohne erkennbaren Grund.
+ *
+ * Ausgeliefert wird deshalb, was gebaut ist. Nur wenn es das nicht gibt —
+ * jemand hat noch nie gebaut —, bleibt die Weiterleitung als Notnagel, jetzt
+ * mitsamt der Abfrage, damit das Token nicht unterwegs verloren geht.
+ */
+function seiteAusliefern(response: ServerResponse, datei: string, url: URL): void {
+  tokenKeks(response, url)
+  const gebaut = join(rendererRoot(), datei)
+  if (existsSync(gebaut)) {
+    serveFile(response, gebaut)
+    return
+  }
+  if (process.env.ELECTRON_RENDERER_URL) {
+    const abfrage = url.search ? url.search : ''
+    response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/${datei}${abfrage}` })
+    response.end()
+    return
+  }
+  deny(response, 404, 'Nicht gefunden.')
+}
+
 function tokenValid(request: IncomingMessage, url: URL): boolean {
   if (!config?.token) return true
   const fromQuery = url.searchParams.get('t')
@@ -102,6 +149,26 @@ function tokenValid(request: IncomingMessage, url: URL): boolean {
   const cookie = request.headers.cookie ?? ''
   const match = /(?:^|;\s*)wz_token=([^;]+)/.exec(cookie)
   return match?.[1] === config.token
+}
+
+/**
+ * Das Zugriffstoken als Keks an die Herkunft heften.
+ *
+ * **Warum das sein muss.** Eine Seite wird mit `?t=…` geholt, ihre Bausteine
+ * — Skripte, Stile — aber unter ihren eigenen Pfaden, und die tragen kein
+ * Token. Ohne Keks antwortet der Server darauf mit 401, und das Ergebnis ist
+ * eine **weiße oder schwarze Fläche ohne Meldung**: Das Gerüst der Seite ist
+ * da, ihr Inhalt kam nie an. Genau so verschwand die Wahlseite auf jedem
+ * Gerät, das nicht vorher die Beamerseite geöffnet hatte — dort wurde der
+ * Keks nämlich gesetzt, und nur dort.
+ *
+ * Deshalb steht er jetzt an einer Stelle: Wer ein gültiges Token mitbringt,
+ * bekommt es als Keks zurück, gleich welche Seite er geholt hat.
+ */
+function tokenKeks(response: ServerResponse, url: URL): void {
+  if (!config?.token || url.searchParams.get('t') !== config.token) return
+  if (response.headersSent) return
+  response.setHeader('Set-Cookie', `wz_token=${config.token}; Path=/; SameSite=Strict`)
 }
 
 function deny(response: ServerResponse, status: number, message: string): void {
@@ -217,6 +284,14 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
    * Nur erreichbar, solange eine Abstimmung offen ist; das prüft der Dienst
    * dahinter bei jedem Aufruf.
    */
+  if (url.pathname.startsWith('/api/ausschuss/')) {
+    if (!wahlRuf) {
+      deny(response, 503, 'Die digitale Stimmabgabe ist nicht bereit.')
+      return
+    }
+    if (await handleAusschuss(request, response, url, wahlRuf)) return
+  }
+
   if (url.pathname.startsWith('/api/stimme/')) {
     if (!wahlRuf) {
       deny(response, 503, 'Die digitale Stimmabgabe ist nicht bereit.')
@@ -234,7 +309,13 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   /* Die Wahlseite selbst — eine gewöhnliche Seite, die jedes Telefon im
      Saalnetz laden kann. */
   if (url.pathname === WAHL_PFAD || url.pathname === `${WAHL_PFAD}/`) {
-    serveFile(response, join(rendererRoot(), 'wahl.html'))
+    seiteAusliefern(response, 'wahl.html', url)
+    return
+  }
+
+  /* Die Seite des Wahlausschusses — sie hält den Schlüssel und unterschreibt. */
+  if (url.pathname === AUSSCHUSS_PFAD || url.pathname === `${AUSSCHUSS_PFAD}/`) {
+    seiteAusliefern(response, 'ausschuss.html', url)
     return
   }
 
@@ -244,18 +325,16 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       deny(response, 403, 'Der Fernzugriff auf die Bedienung ist nicht freigeschaltet.')
       return
     }
-    if (process.env.ELECTRON_RENDERER_URL) {
-      response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/` })
-      response.end()
-      return
-    }
-    serveFile(response, join(rendererRoot(), 'index.html'))
+    seiteAusliefern(response, 'index.html', url)
     return
   }
   if (!tokenValid(request, url)) {
     deny(response, 401, 'Zugriffstoken fehlt oder ist falsch.')
     return
   }
+  /* Ab hier steht fest, dass dieses Gerät hereindarf — der Keks sorgt dafür,
+     dass es auch die Bausteine der Seite bekommt. */
+  tokenKeks(response, url)
 
   /*
    * Kurzadresse je Bühne: `/b/2` ist das, was auf einem Zettel neben dem
@@ -278,12 +357,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
    * Text kommt über die eigene Leitung darunter.
    */
   if (url.pathname === PROMPTER_PFAD || url.pathname === `${PROMPTER_PFAD}/`) {
-    if (process.env.ELECTRON_RENDERER_URL) {
-      response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/teleprompter.html` })
-      response.end()
-      return
-    }
-    serveFile(response, join(rendererRoot(), 'teleprompter.html'))
+    seiteAusliefern(response, 'teleprompter.html', url)
     return
   }
 
@@ -410,17 +484,6 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     return
   }
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    // Im Entwicklungsmodus liefert Vite die Oberfläche aus.
-    response.writeHead(302, { Location: `${process.env.ELECTRON_RENDERER_URL}/audience.html` })
-    response.end()
-    return
-  }
-
-  const headers: Record<string, string> = {}
-  if (config?.token && url.searchParams.get('t') === config.token) {
-    headers['Set-Cookie'] = `wz_token=${config.token}; Path=/; SameSite=Strict`
-  }
 
   const requestedPath = url.pathname === '/' ? '/audience.html' : url.pathname
   const filePath = join(rendererRoot(), normalize(requestedPath).replace(/^(\.\.[/\\])+/, ''))
@@ -428,9 +491,9 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     deny(response, 403, 'Zugriff verweigert.')
     return
   }
-  if (Object.keys(headers).length > 0) {
-    // Cookie zuerst setzen, dann Datei ausliefern.
-    response.setHeader('Set-Cookie', headers['Set-Cookie'])
+  if (!existsSync(filePath) && url.pathname === '/') {
+    seiteAusliefern(response, 'audience.html', url)
+    return
   }
   serveFile(response, filePath)
 }
@@ -524,15 +587,21 @@ async function handleWahl(
 ): Promise<boolean> {
   if (url.pathname === '/api/stimme/lage') {
     const code = url.searchParams.get('code') ?? ''
+    /* Der zweite Faktor: Karte und Pass gehören zusammen (ADR-0006). */
+    const code2 = url.searchParams.get('code2') ?? ''
     try {
-      sendeJson(response, 200, await ruf.lage(code))
+      sendeJson(response, 200, await ruf.lage(code, tokenValid(request, url), code2))
     } catch (fehler) {
       sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
     }
     return true
   }
 
-  if (url.pathname === '/api/stimme/berechtigung' || url.pathname === '/api/stimme/abgeben') {
+  if (
+    url.pathname === '/api/stimme/berechtigung' ||
+    url.pathname === '/api/stimme/abgeben' ||
+    url.pathname === '/api/stimme/warten'
+  ) {
     if (request.method !== 'POST') {
       sendeFehler(response, 405, 'Diese Stelle nimmt nur POST an.')
       return true
@@ -540,10 +609,13 @@ async function handleWahl(
     const koerper = await leseKoerper(request, response)
     if (!koerper) return true
     try {
+      const mitToken = tokenValid(request, url)
       const ergebnis =
         url.pathname === '/api/stimme/berechtigung'
-          ? await ruf.berechtigung(koerper)
-          : await ruf.abgeben(koerper)
+          ? await ruf.berechtigung(koerper, mitToken)
+          : url.pathname === '/api/stimme/warten'
+            ? await ruf.warten(koerper)
+            : await ruf.abgeben(koerper, mitToken)
       sendeJson(response, 200, ergebnis ?? {})
     } catch (fehler) {
       sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
@@ -552,6 +624,42 @@ async function handleWahl(
   }
 
   return false
+}
+
+/**
+ * Die Endpunkte des Wahlausschusses.
+ *
+ * Anders als die Stimmabgabe **verlangen sie das Zugriffstoken**: Hier hängt
+ * kein Ausweis als Nachweis dran, sondern ein Gerät, das den Schlüssel hält.
+ * Wer es betreibt, hat es eingerichtet und kennt das Token.
+ *
+ * Über diesen Weg gehen nur verblendete Werte und Unterschriften. Auch wer
+ * mitliest, erfährt daraus nichts.
+ */
+async function handleAusschuss(
+  request: IncomingMessage,
+  response: ServerResponse,
+  url: URL,
+  ruf: WahlDispatcher
+): Promise<boolean> {
+  const was = url.pathname.slice('/api/ausschuss/'.length)
+  if (!['lage', 'schluessel', 'offen', 'signatur'].includes(was)) return false
+
+  if (!tokenValid(request, url)) {
+    sendeFehler(response, 401, 'Zugriffstoken fehlt oder ist falsch.')
+    return true
+  }
+
+  const koerper =
+    request.method === 'POST' ? await leseKoerper(request, response, 65536) : Object.create(null)
+  if (koerper === null) return true
+
+  try {
+    sendeJson(response, 200, (await ruf.ausschuss(was, koerper as Record<string, unknown>)) ?? {})
+  } catch (fehler) {
+    sendeFehler(response, 400, fehler instanceof Error ? fehler.message : String(fehler))
+  }
+  return true
 }
 
 async function handlePrompterControl(
@@ -614,20 +722,53 @@ export interface NetworkStatus {
   running: boolean
   urls: string[]
   error?: string
+  /**
+   * Fingerabdruck des Zertifikats, wenn verschlüsselt ausgeliefert wird.
+   *
+   * Bei einem selbst ausgestellten Zertifikat ist sein Vergleich die
+   * einzige Prüfmöglichkeit, die ein Mensch hat — deshalb gehört er
+   * sichtbar in die Oberfläche und nicht in eine Protokolldatei.
+   */
+  fingerabdruck?: string
 }
 
-export function localUrls(port: number, token: string): string[] {
-  const urls: string[] = []
+/**
+ * Die Adressen, unter denen diese Ansicht zu erreichen ist.
+ *
+ * **Die erste ist die wichtigste**: Aus ihr baut die Oberfläche die Links für
+ * Bühnen, Wahlseite und Wahlausschuss. Deshalb kommt die Reihenfolge aus
+ * `eigeneAdressen` — erst die Karten, die es wirklich gibt, dann die
+ * virtuellen, zuletzt der eigene Rechner.
+ *
+ * Ist eine **feste Netzwerkkarte** eingestellt, steht nur deren Adresse da.
+ * Alles andere wäre eine Einladung, eine Adresse abzuschreiben, unter der der
+ * Server gar nicht lauscht.
+ */
+export function localUrls(port: number, token: string, tls = config?.tls ?? false): string[] {
+  const schema = tls ? 'https' : 'http'
   const suffix = token ? `/?t=${encodeURIComponent(token)}` : '/'
-  for (const [, addresses] of Object.entries(networkInterfaces())) {
-    for (const address of addresses ?? []) {
-      if (address.family === 'IPv4' && !address.internal) {
-        urls.push(`http://${address.address}:${port}${suffix}`)
-      }
-    }
-  }
-  urls.push(`http://127.0.0.1:${port}${suffix}`)
-  return urls
+  /*
+   * **Mit echtem Zertifikat zählt der Name, nicht die Adresse.**
+   *
+   * Ein Zertifikat gilt für einen Namen; `https://192.168.2.174:8477` ergibt
+   * deshalb auch mit einem tadellosen Zertifikat eine Warnung. Wer eine
+   * Adresse abschreibt und im Saal verteilt, verteilt eine Warnung.
+   *
+   * Die Adressen bleiben trotzdem stehen — sie sind der Weg, wenn der Name
+   * im Saal (noch) nicht auflösbar ist, und dann ist die Warnung das kleinere
+   * Übel. Aber sie stehen dahinter.
+   */
+  const name = tls ? zertifikatsName(join(app.getPath('userData'), 'netz')) : null
+
+  const gebunden = config?.bindAddress
+  const adressen =
+    gebunden && gebunden !== '0.0.0.0' && gebunden !== '127.0.0.1'
+      ? [gebunden, '127.0.0.1']
+      : gebunden === '127.0.0.1'
+        ? ['127.0.0.1']
+        : eigeneAdressen()
+  const gebaut = adressen.map((adresse) => `${schema}://${adresse}:${port}${suffix}`)
+  return name ? [`${schema}://${name}:${port}${suffix}`, ...gebaut] : gebaut
 }
 
 export async function stopNetworkProjection(): Promise<void> {
@@ -663,12 +804,28 @@ export async function startNetworkProjection(next: NetworkProjectionConfig): Pro
   }
 
   return new Promise<NetworkStatus>((resolve) => {
-    const instance = createServer((request, response) => {
+    const bearbeite = (request: IncomingMessage, response: ServerResponse): void => {
       void handle(request, response).catch((error) => {
         logger.error(`Netzwerkanfrage fehlgeschlagen: ${String(error)}`)
         if (!response.headersSent) deny(response, 500, 'Interner Fehler.')
       })
-    })
+    }
+
+    /*
+     * Mit Verschlüsselung ein anderer Server, sonst derselbe wie bisher.
+     * Das Zertifikat entsteht beim ersten Einschalten und bleibt liegen —
+     * ein neues bei jedem Start hieße eine neue Warnung bei jedem Start,
+     * und Warnungen, die sich ständig ändern, liest niemand mehr.
+     */
+    let instance: Server
+    if (next.tls) {
+      const zertifikat = zertifikatFuer(join(app.getPath('userData'), 'netz'))
+      fingerabdruck = zertifikat.fingerabdruck
+      instance = createSecureServer({ cert: zertifikat.cert, key: zertifikat.key }, bearbeite)
+    } else {
+      fingerabdruck = undefined
+      instance = createServer(bearbeite)
+    }
     instance.on('error', (error: NodeJS.ErrnoException) => {
       lastError =
         error.code === 'EADDRINUSE'
@@ -690,7 +847,8 @@ export async function startNetworkProjection(next: NetworkProjectionConfig): Pro
 export function networkStatus(): NetworkStatus {
   return {
     running: server !== null,
-    urls: server && config ? localUrls(config.port, config.token) : [],
-    error: lastError
+    urls: server && config ? localUrls(config.port, config.token, config.tls) : [],
+    error: lastError,
+    fingerabdruck
   }
 }

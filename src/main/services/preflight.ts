@@ -8,7 +8,9 @@ import { activeEvent } from './events'
 import { getRound } from './rounds'
 import { createDriver } from '../printing/drivers'
 import { unclearBatches } from './printing'
-import { getConfig, getPrinter, getPrinters } from './settings'
+import { anstehendeWahlgaenge } from './voting'
+import { presenceSummary } from './participants'
+import { getConfig, getEigenesZertifikat, getNetworkProjection, getPrinter, getPrinters } from './settings'
 
 function writable(directory: string): boolean {
   try {
@@ -129,6 +131,93 @@ export async function preflight(): Promise<PreflightItem[]> {
   })
 
   const unclear = unclearBatches()
+  /*
+   * ------------------------------------------------------------------
+   * Alles, was mit dem Saalnetz und der digitalen Abstimmung zu tun hat.
+   *
+   * Der Systemcheck ist der **letzte Zeitpunkt vor der Versammlung**, an dem
+   * so etwas auffallen darf. Ein abgelaufenes Zertifikat, eine geheime Wahl
+   * ohne Verschlüsselung oder ein Ausschussgerät, das seinen Schlüssel nie
+   * gemeldet hat — das alles fällt sonst erst auf, wenn der Saal wartet.
+   * ------------------------------------------------------------------
+   */
+  const netz = getNetworkProjection()
+  const zertifikat = getEigenesZertifikat()
+  const veranstaltung = activeEvent()
+  const wahlgaenge = veranstaltung ? anstehendeWahlgaenge(veranstaltung.id) : []
+  const geheimeWahl = wahlgaenge.some((wahl) => wahl.secrecy === 'secret')
+
+  if (zertifikat) {
+    const tage = Math.floor((new Date(zertifikat.laeuftAbAm).getTime() - Date.now()) / 86_400_000)
+    items.push({
+      key: 'cert',
+      label: `Zertifikat für ${zertifikat.domain}`,
+      status: tage < 0 ? 'fail' : tage < 14 ? 'warn' : 'ok',
+      detail:
+        tage < 0
+          ? `Abgelaufen seit ${-tage} Tagen. Auf mitgebrachten Geräten erscheint wieder eine Warnung — vor der Versammlung erneuern.`
+          : `Gültig noch ${tage} Tage (bis ${new Date(zertifikat.laeuftAbAm).toLocaleDateString('de-DE')}).`
+    })
+  } else if (wahlgaenge.length > 0) {
+    items.push({
+      key: 'cert',
+      label: 'Zertifikat',
+      status: 'warn',
+      detail:
+        'Selbst ausgestellt. Auf mitgebrachten Geräten erscheint eine Warnung; für geheime Wahlen sind Wahlkabinen empfohlen.'
+    })
+  }
+
+  if (wahlgaenge.length > 0) {
+    items.push({
+      key: 'voting-tls',
+      label: 'Verschlüsselte Übertragung',
+      status: netz.tls ? 'ok' : 'fail',
+      detail: netz.tls
+        ? 'Eingeschaltet.'
+        : 'Aus. Bei einer digitalen Abstimmung reist die Stimme dann im Klartext durch das Saal-WLAN — bei gemeinsamem Passwort kann jeder Teilnehmer den Verkehr jedes anderen mitlesen.'
+    })
+  }
+
+  const nurKabine = wahlgaenge.filter((wahl) => wahl.devices === 'booth')
+  if (nurKabine.length > 0) {
+    items.push({
+      key: 'voting-booth',
+      label: 'Wahlkabinen erkennbar',
+      status: netz.token ? 'ok' : 'fail',
+      detail: netz.token
+        ? 'Zugriffstoken gesetzt — daran erkennt der Hauptrechner eine Kabine.'
+        : `${nurKabine.map((wahl) => wahl.roundLabel).join(', ')}: „nur Wahlkabinen" verlangt ein Zugriffstoken. Ohne eines lässt sich eine Kabine nicht von einem mitgebrachten Telefon unterscheiden.`
+    })
+  }
+
+  const ohneSchluessel = wahlgaenge.filter((wahl) => wahl.secrecy === 'secret' && !wahl.hatSchluessel)
+  if (geheimeWahl) {
+    items.push({
+      key: 'voting-key',
+      label: 'Prüfschlüssel gemeldet',
+      status: ohneSchluessel.length === 0 ? 'ok' : 'warn',
+      detail:
+        ohneSchluessel.length === 0
+          ? 'Jede vorbereitete geheime Wahl hat ihren Schlüssel.'
+          : `${ohneSchluessel.map((wahl) => wahl.roundLabel).join(', ')}: Noch kein Prüfschlüssel. Unterschreibt der Wahlausschuss, muss sein Gerät ihn vor der Eröffnung melden — sonst lässt sich nicht eröffnen.`
+    })
+  }
+
+  if (veranstaltung) {
+    const anwesenheit = presenceSummary(veranstaltung.id, config.assembly.quorum)
+    if (anwesenheit.total > 0) {
+      items.push({
+        key: 'quorum',
+        label: 'Beschlussfähigkeit',
+        status: anwesenheit.quorumMet ? 'ok' : 'warn',
+        detail: anwesenheit.quorumMet
+          ? `${anwesenheit.eligiblePresent} stimmberechtigt anwesend, nötig sind ${anwesenheit.quorumRequired}.`
+          : `Nur ${anwesenheit.eligiblePresent} von ${anwesenheit.quorumRequired} nötigen stimmberechtigten Anwesenden. Vor der Eröffnung prüfen.`
+      })
+    }
+  }
+
   items.push({
     key: 'batches',
     label: 'Keine unklaren Druckaufträge',

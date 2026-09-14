@@ -24,14 +24,29 @@ import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Field } from '../components/ui'
 
-export function DigitaleWahlPage(): React.JSX.Element {
+export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.JSX.Element {
   const app = useApp()
   const event = app.event
+  /*
+   * **Zwei Wege in dieselbe Seite.**
+   *
+   * Über die Navigation: Dann gehört die Wahl des Wahlgangs dazu, denn man
+   * kommt von außen. Aus einem Wahlgang heraus: Dann steht er schon fest, und
+   * eine zweite Auswahl daneben wäre eine Frage, die niemand gestellt hat.
+   */
   const [wahlgang, setWahlgang] = useState<RoundSummary | null>(null)
+  const imWahlgang = Boolean(roundId)
+
+  useEffect(() => {
+    if (!roundId) return
+    const gefunden = app.rounds.find((runde) => runde.id === roundId)
+    if (gefunden) setWahlgang(gefunden)
+  }, [roundId, app.rounds])
   const [lage, setLage] = useState<WahlLage | null>(null)
   const [stand, setStand] = useState<WahlStand | null>(null)
   const [geheimnis, setGeheimnis] = useState<Wahlgeheimnis>('open')
   const [geraete, setGeraete] = useState<Geraetewahl>('both')
+  const [signer, setSigner] = useState<'hub' | 'committee'>('hub')
 
   const laden = useCallback(async () => {
     if (!wahlgang) return
@@ -79,37 +94,67 @@ export function DigitaleWahlPage(): React.JSX.Element {
     }
   }
 
+  /**
+   * Die Urne ins Ergebnis übernehmen — und sagen, was dabei herauskam.
+   *
+   * Vorher passierte sichtbar nichts: Der Knopf schrieb ein Ergebnis in einen
+   * anderen Reiter, und wer davon nichts wusste, hielt ihn für kaputt. Lag
+   * bereits eine Papierauszählung vor, tat er sogar tatsächlich nichts — die
+   * Urne wird ja beim Lesen hinzugerechnet.
+   */
+  const uebernehmen = async (): Promise<void> => {
+    if (!wahlgang) return
+    try {
+      const { digital, hatteErgebnis } = await api('voting.uebernehmen', wahlgang.id)
+      await laden()
+      app.notify(
+        'ok',
+        hatteErgebnis
+          ? `Die Urne mit ${digital} ${digital === 1 ? 'Stimme' : 'Stimmen'} ist im Ergebnis enthalten — sie wird zur Handauszählung hinzugerechnet.`
+          : `${digital} ${digital === 1 ? 'Stimme' : 'Stimmen'} ins Ergebnis übernommen.`
+      )
+      /* Dorthin, wo das Ergebnis steht — sonst sucht die Wahlleitung es. */
+      navigate(`round/${wahlgang.id}/result`)
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
   const drucker = app.settings?.config.printing.defaultPrinterId
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Digitale Abstimmung</h1>
-          <div className="subtitle">
-            Teilnehmer stimmen mit ihrem eigenen Gerät oder in einer Wahlkabine ab. Die Papierwahl bleibt
-            davon unberührt — je Wahlgang entscheidet die Wahlleitung.
+      {!imWahlgang && (
+        <>
+          <div className="page-header">
+            <div>
+              <h1>Digitale Abstimmung</h1>
+              <div className="subtitle">
+                Teilnehmer stimmen mit ihrem eigenen Gerät oder in einer Wahlkabine ab. Die Papierwahl
+                bleibt davon unberührt — je Wahlgang entscheidet die Wahlleitung.
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <Card title="Wahlgang">
-        {app.rounds.length === 0 ? (
-          <EmptyState text="Noch kein Wahlgang angelegt." />
-        ) : (
-          <div className="row">
-            {app.rounds.map((runde) => (
-              <button
-                key={runde.id}
-                className={wahlgang?.id === runde.id ? 'primary' : ''}
-                onClick={() => setWahlgang(runde)}
-              >
-                {runde.roundLabel} — {runde.title}
-              </button>
-            ))}
-          </div>
-        )}
-      </Card>
+          <Card title="Wahlgang">
+            {app.rounds.length === 0 ? (
+              <EmptyState text="Noch kein Wahlgang angelegt." />
+            ) : (
+              <div className="row">
+                {app.rounds.map((runde) => (
+                  <button
+                    key={runde.id}
+                    className={wahlgang?.id === runde.id ? 'primary' : ''}
+                    onClick={() => setWahlgang(runde)}
+                  >
+                    {runde.roundLabel} — {runde.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
+        </>
+      )}
 
       {wahlgang && (
         <>
@@ -134,6 +179,25 @@ export function DigitaleWahlPage(): React.JSX.Element {
               </div>
             )}
             {geheimnis === 'secret' && (
+              /*
+               * **Dieser Hinweis gehört ins Programm, nicht nur in die
+               * Dokumentation.** Wer eine geheime Wahl vorbereitet, soll ihn
+               * lesen, bevor er eröffnet — und nicht hinterher in einem ADR
+               * darauf stoßen.
+               *
+               * Die Aussage ist unbequem und bleibt trotzdem stehen, solange
+               * sie stimmt: Das Verfahren ist bekannt und nachrechenbar, dass
+               * es hier richtig umgesetzt ist, muss jemand anderes
+               * feststellen als der, der es gebaut hat.
+               */
+              <div className="notice error">
+                <strong>Noch nicht für den produktiven Einsatz freigegeben.</strong> Die Kryptografie der
+                geheimen digitalen Wahl ist <strong>nicht extern geprüft</strong>, und eine Lastprobe mit
+                vielen Geräten steht aus. Für eine Wahl, an der etwas hängt, bleiben Papier oder die offene
+                Abstimmung der belastbare Weg. Nachzulesen in ADR-0006 und im Bedrohungsmodell.
+              </div>
+            )}
+            {geheimnis === 'secret' && (
               <div className="notice warn">
                 Für die geheime Wahl empfehlen wir <strong>Wahlkabinen</strong>. Bei eigenen Geräten am Platz
                 lässt sich nicht verhindern, dass jemand über die Schulter schaut — und die Adresse des Geräts
@@ -153,11 +217,37 @@ export function DigitaleWahlPage(): React.JSX.Element {
                 ))}
               </select>
             </Field>
+            {geheimnis === 'secret' && (
+              <Field label="Wer unterschreibt">
+                <select
+                  disabled={lage?.status === 'open' || lage?.status === 'closed'}
+                  value={signer}
+                  onChange={(e) => setSigner(e.target.value as 'hub' | 'committee')}
+                >
+                  <option value="hub">Dieser Rechner</option>
+                  <option value="committee">Der Wahlausschuss auf eigenem Gerät</option>
+                </select>
+              </Field>
+            )}
+            {geheimnis === 'secret' && signer === 'hub' && (
+              <div className="notice warn">
+                Der Schlüssel liegt dann <strong>auf diesem Rechner</strong>. Wer ihn vollständig
+                kontrolliert, kann zusätzliche Stimmberechtigungen erzeugen — die Bilanz macht das sichtbar,
+                verhindert es aber nicht. Beim Wahlausschuss auf eigenem Gerät kann er es nicht.
+              </div>
+            )}
+            {geheimnis === 'secret' && signer === 'committee' && (
+              <div className="notice">
+                Das Gerät des Wahlausschusses erzeugt den Schlüssel und meldet nur den öffentlichen Teil
+                hierher. <strong>Eröffnen lässt sich erst danach.</strong> Votura Saal hat dafür die Rolle
+                „Wahlausschuss".
+              </div>
+            )}
             <button
               className="primary"
               disabled={lage?.status === 'open' || lage?.status === 'closed'}
               onClick={() =>
-                void tue(() => api('voting.prepare', { roundId: wahlgang.id, geheimnis, geraete }))
+                void tue(() => api('voting.prepare', { roundId: wahlgang.id, geheimnis, geraete, signer }))
               }
             >
               Vorbereiten
@@ -225,7 +315,19 @@ export function DigitaleWahlPage(): React.JSX.Element {
                         <span className="label">Stimmen mit Gewicht</span>
                       </div>
                     )}
+                    {stand.entwertet > 0 && (
+                      <div className="kpi">
+                        <span className="value">{stand.entwertet}</span>
+                        <span className="label">entwertet</span>
+                      </div>
+                    )}
                   </div>
+                  {stand.entwertet > 0 && (
+                    <div className="hint mt-2">
+                      Entwertete Berechtigungen erklären die Lücke: Diese Personen haben am Gerät nicht
+                      abgestimmt und einen Papierzettel bekommen. Grund und Uhrzeit stehen im Protokoll.
+                    </div>
+                  )}
                   {stand.abgegeben > stand.ausgegeben && (
                     <div className="notice warn mt-2">
                       In der Urne liegen <strong>mehr Stimmen als Berechtigungen ausgegeben</strong> wurden.
@@ -250,10 +352,7 @@ export function DigitaleWahlPage(): React.JSX.Element {
                     >
                       Urnenverzeichnis drucken
                     </button>
-                    <button
-                      className="primary"
-                      onClick={() => void tue(() => api('voting.uebernehmen', wahlgang.id))}
-                    >
+                    <button className="primary" onClick={() => void uebernehmen()}>
                       Ergebnis übernehmen
                     </button>
                   </div>

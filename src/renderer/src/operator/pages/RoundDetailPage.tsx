@@ -13,6 +13,7 @@ import { MotionTab } from './round/MotionTab'
 import { BallotTab } from './round/BallotTab'
 import { PrintTab } from './round/PrintTab'
 import { AccountingTab } from './round/AccountingTab'
+import { DigitaleWahlPage } from './DigitaleWahlPage'
 import { ResultTab } from './round/ResultTab'
 import { HistoryTab } from './round/HistoryTab'
 
@@ -39,7 +40,20 @@ function tabsFor(round: ElectionRound): { key: string; label: string }[] {
       { key: 'accounting', label: 'Stimmzettelbilanz' }
     )
   }
-  tabs.push({ key: 'result', label: 'Ergebnis' }, { key: 'history', label: 'Verlauf' })
+  /*
+   * Die digitale Abstimmung gehört zu **diesem** Wahlgang — sie war bisher
+   * nur über einen eigenen Punkt in der Navigation erreichbar, mit einer
+   * zweiten Auswahl des Wahlgangs davor. Wer hier steht, hat ihn längst
+   * gewählt.
+   *
+   * Vor dem Ergebnis, denn in dieser Reihenfolge geschieht es: erst
+   * abstimmen, dann auszählen.
+   */
+  tabs.push(
+    { key: 'digital', label: 'Digitale Abstimmung' },
+    { key: 'result', label: 'Ergebnis' },
+    { key: 'history', label: 'Verlauf' }
+  )
   return tabs
 }
 
@@ -155,6 +169,7 @@ export function RoundDetailPage({ roundId, tab }: { roundId: string; tab?: strin
       {active === 'ballot' && <BallotTab detail={detail} reload={reload} />}
       {active === 'print' && <PrintTab detail={detail} reload={reload} />}
       {active === 'accounting' && <AccountingTab detail={detail} reload={reload} />}
+      {active === 'digital' && <DigitaleWahlPage roundId={detail.round.id} />}
       {active === 'result' && <ResultTab detail={detail} reload={reload} />}
       {active === 'history' && <HistoryTab detail={detail} />}
 

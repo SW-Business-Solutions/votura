@@ -13,7 +13,7 @@
  *
  * 1. **Den Hauptrechner finden.** Hier ruft die Anwendung beim Start ins Netz
  *    und zeigt, wer geantwortet hat — niemand tippt eine IP-Adresse ab.
- * 2. **Ein Mikrofon geben.** `getUserMedia` verlangt eine sichere Herkunft,
+ * 2. **Kamera und Mikrofon geben.** `getUserMedia` verlangt eine sichere Herkunft,
  *    und der Projektionsserver spricht einfaches HTTP. Diese Anwendung führt
  *    die **eine** Adresse, die ihr genannt wurde, als vertrauenswürdig — mehr
  *    nicht, und nur solange sie eingestellt ist.
@@ -32,6 +32,20 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { rollenAdresse, rollenName, type SaalEinstellung, type SaalFund } from '@shared/saal'
 import { sucheHauptrechner } from '../main/suchruf'
+
+/**
+ * Diese Anwendung benennt sich selbst — und zwar, bevor irgendetwas anderes
+ * geschieht.
+ *
+ * Der Name bestimmt den Ordner für die Einstellung **und** die Sperre, die
+ * verhindert, dass zweimal dasselbe läuft. Ohne ihn übernimmt Electron den
+ * Namen aus `package.json`, und der gehört dem Hauptprogramm: Saal schriebe
+ * seine Einstellung in dessen Ordner und beendete sich beim Start
+ * kommentarlos, weil es sich für eine zweite Ausgabe des Hauptprogramms
+ * hielte. Im gepackten Bau stimmt der Name ohnehin — hier steht er für alle
+ * anderen Startwege, und er kostet nichts.
+ */
+app.setName('Votura Saal')
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
@@ -77,6 +91,23 @@ function schreibeEinstellung(einstellung: SaalEinstellung | null): void {
  */
 const gespeichert = leseEinstellung()
 if (gespeichert) {
+  /*
+   * **Den Namen auf die bekannte Adresse zeigen lassen.**
+   *
+   * Läuft der Hauptrechner mit einem echten Zertifikat, lautet seine Adresse
+   * auf einen Namen. Im Saalnetz gibt es aber niemanden, der ihn auflöst —
+   * außer Votura selbst, und das setzt voraus, dass dieses Gerät ihn schon
+   * als Namensserver kennt. Ein Henne-Ei-Problem, das hier entfällt: Beim
+   * Einrichten hat der Hauptrechner geantwortet, seine Adresse steht in der
+   * Einstellung, und Chromium bekommt sie als feste Zuordnung mit.
+   *
+   * Das ist enger als ein Namensdienst, nicht weiter: Es gilt für genau
+   * diesen einen Namen und genau diese eine Adresse.
+   */
+  if (gespeichert.masterAdresse) {
+    const ziel = new URL(gespeichert.master).hostname
+    app.commandLine.appendSwitch('host-resolver-rules', `MAP ${ziel} ${gespeichert.masterAdresse}`)
+  }
   app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', new URL(gespeichert.master).origin)
   /* Ohne diesen Zusatz greift die Zusage in einem eigenen Prozess je Seite
      nicht — Chromium prüft sie dann erneut und kommt zu einem anderen
@@ -282,18 +313,39 @@ function haerten(einstellung: SaalEinstellung | null): void {
   })
 
   /*
-   * Das Mikrofon nur für den Hauptrechner, dem diese Anwendung zugeordnet
-   * ist — und nur, wenn sie als Prompter läuft. Eine Bühne hört nicht zu.
+   * **Kamera und Mikrofon werden getrennt entschieden**, und das ist keine
+   * Feinheit: Ein Mikrofon in einer Wahlkabine ist undenkbar, eine Kamera
+   * dort dagegen der Weg, den Ausweis zu scannen, ohne sechzehn Zeichen zu
+   * tippen. Chromium fasst beides unter „media" zusammen; welches gemeint
+   * ist, steht in den Einzelheiten der Anfrage.
+   *
+   * Vorher hing beides an derselben Bedingung — der Prompterrolle. Die
+   * Wahlkabine bekam die Kamera deshalb nie, und der Browser meldete das als
+   * verweigerte Erlaubnis. Gesucht wurde der Fehler dann im Gerät.
    */
-  const darfMikrofon = einstellung?.rolle.art === 'prompter'
-  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+  const rolle = einstellung?.rolle.art
+  const darfMikrofon = rolle === 'prompter'
+  const darfKamera = rolle === 'wahlkabine' || rolle === 'akkreditierung' || rolle === 'ausgabe'
+
+  /** Ist diese Art von Aufnahme für diese Rolle vorgesehen? */
+  const artErlaubt = (art: string): boolean =>
+    art === 'audio' ? darfMikrofon : art === 'video' ? darfKamera : false
+
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback, einzelheiten) => {
     const vomMaster = Boolean(erlaubteHerkunft && contents.getURL().startsWith(erlaubteHerkunft))
-    callback(vomMaster && darfMikrofon && permission === 'media')
+    if (!vomMaster || permission !== 'media') {
+      callback(false)
+      return
+    }
+    /* Jede angefragte Art muss erlaubt sein — wer Kamera *und* Mikrofon
+       verlangt, bekommt in der Kabine nichts. */
+    const arten = (einzelheiten as { mediaTypes?: string[] }).mediaTypes ?? []
+    callback(arten.length > 0 && arten.every(artErlaubt))
   })
-  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft) => {
-    return (
-      Boolean(erlaubteHerkunft && herkunft === erlaubteHerkunft) && darfMikrofon && permission === 'media'
-    )
+
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft, einzelheiten) => {
+    if (!erlaubteHerkunft || herkunft !== erlaubteHerkunft || permission !== 'media') return false
+    return artErlaubt((einzelheiten as { mediaType?: string }).mediaType ?? 'unknown')
   })
 }
 

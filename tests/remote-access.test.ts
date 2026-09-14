@@ -6,7 +6,7 @@
  * angemeldeten Benutzer zugeordnet, und Fehlversuche werden gebremst.
  */
 import { EventEmitter } from 'node:events'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
@@ -197,5 +197,73 @@ describe('Fernzugriff', () => {
     })
     expect(response.status).toBe(429)
     expect(response.json.error).toMatch(/Fehlversuche/i)
+  })
+})
+
+describe('Systemdialoge auf dem Zweitgerät', () => {
+  const ipc = readFileSync(join(__dirname, '..', 'src/main/ipc.ts'), 'utf8')
+  const fern = readFileSync(join(__dirname, '..', 'src/main/remote-access.ts'), 'utf8')
+
+  /** Jeder Endpunkt, der ein Fenster auf dem Hauptrechner aufzieht. */
+  function dialogEndpunkte(): string[] {
+    const teile = ipc.split(/\n {2}'([a-zA-Z.]+)': async/)
+    const gefunden: string[] = []
+    for (let i = 1; i < teile.length; i += 2) {
+      const rumpf = teile[i + 1].split("\n  '")[0]
+      if (/showOpenDialog|showSaveDialog|chooseDirectory\(/.test(rumpf)) gefunden.push(teile[i])
+    }
+    return gefunden
+  }
+
+  it('sind über das Netz gesperrt — alle', () => {
+    /*
+     * **Warum das zählt.** Ein Auswahlfenster erscheint auf dem
+     * *Hauptrechner* und blockiert ihn, bis jemand dort steht und es
+     * wegklickt. Mitten in einer Versammlung ist damit die Bedienung des
+     * Beamers lahmgelegt — ausgelöst von einem Gerät, das im Saal steht.
+     *
+     * Die Liste war unvollständig: Sie kannte Ordner- und Bildauswahl, aber
+     * weder die Dateiauswahl für Zertifikate noch den Import von
+     * Präsentationen, Videos, Manuskripten und Sprachmodellen. Diese Prüfung
+     * hält sie vollständig, auch für den nächsten Dialog, den jemand ergänzt.
+     */
+    const endpunkte = dialogEndpunkte()
+    expect(endpunkte.length).toBeGreaterThan(4)
+
+    const fehlend = endpunkte.filter((name) => !fern.includes(`'${name}'`))
+    expect(fehlend).toEqual([])
+  })
+})
+
+describe('Das Zugriffstoken', () => {
+  const ipc = readFileSync(join(__dirname, '..', 'src/main/ipc.ts'), 'utf8')
+
+  it('verlässt den Rechner nur zur Systemverwaltung', () => {
+    /*
+     * **Warum es ein Schlüssel ist und kein Anzeigewert.** Mit ihm kommt
+     * jedes Gerät im Saalnetz an die Beameransicht, an die Wahlseite und —
+     * bei „nur Wahlkabinen" — an die Unterscheidung zwischen Kabine und
+     * mitgebrachtem Telefon. Herausgegeben wurde es an jeden Aufrufer, auch
+     * vor der Anmeldung.
+     *
+     * Geprüft wird hier die Quelle und nicht das Verhalten: Beide Endpunkte,
+     * die die Netzkonfiguration ausliefern, müssen durch dieselbe Bereinigung
+     * gehen. Ein Test mit echter Sitzung bräuchte den halben Hauptprozess —
+     * und diese Prüfung fängt genau den Fehler, der hier passieren kann:
+     * einen dritten Endpunkt, der das Token einfach durchreicht.
+     */
+    for (const endpunkt of ["'system.settings'", "'projection.network'"]) {
+      const anfang = ipc.indexOf(endpunkt)
+      expect(anfang, endpunkt).toBeGreaterThan(-1)
+      const block = ipc.slice(anfang, ipc.indexOf("\n  '", anfang + 10))
+      expect(block, endpunkt).toContain('ohneGeheimnis')
+    }
+  })
+
+  it('nimmt auch die Adressen mit, die es in der Abfrage tragen', () => {
+    /* Eine Adresse mit `?t=…` wäre dasselbe Geheimnis noch einmal. */
+    const stelle = ipc.indexOf('function ohneGeheimnis')
+    expect(stelle).toBeGreaterThan(-1)
+    expect(ipc.slice(stelle, stelle + 900)).toContain("url.split('?')[0]")
   })
 })

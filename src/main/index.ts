@@ -15,6 +15,9 @@ import { onPrompterViewChanged } from './services/prompter'
 import { sprachmodellDatei } from './services/sprachmodell'
 import { setPrompterNetzBedienung } from './services/prompter'
 import { starteSuchruf, stoppeSuchruf } from './suchruf'
+import { starteDhcp, stoppeDhcp } from './dhcp'
+import { starteDns, stoppeDns } from './dns'
+import { saaladresse } from './tls'
 import { suchrufQuelle } from './ipc'
 import {
   broadcastPrompter,
@@ -33,7 +36,7 @@ import { getProjectionState } from './services/projection'
 import { onSessionChanged } from './services/auth'
 import { markInterruptedBatches, onPrintProgress } from './services/printing'
 import { onProjectionChanged, restoreProjection } from './services/projection'
-import { getNetworkProjection } from './services/settings'
+import { getNetworkProjection, getEigenesZertifikat, getSaalnetz } from './services/settings'
 import {
   createOperatorWindow,
   getOperatorWindow,
@@ -463,6 +466,53 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  /*
+   * **Die Netzdienste gehören zum Start, nicht zum Einschalten.**
+   *
+   * Sie liefen bisher nur, solange niemand den Rechner neu startete — also
+   * genau bis zum Morgen der Versammlung. Die Einstellung sagte „an", der
+   * Namensdienst schwieg, und im Saal löste niemand mehr den Namen auf, für
+   * den das Zertifikat gilt. Das ist die Sorte Fehler, die man erst bemerkt,
+   * wenn das erste Telefon nichts findet.
+   *
+   * Scheitert einer der beiden, sagt es die Oberfläche und der andere läuft
+   * trotzdem: Die Adressvergabe braucht Rechte, die der Namensdienst nicht
+   * braucht, und wegen des einen auf den anderen zu verzichten wäre falsch.
+   */
+  const saalnetz = getSaalnetz()
+  if (saalnetz.dns) {
+    try {
+      await starteDns({
+        name: getEigenesZertifikat()?.domain ?? '',
+        adresse: saaladresse(network.bindAddress),
+        bindAddress: network.bindAddress === '127.0.0.1' ? '127.0.0.1' : '0.0.0.0',
+        weiterleitung: saalnetz.dnsWeiterleitung || undefined
+      })
+    } catch (grund) {
+      sendToOperator(IPC.notice, {
+        level: 'warning',
+        message: `Namensdienst konnte nicht gestartet werden: ${grund instanceof Error ? grund.message : String(grund)}`
+      })
+    }
+  }
+  if (saalnetz.dhcp) {
+    try {
+      await starteDhcp({
+        von: saalnetz.dhcpVon,
+        bis: saalnetz.dhcpBis,
+        maske: saalnetz.dhcpMaske,
+        eigene: saaladresse(network.bindAddress),
+        router: saalnetz.dhcpRouter || undefined,
+        laufzeit: saalnetz.dhcpLaufzeit
+      })
+    } catch (grund) {
+      sendToOperator(IPC.notice, {
+        level: 'warning',
+        message: `Adressvergabe konnte nicht gestartet werden: ${grund instanceof Error ? grund.message : String(grund)}`
+      })
+    }
+  }
+
   Menu.setApplicationMenu(null)
   createOperatorWindow()
 
@@ -503,6 +553,8 @@ app.on('will-quit', async (event) => {
   event.preventDefault()
   await stopNetworkProjection()
   await stoppeSuchruf()
+  await stoppeDns()
+  await stoppeDhcp()
   closeDatabase()
   logger.info(`Netzwerkstatus beim Beenden: ${JSON.stringify(networkStatus())}`)
   app.exit(0)

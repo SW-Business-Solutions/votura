@@ -29,6 +29,10 @@ export interface SuchrufQuelle {
   tokenNoetig: () => boolean
   buehnen: () => { id: number; name: string }[]
   prompterBedienung: () => boolean
+  /** Verschlüsselung und Zertifikatsname — sonst baut die Gegenseite eine
+      Adresse, in die ihr eigener Browser nicht hineinlässt. */
+  tls: () => boolean
+  zertifikatsName: () => string | undefined
 }
 
 export async function starteSuchruf(quelle: SuchrufQuelle): Promise<void> {
@@ -45,7 +49,9 @@ export async function starteSuchruf(quelle: SuchrufQuelle): Promise<void> {
       version: quelle.version(),
       tokenNoetig: quelle.tokenNoetig(),
       buehnen: quelle.buehnen(),
-      prompterBedienung: quelle.prompterBedienung()
+      prompterBedienung: quelle.prompterBedienung(),
+      tls: quelle.tls(),
+      zertifikatsName: quelle.zertifikatsName()
     }
     /* Zurück genau an den, der gefragt hat — nicht wieder an alle. */
     neu.send(JSON.stringify(antwort), absender.port, absender.address, (fehler) => {

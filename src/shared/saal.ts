@@ -21,6 +21,7 @@
  * und die Antworten einsammeln ist in dreißig Zeilen erklärt und funktioniert
  * in jedem flachen Netz — und ein Saalnetz ist immer flach.
  */
+import { AUSSCHUSS_PFAD, WAHL_PFAD } from './wahl'
 
 /** Port des Suchrufs. Bewusst neben dem des Projektionsservers. */
 export const SUCHRUF_PORT = 8478
@@ -50,6 +51,18 @@ export interface SaalAntwort {
   buehnen: { id: number; name: string }[]
   /** Darf ein Gerät im Netz den Prompter bedienen? */
   prompterBedienung: boolean
+  /** Liefert der Hauptrechner verschlüsselt aus? */
+  tls?: boolean
+  /**
+   * Der Name, für den sein Zertifikat gilt.
+   *
+   * Ohne ihn liefe die Begleitanwendung in dieselbe Warnung wie jedes
+   * Telefon: Ein Zertifikat gilt für einen Namen, nie für eine Adresse.
+   * Aufgelöst wird er nicht über das Namensystem, sondern über die Adresse,
+   * unter der der Hauptrechner geantwortet hat — er hat sich ja gerade eben
+   * gemeldet.
+   */
+  zertifikatsName?: string
 }
 
 /** Ein gefundener Hauptrechner samt der Adresse, unter der er antwortete. */
@@ -79,9 +92,24 @@ export type SaalRolle =
   | { art: 'ausgabe' }
   /** Wahlkabine: die digitale Stimmabgabe (ADR-0006). */
   | { art: 'wahlkabine' }
+  /**
+   * Wahlausschuss: Dieses Gerät hält den Schlüssel und unterschreibt.
+   *
+   * Es ist weder anzeigend noch bedienend im gewohnten Sinn — es arbeitet für
+   * sich. Eine Anmeldung braucht es nicht, wohl aber das Zugriffstoken: Hier
+   * hängt kein Ausweis als Nachweis dran, sondern ein eingerichtetes Gerät.
+   */
+  | { art: 'wahlausschuss' }
 
 /** Was sie sich merkt, damit sie es beim nächsten Start nicht wieder fragt. */
 export interface SaalEinstellung {
+  /**
+   * Die Adresse hinter dem Namen.
+   *
+   * Nur gesetzt, wenn `master` auf einen Namen lautet: Dann muss dieses Gerät
+   * wissen, wohin der zeigt — im Saalnetz löst ihn sonst niemand auf.
+   */
+  masterAdresse?: string
   /** Grundadresse des Hauptrechners, etwa `http://192.168.1.5:8477`. */
   master: string
   token: string
@@ -127,8 +155,17 @@ export function rollenAdresse(einstellung: SaalEinstellung): string {
       return `${basis}/operator${frage}#/akkreditierung`
     case 'ausgabe':
       return `${basis}/operator${frage}#/ausgabe`
+    /*
+     * Die Pfade kommen aus derselben Quelle, aus der sie auch ausgeliefert
+     * werden. Hier stand einmal `/wahl`, ausgeliefert wurde `/stimme` — das
+     * Fenster blieb schwarz, und zwar ohne Meldung: Ein 404 hat keine
+     * Oberfläche. Zwei Schreibweisen desselben Pfades an zwei Orten laufen
+     * früher oder später auseinander.
+     */
     case 'wahlkabine':
-      return `${basis}/wahl${frage}`
+      return `${basis}${WAHL_PFAD}${frage}`
+    case 'wahlausschuss':
+      return `${basis}${AUSSCHUSS_PFAD}${frage}`
     default:
       return `${basis}/?buehne=${einstellung.rolle.nummer}${token}`
   }
@@ -145,6 +182,8 @@ export function rollenName(rolle: SaalRolle, buehnen: { id: number; name: string
       return 'Ausgabe der Stimmzettel'
     case 'wahlkabine':
       return 'Wahlkabine'
+    case 'wahlausschuss':
+      return 'Wahlausschuss'
     default: {
       const treffer = buehnen.find((buehne) => buehne.id === rolle.nummer)
       return treffer ? treffer.name : `Bühne ${rolle.nummer}`

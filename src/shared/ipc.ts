@@ -4,7 +4,7 @@
  * Der Operator-Renderer erreicht das Main ausschließlich über diese Methoden.
  * Der Audience-Renderer bekommt eine eigene, rein lesende Brücke (§31).
  */
-import type { NetworkProjectionConfig, SystemSettings } from './config'
+import type { EigenesZertifikat, NetworkProjectionConfig, SaalnetzConfig, SystemSettings } from './config'
 import type {
   AudienceWindowState,
   Buehne,
@@ -266,14 +266,41 @@ export interface RoundDetail {
   accounting: BallotAccounting
   batches: PrintBatch[]
   versions: BallotVersionRecord[]
+  /** Das Ergebnis, wie es gilt: Papierauszählung **und** digitale Urne. */
   result?: ElectionResult
+  /**
+   * Nur der von Hand gezählte Anteil — das, was im Formular steht.
+   *
+   * Ohne diese Trennung bekäme die Maske die Summe vorgelegt und schriebe sie
+   * beim nächsten Speichern als Papierauszählung zurück; die digitalen
+   * Stimmen lägen danach doppelt im Ergebnis.
+   */
+  papierergebnis?: ElectionResult
   document: BallotDocument
+}
+
+/** Was die Oberfläche über die Netzdienste im Saal wissen muss. */
+export interface SaalnetzStatus extends SaalnetzConfig {
+  dnsLaeuft: boolean
+  dhcpLaeuft: boolean
+  /** Warum ein Dienst nicht läuft — im Klartext, nicht als Kode. */
+  fehler?: string
+  /** Vergebene Adressen, solange die Vergabe läuft. */
+  vergeben: { mac: string; adresse: string; bis: string }[]
 }
 
 export interface NetworkProjectionStatus extends NetworkProjectionConfig {
   running: boolean
   urls: string[]
   error?: string
+  /**
+   * Fingerabdruck des Zertifikats, wenn verschlüsselt ausgeliefert wird.
+   *
+   * Bei einem selbst ausgestellten Zertifikat ist sein Vergleich die einzige
+   * Prüfmöglichkeit, die ein Mensch hat — deshalb gehört er sichtbar in die
+   * Oberfläche und nicht in eine Protokolldatei.
+   */
+  fingerabdruck?: string
 }
 
 export interface SetupState {
@@ -305,6 +332,8 @@ export interface Api {
   'system.chooseDirectory': (title: string) => Promise<string | undefined>
   /** Bilddatei wählen und als eingebettete Data-URL zurückgeben (für das Beamer-Logo). */
   'system.chooseImage': (title: string) => Promise<string | undefined>
+  /** Eine Datei auswählen — für Zertifikat und Schlüssel. Zurück kommt der Pfad. */
+  'system.chooseFile': (input: { titel: string; endungen: string[] }) => Promise<string | undefined>
   /** Ordner oder Datei im Explorer anzeigen. */
   'system.revealPath': (path: string) => Promise<void>
   /** Eine Adresse im Standardbrowser öffnen – nur für die Veröffentlichungsseite. */
@@ -414,13 +443,29 @@ export interface Api {
     roundId: UUID
     geheimnis: Wahlgeheimnis
     geraete: Geraetewahl
+    /** Wer unterschreibt — dieser Rechner oder das Gerät des Wahlausschusses. */
+    signer?: 'hub' | 'committee'
   }) => Promise<WahlLage>
   'voting.open': (roundId: UUID) => Promise<WahlLage>
   'voting.close': (roundId: UUID) => Promise<WahlStand>
   'voting.lage': (roundId: UUID) => Promise<WahlLage | null>
   'voting.stand': (roundId: UUID) => Promise<WahlStand>
   /** Zählt aus und schreibt das Ergebnis in den Wahlgang. */
-  'voting.uebernehmen': (roundId: UUID) => Promise<void>
+  /**
+   * Eine ausgegebene digitale Stimmberechtigung entwerten.
+   *
+   * Für den Fall, den kein Verfahren verhindert: Jemand lädt am Gerät die
+   * Seite neu, bevor die Stimme abgeschickt ist. Danach — und nur danach —
+   * darf er einen Papierzettel bekommen.
+   */
+  'voting.entwerten': (input: { roundId: UUID; participantId: UUID; grund: string }) => Promise<void>
+  /**
+   * Die geschlossene Urne ins Ergebnis übernehmen.
+   *
+   * Die Antwort sagt, was geschehen ist — sonst sieht ein Klick, der nichts
+   * zu tun fand, genauso aus wie einer, der nicht funktioniert hat.
+   */
+  'voting.uebernehmen': (roundId: UUID) => Promise<{ digital: number; hatteErgebnis: boolean }>
   /** Die Urne als Liste — Grundlage des Ausdrucks und der Nachzählung. */
   'voting.urne': (roundId: UUID) => Promise<{ serial: string; text: string; weight: number }[]>
   'voting.drucken': (input: { roundId: UUID; printerId: string }) => Promise<void>
@@ -512,6 +557,8 @@ export interface Api {
 
   /* ----------------------------------------------------------------- Ergebnis */
   'result.get': (roundId: UUID) => Promise<ElectionResult | null>
+  /** Nur der von Hand gezählte Anteil — für das Formular, nicht für die Anzeige. */
+  'result.papier': (roundId: UUID) => Promise<ElectionResult | null>
   'result.save': (input: ResultInput) => Promise<ElectionResult>
   'result.confirm': (input: { roundId: UUID; pin?: string }) => Promise<ElectionResult>
   'result.reopen': (input: { roundId: UUID; reason: string }) => Promise<ElectionResult>
@@ -599,6 +646,35 @@ export interface Api {
   'projection.audienceState': (stage?: Buehnenwahl) => Promise<AudienceWindowState>
   'projection.openAudience': (displayId?: number, stage?: Buehnenwahl) => Promise<AudienceWindowState>
   'projection.closeAudience': (stage?: Buehnenwahl) => Promise<AudienceWindowState>
+  /* ------------------------------------------------- Saalnetz und Zertifikat */
+  /**
+   * Ein echtes Zertifikat beantragen — Schritt 1 von 2.
+   *
+   * Zurück kommt der Wert, der ins Domain-Namensystem gehört. Eintragen muss
+   * ihn ein Mensch; danach `cert.acmeAbschliessen`.
+   */
+  'cert.acmeBeginnen': (input: {
+    domain: string
+    email: string
+    uebung: boolean
+  }) => Promise<{ domain: string; eintrag: { name: string; wert: string }; faden: string }>
+  /** Schritt 2: prüfen lassen, Zertifikat holen und ablegen. */
+  'cert.acmeAbschliessen': (faden: string) => Promise<EigenesZertifikat>
+  /** Ein vorhandenes Zertifikat aus zwei Dateien übernehmen. */
+  'cert.ausDateien': (input: { certPfad: string; keyPfad: string }) => Promise<EigenesZertifikat>
+  /** Das eigene Zertifikat entfernen — zurück zum selbst ausgestellten. */
+  'cert.entfernen': () => Promise<void>
+  /** Namensdienst und Adressvergabe. */
+  /**
+   * Die Netzwerkkarten dieses Rechners.
+   *
+   * Für die Auswahl, welche davon das Saalnetz ist — bei Hyper-V, WSL oder
+   * VPN sind schnell vier im Rechner, und nur eine führt zu den Telefonen.
+   */
+  'system.netzwerkkarten': () => Promise<{ name: string; adresse: string; virtuell: boolean }[]>
+  'saalnetz.get': () => Promise<SaalnetzStatus>
+  'saalnetz.set': (config: SaalnetzConfig) => Promise<SaalnetzStatus>
+
   'projection.network': () => Promise<NetworkProjectionStatus>
   'projection.setNetwork': (config: NetworkProjectionConfig) => Promise<NetworkProjectionStatus>
   'projection.demo': (enabled: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>

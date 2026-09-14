@@ -13,6 +13,7 @@ import { db } from '../db'
 import { fromJson, optionalNumber, optionalString } from '../db/driver'
 import { appendAudit } from './audit'
 import { eligibleForRound } from './participants'
+import { mitUrneZusammengefuehrt } from './voting'
 import { requirePermission, requirePinIfConfigured, requireSession } from './auth'
 import { getRound } from './rounds'
 import { getConfig } from './settings'
@@ -70,9 +71,51 @@ function mapResult(row: ResultRow): ElectionResult {
   }
 }
 
-export function getResult(roundId: UUID): ElectionResult | null {
+/**
+ * Nur der von Hand gezählte Anteil — das, was tatsächlich in der Zeile steht.
+ *
+ * Das ist die Zahl, die zum **Bearbeiten** gehört: Wer eine Auszählung
+ * korrigiert, korrigiert Papier. Bekäme das Formular die Summe aus Papier und
+ * Urne vorgelegt und speicherte sie zurück, läge die digitale Abstimmung
+ * danach doppelt im Ergebnis.
+ */
+export function getPapierergebnis(roundId: UUID): ElectionResult | null {
   const row = db().prepare(`SELECT * FROM results WHERE round_id = ?`).get<ResultRow>(roundId)
   return row ? mapResult(row) : null
+}
+
+/**
+ * Das Ergebnis eines Wahlgangs — Papier **und** digitale Urne.
+ *
+ * ## Warum hier addiert wird und nicht beim Speichern
+ *
+ * Gespeichert wird immer nur, was **von Hand gezählt** wurde. Lief zum selben
+ * Wahlgang eine digitale Abstimmung, kommt deren geschlossene Urne beim Lesen
+ * hinzu. Das hat einen handfesten Grund: Beim Speichern addiert, würde ein
+ * zweites Speichern — eine Korrektur am Papierteil, ein versehentlicher
+ * zweiter Klick — die digitalen Stimmen ein weiteres Mal aufschlagen. So ist
+ * die Rechnung unabhängig davon, wie oft sie ausgeführt wird, und die beiden
+ * Teile bleiben getrennt nachvollziehbar.
+ *
+ * Läuft keine digitale Abstimmung — der Normalfall jeder bisherigen
+ * Versammlung —, ist das hier eine Abbildung der Zeile und sonst nichts.
+ */
+export function getResult(roundId: UUID): ElectionResult | null {
+  const papier = getPapierergebnis(roundId)
+  if (!papier) return null
+
+  const { ballotsCast, validBallots, ...daten } = mitUrneZusammengefuehrt(roundId, {
+    ...papier.resultData,
+    ballotsCast: papier.ballotsCast,
+    validBallots: papier.validBallots
+  })
+  return {
+    ...papier,
+    ballotsCast,
+    validBallots,
+    abstentions: daten.abstentions ?? papier.abstentions,
+    resultData: daten
+  }
 }
 
 export function saveResult(input: ResultInput): ElectionResult {

@@ -11,6 +11,9 @@ import type { IsoDateTime, UUID } from './types'
 /** Pfad der Wahlseite auf dem Projektionsserver. */
 export const WAHL_PFAD = '/stimme'
 
+/** Pfad der Seite des Wahlausschusses — sie hält den Schlüssel. */
+export const AUSSCHUSS_PFAD = '/ausschuss'
+
 /**
  * Wie geheim die Abstimmung ist.
  *
@@ -53,6 +56,16 @@ export interface WahlLage {
   roundId: UUID
   roundLabel: string
   titel: string
+  /**
+   * Wessen Versammlung das ist.
+   *
+   * Auf dem Telefon stand bisher „Stimmabgabe" und sonst nichts. Wer eine
+   * Adresse eintippt oder einen QR-Code scannt, hat aber keinen Anhaltspunkt,
+   * ob er beim richtigen Rechner gelandet ist — und in einem Haus mit zwei
+   * Sälen ist das keine ausgedachte Sorge.
+   */
+  organisation?: string
+  veranstaltung?: string
   geheimnis: Wahlgeheimnis
   geraete: Geraetewahl
   status: Wahlstatus
@@ -74,8 +87,22 @@ export interface WahlAuskunft {
   hindernis?: string
   /** Der Ausweis ist gültig und die Person darf abstimmen. */
   berechtigt: boolean
-  /** Für diesen Wahlgang wurde bereits eine Berechtigung ausgegeben. */
+  /**
+   * Für diesen Wahlgang wurde bereits eine Berechtigung ausgegeben.
+   *
+   * Das Gerät erfährt es **vorher**. Es erst beim Absenden zu sagen, hieße
+   * jemanden erst auswählen zu lassen und ihm dann das Papier wegzunehmen.
+   */
   bereitsAusgegeben: boolean
+  /**
+   * Welcher zweite Ausweis noch fehlt.
+   *
+   * Wer eine Stimmkarte hält **und** einen gedruckten Pass hat, braucht
+   * beide. Ein aufgedruckter Kartencode lässt sich fotografieren und nicht
+   * ändern; ein Pass lässt sich neu ausgeben und macht den alten damit
+   * ungültig. Erst zusammen sind sie etwas wert.
+   */
+  fehlenderFaktor?: 'karte' | 'pass'
   /** Name der Person — damit am Gerät niemand für einen anderen abstimmt. */
   name?: string
   /** Stimmgewicht, falls größer als eins. */
@@ -88,4 +115,12 @@ export interface WahlStand {
   abgegeben: number
   /** Summe der Stimmgewichte in der Urne. */
   gewicht: number
+  /**
+   * Ausgegebene Berechtigungen, die entwertet wurden.
+   *
+   * Sie erklären die Lücke zwischen ausgegeben und abgegeben. Ohne sie sähe
+   * die Bilanz nach verschwundenen Stimmen aus — und jede unerklärte Lücke
+   * ist bei einer Wahl ein Vorwurf, auch wenn sie harmlos ist.
+   */
+  entwertet: number
 }

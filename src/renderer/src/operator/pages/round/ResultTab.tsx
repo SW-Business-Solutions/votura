@@ -37,24 +37,39 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   const kind = resultInputKind(round)
   const profile = profileFor(round.procedure)
   const existing = detail.result
+  /*
+   * Die Maske bearbeitet den **Papieranteil**. Angezeigt wird weiter das
+   * Gesamtergebnis (`detail.result`) — wer eine Zahl ändert, ändert aber die
+   * Handauszählung, nie die Urne.
+   */
+  const papier = detail.papierergebnis ?? detail.result
+  /*
+   * Der digitale Anteil ist die Differenz zwischen beidem — er muss nicht
+   * eigens geholt werden. Steht er hier, weiß die Wahlleitung beim Eintragen,
+   * dass ihre Zahlen nicht alles sind.
+   */
+  const digitalerAnteil =
+    detail.papierergebnis && detail.result
+      ? detail.result.ballotsCast - detail.papierergebnis.ballotsCast
+      : 0
 
   const activeCandidates = detail.candidates.filter((candidate) => !candidate.withdrawn)
 
-  const [ballotsCast, setBallotsCast] = useState(existing?.ballotsCast ?? 0)
-  const [invalidBallots, setInvalidBallots] = useState(existing?.invalidBallots ?? 0)
-  const [rows, setRows] = useState<CandidateResult[]>(() => initialRows(existing, activeCandidates, kind))
-  const [globalYes, setGlobalYes] = useState(existing?.resultData.yes ?? 0)
-  const [globalNo, setGlobalNo] = useState(existing?.resultData.no ?? 0)
-  const [globalAbstentions, setGlobalAbstentions] = useState(existing?.resultData.abstentions ?? 0)
-  const [determination, setDetermination] = useState(existing?.determination ?? '')
-  const [decision, setDecision] = useState<FinalDecision | ''>(existing?.finalDecision ?? '')
-  const [elected, setElected] = useState<string[]>(existing?.electedCandidateIds ?? [])
-  const [lotDecision, setLotDecision] = useState(existing?.lotDecision ?? '')
+  const [ballotsCast, setBallotsCast] = useState(papier?.ballotsCast ?? 0)
+  const [invalidBallots, setInvalidBallots] = useState(papier?.invalidBallots ?? 0)
+  const [rows, setRows] = useState<CandidateResult[]>(() => initialRows(papier, activeCandidates, kind))
+  const [globalYes, setGlobalYes] = useState(papier?.resultData.yes ?? 0)
+  const [globalNo, setGlobalNo] = useState(papier?.resultData.no ?? 0)
+  const [globalAbstentions, setGlobalAbstentions] = useState(papier?.resultData.abstentions ?? 0)
+  const [determination, setDetermination] = useState(papier?.determination ?? '')
+  const [decision, setDecision] = useState<FinalDecision | ''>(papier?.finalDecision ?? '')
+  const [elected, setElected] = useState<string[]>(papier?.electedCandidateIds ?? [])
+  const [lotDecision, setLotDecision] = useState(papier?.lotDecision ?? '')
   /* Die von der Versammlung beschlossene Reihenfolge bei Gleichstand. */
-  const [rankOrder, setRankOrder] = useState<string[]>(existing?.rankOrder ?? [])
-  const [note, setNote] = useState(existing?.note ?? '')
-  const [countingMode, setCountingMode] = useState<CountingMode>(existing?.countingMode ?? 'counted')
-  const [declaration, setDeclaration] = useState(existing?.declaration ?? '')
+  const [rankOrder, setRankOrder] = useState<string[]>(papier?.rankOrder ?? [])
+  const [note, setNote] = useState(papier?.note ?? '')
+  const [countingMode, setCountingMode] = useState<CountingMode>(papier?.countingMode ?? 'counted')
+  const [declaration, setDeclaration] = useState(papier?.declaration ?? '')
   const [pin, setPin] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
   const [showReopen, setShowReopen] = useState(false)
@@ -63,20 +78,20 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   const [bonLaeuft, setBonLaeuft] = useState(false)
 
   useEffect(() => {
-    setRows(initialRows(detail.result, activeCandidates, kind))
-    setBallotsCast(detail.result?.ballotsCast ?? 0)
-    setInvalidBallots(detail.result?.invalidBallots ?? 0)
-    setGlobalYes(detail.result?.resultData.yes ?? 0)
-    setGlobalNo(detail.result?.resultData.no ?? 0)
-    setGlobalAbstentions(detail.result?.resultData.abstentions ?? 0)
-    setCountingMode(detail.result?.countingMode ?? 'counted')
-    setDeclaration(detail.result?.declaration ?? '')
-    setDetermination(detail.result?.determination ?? '')
-    setDecision(detail.result?.finalDecision ?? '')
-    setElected(detail.result?.electedCandidateIds ?? [])
-    setLotDecision(detail.result?.lotDecision ?? '')
-    setRankOrder(detail.result?.rankOrder ?? [])
-  }, [detail.result, detail.candidates, kind])
+    setRows(initialRows(detail.papierergebnis ?? detail.result, activeCandidates, kind))
+    setBallotsCast((detail.papierergebnis ?? detail.result)?.ballotsCast ?? 0)
+    setInvalidBallots((detail.papierergebnis ?? detail.result)?.invalidBallots ?? 0)
+    setGlobalYes((detail.papierergebnis ?? detail.result)?.resultData.yes ?? 0)
+    setGlobalNo((detail.papierergebnis ?? detail.result)?.resultData.no ?? 0)
+    setGlobalAbstentions((detail.papierergebnis ?? detail.result)?.resultData.abstentions ?? 0)
+    setCountingMode((detail.papierergebnis ?? detail.result)?.countingMode ?? 'counted')
+    setDeclaration((detail.papierergebnis ?? detail.result)?.declaration ?? '')
+    setDetermination((detail.papierergebnis ?? detail.result)?.determination ?? '')
+    setDecision((detail.papierergebnis ?? detail.result)?.finalDecision ?? '')
+    setElected((detail.papierergebnis ?? detail.result)?.electedCandidateIds ?? [])
+    setLotDecision((detail.papierergebnis ?? detail.result)?.lotDecision ?? '')
+    setRankOrder((detail.papierergebnis ?? detail.result)?.rankOrder ?? [])
+  }, [detail.result, detail.papierergebnis, detail.candidates, kind])
 
   /**
    * Ergebnisbeleg auf dem Bondrucker. Gedruckt wird der gespeicherte Stand —
@@ -285,6 +300,15 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     <div className="grid cols-2">
       <div>
         <Card title="Auszählung erfassen">
+          {digitalerAnteil > 0 && (
+            <div className="notice">
+              Zu diesem Wahlgang liegt eine <strong>geschlossene digitale Urne</strong> mit{' '}
+              <strong>{digitalerAnteil}</strong>{' '}
+              {digitalerAnteil === 1 ? 'Stimme' : 'Stimmen'} vor. Tragen Sie hier nur ein, was{' '}
+              <strong>von Hand ausgezählt</strong> wurde — die digitalen Stimmen kommen hinzu. Im Ergebnis,
+              auf dem Beleg und im Protokoll steht die Summe.
+            </div>
+          )}
           {confirmed && (
             <div className="notice ok">
               Das Ergebnis ist bestätigt und wird auf dem Beamer angezeigt. Eine Korrektur ist nur über{' '}

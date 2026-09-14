@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { AUSSCHUSS_PFAD, WAHL_PFAD } from '../src/shared/wahl'
 import {
   istSaalAntwort,
   rolleBrauchtAnmeldung,
@@ -115,9 +116,10 @@ describe('Was die Begleitanwendung darf — und was nicht', () => {
   })
 
   it('gibt das Mikrofon nur dem Prompter und nur dem eigenen Hauptrechner', () => {
-    expect(anwendung).toContain("rolle.art === 'prompter'")
+    expect(anwendung).toContain("darfMikrofon = rolle === 'prompter'")
     expect(anwendung).toContain('setPermissionRequestHandler')
-    expect(anwendung).toContain('vomMaster && darfMikrofon')
+    /* Von einer fremden Herkunft kommt nichts durch — gleich welche Rolle. */
+    expect(anwendung).toContain('!vomMaster')
   })
 
   it('lässt sich nicht anderswohin navigieren', () => {
@@ -174,6 +176,23 @@ describe('Die bedienenden Rollen', () => {
     expect(adresse.indexOf('t=geheim')).toBeLessThan(adresse.indexOf('#'))
   })
 
+  it('zeigen auf die Pfade, die der Hauptrechner wirklich ausliefert', () => {
+    /*
+     * **Der Fehler, der hier gefangen wird.** Die Kabine zeigte auf `/wahl`,
+     * ausgeliefert wurde `/stimme`. Das Fenster blieb schwarz — ein 404 hat
+     * keine Oberfläche, und im Saal sieht niemand, woran es liegt.
+     *
+     * Verglichen wird deshalb gegen dieselben Begriffe, die der
+     * Projektionsserver benutzt, nicht gegen abgeschriebene Zeichenketten.
+     */
+    expect(rollenAdresse(einstellung({ art: 'wahlkabine' }))).toBe(
+      `http://192.168.1.5:8477${WAHL_PFAD}`
+    )
+    expect(rollenAdresse(einstellung({ art: 'wahlausschuss' }))).toBe(
+      `http://192.168.1.5:8477${AUSSCHUSS_PFAD}`
+    )
+  })
+
   it('verlangen eine Anmeldung, die anzeigenden nicht', () => {
     expect(rolleBrauchtAnmeldung({ art: 'akkreditierung' })).toBe(true)
     expect(rolleBrauchtAnmeldung({ art: 'ausgabe' })).toBe(true)
@@ -188,5 +207,68 @@ describe('Die bedienenden Rollen', () => {
     expect(rollenName({ art: 'akkreditierung' })).toBe('Akkreditierung am Einlass')
     expect(rollenName({ art: 'ausgabe' })).toBe('Ausgabe der Stimmzettel')
     expect(rollenName({ art: 'wahlkabine' })).toBe('Wahlkabine')
+  })
+})
+
+/**
+ * Was die Begleitanwendung ihrer Seite erlaubt.
+ *
+ * **Kamera und Mikrofon sind zweierlei**, und in einer Wahlkabine ist der
+ * Unterschied nicht akademisch: Eine Kamera scannt dort den Ausweis, ein
+ * Mikrofon hätte dort nichts verloren. Chromium fasst beides unter „media"
+ * zusammen — die Unterscheidung muss die Anwendung selbst treffen.
+ */
+describe('Kamera und Mikrofon je Rolle', () => {
+  const quelle = readFileSync(join(__dirname, '..', 'src/saal/index.ts'), 'utf8')
+
+  it('trennt beide Arten, statt sie gemeinsam zu entscheiden', () => {
+    /*
+     * Vorher hing beides an der Prompterrolle. Die Wahlkabine bekam die
+     * Kamera deshalb nie, und der Browser meldete das als verweigerte
+     * Erlaubnis — gesucht wurde der Fehler dann im Gerät.
+     */
+    expect(quelle).toContain('darfKamera')
+    expect(quelle).toContain('darfMikrofon')
+    expect(quelle).toContain('mediaTypes')
+  })
+
+  it('gibt das Mikrofon nur dem Prompter', () => {
+    expect(quelle).toMatch(/darfMikrofon = rolle === 'prompter'/)
+  })
+
+  it('gibt die Kamera den scannenden Rollen', () => {
+    for (const rolle of ['wahlkabine', 'akkreditierung', 'ausgabe']) {
+      expect(quelle).toContain(`rolle === '${rolle}'`)
+    }
+  })
+
+  it('bleibt bei einer fremden Herkunft verschlossen', () => {
+    expect(quelle).toContain('herkunft !== erlaubteHerkunft')
+  })
+})
+
+describe('Mit echtem Zertifikat', () => {
+  const einrichtung = readFileSync(join(__dirname, '..', 'src/renderer/src/einrichtung-main.tsx'), 'utf8')
+  const saalApp = readFileSync(join(__dirname, '..', 'src/saal/index.ts'), 'utf8')
+
+  it('baut die Adresse auf den Namen, nicht auf die Zahl', () => {
+    /*
+     * **Der Fehler, den das verhindert.** Ein Zertifikat gilt für einen
+     * Namen, nie für eine Adresse. `https://192.168.2.174:8477` ergibt auch
+     * mit tadellosem Zertifikat eine Warnung — in einer Anwendung ohne
+     * Adresszeile nicht einmal eine wegklickbare.
+     */
+    expect(einrichtung).toContain('zertifikatsName ?? gewaehlt.adresse')
+    expect(einrichtung).toContain("gewaehlt.tls ? 'https' : 'http'")
+  })
+
+  it('löst den Namen über die Adresse auf, unter der geantwortet wurde', () => {
+    /*
+     * Im Saalnetz löst den Namen sonst niemand auf — außer Votura selbst, und
+     * das setzte voraus, dass dieses Gerät es schon als Namensserver kennt.
+     * Ein Henne-Ei-Problem, das hier entfällt.
+     */
+    expect(saalApp).toContain('host-resolver-rules')
+    expect(saalApp).toContain('masterAdresse')
   })
 })

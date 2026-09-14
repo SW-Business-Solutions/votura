@@ -1,6 +1,7 @@
 /** Kleine, wiederverwendete Bausteine der Operator-Oberfläche. */
 import { useEffect, useState, type ReactNode } from 'react'
 import { ROUND_STATUS_LABELS, type RoundStatus } from '@shared/types'
+import { istAdresse } from '@shared/netz'
 
 export function Tabs<T extends string>({
   eintraege,
@@ -221,6 +222,67 @@ export function Kpi({
 }
 
 /** Zahlenfeld, das leere Eingaben zulaesst, ohne den Wert zu verfaelschen. */
+/**
+ * Ein Zahlenfeld, das keine unmöglichen Zahlen durchlässt.
+ *
+ * **Was vorher schieflief.** `min` und `max` standen nur als Attribute da —
+ * das hält kein Browser bei getippten Eingaben durch. Eine Stückzahl von −5,
+ * ein Port 70000 oder eine Sitzungsdauer von 0 Minuten wurden anstandslos
+ * angenommen und erst vom Dienst abgewiesen, wenn überhaupt.
+ *
+ * **Warum nicht beim Tippen begrenzt wird.** Wer bei einem Port mit
+ * Mindestwert 1024 die erste Ziffer tippt, hätte sonst sofort 1024 im Feld
+ * stehen und käme nie zu 8477. Begrenzt wird deshalb beim Verlassen des
+ * Feldes; bis dahin steht da, was getippt wurde, sichtbar als unzulässig.
+ *
+ * **Und ein leeres Feld bleibt leer.** Vorher sprang es auf 0, sobald man den
+ * Inhalt löschte, um eine andere Zahl zu tippen — man musste die 0 erst
+ * wieder wegräumen.
+ */
+/**
+ * Ein Feld für eine Netzwerkadresse.
+ *
+ * **Warum es das braucht.** Diese Felder gingen bisher als freier Text
+ * durch — ein Tippfehler wie `192.168.50.` oder `192.168.500.1` wurde
+ * gespeichert und fiel erst im Saal auf, wenn ein Dienst nicht startet oder
+ * ein Gerät keine Adresse bekommt. Das ist die Sorte Fehler, die man um 19 Uhr
+ * nicht sucht.
+ *
+ * Getippt wird frei — sonst käme man nie über die erste Ziffer hinaus —, aber
+ * eine unfertige oder unmögliche Adresse ist sofort als solche zu sehen.
+ */
+export function AdressFeld({
+  value,
+  onChange,
+  placeholder,
+  optional
+}: {
+  value: string
+  onChange: (wert: string) => void
+  placeholder?: string
+  optional?: boolean
+}): React.JSX.Element {
+  const leer = value.trim() === ''
+  const unzulaessig = leer ? !optional : !istAdresse(value)
+  return (
+    <input
+      value={value}
+      placeholder={placeholder}
+      inputMode="decimal"
+      spellCheck={false}
+      aria-invalid={unzulaessig || undefined}
+      title={
+        unzulaessig
+          ? leer
+            ? 'Hier fehlt eine Adresse.'
+            : 'Das ist keine gültige Adresse — erwartet werden vier Zahlen von 0 bis 255, etwa 192.168.50.1.'
+          : undefined
+      }
+      onChange={(ereignis) => onChange(ereignis.target.value.trim())}
+    />
+  )
+}
+
 export function NumberInput({
   value,
   onChange,
@@ -234,17 +296,45 @@ export function NumberInput({
   max?: number
   disabled?: boolean
 }): React.JSX.Element {
+  const [text, setText] = useState(String(value))
+  const [tippt, setTippt] = useState(false)
+
+  /* Solange niemand tippt, zeigt das Feld, was von außen kommt. */
+  useEffect(() => {
+    if (!tippt) setText(String(value))
+  }, [value, tippt])
+
+  const zahl = Number.parseInt(text, 10)
+  const unzulaessig = text.trim() !== '' && (!Number.isFinite(zahl) || zahl < min || (max !== undefined && zahl > max))
+
   return (
     <input
       type="number"
       inputMode="numeric"
-      value={Number.isFinite(value) ? value : 0}
+      value={text}
       min={min}
       max={max}
       disabled={disabled}
-      onChange={(inputEvent) => {
-        const parsed = Number.parseInt(inputEvent.target.value, 10)
-        onChange(Number.isNaN(parsed) ? 0 : parsed)
+      aria-invalid={unzulaessig || undefined}
+      title={unzulaessig ? `Zulässig ist ${min}${max !== undefined ? ` bis ${max}` : ' oder mehr'}.` : undefined}
+      onFocus={() => setTippt(true)}
+      onChange={(ereignis) => {
+        setText(ereignis.target.value)
+        const getippt = Number.parseInt(ereignis.target.value, 10)
+        /* Zwischenstände werden weitergereicht, solange sie zulässig sind —
+           sonst stünde die Vorschau daneben still. */
+        if (Number.isFinite(getippt) && getippt >= min && (max === undefined || getippt <= max)) {
+          onChange(getippt)
+        }
+      }}
+      onBlur={() => {
+        setTippt(false)
+        const getippt = Number.parseInt(text, 10)
+        const gueltig = Number.isFinite(getippt)
+          ? Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, getippt))
+          : value
+        setText(String(gueltig))
+        if (gueltig !== value) onChange(gueltig)
       }}
     />
   )

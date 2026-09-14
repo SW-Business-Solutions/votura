@@ -165,9 +165,60 @@ describe('Netzwerkansicht', () => {
   })
 
   it('bleibt rein lesend (§51)', () => {
-    /* Der Abschnitt für die Präsentation darf keinen schreibenden Pfad
-       einführen — die gesamte Netzwerkansicht kennt keinen. */
-    const abschnitt = server.slice(server.indexOf("=== '/presentation.html'") - 400)
+    /*
+     * Der Abschnitt für die Präsentation darf keinen schreibenden Pfad
+     * einführen.
+     *
+     * Die Prüfung schnitt zuerst bis zum Dateiende und erwischte damit jeden
+     * später ergänzten Endpunkt — auch die eigens geprüften der digitalen
+     * Stimmabgabe. Sie ist jetzt auf ihren Abschnitt begrenzt; wofür sie
+     * eigentlich stand, hält die Prüfung darunter fest.
+     */
+    const anfang = server.indexOf("=== '/presentation.html'") - 400
+    const abschnitt = server.slice(anfang, anfang + 2000)
     expect(abschnitt).not.toMatch(/method\s*===\s*'POST'/)
+  })
+
+  it('kennt genau diese Schnittstellen', () => {
+    /*
+     * Der eigentliche Wächter: Jeder Pfad dieses Servers steht hier
+     * namentlich, und die schreibenden sind als solche gekennzeichnet. Wer
+     * einen ergänzt, muss ihn hier eintragen — und dabei begründen, warum er
+     * dort hingehört.
+     *
+     * Vorher stand an dieser Stelle eine Prüfung, die vom Präsentations-
+     * abschnitt bis zum Dateiende schnitt. Sie schlug bei jedem später
+     * ergänzten Endpunkt an, ohne etwas über ihn zu sagen — und wäre
+     * irgendwann weggeklickt worden.
+     */
+    const bekannt = [
+      /* lesend */
+      '/api/projection/state',
+      '/api/projection/stream',
+      '/api/prompter/state',
+      '/api/prompter/stream',
+      /* schreibend: Manuskript am Pult bewegen, freischaltbar, kein Wahldatum (§51) */
+      '/api/prompter/control',
+      /* schreibend: Bedienung aus der Ferne, mit Anmeldung und Rechteprüfung (ADR-0005) */
+      '/api/remote/',
+      /* schreibend: die Stimmabgabe, ohne Anmeldung — der Ausweis ist der Nachweis,
+         und bei geheimer Wahl darf der Rechner gar nicht wissen, wer gerade
+         abstimmt (ADR-0006) */
+      '/api/stimme/',
+      '/api/stimme/lage',
+      '/api/stimme/berechtigung',
+      '/api/stimme/abgeben',
+      '/api/stimme/warten',
+      /* schreibend: der Wahlausschuss, mit Zugriffstoken — hier hängt kein
+         Ausweis dran, sondern ein Gerät, das den Schlüssel hält */
+      '/api/ausschuss/'
+    ]
+    const gefunden = server
+      .split('url.pathname')
+      .slice(1)
+      .map((teil) => /^(?:\.startsWith\(|\s*===\s*)'([^']+)'/.exec(teil)?.[1])
+      .filter((pfad): pfad is string => Boolean(pfad?.startsWith('/api/')))
+
+    expect([...new Set(gefunden)].filter((pfad) => !bekannt.includes(pfad))).toEqual([])
   })
 })

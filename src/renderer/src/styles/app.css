@@ -163,7 +163,7 @@ p {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 11px 12px;
+  padding: 8px 12px;
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
@@ -238,6 +238,20 @@ p {
   height: 8px;
   border-radius: 50%;
   background: var(--accent);
+  flex: none;
+}
+
+/*
+ * **Nichts in der Leiste wird zusammengedrückt.**
+ *
+ * Sie ist eine Spalte aus Flex-Elementen, und die schrumpfen, sobald der
+ * Inhalt höher wird als der Bildschirm — seit die Navigation
+ * Zwischenüberschriften hat, passierte das schon bei wenigen Wahlgängen. Die
+ * Einträge wurden flach und die Beschriftungen unleserlich, statt dass die
+ * Leiste scrollt. Sie tut es ohnehin (`overflow-y: auto`) — es musste ihr nur
+ * erlaubt werden.
+ */
+.sidebar > * {
   flex: none;
 }
 
@@ -443,10 +457,26 @@ textarea {
   align-items: center;
   gap: 8px;
 }
-.field-inline input[type='checkbox'] {
+/*
+ * Ankreuzfelder und Auswahlknöpfe nehmen sich aus der Regel für Eingabefelder
+ * heraus.
+ *
+ * Die gilt weiter oben für `input` insgesamt und gibt jedem Feld volle Breite
+ * und Innenabstand — für ein Textfeld richtig, für ein rundes Knöpfchen
+ * verheerend: Es zog die ganze Zeile auf, und die Beschriftung daneben wurde
+ * in eine handtuchschmale Spalte gequetscht, in der jedes Wort umbrach.
+ *
+ * Die Ausnahme steht deshalb nicht bei `.field-inline`, sondern hier: Sie
+ * gilt, wo immer jemand ein solches Feld setzt.
+ */
+input[type='checkbox'],
+input[type='radio'] {
   width: 18px;
   height: 18px;
   flex: none;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--primary);
 }
 .field-inline label {
   margin: 0;
@@ -524,6 +554,31 @@ tr.muted td {
   margin-bottom: 12px;
   font-size: 14px;
   white-space: pre-wrap;
+}
+/*
+ * Meldungen tragen ein Kreuz — außer denen in Karten, die zum Text gehören
+ * und keinen Knopf haben. Deshalb hängt die Aufteilung am Kreuz selbst und
+ * nicht an der Meldung.
+ */
+.notice:has(.notice-zu) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notice-zu {
+  flex: none;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 18px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.notice-zu:hover {
+  opacity: 1;
 }
 .notice.warn {
   border-color: var(--warn);
@@ -1200,4 +1255,89 @@ tr.aktionen.active > td {
   margin-bottom: var(--abstand-1);
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------- QR-Scanner */
+
+/*
+ * Das Kamerabild bleibt bewusst klein: Es ist ein Sucher, keine Vorführung.
+ * Wer scannt, hält den Ausweis hinein und schaut auf das Feld darunter.
+ */
+.qr-scanner {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+.qr-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.qr-bild {
+  width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius);
+  background: #000;
+  object-fit: cover;
+}
+
+/*
+ * Zwischenüberschriften in der Navigation.
+ *
+ * Elf Einträge in einer Reihe sind eine Liste; in Gruppen sind sie ein
+ * Ablauf. Die Überschrift soll dabei ordnen und nicht mitspielen — deshalb
+ * klein, gedämpft und nicht anklickbar.
+ */
+.nav-gruppe-block {
+  display: grid;
+  gap: 2px;
+}
+.nav-gruppe {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 12px 0 2px;
+  padding: 2px 10px;
+  border: none;
+  background: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+.nav-gruppe:hover {
+  color: var(--text);
+}
+.nav-gruppe-block:first-child .nav-gruppe {
+  margin-top: 2px;
+}
+/* Der Pfeil dreht sich, statt zu springen — er zeigt, was geschieht. */
+.nav-pfeil {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 13px;
+  line-height: 1;
+}
+.nav-pfeil.offen {
+  transform: rotate(90deg);
+}
+
+/*
+ * Eine unzulässige Eingabe sieht man, bevor jemand auf „Speichern" drückt.
+ *
+ * Vorher nahm das Feld sie stumm an, und die Absage kam später vom Dienst —
+ * oder gar nicht.
+ */
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-input));
 }

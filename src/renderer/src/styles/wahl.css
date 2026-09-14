@@ -136,3 +136,46 @@
     --leise: #57636d;
   }
 }
+
+/* ------------------------------------------------------------- QR-Scanner */
+
+/*
+ * Auf dem Telefon darf das Bild groß sein — dort ist es der ganze Vorgang,
+ * und wer in einer Schlange steht, will nicht zielen müssen.
+ */
+.qr-scanner {
+  margin: 16px 0;
+}
+.qr-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.qr-bild {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 12px;
+  background: #000;
+  object-fit: cover;
+}
+
+/*
+ * Der Kopf über allem: wessen Versammlung das ist.
+ *
+ * Zurückhaltend gehalten — er soll erkennen lassen, wo man ist, und nicht mit
+ * dem Stimmzettel um Aufmerksamkeit ringen.
+ */
+.wahl-kopf {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--rahmen);
+  font-size: 15px;
+}
+.wahl-kopf strong {
+  font-weight: 600;
+}

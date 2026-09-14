@@ -1,6 +1,6 @@
 # ADR-0006: Digitale Stimmabgabe neben der Papierwahl
 
-- **Status:** angenommen und umgesetzt (M0–M2)
+- **Status:** angenommen und umgesetzt (M0–M3)
 - **Datum:** 2026-09-14, Umsetzung nachgetragen am 2026-09-14
 
 ## Kontext
@@ -130,6 +130,79 @@ Der Preis: Eine einzelne Person kann nicht überprüfen, dass ihre Stimme in der
 zusammen können überprüfen, dass die Liste zum Ergebnis passt und nicht mehr Stimmen enthält als
 Berechtigungen ausgegeben wurden.
 
+### Zum Abstimmen gehören zwei Ausweise
+
+Eine Stimmkarte ist wiederverwendbar — das ist ihr Zweck und zugleich ihre Schwäche. Ihr Code steht
+aufgedruckt darauf, lässt sich über die Schulter fotografieren und **nicht ändern**. Wer ihn hat,
+könnte am eigenen Telefon die Stimme dessen abgeben, dem die Karte gerade gehört; und wenn dieselbe
+Karte am Abend an jemand anderen ausgegeben wird, dessen Stimme gleich mit.
+
+Der **gedruckte Voting Pass** hat diese Schwäche nicht: Er gehört einer Person, und ein neuer macht
+den alten im selben Augenblick ungültig — `issuePass` überschreibt den Hash, es gibt je Person nur
+einen. Wer seinen Pass verliert oder ihn fotografiert weiß, bekommt einen neuen und hält der andere
+Altpapier in der Hand.
+
+Deshalb gilt: **Wer eine Karte hält und einen Pass hat, muss beide vorzeigen.** Die Reihenfolge ist
+gleich; das Gerät sagt, welcher noch fehlt. Ein Foto von einem der beiden nützt nichts.
+
+Verlangt wird dabei nur, was **ausgegeben wurde**, nicht was denkbar wäre: Eine Versammlung ohne
+Karten arbeitet unverändert weiter, eine ohne Pässe ebenso. Sonst hätte diese Regel jede bestehende
+Einrichtung stillgelegt.
+
+**Am Ausgabetisch bleibt es bei einem Ausweis.** Dort steht ein Mensch, der die Person vor sich hat;
+der zweite Faktor ersetzt keine Anwesenheit, sondern das fehlende Gegenüber am eigenen Telefon.
+
+### Ein abgerissenes Netz darf keine Stimme kosten
+
+Ein Saal-WLAN mit mehreren hundert Geräten verliert Verbindungen — das ist der Normalfall, nicht die
+Ausnahme. Die gefährliche Sekunde liegt zwischen „die Urne hat angenommen" und „das Gerät hat die
+Antwort": Der Wähler sieht einen Fehler, obwohl seine Stimme liegt.
+
+Drei Dinge greifen ineinander:
+
+1. **Das Gerät hält seine Berechtigung fest.** Ein neuer Anlauf holt keine zweite — die gibt es je
+   Wahlgang nicht, und der Versuch endete sonst in „bereits ausgegeben", mit einer verbrauchten
+   Berechtigung und ohne Gewissheit.
+2. **Dieselbe Stimme wird wiedererkannt.** Gleiche Seriennummer und gleiche Auswahl heißt: schon da.
+   Gezählt wird sie einmal, gemeldet wird Erfolg. Gleiche Seriennummer, **andere** Auswahl wird
+   abgewiesen — das ist kein Wiederholungsversuch mehr.
+3. **Die Berechtigung wird verbraucht** (`voting_rights.used_at`). Damit ist zugleich eine Lücke
+   geschlossen: Bei offener und namentlicher Abstimmung stand die Seriennummer nirgends, und wer
+   eine zweite erfand, kam durch.
+
+Das Gerät wiederholt bei einem Netzfehler von sich aus, und die Oberfläche sagt beim Scheitern das
+Entscheidende: **nicht neu laden**, sondern noch einmal tippen.
+
+Wer trotzdem neu lädt, bekommt bei offener und namentlicher Abstimmung eine neue Seriennummer — das
+ist gefahrlos, weil die Berechtigung zählt und nicht die Nummer. Bei geheimer Wahl wäre es eine
+zweite Unterschrift und damit eine zweite Stimme; dort bleibt nur der Weg über den Ausgabetisch:
+Die Wahlleitung **entwertet die Berechtigung mit Begründung** und gibt einen Papierzettel aus.
+
+Dass sie dabei nicht prüfen kann, ob wirklich nichts in der Urne liegt, ist keine Lücke der
+Umsetzung, sondern das Wahlgeheimnis selbst. Die Entscheidung gehört deshalb dorthin, wo sie
+hingehört — zu einem Menschen, mit Begründung, im Protokoll —, und die Bilanz weist entwertete
+Berechtigungen eigens aus, damit die Lücke zwischen ausgegeben und abgegeben erklärt ist.
+
+### Papier und Urne ergeben zusammen das Ergebnis
+
+Ein Wahlgang kann **beides** sein: Wer ein Gerät hat, stimmt digital ab, wer keines will, bekommt
+einen Zettel. Die Doppelausgabe ist ausgeschlossen — wer eine digitale Berechtigung hat, bekommt
+keinen Zettel, und umgekehrt (`handout.ts`, `voting.ts`). Damit sind es zwei getrennte Stapel, die
+am Ende addiert werden müssen.
+
+**Gespeichert wird nur die Handauszählung; die geschlossene Urne kommt beim Lesen hinzu**
+(`getResult` in `src/main/services/results.ts`). Das ist bewusst die Leseseite und nicht die
+Schreibseite: Beim Speichern addiert, würde die Urne bei jeder Korrektur des Papieranteils erneut
+aufschlagen — ein zweiter Klick auf „Speichern" hätte das Ergebnis verfälscht. So ist die Rechnung
+unabhängig davon, wie oft sie ausgeführt wird, und beide Teile bleiben getrennt nachvollziehbar:
+`getPapierergebnis` liefert die Zettel, `getResult` die Summe.
+
+Die Erfassungsmaske zeigt an, dass eine geschlossene Urne vorliegt und mit wie vielen Stimmen. Was
+dort eingetragen wird, ist immer der von Hand gezählte Anteil.
+
+Eine **laufende** Abstimmung wird nicht mitgezählt. Eine Zwischensumme ist kein Ergebnis, und sie
+gehört nicht in eine Feststellung.
+
 ### Je Wahlgang entscheidet die Wahlleitung
 
 ```
@@ -161,10 +234,13 @@ Stimmabgabe, ohne für 500 Teilnehmer Geräte zu beschaffen.
 
 ## Bewusste Grenzen
 
-- **Der Hauptrechner hält den privaten Schlüssel.** Wer ihn vollständig kontrolliert, kann
-  zusätzliche Unterschriften erzeugen. Die Bilanz macht das sichtbar, verhindert es aber nicht.
-  Wirklich ausgeschlossen wird es erst, wenn die Berechtigungsseite auf einem Gerät des
-  Wahlausschusses läuft — dafür ist die Schnittstelle vorbereitet, mehr nicht.
+- **Der Hauptrechner hält den privaten Schlüssel — sofern man ihn lässt.** In der einfachen
+  Betriebsart entsteht er dort; wer den Rechner vollständig kontrolliert, kann dann zusätzliche
+  Unterschriften erzeugen, und die Bilanz macht das sichtbar, ohne es zu verhindern. Mit
+  `signer: 'committee'` entsteht er stattdessen auf dem Gerät des Wahlausschusses und verlässt es
+  nie (M3). Die einfache Betriebsart bleibt die Voreinstellung: Sie braucht ein Gerät weniger, und
+  wer sie wählt, soll wissen, worauf er verzichtet — die Oberfläche sagt es an der Stelle, an der
+  entschieden wird.
 - **Netzkennungen bleiben ein Rest.** Die Blindsignatur trennt Pass und Stimme; die IP-Adresse des
   absendenden Geräts trennt sie nicht. Die Urne speichert keine Herkunft, aber wer den
   WLAN-Controller betreibt, sieht Zeitpunkte. Für geheime Wahlen ist das der Grund, die Kabine zu
@@ -187,6 +263,7 @@ Stimmabgabe, ohne für 500 Teilnehmer Geräte zu beschaffen.
 | Ausgabe der Stimmzettel            | `src/main/services/handout.ts`                                                                            |
 | Seite auf dem Teilnehmergerät      | `src/renderer/src/wahl-main.tsx`                                                                          |
 | Brücke ohne Anmeldung              | `src/main/wahl-bruecke.ts` — drei Funktionen, mehr ist von außen nicht erreichbar                         |
+| Papier und Urne zusammenrechnen    | `mitUrneZusammengefuehrt` in `voting.ts`, angewendet von `getResult` in `results.ts`                      |
 
 **Die Prüfsumme kommt von außen herein.** Das Rechenwerk hasht nicht selbst; im Hauptprozess liefert
 `node:crypto` sie, im Browser `crypto.subtle`. Eine eigene SHA-256-Implementierung wäre die Art Rad,
@@ -203,7 +280,7 @@ bleibt in der Urne leer — außer bei einer namentlichen Abstimmung, wo die Zuo
 | **M0** ✓ | Akkreditierung: Mitglieder, Anwesenheit, Kommen und Gehen, Beschlussfähigkeit, Voting Pass als gedruckter QR-Code, Karten und Bändchen, Ausgabe der Stimmzettel | Fundament. `eligible_voters` ist heute **eine getippte Zahl am Ereignis** — beim vierten Wahlgang sind andere Leute im Saal als beim ersten. Verbessert sofort die Papierwahl, ganz ohne digitale Stimme. |
 | **M1** ✓ | Offene und namentliche Abstimmungen digital                                                                                                                     | Kein Wahlgeheimnis, also ohne Blindsignaturen. Erprobt Netz, Pass, Oberfläche und Bilanz unter echten Bedingungen — 500 Geräte im WLAN sind ein Problem für sich.                                         |
 | **M2** ✓ | Geheime Wahl: Blindsignaturen, Kabinenrolle in Votura Saal, gedrucktes Urnenverzeichnis                                                                         | Erst jetzt, mit erprobter Infrastruktur, der Teil mit der höchsten Fallhöhe.                                                                                                                              |
-| **M3**   | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                                                                    | Setzt M2 voraus — **offen**.                                                                                                                                                                              |
+| **M3** ✓ | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                                                                    | Setzt M2 voraus.                                                                                                                                                                                          |
 
 ## Verworfene Alternativen
 
