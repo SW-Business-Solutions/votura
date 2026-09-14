@@ -106,18 +106,16 @@ function ZertifikatKarte(): React.JSX.Element {
     }
   }
 
-  const restTage = eigenes
-    ? Math.floor((new Date(eigenes.laeuftAbAm).getTime() - Date.now()) / 86400000)
-    : 0
+  const restTage = eigenes ? Math.floor((new Date(eigenes.laeuftAbAm).getTime() - Date.now()) / 86400000) : 0
 
   return (
     <Card title="Echtes Zertifikat">
       <p className="hint">
         Ein Zertifikat gilt, weil eine öffentliche Stelle für einen <strong>Namen</strong> bürgt. Für eine
-        Adresse wie <span className="mono">192.168.1.5</span> bürgt niemand — deshalb warnt jedes
-        mitgebrachte Telefon beim selbst ausgestellten Zertifikat. Wer eine eigene Domain besitzt, kommt da
-        heraus: <span className="mono">saal.mein-verband.de</span> zeigt auf diesen Rechner, und für diesen
-        Namen stellt Let&apos;s Encrypt aus.
+        Adresse wie <span className="mono">192.168.1.5</span> bürgt niemand — deshalb warnt jedes mitgebrachte
+        Telefon beim selbst ausgestellten Zertifikat. Wer eine eigene Domain besitzt, kommt da heraus:{' '}
+        <span className="mono">saal.mein-verband.de</span> zeigt auf diesen Rechner, und für diesen Namen
+        stellt Let&apos;s Encrypt aus.
       </p>
 
       {eigenes ? (
@@ -163,7 +161,10 @@ function ZertifikatKarte(): React.JSX.Element {
         <>
           <div className="row mt-2">
             <div className="col">
-              <Field label="Name" hint="Der A-Eintrag dieses Namens muss auf die Adresse dieses Rechners zeigen.">
+              <Field
+                label="Name"
+                hint="Der A-Eintrag dieses Namens muss auf die Adresse dieses Rechners zeigen."
+              >
                 <input
                   value={domain}
                   placeholder="saal.mein-verband.de"
@@ -173,7 +174,11 @@ function ZertifikatKarte(): React.JSX.Element {
             </div>
             <div className="col">
               <Field label="E-Mail" hint="Die Prüfstelle warnt darüber vor dem Ablauf.">
-                <input value={email} placeholder="vorstand@mein-verband.de" onChange={(e) => setEmail(e.target.value)} />
+                <input
+                  value={email}
+                  placeholder="vorstand@mein-verband.de"
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </Field>
             </div>
           </div>
@@ -187,7 +192,11 @@ function ZertifikatKarte(): React.JSX.Element {
             geht, probt ihn hier — sonst steht er womöglich am Versammlungstag vor einer Sperre.
           </p>
           <div className="row mt-2">
-            <button className="primary" disabled={laeuft || !domain || !email} onClick={() => void beginnen()}>
+            <button
+              className="primary"
+              disabled={laeuft || !domain || !email}
+              onClick={() => void beginnen()}
+            >
               {laeuft ? 'Auftrag läuft …' : 'Zertifikat beantragen'}
             </button>
             <button onClick={() => void ausDateien()}>Vorhandenes aus Dateien laden</button>
@@ -237,125 +246,129 @@ function NetzdiensteKarte({
   }
 
   return (
-    <Card title="Namensdienst und Adressvergabe">
-      <p className="hint">
-        Nur für den Aufbau, in dem Votura das Saalnetz selbst aufspannt. Steht ein Router der Location im
-        Netz, gehören diese Einstellungen dorthin — und hier bleibt alles aus.
-      </p>
-
-      <h3>Namensdienst</h3>
-      <p className="hint">
-        Beantwortet im Saalnetz genau einen Namen: den des hinterlegten Zertifikats, mit der Adresse dieses
-        Rechners. Ohne ihn kennt im Saal niemand diesen Namen, denn ein abgeschottetes Netz erreicht das
-        öffentliche Namensystem nicht.
-      </p>
-      {!eigenes && (
-        <div className="notice warn">
-          Es ist kein eigenes Zertifikat hinterlegt — der Namensdienst wüsste nicht, welchen Namen er
-          beantworten soll.
-        </div>
-      )}
-      <Checkbox
-        checked={entwurf.dns}
-        onChange={(wert) => setEntwurf({ ...entwurf, dns: wert })}
-        label={`Namensdienst betreiben${eigenes ? ` (für ${eigenes.domain})` : ''}`}
-      />
-      <Field
-        label="Weiterleitung für alles Übrige"
-        hint="Leer: Es gilt der eine Name und sonst nichts — die Gäste sind dann ohne Internet, und manche Telefone verlassen ein WLAN, in dem nichts geht."
-      >
-        <input
-          value={entwurf.dnsWeiterleitung}
-          placeholder="192.168.50.254 (Router)"
-          onChange={(e) => setEntwurf({ ...entwurf, dnsWeiterleitung: e.target.value })}
-        />
-      </Field>
-      {entwurf.dnsWeiterleitung && (
+    <>
+      <Card title="Namensdienst">
         <p className="hint">
-          Mit Weiterleitung sieht dieser Rechner, welche Namen die Geräte im Saal abfragen.{' '}
-          <strong>Aufgezeichnet wird nichts</strong> — kein Protokoll, keine Datei —, aber es geht hier
-          durch. Wer das nicht will, lässt das Feld leer.
+          Beides nur für den Aufbau, in dem Votura das Saalnetz selbst aufspannt. Steht ein Router der
+          Location im Netz, gehören diese Einstellungen dorthin — und hier bleibt alles aus.
         </p>
-      )}
+        <p className="hint">
+          Beantwortet im Saalnetz genau einen Namen: den des hinterlegten Zertifikats, mit der Adresse dieses
+          Rechners. Ohne ihn kennt im Saal niemand diesen Namen, denn ein abgeschottetes Netz erreicht das
+          öffentliche Namensystem nicht.
+        </p>
+        {!eigenes && (
+          <div className="notice warn">
+            Es ist kein eigenes Zertifikat hinterlegt — der Namensdienst wüsste nicht, welchen Namen er
+            beantworten soll.
+          </div>
+        )}
+        <Checkbox
+          checked={entwurf.dns}
+          onChange={(wert) => setEntwurf({ ...entwurf, dns: wert })}
+          label={`Namensdienst betreiben${eigenes ? ` (für ${eigenes.domain})` : ''}`}
+        />
+        <Field
+          label="Weiterleitung für alles Übrige"
+          hint="Leer: Es gilt der eine Name und sonst nichts — die Gäste sind dann ohne Internet, und manche Telefone verlassen ein WLAN, in dem nichts geht."
+        >
+          <input
+            value={entwurf.dnsWeiterleitung}
+            placeholder="192.168.50.254 (Router)"
+            onChange={(e) => setEntwurf({ ...entwurf, dnsWeiterleitung: e.target.value })}
+          />
+        </Field>
+        {entwurf.dnsWeiterleitung && (
+          <p className="hint">
+            Mit Weiterleitung sieht dieser Rechner, welche Namen die Geräte im Saal abfragen.{' '}
+            <strong>Aufgezeichnet wird nichts</strong> — kein Protokoll, keine Datei —, aber es geht hier
+            durch. Wer das nicht will, lässt das Feld leer.
+          </p>
+        )}
+      </Card>
 
-      <h3>Adressvergabe</h3>
-      <div className="notice warn">
-        <strong>Nur in einem Netz, das Votura selbst aufspannt.</strong> Ein zweiter Adressverteiler legt ein
-        fremdes Netz lahm — mitten in der Versammlung, und niemand weiß, warum. Votura hört vor dem Start
-        hin und verweigert den Dienst, wenn bereits jemand verteilt.
-      </div>
-      <Checkbox
-        checked={entwurf.dhcp}
-        onChange={(wert) => setEntwurf({ ...entwurf, dhcp: wert })}
-        label="Adressen vergeben"
-      />
-      <div className="row">
-        <div className="col">
-          <Field label="Von">
-            <input value={entwurf.dhcpVon} onChange={(e) => setEntwurf({ ...entwurf, dhcpVon: e.target.value })} />
-          </Field>
+      <Card title="Adressvergabe">
+        <div className="notice warn">
+          <strong>Nur in einem Netz, das Votura selbst aufspannt.</strong> Ein zweiter Adressverteiler legt
+          ein fremdes Netz lahm — mitten in der Versammlung, und niemand weiß, warum. Votura hört vor dem
+          Start hin und verweigert den Dienst, wenn bereits jemand verteilt.
         </div>
-        <div className="col">
-          <Field label="Bis">
-            <input value={entwurf.dhcpBis} onChange={(e) => setEntwurf({ ...entwurf, dhcpBis: e.target.value })} />
-          </Field>
+        <Checkbox
+          checked={entwurf.dhcp}
+          onChange={(wert) => setEntwurf({ ...entwurf, dhcp: wert })}
+          label="Adressen vergeben"
+        />
+        <div className="row">
+          <div className="col">
+            <Field label="Von">
+              <input
+                value={entwurf.dhcpVon}
+                onChange={(e) => setEntwurf({ ...entwurf, dhcpVon: e.target.value })}
+              />
+            </Field>
+          </div>
+          <div className="col">
+            <Field label="Bis">
+              <input
+                value={entwurf.dhcpBis}
+                onChange={(e) => setEntwurf({ ...entwurf, dhcpBis: e.target.value })}
+              />
+            </Field>
+          </div>
+          <div className="col">
+            <Field label="Netzmaske">
+              <input
+                value={entwurf.dhcpMaske}
+                onChange={(e) => setEntwurf({ ...entwurf, dhcpMaske: e.target.value })}
+              />
+            </Field>
+          </div>
         </div>
-        <div className="col">
-          <Field label="Netzmaske">
-            <input
-              value={entwurf.dhcpMaske}
-              onChange={(e) => setEntwurf({ ...entwurf, dhcpMaske: e.target.value })}
-            />
-          </Field>
+        <div className="row">
+          <div className="col">
+            <Field label="Router (Weg nach draußen)" hint="Leer: Die Gäste haben im Saalnetz kein Internet.">
+              <input
+                value={entwurf.dhcpRouter}
+                placeholder="192.168.50.254"
+                onChange={(e) => setEntwurf({ ...entwurf, dhcpRouter: e.target.value })}
+              />
+            </Field>
+          </div>
+          <div className="col-mittel">
+            <Field label="Geltungsdauer (Sekunden)">
+              <NumberInput
+                value={entwurf.dhcpLaufzeit}
+                min={300}
+                max={86400}
+                onChange={(wert) => setEntwurf({ ...entwurf, dhcpLaufzeit: wert })}
+              />
+            </Field>
+          </div>
         </div>
-      </div>
-      <div className="row">
-        <div className="col">
-          <Field
-            label="Router (Weg nach draußen)"
-            hint="Leer: Die Gäste haben im Saalnetz kein Internet."
-          >
-            <input
-              value={entwurf.dhcpRouter}
-              placeholder="192.168.50.254"
-              onChange={(e) => setEntwurf({ ...entwurf, dhcpRouter: e.target.value })}
-            />
-          </Field>
-        </div>
-        <div className="col-mittel">
-          <Field label="Geltungsdauer (Sekunden)">
-            <NumberInput
-              value={entwurf.dhcpLaufzeit}
-              min={300}
-              max={86400}
-              onChange={(wert) => setEntwurf({ ...entwurf, dhcpLaufzeit: wert })}
-            />
-          </Field>
-        </div>
-      </div>
 
-      <div className="row mt-2">
-        <button className="primary" onClick={() => void speichern()}>
-          Übernehmen
-        </button>
-        <span className={`badge ${stand.dnsLaeuft ? 'ok' : ''}`}>
-          Namensdienst {stand.dnsLaeuft ? 'läuft' : 'aus'}
-        </span>
-        <span className={`badge ${stand.dhcpLaeuft ? 'ok' : ''}`}>
-          Adressvergabe {stand.dhcpLaeuft ? 'läuft' : 'aus'}
-        </span>
-      </div>
-      {stand.fehler && <div className="notice error mt-2">{stand.fehler}</div>}
-      {stand.vergeben.length > 0 && (
-        <div className="mt-3">
-          <label>Vergebene Adressen</label>
-          {stand.vergeben.map((eintrag) => (
-            <div key={eintrag.mac} className="mono">
-              {eintrag.adresse} — {eintrag.mac}
-            </div>
-          ))}
+        <div className="row mt-2">
+          <button className="primary" onClick={() => void speichern()}>
+            Übernehmen
+          </button>
+          <span className={`badge ${stand.dnsLaeuft ? 'ok' : ''}`}>
+            Namensdienst {stand.dnsLaeuft ? 'läuft' : 'aus'}
+          </span>
+          <span className={`badge ${stand.dhcpLaeuft ? 'ok' : ''}`}>
+            Adressvergabe {stand.dhcpLaeuft ? 'läuft' : 'aus'}
+          </span>
         </div>
-      )}
-    </Card>
+        {stand.fehler && <div className="notice error mt-2">{stand.fehler}</div>}
+        {stand.vergeben.length > 0 && (
+          <div className="mt-3">
+            <label>Vergebene Adressen</label>
+            {stand.vergeben.map((eintrag) => (
+              <div key={eintrag.mac} className="mono">
+                {eintrag.adresse} — {eintrag.mac}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
   )
 }

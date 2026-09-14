@@ -27,6 +27,9 @@ const EINSTELLUNGS_REITER = [
      „wer darf über das Netz heran", „was hört am Pult mit". Zusammen in
      einem Reiter war es eine Seite, an deren Ende niemand ankam. */
   { id: 'netzwerk', label: 'Netzwerk' },
+  /* Zertifikat und Netzdienste sind eine eigene Frage — und zusammen mit dem
+     Netzwerkreiter war es wieder eine Seite, an deren Ende niemand ankam. */
+  { id: 'saalnetz', label: 'Saalnetz' },
   { id: 'prompter', label: 'Prompter' },
   { id: 'users', label: 'Benutzer' },
   { id: 'backup', label: 'Backup' }
@@ -52,15 +55,8 @@ export function SettingsPage(): React.JSX.Element {
       {tab === 'printers' && <PrinterSettings />}
       {tab === 'general' && <GeneralSettings />}
       {tab === 'beamer' && <ProjectionDesign />}
-      {tab === 'netzwerk' && (
-        <>
-          <NetzwerkEinstellungen />
-          {/* Zertifikat und Netzdienste beantworten dieselbe Frage wie die
-              Verschlüsselung darüber: wie ein mitgebrachtes Telefon ohne
-              Warnung an die Wahlseite kommt. */}
-          <SaalnetzEinstellungen />
-        </>
-      )}
+      {tab === 'netzwerk' && <NetzwerkEinstellungen />}
+      {tab === 'saalnetz' && <SaalnetzEinstellungen />}
       {tab === 'prompter' && <SprachmodellEinstellungen />}
       {tab === 'users' && <UserSettings />}
       {tab === 'backup' && <BackupSettings />}

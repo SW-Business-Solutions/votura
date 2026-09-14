@@ -541,6 +541,31 @@ tr.muted td {
   font-size: 14px;
   white-space: pre-wrap;
 }
+/*
+ * Meldungen tragen ein Kreuz — außer denen in Karten, die zum Text gehören
+ * und keinen Knopf haben. Deshalb hängt die Aufteilung am Kreuz selbst und
+ * nicht an der Meldung.
+ */
+.notice:has(.notice-zu) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notice-zu {
+  flex: none;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 18px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.notice-zu:hover {
+  opacity: 1;
+}
 .notice.warn {
   border-color: var(--warn);
   background: color-mix(in srgb, var(--warn) 12%, transparent);

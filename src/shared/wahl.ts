@@ -56,6 +56,16 @@ export interface WahlLage {
   roundId: UUID
   roundLabel: string
   titel: string
+  /**
+   * Wessen Versammlung das ist.
+   *
+   * Auf dem Telefon stand bisher „Stimmabgabe" und sonst nichts. Wer eine
+   * Adresse eintippt oder einen QR-Code scannt, hat aber keinen Anhaltspunkt,
+   * ob er beim richtigen Rechner gelandet ist — und in einem Haus mit zwei
+   * Sälen ist das keine ausgedachte Sorge.
+   */
+  organisation?: string
+  veranstaltung?: string
   geheimnis: Wahlgeheimnis
   geraete: Geraetewahl
   status: Wahlstatus

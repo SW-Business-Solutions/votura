@@ -160,3 +160,22 @@
   background: #000;
   object-fit: cover;
 }
+
+/*
+ * Der Kopf über allem: wessen Versammlung das ist.
+ *
+ * Zurückhaltend gehalten — er soll erkennen lassen, wo man ist, und nicht mit
+ * dem Stimmzettel um Aufmerksamkeit ringen.
+ */
+.wahl-kopf {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--rahmen);
+  font-size: 15px;
+}
+.wahl-kopf strong {
+  font-weight: 600;
+}

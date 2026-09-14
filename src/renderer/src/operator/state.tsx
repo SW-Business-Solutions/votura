@@ -126,15 +126,29 @@ export function AppStateProvider({ children }: { children: ReactNode }): React.J
   )
   const noticeId = useRef(1)
 
+  /**
+   * Eine Meldung anzeigen — und sie irgendwann auch wieder loswerden.
+   *
+   * **Fehler blieben bisher für immer stehen.** Drei mißglückte Versuche
+   * ergaben drei Balken übereinander, die den halben Bildschirm einnahmen und
+   * die eigentliche Seite nach unten schoben. Wegklicken ging, aber niemand
+   * wusste das.
+   *
+   * Deshalb: höchstens drei zugleich, die älteste weicht. Erfolg verschwindet
+   * nach sechs Sekunden, eine Warnung nach zwanzig — lang genug zum Lesen.
+   * Nur Fehler bleiben, denn sie sind oft der Grund, warum jemand gleich
+   * jemanden fragen wird; sie tragen dafür ein sichtbares Kreuz.
+   */
   const notify = useCallback((level: Notice['level'], message: string) => {
     const id = noticeId.current++
     setNotices((current) => {
       // Dieselbe Meldung nicht mehrfach übereinander stapeln.
       if (current.some((notice) => notice.message === message && notice.level === level)) return current
-      return [...current, { id, level, message }]
+      return [...current, { id, level, message }].slice(-3)
     })
-    if (level === 'ok' || level === 'info') {
-      window.setTimeout(() => setNotices((current) => current.filter((notice) => notice.id !== id)), 6000)
+    const dauer = level === 'ok' || level === 'info' ? 6000 : level === 'warning' ? 20000 : 0
+    if (dauer > 0) {
+      window.setTimeout(() => setNotices((current) => current.filter((notice) => notice.id !== id)), dauer)
     }
   }, [])
 

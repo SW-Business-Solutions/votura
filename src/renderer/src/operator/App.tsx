@@ -228,10 +228,19 @@ export function App(): React.JSX.Element {
           <div
             key={notice.id}
             className={`notice ${notice.level === 'ok' ? 'ok' : notice.level === 'error' ? 'error' : notice.level === 'warning' ? 'warn' : ''}`}
-            onClick={() => app.dismissNotice(notice.id)}
             role="status"
           >
-            {notice.message}
+            <span>{notice.message}</span>
+            {/* Sichtbar, nicht bloß möglich: Dass die ganze Fläche klickbar
+                war, wusste niemand — und Fehler blieben deshalb stehen. */}
+            <button
+              className="notice-zu"
+              title="Meldung schließen"
+              aria-label="Meldung schließen"
+              onClick={() => app.dismissNotice(notice.id)}
+            >
+              ×
+            </button>
           </div>
         ))}
 

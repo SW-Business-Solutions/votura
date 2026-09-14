@@ -41,6 +41,7 @@ import { appendAudit } from './audit'
 import { requirePermission } from './auth'
 import { listCandidates } from './candidates'
 import { mayVote } from './participants'
+import { getEvent } from './events'
 import { getRound } from './rounds'
 import { getNetworkProjection } from './settings'
 
@@ -614,10 +615,14 @@ export function votingLage(roundId: UUID): WahlLage | null {
   const round = getRound(roundId)
   const bewerber = listCandidates(roundId)
 
+  const veranstaltung = getEvent(round.eventId)
+
   return {
     roundId,
     roundLabel: round.roundLabel,
     titel: round.title,
+    organisation: veranstaltung?.organization,
+    veranstaltung: veranstaltung?.title,
     geheimnis: zeile.secrecy as Wahlgeheimnis,
     geraete: zeile.devices as Geraetewahl,
     status: zeile.status as Wahlstatus,

@@ -88,6 +88,24 @@ async function mitWiederholung<T>(was: () => Promise<T>, versuche = 4): Promise<
 type Schritt = 'ausweis' | 'wahl' | 'fertig'
 
 /**
+ * Wessen Versammlung das hier ist.
+ *
+ * Steht auf jedem Schritt, und zwar aus einem handfesten Grund: Wer eine
+ * Adresse eintippt oder einen QR-Code scannt, hat sonst keinen Anhaltspunkt,
+ * ob er beim richtigen Rechner gelandet ist. In einem Haus mit zwei Sälen ist
+ * das keine ausgedachte Sorge — und es kostet zwei Zeilen.
+ */
+function Versammlungskopf({ lage }: { lage: WahlLage | null | undefined }): React.JSX.Element | null {
+  if (!lage?.organisation && !lage?.veranstaltung) return null
+  return (
+    <header className="wahl-kopf">
+      {lage.organisation && <strong>{lage.organisation}</strong>}
+      {lage.veranstaltung && <span className="leise">{lage.veranstaltung}</span>}
+    </header>
+  )
+}
+
+/**
  * Wann sich der Bildschirm von selbst zurücksetzt.
  *
  * **In der Wahlkabine ist das keine Bequemlichkeit, sondern Teil des
@@ -398,6 +416,7 @@ function Wahlseite(): React.JSX.Element {
   if (schritt === 'fertig') {
     return (
       <main className="wahl fertig">
+        <Versammlungskopf lage={auskunft?.lage} />
         <div className="haken">✓</div>
         <h1>Ihre Stimme wurde angenommen.</h1>
         <p>
@@ -431,6 +450,7 @@ function Wahlseite(): React.JSX.Element {
     if (offeneAbstimmung === null && !fehlt) {
       return (
         <main className="wahl">
+          <Versammlungskopf lage={offeneAbstimmung} />
           <h1>Gerade läuft keine Abstimmung.</h1>
           <p>
             Dieses Gerät ist bereit. Sobald die Wahlleitung einen Wahlgang eröffnet, erscheint er hier von
@@ -444,6 +464,7 @@ function Wahlseite(): React.JSX.Element {
 
     return (
       <main className="wahl">
+        <Versammlungskopf lage={offeneAbstimmung} />
         <h1>Stimmabgabe</h1>
         {offeneAbstimmung && !fehlt && (
           <p className="leise">
@@ -540,6 +561,7 @@ function Wahlseite(): React.JSX.Element {
 
   return (
     <main className="wahl">
+      <Versammlungskopf lage={lage} />
       <p className="leise">{GEHEIMNIS_LABELS[lage.geheimnis]}</p>
       <h1>{lage.titel}</h1>
       <p className="leise">
