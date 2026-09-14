@@ -5,6 +5,8 @@ import type { EventInput } from '@shared/ipc'
 import { db } from '../db'
 import { fromJson, optionalNumber, optionalString } from '../db/driver'
 import { appendAudit } from './audit'
+import { closeOpenAssignments } from './cards'
+import { expirePasses } from './participants'
 import { requirePermission } from './auth'
 
 interface EventRow {
@@ -200,6 +202,10 @@ export function activateEvent(id: UUID): ElectionEvent {
 
 /** Schließen ist nur zulässig, wenn alle Wahlgänge abgeschlossen/abgebrochen sind (§64). */
 export function closeEvent(id: UUID): ElectionEvent {
+  /* Ausgegebene Stimmkarten und Voting Pässe verfallen mit der Versammlung:
+     Was jemand mitgenommen hat, bliebe sonst für immer ein gültiger Ausweis. */
+  closeOpenAssignments(id)
+  expirePasses(id)
   const session = requirePermission('event.manage')
   const open = db()
     .prepare(

@@ -323,6 +323,55 @@ CREATE TABLE IF NOT EXISTS round_presence (
   taken_at   TEXT NOT NULL
 );
 `
+  },
+  {
+    /*
+     * Stimmkarten: wiederverwendbar statt bedrucktes Papier.
+     *
+     * Ein Papierpass geht im Saal verloren — er bleibt auf einem Stuhl liegen,
+     * und niemand bemerkt es. Eine Karte wird beim Betreten **zugewiesen** und
+     * beim Verlassen **zurückgegeben**; sie wandert danach an die nächste
+     * Person. Das ist der Handgriff, den eine Garderobe seit hundert Jahren
+     * beherrscht.
+     *
+     * `cards` ist **Bestand** und gehört deshalb nicht zu einer Versammlung:
+     * Dieselben Karten werden nächstes Jahr wieder benutzt.
+     *
+     * `serial` steht sichtbar auf der Karte und ist für Menschen — „Karte 42
+     * ist weg". `code_hash` ist die Prüfsumme dessen, was im QR steht, und das
+     * ist ein langes Zufallsgeheimnis: Stünde dort die Nummer, ließe sich eine
+     * Karte nachdrucken.
+     *
+     * `card_assignments` ist fortschreibend wie der Anwesenheitsverlauf. Eine
+     * Zuweisung ohne `returned_at` ist die laufende — und nur eine laufende
+     * Zuweisung macht eine Karte gültig. Ein abfotografierter Code von
+     * vorletzter Versammlung ist damit wertlos.
+     */
+    version: 7,
+    sql: `
+CREATE TABLE IF NOT EXISTS cards (
+  id         TEXT PRIMARY KEY,
+  serial     TEXT NOT NULL UNIQUE,
+  code_hash  TEXT NOT NULL UNIQUE,
+  status     TEXT NOT NULL DEFAULT 'available',
+  note       TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS card_assignments (
+  id             TEXT PRIMARY KEY,
+  card_id        TEXT NOT NULL REFERENCES cards(id),
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  event_id       TEXT NOT NULL REFERENCES events(id),
+  assigned_at    TEXT NOT NULL,
+  returned_at    TEXT,
+  by_user        TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_karte_zuweisung ON card_assignments(card_id, assigned_at);
+CREATE INDEX IF NOT EXISTS idx_karte_teilnehmer ON card_assignments(participant_id, assigned_at);
+`
   }
 ]
 

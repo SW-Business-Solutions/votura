@@ -391,6 +391,38 @@ export function presenceSummary(eventId: UUID, quorum: QuorumRule): PresenceSumm
 /* ------------------------------------------------------ Stand je Wahlgang */
 
 /**
+ * Mit dem Abschluss der Versammlung verfallen alle Voting Pässe.
+ *
+ * Ein gedruckter Pass ist zwar für eine Versammlung ausgestellt, seine
+ * Prüfsumme stünde ohne dies aber weiter in der Datenbank und gölte weiter.
+ * Ein Zettel, den jemand einsteckt und mitnimmt, ist kein Ausweis mehr,
+ * sobald die Versammlung vorbei ist — das soll auch technisch gelten.
+ *
+ * Dass ein Pass ausgegeben *war*, bleibt im Audit. Nur seine Gültigkeit
+ * endet.
+ */
+export function expirePasses(eventId: UUID): number {
+  const offen = db()
+    .prepare(`SELECT COUNT(*) AS anzahl FROM participants WHERE event_id = ? AND pass_hash IS NOT NULL`)
+    .get<{ anzahl: number }>(eventId)
+  const anzahl = Number(offen?.anzahl ?? 0)
+  if (anzahl === 0) return 0
+
+  db()
+    .prepare(
+      `UPDATE participants SET pass_hash = NULL, updated_at = ? WHERE event_id = ? AND pass_hash IS NOT NULL`
+    )
+    .run(new Date().toISOString(), eventId)
+
+  appendAudit({
+    action: 'participant.passes_expired',
+    eventId,
+    newValue: { entwertet: anzahl }
+  })
+  return anzahl
+}
+
+/**
  * Führt diese Versammlung überhaupt eine Akkreditierung?
  *
  * Entscheidend vor dem Festhalten eines Standes: Ohne Teilnehmerliste stünde

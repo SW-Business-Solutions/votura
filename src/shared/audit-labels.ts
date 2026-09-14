@@ -50,6 +50,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'candidate.numbers_assigned': 'Bewerbernummern vergeben',
 
   /* --------------------------------------------------------- Tagesordnung */
+  'card.imported': 'Stimmkarten in den Bestand aufgenommen',
+  'card.assigned': 'Stimmkarte ausgegeben',
+  'card.returned': 'Stimmkarte zurückgenommen',
+  'card.lost': 'Stimmkarte als verloren gemeldet',
+  'card.retired': 'Stimmkarte ausgemustert',
+  'card.released': 'Stimmkarte wieder freigegeben',
+  'card.assignments_closed': 'Ausgegebene Stimmkarten verfallen',
   'participant.added': 'Teilnehmer aufgenommen',
   'participant.updated': 'Teilnehmer geändert',
   'participant.arrived': 'Teilnehmer eingetroffen',
@@ -58,6 +65,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'participant.pass_reissued': 'Voting Pass neu ausgegeben',
   'participant.blocked': 'Teilnehmer gesperrt',
   'participant.unblocked': 'Sperre aufgehoben',
+  'participant.passes_expired': 'Voting Pässe verfallen',
   'round.presence_taken': 'Anwesenheit für den Wahlgang festgehalten',
   'agenda.item_added': 'Tagesordnungspunkt hinzugefügt',
   'agenda.item_updated': 'Tagesordnungspunkt geändert',

@@ -34,6 +34,7 @@ const auth = await import('../src/main/services/auth')
 const events = await import('../src/main/services/events')
 const teilnehmer = await import('../src/main/services/participants')
 const audit = await import('../src/main/services/audit')
+const karten = await import('../src/main/services/cards')
 import type { QuorumRule } from '../src/shared/types'
 
 const OHNE: QuorumRule = { kind: 'none', value: 0 }
@@ -340,5 +341,146 @@ describe('Ohne Akkreditierung ändert sich nichts', () => {
     }).id
     teilnehmer.addParticipant({ eventId: mitListe, lastName: 'G', firstName: 'T' })
     expect(teilnehmer.hasAccreditation(mitListe)).toBe(true)
+  })
+})
+
+describe('Stimmkarten', () => {
+  /*
+   * Der Grund für Karten: Ein Papierpass bleibt auf einem Stuhl liegen, und
+   * niemand bemerkt es, bis jemand abstimmen will. Eine Karte kommt am Ausgang
+   * zurück.
+   *
+   * Der Preis: Sie ist ein Inhaberpapier. Wer sie hat, gilt als der, dem sie
+   * zugewiesen ist. Die Prüfungen halten fest, was den Schaden begrenzt.
+   */
+  const code = (n: number): string => `KARTE-GEHEIM-${String(n).padStart(6, '0')}`
+
+  it('nimmt Karten in den Bestand auf und überspringt Doppelte', () => {
+    const erst = karten.importCards([
+      { serial: '001', code: code(1) },
+      { serial: '002', code: code(2) }
+    ])
+    expect(erst).toEqual({ added: 2, skipped: 0 })
+    /* Zweimal eingelesene Lieferung darf nicht abbrechen. */
+    const nochmal = karten.importCards([
+      { serial: '002', code: code(2) },
+      { serial: '003', code: code(3) }
+    ])
+    expect(nochmal).toEqual({ added: 1, skipped: 1 })
+  })
+
+  it('speichert den Code nicht im Klartext', () => {
+    /* Die Bestandsliste wäre sonst ein Stapel gültiger Karten in Textform. */
+    const zeile = db()
+      .prepare(`SELECT code_hash FROM cards WHERE serial = '001'`)
+      .get<{ code_hash: string }>()
+    expect(zeile?.code_hash).not.toBe(code(1))
+    expect(zeile?.code_hash).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('weist eine freie Karte niemanden aus', () => {
+    /* Eine Karte im Stapel ist kein Ausweis — sie wartet. */
+    const treffer = karten.resolveScan(eventId, code(3))
+    expect(treffer?.kind).toBe('card')
+    expect(treffer && treffer.kind === 'card' ? treffer.participant : undefined).toBeNull()
+  })
+
+  it('macht mit der Ausgabe zugleich anwesend', () => {
+    /* Ein Handgriff statt zwei — am Einlass wird gescannt, nicht geklickt. */
+    const person = anlegen('Kartenträger')
+    const { participant } = karten.assignCard(person.id, code(1))
+    expect(participant.present).toBe(true)
+    expect(karten.cardHeldBy(person.id)?.serial).toBe('001')
+  })
+
+  it('weist dieselbe Karte nicht zweimal zu', () => {
+    const zweiter = anlegen('Zweiter')
+    expect(() => karten.assignCard(zweiter.id, code(1))).toThrow(/bereits vergeben/)
+  })
+
+  it('nimmt einer Person die alte Karte ab, wenn sie eine neue bekommt', () => {
+    /* Sonst hielte jemand zwei, und der Bestand stimmte nicht mehr. */
+    const person = karten.resolveScan(eventId, code(1))
+    const id = person && person.kind === 'card' ? person.participant!.id : ''
+    karten.assignCard(id, code(2))
+    expect(karten.cardHeldBy(id)?.serial).toBe('002')
+    expect(karten.findCardByCode(code(1))?.heldBy).toBeUndefined()
+  })
+
+  it('macht mit der Rückgabe zugleich abwesend', () => {
+    const { participant } = karten.returnCard(code(2))
+    expect(participant?.present).toBe(false)
+    expect(karten.findCardByCode(code(2))?.heldBy).toBeUndefined()
+  })
+
+  it('sperrt eine verlorene Karte und beendet ihre Zuweisung', () => {
+    const person = anlegen('Verloren')
+    const { card } = karten.assignCard(person.id, code(3))
+    karten.setCardStatus(card.id, 'lost', 'im Saal liegengeblieben')
+
+    const danach = karten.findCardByCode(code(3))
+    expect(danach?.status).toBe('lost')
+    expect(danach?.heldBy).toBeUndefined()
+    /* Auch wenn sie wieder auftaucht: nicht mehr ausgebbar. */
+    expect(() => karten.assignCard(person.id, code(3))).toThrow(/verloren/)
+  })
+
+  it('zählt den Bestand', () => {
+    const stand = karten.cardStock()
+    expect(stand.total).toBe(3)
+    expect(stand.lost).toBe(1)
+    expect(stand.available + stand.assigned + stand.lost + stand.retired).toBe(stand.total)
+  })
+
+  it('entwertet ausgegebene Karten mit dem Abschluss der Versammlung', () => {
+    /*
+     * Der Punkt, an dem sich Karte und Papierpass unterscheiden: Der Pass
+     * landet im Papierkorb, die Karte kommt wieder. Nimmt jemand sie mit,
+     * bliebe ihr Code sonst für immer ein gültiger Ausweis.
+     */
+    const eigenes = events.createEvent({
+      title: 'Abschlussprobe',
+      organization: 'Musterverein',
+      orgCode: 'AB',
+      date: '2026-09-14',
+      location: 'Saal',
+      ruleSet: { name: 'Satzung', version: '1', snapshotDate: '2026-09-14' }
+    }).id
+    karten.importCards([{ serial: '900', code: code(900) }])
+    const person = teilnehmer.addParticipant({ eventId: eigenes, lastName: 'Mitnehmer', firstName: 'T' })
+    karten.assignCard(person.id, code(900))
+    expect(karten.findCardByCode(code(900))?.heldBy).toBe(person.id)
+
+    events.closeEvent(eigenes)
+    expect(karten.findCardByCode(code(900))?.heldBy).toBeUndefined()
+
+    /* Die Anwesenheit bleibt, wie sie war — wer am Ende im Saal war, war am
+       Ende im Saal, und das gehört ins Protokoll. */
+    expect(teilnehmer.getParticipant(person.id)?.present).toBe(true)
+  })
+
+  it('entwertet mit dem Abschluss auch die gedruckten Pässe', () => {
+    /*
+     * Dasselbe für Papier: Ein Zettel, den jemand einsteckt und mitnimmt, ist
+     * kein Ausweis mehr, sobald die Versammlung vorbei ist — und das soll
+     * nicht nur auf dem Zettel stehen, sondern gelten.
+     */
+    const eigenes = events.createEvent({
+      title: 'Passverfall',
+      organization: 'Musterverein',
+      orgCode: 'PV',
+      date: '2026-09-14',
+      location: 'Saal',
+      ruleSet: { name: 'Satzung', version: '1', snapshotDate: '2026-09-14' }
+    }).id
+    const person = teilnehmer.addParticipant({ eventId: eigenes, lastName: 'Passträger', firstName: 'T' })
+    const { token } = teilnehmer.issuePass(person.id)
+    expect(teilnehmer.findByPass(eigenes, token)?.id).toBe(person.id)
+
+    events.closeEvent(eigenes)
+    expect(teilnehmer.findByPass(eigenes, token)).toBeNull()
+    /* Dass ein Pass ausgegeben war, bleibt im Audit — nur seine Gültigkeit
+       endet. */
+    expect(audit.listAudit({ eventId: eigenes }).map((e) => e.action)).toContain('participant.passes_expired')
   })
 })

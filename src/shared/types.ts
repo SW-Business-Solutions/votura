@@ -223,6 +223,47 @@ export interface PresenceSummary {
   quorumMet: boolean
 }
 
+/**
+ * Eine Stimmkarte aus dem Bestand.
+ *
+ * Sie gehört **nicht** zu einer Versammlung: Dieselben Karten werden nächstes
+ * Jahr wieder benutzt. `serial` steht sichtbar darauf und ist für Menschen
+ * („Karte 42 ist weg"); der QR trägt ein langes Zufallsgeheimnis, von dem hier
+ * nie die Rede ist.
+ */
+export interface Card {
+  id: UUID
+  /** Die aufgedruckte Nummer. */
+  serial: string
+  status: 'available' | 'lost' | 'retired'
+  note?: string
+  /** Teilnehmer, der sie gerade hält — leer, wenn sie im Stapel liegt. */
+  heldBy?: UUID
+  heldSince?: IsoDateTime
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+/** Eine Ausgabe und ihre Rückgabe. Ohne `returnedAt` ist sie die laufende. */
+export interface CardAssignment {
+  id: UUID
+  cardId: UUID
+  participantId: UUID
+  eventId: UUID
+  assignedAt: IsoDateTime
+  returnedAt?: IsoDateTime
+  byUser?: string
+}
+
+/** Der Bestand auf einen Blick — „noch zwölf freie Karten". */
+export interface CardStock {
+  total: number
+  available: number
+  assigned: number
+  lost: number
+  retired: number
+}
+
 /** Der beim Eröffnen eines Wahlgangs festgehaltene Stand. */
 export interface RoundPresence {
   roundId: UUID
