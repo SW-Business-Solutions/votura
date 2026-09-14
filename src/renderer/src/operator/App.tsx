@@ -67,6 +67,15 @@ function parseHash(): Route {
   }
 }
 
+/**
+ * Eine Zwischenüberschrift in der Navigation.
+ *
+ * Klein, ruhig, nicht anklickbar: Sie soll ordnen, nicht mitspielen.
+ */
+function NavGruppe({ titel }: { titel: string }): React.JSX.Element {
+  return <div className="nav-gruppe">{titel}</div>
+}
+
 export function navigate(path: string): void {
   window.location.hash = `#/${path.replace(/^\/+/, '')}`
 }
@@ -135,6 +144,22 @@ export function App(): React.JSX.Element {
           <small>Software für die Mitgliederversammlung</small>
         </div>
 
+        {/*
+          **Die Navigation erzählt den Abend.**
+
+          Vorher standen hier elf Einträge in einer ununterbrochenen Reihe —
+          Übersicht, Veranstaltung, Tagesordnung, Akkreditierung, Ausgabe,
+          Digitale Abstimmung, Neuer Wahlgang, Beamer, Prompter, Audit,
+          Systemcheck, Einstellungen. Wer die Anwendung zum ersten Mal öffnete,
+          konnte nicht erkennen, was zusammengehört und in welcher Reihenfolge
+          man es braucht. Die zuletzt dazugekommenen Punkte — Einlass und
+          digitale Abstimmung — machten es schlimmer, nicht besser.
+
+          Jetzt steht es in der Reihenfolge, in der ein Abend abläuft:
+          vorbereiten, einlassen, abstimmen, anzeigen. Verwaltung zuletzt,
+          denn die braucht man selten und nie in Eile.
+        */}
+        <NavGruppe titel="Versammlung" />
         <NavItem
           label="Übersicht"
           active={route.name === 'dashboard'}
@@ -147,24 +172,26 @@ export function App(): React.JSX.Element {
           onClick={() => navigate('agenda')}
           hint="Strg+T"
         />
+
+        <NavGruppe titel="Einlass" />
         <NavItem
           label="Akkreditierung"
           active={route.name === 'akkreditierung'}
           onClick={() => navigate('akkreditierung')}
         />
-        <NavItem label="Ausgabe" active={route.name === 'ausgabe'} onClick={() => navigate('ausgabe')} />
         <NavItem
-          label="Digitale Abstimmung"
-          active={route.name === 'digitalewahl'}
-          onClick={() => navigate('digitalewahl')}
+          label="Stimmzettel ausgeben"
+          active={route.name === 'ausgabe'}
+          onClick={() => navigate('ausgabe')}
         />
+
+        <NavGruppe titel="Wahlgänge" />
         <NavItem
           label="Neuer Wahlgang"
           active={route.name === 'round-new'}
           onClick={() => navigate('round/new')}
           hint="Strg+N"
         />
-
         {app.rounds.length > 0 && (
           <div className="nav-section">
             {app.rounds.map((round) => (
@@ -183,6 +210,15 @@ export function App(): React.JSX.Element {
             ))}
           </div>
         )}
+        {/* Die digitale Abstimmung gehört zu einem Wahlgang, nicht neben ihn —
+            deshalb steht sie hier und nicht zwischen Einlass und Beamer. */}
+        <NavItem
+          label="Digitale Abstimmung"
+          active={route.name === 'digitalewahl'}
+          onClick={() => navigate('digitalewahl')}
+        />
+
+        <NavGruppe titel="Anzeige" />
         <NavItem
           label="Beamer"
           active={route.name === 'beamer'}
@@ -195,6 +231,8 @@ export function App(): React.JSX.Element {
           onClick={() => navigate('prompter')}
           hint="Strg+P"
         />
+
+        <NavGruppe titel="Verwaltung" />
         <NavItem label="Audit-Trail" active={route.name === 'audit'} onClick={() => navigate('audit')} />
         <NavItem
           label="Systemcheck"

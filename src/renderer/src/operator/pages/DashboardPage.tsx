@@ -1,6 +1,17 @@
-/** Startseite (§37): aktuelle Veranstaltung, aktueller Wahlgang, Verlauf. */
-import { PROCEDURE_LABELS } from '@shared/types'
+/**
+ * Startseite (§37): aktuelle Veranstaltung, aktueller Wahlgang, Verlauf.
+ *
+ * **Sie muss zeigen, was gerade gilt.** Lange zeigte sie die Zahl der
+ * Stimmberechtigten, wie sie an der Veranstaltung eingetippt wurde — auch
+ * dann, wenn die Akkreditierung sie inzwischen zählt. Wer hereinkommt und auf
+ * die Startseite schaut, bekam damit eine Zahl, die niemand mehr pflegt.
+ * Ebenso fehlte jeder Hinweis auf eine laufende digitale Abstimmung.
+ */
+import { useEffect, useState } from 'react'
+import { PROCEDURE_LABELS, type PresenceSummary } from '@shared/types'
+import type { WahlLage, WahlStand } from '@shared/wahl'
 import { formatDateDe } from '@shared/format'
+import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, EmptyState, Kpi, StatusBadge } from '../components/ui'
@@ -8,6 +19,37 @@ import { Card, EmptyState, Kpi, StatusBadge } from '../components/ui'
 export function DashboardPage(): React.JSX.Element {
   const app = useApp()
   const event = app.event
+  const [anwesenheit, setAnwesenheit] = useState<PresenceSummary | null>(null)
+  const [wahl, setWahl] = useState<{ lage: WahlLage; stand: WahlStand } | null>(null)
+
+  /*
+   * Beides mitlaufen lassen, nicht einmalig holen: Auf der Startseite steht
+   * oft ein Bildschirm, auf den jemand von der Seite schaut, während andere
+   * am Einlass scannen und im Saal abgestimmt wird.
+   */
+  useEffect(() => {
+    if (!event) return
+    let abgebrochen = false
+    const holen = async (): Promise<void> => {
+      try {
+        const stand = await api('participant.presence', event.id)
+        if (!abgebrochen) setAnwesenheit(stand.total > 0 ? stand : null)
+        const offen = app.rounds.find((runde) => runde.status !== 'completed' && runde.status !== 'cancelled')
+        const lage = offen ? await api('voting.lage', offen.id) : null
+        if (!abgebrochen) {
+          setWahl(lage?.status === 'open' ? { lage, stand: await api('voting.stand', lage.roundId) } : null)
+        }
+      } catch {
+        /* Die Startseite darf an einer Nebensache nicht scheitern. */
+      }
+    }
+    void holen()
+    const takt = setInterval(() => void holen(), 5000)
+    return () => {
+      abgebrochen = true
+      clearInterval(takt)
+    }
+  }, [event?.id, app.rounds])
 
   if (!event) {
     return (
@@ -56,7 +98,17 @@ export function DashboardPage(): React.JSX.Element {
 
       <div className="grid cols-3">
         <Card tight>
-          <Kpi label="Stimmberechtigte" value={event.eligibleVoterCount ?? '–'} />
+          {/* Wird eine Teilnehmerliste geführt, zählt die gemessene Zahl —
+              die getippte pflegt dann niemand mehr. */}
+          {anwesenheit ? (
+            <Kpi
+              label="Stimmberechtigt anwesend"
+              value={anwesenheit.eligiblePresent}
+              tone={anwesenheit.quorumMet ? 'ok' : 'warn'}
+            />
+          ) : (
+            <Kpi label="Stimmberechtigte" value={event.eligibleVoterCount ?? '–'} />
+          )}
         </Card>
         <Card tight>
           <Kpi label="Wahlgänge gesamt" value={app.rounds.length} />
@@ -65,6 +117,37 @@ export function DashboardPage(): React.JSX.Element {
           <Kpi label="Abgeschlossen" value={completed.length} tone="ok" />
         </Card>
       </div>
+
+      {anwesenheit && !anwesenheit.quorumMet && (
+        <div className="notice warn">
+          <strong>Nicht beschlussfähig.</strong> Anwesend und stimmberechtigt sind{' '}
+          {anwesenheit.eligiblePresent}; die Ordnung verlangt {anwesenheit.quorumRequired}.{' '}
+          <button className="ghost" onClick={() => navigate('akkreditierung')}>
+            Zur Akkreditierung
+          </button>
+        </div>
+      )}
+
+      {wahl && (
+        <Card
+          title={`Digitale Abstimmung läuft — ${wahl.lage.roundLabel}`}
+          actions={
+            <button className="primary" onClick={() => navigate('digitalewahl')}>
+              Ansehen
+            </button>
+          }
+        >
+          <div className="grid cols-3">
+            <Kpi label="Berechtigungen" value={wahl.stand.ausgegeben} />
+            <Kpi label="Stimmen in der Urne" value={wahl.stand.abgegeben} />
+            {wahl.stand.entwertet > 0 && <Kpi label="entwertet" value={wahl.stand.entwertet} tone="warn" />}
+          </div>
+          <div className="hint mt-2">
+            In der Urne dürfen nie mehr Stimmen liegen als Berechtigungen ausgegeben wurden. Das ist die
+            öffentliche Rechnung — sie läuft auch auf der Leinwand mit.
+          </div>
+        </Card>
+      )}
 
       {current ? (
         <Card
