@@ -126,6 +126,25 @@ node tools/os-list.mjs release-pi/votura-saal-1.3.0-arm64.img.xz release-pi/votu
 Mehrere Abbilder ergeben mehrere Einträge in einer Datei; der Imager zeigt sie untereinander zur
 Auswahl.
 
+**Erst die Abbilder hochladen, dann das Verzeichnis.** In `os-list.json` stehen die Adressen der
+Abbilder; liegt es vor ihnen in der Veröffentlichung, zeigt der Imager beide Einträge an und der
+Download scheitert. Genau so ist es bei 1.3.0 passiert — die Datei ist klein und war in Sekunden
+oben, die Abbilder brauchten eine Viertelstunde.
+
+**`gh release upload` taugt für die Abbilder nicht.** Es antwortet mit `HTTP 404: Not Found` vom
+Upload-Endpunkt — und gibt trotzdem **0** zurück. Ein Fehlschlag, der sich als Erfolg ausgibt: Bei
+1.3.0 galt der Upload dreimal als „läuft noch", bis die Meldung auffiel. Der Weg, der trägt, ist
+die Schnittstelle selbst:
+
+```bash
+ID=$(gh api repos/SW-Business-Solutions/votura/releases/tags/v1.3.0 -q .id)
+curl -sS -X POST   -H "Authorization: Bearer $(gh auth token)"   -H "Content-Type: application/octet-stream"   --data-binary @release-pi/votura-1.3.0-arm64.img.xz   -w '
+HTTP %{http_code}, %{size_upload} Bytes
+'   "https://uploads.github.com/repos/SW-Business-Solutions/votura/releases/$ID/assets?name=votura-1.3.0-arm64.img.xz"
+```
+
+Erwartet wird **HTTP 201**. Rechnen Sie mit zwanzig Minuten je Abbild.
+
 ## Prüfen, bevor es in den Saal geht
 
 Ohne echte Hardware lässt sich das Abbild nicht vollständig prüfen — ein Emulator hat keinen
