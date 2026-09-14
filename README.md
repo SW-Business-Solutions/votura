@@ -3,7 +3,6 @@
   <img src="docs/logo-dunkelmodus.svg#gh-dark-mode-only" alt="Votura" width="360">
 </p>
 
-
 **Software für die Mitgliederversammlung.** Wahlgänge, Stimmzettel, Beamer und Pult — vollständig
 offline auf einem Rechner.
 
@@ -19,24 +18,25 @@ Gesprochenen folgt.
 
 ![Übersicht einer laufenden Versammlung](docs/screenshots/01-uebersicht.png)
 
-
 ## Überblick
 
-| Bereich | Umsetzung |
-|---|---|
-| Plattform | Electron 43 (Chromium + Node 24), React 19, TypeScript |
-| Datenhaltung | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil |
-| Druck | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe |
-| Bühnen | Bis zu vier Anzeigeflächen, je eigenes Fenster und eigene Netzadresse, gemeinsam schaltbar |
-| Beamer | Rein lesende Fenster + optionale Netzwerkansicht im Browser |
-| Präsentationen | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster |
-| Video | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr |
-| Teleprompter | Reden als Markdown, eigener Netzendpunkt, Spiegelung, Mitlaufen nach Gehör |
-| Ergebnis | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten |
-| Betrieb | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften |
-| Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst, wird Bühne oder Pult |
-| Installation | Windows: Installer (NSIS) und portable Fassung · Linux: `tar.gz` für x64 und arm64 |
-| Raspberry Pi | Pi 4/5 als Anzeigegerät: ein Befehl richtet Kiosk und Neustart nach Absturz ein |
+| Bereich          | Umsetzung                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| Plattform        | Electron 43 (Chromium + Node 24), React 19, TypeScript                                                  |
+| Datenhaltung     | SQLite über `node:sqlite` (WAL), lokal im Benutzerprofil                                                |
+| Druck            | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe           |
+| Akkreditierung   | Wer da ist, wer mitstimmen darf, Beschlussfähigkeit — Stimmkarten, Bändchen oder gedruckte Pässe mit QR |
+| Ausgabe          | Ein Stimmzettel gegen einen Ausweis; je Wahlgang genau einer, die Bilanz wird gezählt statt getippt     |
+| Bühnen           | Bis zu vier Anzeigeflächen, je eigenes Fenster und eigene Netzadresse, gemeinsam schaltbar              |
+| Beamer           | Rein lesende Fenster + optionale Netzwerkansicht im Browser                                             |
+| Präsentationen   | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster      |
+| Video            | MP4/WebM gleichzeitig auf allen Bildschirmen, nach gemeinsamer Uhr                                      |
+| Teleprompter     | Reden als Markdown, eigener Netzendpunkt, Spiegelung, Mitlaufen nach Gehör                              |
+| Ergebnis         | Rangliste nach Verfahrensregeln, offene Ränge werden benannt statt geraten                              |
+| Betrieb          | Vollständig offline: keine Cloud, keine Telemetrie, keine externen Schriften                            |
+| Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst: Bühne, Pult, Einlass oder Ausgabe                     |
+| Installation     | Windows: Installer (NSIS) und portable Fassung · Linux: `tar.gz` für x64 und arm64                      |
+| Raspberry Pi     | Pi 4/5 als Anzeigegerät: ein Befehl richtet Kiosk und Neustart nach Absturz ein                         |
 
 ## Herunterladen
 
@@ -95,29 +95,29 @@ jeweils anders aus.
 
 ### Personenwahlen
 
-| Verfahren | Stimmzettel | Wofür |
-|---|---|---|
-| **Einzelwahl – ein Kandidat** | ein Name, global `JA` / `NEIN` / `ENTHALTUNG` | Eine Position, ein Bewerber |
-| **Einzelwahl – mehrere Kandidaten** | alle Namen, eine Stimme, dazu `NEIN` / `ENTHALTUNG` | Eine Position, mehrere Bewerber |
-| **Stichwahl** | die verbliebenen Bewerber, eine Stimme | Zweiter Durchgang ohne erreichte Mehrheit |
-| **Verbundene Einzelwahl** | je Position ein eigener Abschnitt | Mehrere Positionen auf einem Zettel, getrennt entschieden |
-| **Gruppenwahl – vorgedruckt** | alle Namen mit Ankreuzfeld, höchstens *n* Stimmen | Mehrere gleichartige Sitze, Bewerberfeld steht fest |
-| **Gruppenwahl – Blanko** | nummerierte Schreiblinien | Mehrere Sitze, Namen werden handschriftlich eingetragen |
-| **Akzeptanzwahl – Einzelposition** | `JA` / `NEIN` / `ENTHALTUNG` **je Bewerber** | Jeder Bewerber wird einzeln beurteilt |
-| **Akzeptanzwahl – mehrere Positionen** | `JA` / `NEIN` / `ENTHALTUNG` **je Bewerber** | Gewählt ist, wer mehr Ja- als Nein-Stimmen hat |
-| **Zwei-Stufen-Wahl – Stufe 1** | alle Namen, ohne feste Höchstzahl | Vorauswahl des Bewerberfelds |
-| **Zwei-Stufen-Wahl – Stufe 2, Einzelplatz** | die Vorausgewählten, eine Stimme | Listenplatz für Listenplatz besetzen |
-| **Zwei-Stufen-Wahl – Stufe 2, Wahlblock** | die Vorausgewählten, *n* Stimmen | Mehrere Listenplätze in einem Block |
+| Verfahren                                   | Stimmzettel                                         | Wofür                                                     |
+| ------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| **Einzelwahl – ein Kandidat**               | ein Name, global `JA` / `NEIN` / `ENTHALTUNG`       | Eine Position, ein Bewerber                               |
+| **Einzelwahl – mehrere Kandidaten**         | alle Namen, eine Stimme, dazu `NEIN` / `ENTHALTUNG` | Eine Position, mehrere Bewerber                           |
+| **Stichwahl**                               | die verbliebenen Bewerber, eine Stimme              | Zweiter Durchgang ohne erreichte Mehrheit                 |
+| **Verbundene Einzelwahl**                   | je Position ein eigener Abschnitt                   | Mehrere Positionen auf einem Zettel, getrennt entschieden |
+| **Gruppenwahl – vorgedruckt**               | alle Namen mit Ankreuzfeld, höchstens _n_ Stimmen   | Mehrere gleichartige Sitze, Bewerberfeld steht fest       |
+| **Gruppenwahl – Blanko**                    | nummerierte Schreiblinien                           | Mehrere Sitze, Namen werden handschriftlich eingetragen   |
+| **Akzeptanzwahl – Einzelposition**          | `JA` / `NEIN` / `ENTHALTUNG` **je Bewerber**        | Jeder Bewerber wird einzeln beurteilt                     |
+| **Akzeptanzwahl – mehrere Positionen**      | `JA` / `NEIN` / `ENTHALTUNG` **je Bewerber**        | Gewählt ist, wer mehr Ja- als Nein-Stimmen hat            |
+| **Zwei-Stufen-Wahl – Stufe 1**              | alle Namen, ohne feste Höchstzahl                   | Vorauswahl des Bewerberfelds                              |
+| **Zwei-Stufen-Wahl – Stufe 2, Einzelplatz** | die Vorausgewählten, eine Stimme                    | Listenplatz für Listenplatz besetzen                      |
+| **Zwei-Stufen-Wahl – Stufe 2, Wahlblock**   | die Vorausgewählten, _n_ Stimmen                    | Mehrere Listenplätze in einem Block                       |
 
 ### Sachabstimmungen
 
-| Verfahren | Stimmzettel | Wofür |
-|---|---|---|
-| **Ja / Nein / Enthaltung** | Beschlusstext, drei Optionen | Anträge, Satzungsänderungen |
-| **Eine von mehreren Optionen** | Optionen, eine Stimme | Auswahl zwischen Vorschlägen |
-| **Mehrere Optionen** | Optionen, mehrere Stimmen | Zustimmung zu mehreren Punkten |
-| **Variantenwahl / Alternativanträge** | Varianten, eine Stimme | Konkurrierende Anträge |
-| **Offene Abstimmung** | **kein Stimmzettel** | Handzeichen oder Stimmkarte; nur Stimmen werden gezählt |
+| Verfahren                             | Stimmzettel                  | Wofür                                                   |
+| ------------------------------------- | ---------------------------- | ------------------------------------------------------- |
+| **Ja / Nein / Enthaltung**            | Beschlusstext, drei Optionen | Anträge, Satzungsänderungen                             |
+| **Eine von mehreren Optionen**        | Optionen, eine Stimme        | Auswahl zwischen Vorschlägen                            |
+| **Mehrere Optionen**                  | Optionen, mehrere Stimmen    | Zustimmung zu mehreren Punkten                          |
+| **Variantenwahl / Alternativanträge** | Varianten, eine Stimme       | Konkurrierende Anträge                                  |
+| **Offene Abstimmung**                 | **kein Stimmzettel**         | Handzeichen oder Stimmkarte; nur Stimmen werden gezählt |
 
 ### Beispiel: dieselbe Delegiertenwahl in zwei Verfahren
 
@@ -144,14 +144,14 @@ Software.
 ## Ergebnis und Rangliste
 
 Bei mehreren Plätzen ist die **Reihenfolge** das Ergebnis: Wer ist Delegierter, wer Ersatz, in
-welcher Folge wird nachgerückt. Der Reiter *Ergebnis* zeigt sie als eigene Liste — erst die
+welcher Folge wird nachgerückt. Der Reiter _Ergebnis_ zeigt sie als eigene Liste — erst die
 Gewählten in ihrer Reihenfolge, dann eine Trennlinie, dann die Nichtgewählten.
 
 Sortiert wird nach den Regeln des Verfahrens:
 
-| Verfahren | Reihenfolge |
-|---|---|
-| Ankreuzen | nach Stimmen |
+| Verfahren     | Reihenfolge                                                 |
+| ------------- | ----------------------------------------------------------- |
+| Ankreuzen     | nach Stimmen                                                |
 | Akzeptanzwahl | zuerst Ja-Stimmen, bei Gleichstand **weniger** Nein-Stimmen |
 
 Wer bei gleicher Zustimmung weniger Ablehnung auf sich zieht, hat den größeren Rückhalt.
@@ -161,17 +161,17 @@ hat, steht hinter der Trennlinie, auch wenn ein Platz frei bliebe.
 ### Wenn die Zahlen nicht mehr trennen
 
 Liegen zwei Bewerber in allen Kriterien gleichauf, **rät die Anwendung nicht**. Sie sortiert nicht
-heimlich nach dem Namen, sondern schreibt *Rang offen* an beide Zeilen. Die Versammlung
+heimlich nach dem Namen, sondern schreibt _Rang offen_ an beide Zeilen. Die Versammlung
 entscheidet — und alle drei üblichen Wege sind unterstützt:
 
-1. **Stichwahl** zwischen den Gleichstehenden — über *Folgewahlgang erzeugen*; die
+1. **Stichwahl** zwischen den Gleichstehenden — über _Folgewahlgang erzeugen_; die
    Gleichstehenden sind dort vorausgewählt.
 2. **Losentscheid**, wenn auch die gleich ausgeht. So sehen es die meisten Wahlordnungen vor, und
    so steht es im Bundeswahlgesetz (§ 6: „entscheidet das Los").
 3. **Verzicht** auf den höheren Platz.
 
 Für Verzicht und Losentscheid wird die Entscheidung mit **↑ ↓** eingetragen und im Ergebnis
-festgehalten; das Feld *Losentscheid dokumentieren* nimmt auf, wie es dazu kam. Stehen mehrere
+festgehalten; das Feld _Losentscheid dokumentieren_ nimmt auf, wie es dazu kam. Stehen mehrere
 Gleichstände in einer Liste, bleibt jeder für sich offen, bis über ihn befunden wurde.
 
 Die eingetragene Reihenfolge **hebt niemanden über die Zahlen hinweg** — sie zählt nur dort, wo
@@ -183,7 +183,7 @@ sonst nichts mehr trennt.
 
 ### Ergebnisbeleg auf dem Bon
 
-*Ergebnis auf Bon drucken* gibt denselben Aufbau auf dem Thermodrucker aus: Wahlbeteiligung,
+_Ergebnis auf Bon drucken_ gibt denselben Aufbau auf dem Thermodrucker aus: Wahlbeteiligung,
 Stimmen je Bewerber in der Rangfolge, Trennlinie, Feststellung, Gewählte, Unterschriftszeile. Zum
 sofortigen Weitergeben nach vorne — unübersehbar als **kein Stimmzettel** gekennzeichnet und mit
 dem Hinweis, dass das unterschriebene Wahlprotokoll verbindlich bleibt.
@@ -203,7 +203,7 @@ Bericht oder Grußwort gibt es daneben ein freies Feld.
 
 **Wer als Nächstes drankommt, steht mit auf der Folie.** Die Reihe ergibt sich aus der
 Kandidatenliste, denn vorgestellt wird in der Reihenfolge des Stimmzettels — eine Warteliste zu
-pflegen erübrigt sich. Wie viele Namen zu sehen sind, ist einstellbar; *Nächster* ruft die nächste
+pflegen erübrigt sich. Wie viele Namen zu sehen sind, ist einstellbar; _Nächster_ ruft die nächste
 Person auf, die Reihe rückt nach und die Uhr beginnt von vorn. So bringen sich die Folgenden schon
 in Stellung, statt erst beim Aufruf loszugehen.
 
@@ -318,7 +318,7 @@ im eigenen Fenster oder auf einem beliebigen Gerät über einen **eigenen Netzen
   und `−` ändern das Tempo, `M` spiegelt. Dieselben Werte liegen in der Bedienung.
 - **Die Redezeit der Vorstellung** lässt sich auf den Prompter holen — dann sieht die vortragende
   Person dieselbe Uhr wie der Saal.
-- **Mitlaufen nach Gehör** (Laufart *Nach Stimme*): Der Prompter hört mit und setzt die Stelle
+- **Mitlaufen nach Gehör** (Laufart _Nach Stimme_): Der Prompter hört mit und setzt die Stelle
   dorthin, wo gesprochen wird. Vollständig auf dem Gerät — aufgenommen wird nichts, nach außen
   wandert allein eine Zahl. Ein kleines deutsches Sprachmodell liegt bei; ein größeres lässt sich
   in den Einstellungen darüberlegen.
