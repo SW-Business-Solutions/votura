@@ -246,3 +246,29 @@ describe('Kamera und Mikrofon je Rolle', () => {
     expect(quelle).toContain('herkunft !== erlaubteHerkunft')
   })
 })
+
+describe('Mit echtem Zertifikat', () => {
+  const einrichtung = readFileSync(join(__dirname, '..', 'src/renderer/src/einrichtung-main.tsx'), 'utf8')
+  const saalApp = readFileSync(join(__dirname, '..', 'src/saal/index.ts'), 'utf8')
+
+  it('baut die Adresse auf den Namen, nicht auf die Zahl', () => {
+    /*
+     * **Der Fehler, den das verhindert.** Ein Zertifikat gilt für einen
+     * Namen, nie für eine Adresse. `https://192.168.2.174:8477` ergibt auch
+     * mit tadellosem Zertifikat eine Warnung — in einer Anwendung ohne
+     * Adresszeile nicht einmal eine wegklickbare.
+     */
+    expect(einrichtung).toContain('zertifikatsName ?? gewaehlt.adresse')
+    expect(einrichtung).toContain("gewaehlt.tls ? 'https' : 'http'")
+  })
+
+  it('löst den Namen über die Adresse auf, unter der geantwortet wurde', () => {
+    /*
+     * Im Saalnetz löst den Namen sonst niemand auf — außer Votura selbst, und
+     * das setzte voraus, dass dieses Gerät es schon als Namensserver kennt.
+     * Ein Henne-Ei-Problem, das hier entfällt.
+     */
+    expect(saalApp).toContain('host-resolver-rules')
+    expect(saalApp).toContain('masterAdresse')
+  })
+})

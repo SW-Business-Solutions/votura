@@ -51,6 +51,18 @@ export interface SaalAntwort {
   buehnen: { id: number; name: string }[]
   /** Darf ein Gerät im Netz den Prompter bedienen? */
   prompterBedienung: boolean
+  /** Liefert der Hauptrechner verschlüsselt aus? */
+  tls?: boolean
+  /**
+   * Der Name, für den sein Zertifikat gilt.
+   *
+   * Ohne ihn liefe die Begleitanwendung in dieselbe Warnung wie jedes
+   * Telefon: Ein Zertifikat gilt für einen Namen, nie für eine Adresse.
+   * Aufgelöst wird er nicht über das Namensystem, sondern über die Adresse,
+   * unter der der Hauptrechner geantwortet hat — er hat sich ja gerade eben
+   * gemeldet.
+   */
+  zertifikatsName?: string
 }
 
 /** Ein gefundener Hauptrechner samt der Adresse, unter der er antwortete. */
@@ -91,6 +103,13 @@ export type SaalRolle =
 
 /** Was sie sich merkt, damit sie es beim nächsten Start nicht wieder fragt. */
 export interface SaalEinstellung {
+  /**
+   * Die Adresse hinter dem Namen.
+   *
+   * Nur gesetzt, wenn `master` auf einen Namen lautet: Dann muss dieses Gerät
+   * wissen, wohin der zeigt — im Saalnetz löst ihn sonst niemand auf.
+   */
+  masterAdresse?: string
   /** Grundadresse des Hauptrechners, etwa `http://192.168.1.5:8477`. */
   master: string
   token: string

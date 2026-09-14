@@ -91,6 +91,23 @@ function schreibeEinstellung(einstellung: SaalEinstellung | null): void {
  */
 const gespeichert = leseEinstellung()
 if (gespeichert) {
+  /*
+   * **Den Namen auf die bekannte Adresse zeigen lassen.**
+   *
+   * Läuft der Hauptrechner mit einem echten Zertifikat, lautet seine Adresse
+   * auf einen Namen. Im Saalnetz gibt es aber niemanden, der ihn auflöst —
+   * außer Votura selbst, und das setzt voraus, dass dieses Gerät ihn schon
+   * als Namensserver kennt. Ein Henne-Ei-Problem, das hier entfällt: Beim
+   * Einrichten hat der Hauptrechner geantwortet, seine Adresse steht in der
+   * Einstellung, und Chromium bekommt sie als feste Zuordnung mit.
+   *
+   * Das ist enger als ein Namensdienst, nicht weiter: Es gilt für genau
+   * diesen einen Namen und genau diese eine Adresse.
+   */
+  if (gespeichert.masterAdresse) {
+    const ziel = new URL(gespeichert.master).hostname
+    app.commandLine.appendSwitch('host-resolver-rules', `MAP ${ziel} ${gespeichert.masterAdresse}`)
+  }
   app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', new URL(gespeichert.master).origin)
   /* Ohne diesen Zusatz greift die Zusage in einem eigenen Prozess je Seite
      nicht — Chromium prüft sie dann erneut und kommt zu einem anderen

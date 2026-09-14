@@ -54,7 +54,18 @@ function EinrichtungsApp(): React.JSX.Element {
     void suchen()
   }, [suchen])
 
-  const master = gewaehlt ? `http://${gewaehlt.adresse}:${gewaehlt.port}` : handAdresse.trim()
+  /*
+   * **Mit echtem Zertifikat zählt der Name.**
+   *
+   * Ein Zertifikat gilt für einen Namen, nie für eine Adresse — eine Adresse
+   * ergäbe auch bei tadellosem Zertifikat eine Warnung, und in dieser
+   * Anwendung nicht einmal eine wegklickbare. Aufgelöst wird der Name nicht
+   * über das Namensystem, sondern über die Adresse, unter der der
+   * Hauptrechner gerade geantwortet hat (siehe `saal/index.ts`).
+   */
+  const master = gewaehlt
+    ? `${gewaehlt.tls ? 'https' : 'http'}://${gewaehlt.zertifikatsName ?? gewaehlt.adresse}:${gewaehlt.port}`
+    : handAdresse.trim()
   const buehnen = gewaehlt?.buehnen ?? []
   const tokenNoetig = gewaehlt?.tokenNoetig ?? true
 
@@ -66,7 +77,15 @@ function EinrichtungsApp(): React.JSX.Element {
       setPruefung({ laeuft: false, fehler: ergebnis?.fehler ?? 'Der Rechner antwortet nicht.' })
       return
     }
-    await window.saal?.uebernehmen({ master, token, rolle, name: gewaehlt?.name })
+    await window.saal?.uebernehmen({
+      master,
+      /* Nur mitgeben, wenn die Adresse auf einen Namen lautet — sonst gäbe es
+         nichts aufzulösen. */
+      masterAdresse: gewaehlt?.zertifikatsName ? gewaehlt.adresse : undefined,
+      token,
+      rolle,
+      name: gewaehlt?.name
+    })
   }
 
   return (

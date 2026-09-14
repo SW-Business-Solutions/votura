@@ -186,7 +186,8 @@ import {
   eigenesZertifikatAblegen,
   eigenesZertifikatEntfernen,
   netzwerkkarten,
-  saaladresse
+  saaladresse,
+  zertifikatsName
 } from './tls'
 import {
   getConfig,
@@ -311,7 +312,12 @@ export function suchrufQuelle(): SuchrufQuelle {
     version: () => app.getVersion(),
     tokenNoetig: () => Boolean(getNetworkProjection().token),
     buehnen: () => listBuehnen().map((buehne) => ({ id: buehne.id, name: buehne.name })),
-    prompterBedienung: () => getNetworkProjection().allowPrompterControl
+    prompterBedienung: () => getNetworkProjection().allowPrompterControl,
+    tls: () => getNetworkProjection().tls,
+    zertifikatsName: () =>
+      getNetworkProjection().tls
+        ? (zertifikatsName(join(app.getPath('userData'), 'netz')) ?? undefined)
+        : undefined
   }
 }
 

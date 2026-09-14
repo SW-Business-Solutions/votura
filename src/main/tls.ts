@@ -300,6 +300,25 @@ export function eigenesZertifikatAblegen(
   return { domain: ersterName, laeuftAbAm: new Date(geprueft.validTo).toISOString() }
 }
 
+/**
+ * Der Name, für den das hinterlegte Zertifikat gilt — oder nichts.
+ *
+ * Er entscheidet, unter welcher Adresse die Geräte im Saal hereinkommen: Ein
+ * Zertifikat gilt für einen Namen, niemals für eine Adresse. Wer
+ * `https://192.168.2.174:8477` aufruft, bekommt deshalb auch mit einem
+ * tadellosen Zertifikat eine Warnung — und zwar zu Recht.
+ */
+export function zertifikatsName(ordner: string): string | null {
+  const pfade = eigenesZertifikatPfade(ordner)
+  if (!existsSync(pfade.cert)) return null
+  try {
+    const geparst = new X509Certificate(readFileSync(pfade.cert, 'utf8'))
+    return /DNS:([^,\s]+)/.exec(geparst.subjectAltName ?? '')?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
 /** Ein hinterlegtes eigenes Zertifikat wieder entfernen. */
 export function eigenesZertifikatEntfernen(ordner: string): void {
   for (const pfad of Object.values(eigenesZertifikatPfade(ordner))) {

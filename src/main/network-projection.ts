@@ -11,7 +11,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { createServer as createSecureServer } from 'node:https'
 import { app } from 'electron'
-import { eigeneAdressen, zertifikatFuer } from './tls'
+import { eigeneAdressen, zertifikatFuer, zertifikatsName } from './tls'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import type { NetworkProjectionConfig } from '@shared/config'
@@ -747,6 +747,19 @@ export interface NetworkStatus {
 export function localUrls(port: number, token: string, tls = config?.tls ?? false): string[] {
   const schema = tls ? 'https' : 'http'
   const suffix = token ? `/?t=${encodeURIComponent(token)}` : '/'
+  /*
+   * **Mit echtem Zertifikat zählt der Name, nicht die Adresse.**
+   *
+   * Ein Zertifikat gilt für einen Namen; `https://192.168.2.174:8477` ergibt
+   * deshalb auch mit einem tadellosen Zertifikat eine Warnung. Wer eine
+   * Adresse abschreibt und im Saal verteilt, verteilt eine Warnung.
+   *
+   * Die Adressen bleiben trotzdem stehen — sie sind der Weg, wenn der Name
+   * im Saal (noch) nicht auflösbar ist, und dann ist die Warnung das kleinere
+   * Übel. Aber sie stehen dahinter.
+   */
+  const name = tls ? zertifikatsName(join(app.getPath('userData'), 'netz')) : null
+
   const gebunden = config?.bindAddress
   const adressen =
     gebunden && gebunden !== '0.0.0.0' && gebunden !== '127.0.0.1'
@@ -754,7 +767,8 @@ export function localUrls(port: number, token: string, tls = config?.tls ?? fals
       : gebunden === '127.0.0.1'
         ? ['127.0.0.1']
         : eigeneAdressen()
-  return adressen.map((adresse) => `${schema}://${adresse}:${port}${suffix}`)
+  const gebaut = adressen.map((adresse) => `${schema}://${adresse}:${port}${suffix}`)
+  return name ? [`${schema}://${name}:${port}${suffix}`, ...gebaut] : gebaut
 }
 
 export async function stopNetworkProjection(): Promise<void> {
