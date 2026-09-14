@@ -1,0 +1,153 @@
+# Bedrohungsmodell der digitalen Stimmabgabe
+
+- **Stand:** 2026-09-14
+- **Gegenstand:** die in ADR-0006 beschriebene digitale Stimmabgabe
+- **Zweck:** festhalten, wogegen das Verfahren schützt, wogegen nicht, und woran das jeweils hängt
+
+Dieses Dokument ist keine Rechtsberatung und keine Sicherheitszertifizierung. Es ist die Grundlage
+für beides.
+
+## 1. Was geschützt werden muss
+
+| Schutzgut               | Bedeutet                                                         | Verletzt, wenn                                                                           |
+| ----------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Wahlgeheimnis**       | Niemand kann feststellen, wie eine bestimmte Person gestimmt hat | jemand Stimme und Person verbinden kann — auch nachträglich, auch mit Verwaltungsrechten |
+| **Integrität**          | Das Ergebnis entspricht den abgegebenen Stimmen                  | Stimmen verändert, hinzugefügt oder unterschlagen werden                                 |
+| **Gleichheit**          | Eine Person, eine Stimme                                         | jemand mehrfach oder unberechtigt abstimmt                                               |
+| **Verfügbarkeit**       | Jeder Stimmberechtigte kann abstimmen                            | Geräte, Netz oder Server ausfallen                                                       |
+| **Nachvollziehbarkeit** | Das Ergebnis ist im Nachhinein überprüfbar                       | nur der Rechner „weiß", was herausgekommen ist                                           |
+| **Freiheit**            | Niemand wird bei der Abgabe beobachtet oder unter Druck gesetzt  | die Stimme sichtbar abgegeben oder nachgewiesen werden kann                              |
+
+Die ersten fünf sind technische Fragen. Die sechste ist überwiegend eine Frage des Raums — und
+deshalb der Grund, warum es Wahlkabinen gibt.
+
+## 2. Wer als Angreifer gedacht wird
+
+|                            | Kann                                                                           | Will                                                       |
+| -------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| **Teilnehmer**             | eigenes Gerät vollständig kontrollieren, im WLAN mitlesen, Pässe fotografieren | mehrfach abstimmen, fremde Stimme abgeben, Ergebnis stören |
+| **Beobachter im Saal**     | zusehen, Druck ausüben                                                         | erfahren, wie jemand gestimmt hat                          |
+| **Netzbetreiber**          | WLAN-Controller, Adressen, Zeitpunkte                                          | Stimme einer Person zuordnen                               |
+| **Wahlleitung am Rechner** | alles auf dem Hauptrechner                                                     | Ergebnis verändern, Stimmen zuordnen                       |
+| **Späterer Auswerter**     | Datenbank und Sicherungen nach der Versammlung                                 | rekonstruieren, wer wie gestimmt hat                       |
+
+Der vierte ist der unbequeme Fall, und er ist nicht theoretisch: Der Vorsitzende, der die Wahl
+seines Nachfolgers organisiert, bedient denselben Rechner.
+
+## 3. Angriffe und was dagegen steht
+
+### 3.1 Stimme einer Person zuordnen
+
+| Weg                                                     | Gegenmaßnahme                                                                                           | Rest                                        |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Berechtigung und Urne nebeneinanderlegen                | Blindsignatur: die Berechtigungsseite sieht die Seriennummer nie                                        | —                                           |
+| Reihenfolge vergleichen („Dritter Pass, dritte Stimme") | Urne mischt beim Schließen, speichert keine Eingangsreihenfolge, Zeitstempel nur auf den Wahlgang genau | —                                           |
+| Absenderadresse mitschreiben                            | Urne speichert keine Herkunft                                                                           | **wer das Netz betreibt, sieht Zeitpunkte** |
+| Gerätekennung, Browser-Fingerabdruck                    | nichts davon wird gespeichert                                                                           | —                                           |
+| Sicherung nachträglich auswerten                        | in der Sicherung steht dasselbe wie im Betrieb — die Verbindung existiert nirgends                      | —                                           |
+
+**Der verbleibende Weg ist das Netz.** Wenn dasselbe Telefon erst die Unterschrift holt und dann die
+Stimme abgibt, verbindet die Adresse beide Vorgänge — nicht in Votura, aber im Zugangspunkt. Dagegen
+hilft technisch wenig und räumlich viel: In der Wahlkabine gehört das Gerät nicht zur Person.
+
+Deshalb: **Für geheime Wahlen ist der Kabinenbetrieb die Empfehlung, nicht nur eine Möglichkeit.**
+Wer eigene Geräte zulässt, sollte wissen, worauf er verzichtet.
+
+### 3.2 Mehrfach oder unberechtigt abstimmen
+
+| Weg                                      | Gegenmaßnahme                                                                                                        |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Pass zweimal verwenden                   | je Pass und Wahlgang genau eine Unterschrift                                                                         |
+| Unterschrift zweimal einlösen            | jede Seriennummer wird genau einmal angenommen                                                                       |
+| Fremden Pass fotografieren und verwenden | Pass wird bei der Akkreditierung gegen Ausweis ausgegeben; Sperrung möglich; **bei eigenen Geräten bleibt ein Rest** |
+| Seriennummer erfinden                    | ohne gültige Unterschrift nimmt die Urne nichts an                                                                   |
+| Unterschrift fälschen                    | RSA; Schlüssel je Wahlgang, öffentlicher Teil vorher veröffentlicht                                                  |
+
+Der Passdiebstahl ist der schwächste Punkt bei eigenen Geräten: Ein QR-Code lässt sich über die
+Schulter fotografieren. Gegenmaßnahmen: Ausgabe erst im Saal, Sperrmöglichkeit, und — die
+wirksamste — die Kabine, in der der Pass gescannt und sofort verbraucht wird.
+
+### 3.3 Ergebnis verändern
+
+| Weg                             | Gegenmaßnahme                                                          | Rest                                                         |
+| ------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Stimmen in der Datenbank ändern | gedruckte Urnenliste; wer nachzählt, merkt es                          | nur, wenn jemand nachzählt                                   |
+| Zusätzliche Stimmen einlegen    | Bilanz: angenommene Stimmen ≤ ausgegebene Unterschriften               | **die Wahlleitung kann zusätzliche Unterschriften erzeugen** |
+| Stimmen unterschlagen           | ausgegebene Unterschriften laufen öffentlich mit; eine Lücke fällt auf | Teilnehmer müssen hinsehen                                   |
+| Schlüssel austauschen           | öffentlicher Teil wird vor Öffnung angezeigt und gedruckt              | —                                                            |
+| Auszählung fälschen             | die Liste ist gedruckt und von Hand nachzählbar                        | —                                                            |
+
+**Der offene Punkt ist der private Schlüssel auf dem Hauptrechner.** Wer ihn kontrolliert, kann
+gültige Unterschriften erzeugen und die Urne füllen. Die Bilanz macht das sichtbar — aber nur, wenn
+die Zahl der ausgegebenen Unterschriften selbst vertrauenswürdig ist, und die stammt vom selben
+Rechner.
+
+Das ist die bauartbedingte Grenze einer Ein-Rechner-Lösung und sie gehört offen benannt. Aufgelöst
+wird sie erst, wenn die Berechtigungsseite auf einem Gerät des Wahlausschusses läuft und beide
+Seiten unabhängig Zahlen nennen, die zusammenpassen müssen (M3). Bis dahin gilt dieselbe Annahme wie
+bei der Papierwahl: Die Wahlleitung ist nicht der Angreifer, und das Verfahren macht es sichtbar,
+wenn sie es doch ist.
+
+### 3.4 Beobachtung und Druck
+
+| Weg                                                | Gegenmaßnahme                                               | Rest                                          |
+| -------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------- |
+| „Zeig mir, wen du gewählt hast" während der Abgabe | Wahlkabine                                                  | **bei eigenen Geräten am Platz nicht lösbar** |
+| Nachträglicher Nachweis verlangen                  | das Gerät vergisst die Seriennummer; es gibt keine Quittung | —                                             |
+| Fremdes Gerät verlangen und selbst abstimmen       | Kabine, Ausgabe des Passes gegen Ausweis                    | Rest                                          |
+
+Die fehlende Quittung ist hier kein Mangel, sondern die Gegenmaßnahme: Was man nicht nachweisen
+kann, kann man nicht erzwingen.
+
+### 3.5 Verfügbarkeit
+
+| Weg                                  | Gegenmaßnahme                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| WLAN überlastet                      | Netzplanung gehört zur Veranstaltung; offene Abstimmungen (M1) erproben die Last vor der ersten geheimen Wahl |
+| Hauptrechner fällt aus               | wie heute: Sicherung, und der Wahlgang kann jederzeit auf Papier umgestellt werden                            |
+| Teilnehmer ohne Gerät oder ohne Akku | Wahlkabinen sind Pflichtbestandteil, nicht Zubehör                                                            |
+| Störsender, Netzangriff              | Papier bleibt der Rückfallweg — deshalb wird es nicht abgeschafft                                             |
+
+Dass die Papierwahl vollständig erhalten bleibt, ist auch eine Sicherheitsmaßnahme: Es gibt immer
+einen Weg, der ohne Strom und Funk auskommt.
+
+## 4. Was nicht gespeichert wird
+
+Zusammen mit einer Stimme wird nie gespeichert:
+
+- Name, Mitgliedsnummer, Voting-Pass-Kennung
+- IP- oder MAC-Adresse, Gerätekennung, Browser-Merkmale
+- Zeitpunkt genauer als der Wahlgang
+- Eingangsreihenfolge
+
+Das Audit protokolliert die **Verwaltungsvorgänge** (Wahlgang geöffnet, geschlossen, Anzahl
+ausgegebener Berechtigungen, Ergebnis festgestellt), nicht die Stimmabgaben.
+
+## 5. Offene Fragen
+
+Vor einem produktiven Einsatz zu klären — von Menschen, nicht von diesem Dokument:
+
+1. **Zulässigkeit.** Ob eine elektronische Stimmabgabe in der konkreten Gliederung erlaubt ist,
+   hängt an Satzung, Wahlordnung, Geschäftsordnung und Beschlusslage. Die einschlägigen
+   Vorschriften des Parteiengesetzes sind am aktuellen Wortlaut zu prüfen; das Parteienrecht wurde
+   zuletzt mehrfach geändert.
+2. **Bestätigungserfordernis.** In verwandten Regelungen müssen elektronisch gefasste Beschlüsse
+   nachträglich in Textform bestätigt werden. Ob das hier greift, ist zu klären.
+3. **Datenschutz-Folgenabschätzung.** Anwesenheit und Stimmberechtigung sind personenbezogene
+   Daten; bei Parteien liegt zudem die Frage besonderer Kategorien nahe.
+4. **Unabhängige Prüfung.** Vor dem ersten geheimen Wahlgang gehören Kryptografie und
+   Implementierung von außen geprüft. Das Verfahren ist bekannt und nachrechenbar — dass es richtig
+   umgesetzt ist, muss jemand anderes feststellen als der, der es gebaut hat.
+5. **Aufbewahrung.** Wie lange die gedruckte Urnenliste und die Bilanz aufzubewahren sind, richtet
+   sich nach der jeweiligen Ordnung.
+
+## 6. Warum der Quelltext der Urne offen bleiben sollte
+
+Eine Urne, deren Verfahren niemand prüfen kann, ist bei einer Wahl genau das, was man nicht will.
+Die Entscheidung des Bundesverfassungsgerichts von 2009 zur Öffentlichkeit der Wahl bindet
+innerparteiliche Wahlen nicht — aber ihr Gedanke trifft zu, und der erste Kritiker im Saal wird sie
+zitieren.
+
+Alles, was die Stimme berührt — Tokenverfahren, Blindsignatur, Urne, Auszählung und die Werkzeuge
+zum Nachrechnen —, sollte einsehbar und nachprüfbar sein. Das ist kein Verzicht, sondern die
+Voraussetzung dafür, dass jemand dem Ergebnis glaubt.
