@@ -35,7 +35,11 @@ const events = await import('../src/main/services/events')
 const teilnehmer = await import('../src/main/services/participants')
 const audit = await import('../src/main/services/audit')
 const karten = await import('../src/main/services/cards')
+const ausgabe = await import('../src/main/services/handout')
+const bilanz = await import('../src/main/services/accounting')
+const rundenDienst = await import('../src/main/services/rounds')
 import type { QuorumRule } from '../src/shared/types'
+import { defaultTemplateFor } from '../src/shared/election'
 
 const OHNE: QuorumRule = { kind: 'none', value: 0 }
 const HAELFTE: QuorumRule = { kind: 'share', value: 0.5 }
@@ -77,24 +81,24 @@ function anlegen(nachname: string, extra: { eligible?: boolean; weight?: number 
 }
 
 /**
- * Ein Wahlgang, so knapp wie das Schema es zulässt.
+ * Ein Wahlgang über den echten Dienst.
  *
- * Über die Datenbank statt über den Dienst: Geprüft wird hier die
- * Akkreditierung, nicht das Anlegen von Wahlgängen — und ein Fremdschlüssel
- * braucht nun einmal eine echte Zeile.
+ * Zuerst stand hier ein handgeschriebenes INSERT — das war schneller, aber es
+ * ließ `template_json` leer, und der erste Zugriff über `getRound` fiel darauf
+ * herein. Eine Abkürzung, die genau so lange hält, bis jemand sie benutzt.
  */
 function wahlgangAnlegen(zuEvent: string): string {
-  const id = `runde-${zaehler++}`
-  db()
-    .prepare(
-      `INSERT INTO rounds (id, event_id, sequential_number, round_code, round_label, title,
-                           purpose, procedure, seats, status, template_json, created_at)
-       VALUES (?, ?, ?, ?, 'Wahlgang', 'Probe', 'election', 'majority', 1, 'draft', '{}', ?)`
-    )
-    .run(id, zuEvent, zaehler, `R${zaehler}`, new Date().toISOString())
-  return id
+  return rundenDienst.createRound({
+    eventId: zuEvent,
+    title: 'Probewahl',
+    purpose: 'board_member',
+    procedure: 'single_candidate',
+    seats: 1,
+    maxVotes: 1,
+    template: defaultTemplateFor('single_candidate', { seats: 1, maxVotes: 1, entryCount: 1 }),
+    orderMode: 'manual'
+  }).id
 }
-let zaehler = 1
 
 describe('Anwesenheit', () => {
   it('beginnt abwesend', () => {
@@ -571,5 +575,100 @@ describe('Einlassbändchen', () => {
     const stand = karten.cardStock()
     expect(stand.total).toBeGreaterThan(0)
     expect(stand.available + stand.assigned + stand.lost + stand.retired).toBe(stand.total)
+  })
+})
+
+describe('Ausgabe der Stimmzettel', () => {
+  /*
+   * Bisher war das ein Handgriff ohne Gedächtnis: Der Zettel ging über den
+   * Tisch, und in der Bilanz stand am Ende eine getippte Zahl. Wer doppelt
+   * austeilte, merkte es beim Nachzählen — oder gar nicht.
+   */
+  let wahlgang = ''
+  let person: { id: string } = { id: '' }
+
+  it('gibt je Wahlgang genau einen Zettel je Person', () => {
+    wahlgang = wahlgangAnlegen(eventId)
+    person = anlegen('Zettelempfänger')
+    teilnehmer.setAttendance(person.id, 'in')
+
+    const { issue } = ausgabe.issueBallot({ roundId: wahlgang, participantId: person.id })
+    expect(issue.kind).toBe('initial')
+
+    /* Der zweite Versuch nennt den Grund und die Uhrzeit — am Tisch muss
+       jemand in zwei Sekunden entscheiden können. */
+    expect(() => ausgabe.issueBallot({ roundId: wahlgang, participantId: person.id })).toThrow(
+      /schon einen Stimmzettel bekommen/
+    )
+  })
+
+  it('gibt niemandem einen Zettel, der nicht im Saal ist', () => {
+    /* Der Punkt, an dem die Anwesenheitspflicht wirklich greift. */
+    const gegangen = anlegen('Schongegangen')
+    expect(() => ausgabe.issueBallot({ roundId: wahlgang, participantId: gegangen.id })).toThrow(
+      /Nicht im Saal/
+    )
+  })
+
+  it('verlangt für den Ersatzzettel einen Grund', () => {
+    /* §23: Der verdorbene Zettel muss zurückkommen, sonst geht die Rechnung
+       nicht auf — und warum er verdorben war, gehört ins Protokoll. */
+    expect(() =>
+      ausgabe.issueBallot({ roundId: wahlgang, participantId: person.id, kind: 'replacement' })
+    ).toThrow(/Grund/)
+
+    const { issue } = ausgabe.issueBallot({
+      roundId: wahlgang,
+      participantId: person.id,
+      kind: 'replacement',
+      reason: 'verschrieben'
+    })
+    expect(issue.kind).toBe('replacement')
+  })
+
+  it('zählt getrennt nach regulär und Ersatz', () => {
+    const stand = ausgabe.handoutCount(wahlgang)
+    expect(stand).toEqual({ initial: 1, replacements: 1 })
+  })
+
+  it('geht in die Bilanz ein, ohne die Handeingabe zu verdrängen', () => {
+    /*
+     * Abgeleitet wie `printed`, nicht eingetippt. Wo von Hand ausgeteilt wird,
+     * bleibt `issued` die maßgebliche Zahl — die Akkreditierung ist eine
+     * Möglichkeit, keine Pflicht.
+     */
+    const stand = bilanz.accountingFor(wahlgang)
+    expect(stand.handedOut).toBe(1)
+    expect(stand.handedOutReplacements).toBe(1)
+    expect(stand.issued).toBe(0)
+  })
+
+  it('verbindet die Ausgabe mit keiner Stimme', () => {
+    /*
+     * Die Grenze, die den ganzen Entwurf trägt: Festgehalten ist, dass jemand
+     * einen **leeren** Zettel bekommen hat. Was damit geschieht, steht
+     * nirgends.
+     */
+    const spalten = db().prepare(`SELECT * FROM ballot_issues LIMIT 1`).get<Record<string, unknown>>()
+    expect(Object.keys(spalten ?? {}).sort()).toEqual([
+      'by_user',
+      'id',
+      'issued_at',
+      'kind',
+      'participant_id',
+      'round_id'
+    ])
+  })
+
+  it('lässt einen Fehlgriff zurücknehmen, aber nicht spurlos', () => {
+    const falsch = anlegen('Fehlgriff')
+    teilnehmer.setAttendance(falsch.id, 'in')
+    const { issue } = ausgabe.issueBallot({ roundId: wahlgang, participantId: falsch.id })
+    expect(ausgabe.handoutCount(wahlgang).initial).toBe(2)
+
+    ausgabe.revokeIssue(issue.id, 'falscher Ausweis lag oben auf')
+    expect(ausgabe.handoutCount(wahlgang).initial).toBe(1)
+    /* Gelöscht wird die Ausgabe, nicht ihre Spur. */
+    expect(audit.listAudit({ eventId }).map((eintrag) => eintrag.action)).toContain('ballot.issue_revoked')
   })
 })

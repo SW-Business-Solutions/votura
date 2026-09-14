@@ -28,6 +28,7 @@ import type {
   AuditEntry,
   BallotAccounting,
   BallotDocument,
+  BallotIssue,
   BallotPreviewRow,
   BallotTemplateConfig,
   BallotVersionRecord,
@@ -398,6 +399,17 @@ export interface Api {
   'participant.block': (input: { id: UUID; reason: string }) => Promise<Participant>
   'participant.unblock': (id: UUID) => Promise<Participant>
   'participant.presence': (eventId: UUID) => Promise<PresenceSummary>
+
+  /* ------------------------------------------------ Ausgabe der Zettel */
+  'handout.issue': (input: {
+    roundId: UUID
+    participantId: UUID
+    kind?: BallotIssue['kind']
+    reason?: string
+  }) => Promise<{ issue: BallotIssue; participant: Participant }>
+  'handout.count': (roundId: UUID) => Promise<{ initial: number; replacements: number }>
+  'handout.for': (input: { roundId: UUID; participantId: UUID }) => Promise<BallotIssue[]>
+  'handout.revoke': (input: { issueId: UUID; reason: string }) => Promise<void>
 
   /* ------------------------------------------------- Karten und Bändchen */
   'card.list': () => Promise<Card[]>

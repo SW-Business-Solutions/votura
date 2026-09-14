@@ -159,6 +159,7 @@ import {
   returnCard,
   setCardStatus
 } from './services/cards'
+import { handoutCount, handoutFor, issueBallot, revokeIssue } from './services/handout'
 import { confirmResult, emergencyReopen, getResult, reopenResult, saveResult } from './services/results'
 import {
   getConfig,
@@ -502,6 +503,14 @@ const api: Api = {
   },
 
   /* ---------------------------------------------------------- Tagesordnung */
+  /* ----------------------------------------------- Ausgabe der Zettel */
+  'handout.issue': async (input) => issueBallot(input),
+  'handout.count': async (roundId) => handoutCount(roundId),
+  'handout.for': async (input) => handoutFor(input.roundId, input.participantId),
+  'handout.revoke': async (input) => {
+    revokeIssue(input.issueId, input.reason)
+  },
+
   /* ------------------------------------------------ Karten und Bändchen */
   'card.list': async () => listCards(),
   'card.stock': async () => cardStock(),

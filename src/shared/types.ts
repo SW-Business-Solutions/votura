@@ -711,12 +711,39 @@ export interface PrinterTestResult {
 
 /* ------------------------------------------------------- Stimmzettelbilanz */
 
+/**
+ * Eine Ausgabe am Tisch: Diese Person hat für diesen Wahlgang einen Zettel
+ * bekommen.
+ *
+ * Festgehalten wird, dass jemand einen **leeren** Zettel bekommen hat. Was
+ * damit geschieht, steht nirgends — sobald der Zettel über den Tisch ist, ist
+ * er anonym wie jeder andere.
+ */
+export interface BallotIssue {
+  id: UUID
+  roundId: UUID
+  participantId: UUID
+  issuedAt: IsoDateTime
+  /** `replacement` für einen Ersatzzettel nach einem verschriebenen (§23). */
+  kind: 'initial' | 'replacement'
+  byUser?: string
+}
+
 export interface BallotAccounting {
   electionRoundId: UUID
   /** Aus PrintBatches abgeleitet. */
   printed: number
   printFailures: number
   testPrints: number
+  /**
+   * Am Ausgabetisch erfasst — abgeleitet wie `printed`, nicht eingetippt.
+   *
+   * Wo ein Ausgabeplatz benutzt wird, ist das die maßgebliche Zahl; `issued`
+   * kann dann leer bleiben. Wo von Hand ausgeteilt wird, bleibt es bei der
+   * Eingabe.
+   */
+  handedOut: number
+  handedOutReplacements: number
   /** Manuell dokumentierte Mengen. */
   issued: number
   replacementsIssued: number

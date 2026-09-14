@@ -390,6 +390,34 @@ CREATE INDEX IF NOT EXISTS idx_karte_teilnehmer ON card_assignments(participant_
     sql: `
 ALTER TABLE cards ADD COLUMN kind TEXT NOT NULL DEFAULT 'card';
 `
+  },
+  {
+    /*
+     * Wer für welchen Wahlgang einen Stimmzettel bekommen hat.
+     *
+     * Das Papieräquivalent zur einmaligen Stimmberechtigung: Je Wahlgang
+     * bekommt jeder genau einen Zettel. Bisher stand die ausgegebene Menge als
+     * **eine getippte Zahl** in der Bilanz — wer doppelt austeilte, merkte es
+     * beim Nachzählen oder gar nicht.
+     *
+     * Die Tabelle sagt **nicht**, wie jemand gestimmt hat. Sie sagt, dass er
+     * einen leeren Zettel bekommen hat; danach ist der Zettel anonym wie jeder
+     * andere. Genau diese Grenze trennt die Ausgabe von der Urne.
+     */
+    version: 9,
+    sql: `
+CREATE TABLE IF NOT EXISTS ballot_issues (
+  id             TEXT PRIMARY KEY,
+  round_id       TEXT NOT NULL REFERENCES rounds(id),
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  issued_at      TEXT NOT NULL,
+  kind           TEXT NOT NULL DEFAULT 'initial',
+  by_user        TEXT,
+  UNIQUE (round_id, participant_id, kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ausgabe_wahlgang ON ballot_issues(round_id);
+`
   }
 ]
 
