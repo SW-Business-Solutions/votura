@@ -418,6 +418,66 @@ CREATE TABLE IF NOT EXISTS ballot_issues (
 
 CREATE INDEX IF NOT EXISTS idx_ausgabe_wahlgang ON ballot_issues(round_id);
 `
+  },
+  {
+    /*
+     * Digitale Stimmabgabe (ADR-0006).
+     *
+     * Drei Tabellen, und ihre Trennung ist der ganze Entwurf:
+     *
+     * `voting_sessions` — die Abstimmung selbst. Bei geheimer Wahl entsteht
+     * hier je Wahlgang ein eigenes Schlüsselpaar; der private Teil wird beim
+     * Schließen gelöscht, der öffentliche bleibt für die Nachprüfung stehen.
+     *
+     * `voting_rights` — wer eine Stimmberechtigung bekommen hat. **Nicht**,
+     * welche. Bei geheimer Wahl steht hier nichts über das Token: Die
+     * Berechtigungsseite hat es nie gesehen (Blindsignatur).
+     *
+     * `cast_ballots` — die Urne. Sie kennt Seriennummer und Stimme. Die Spalte
+     * `participant_id` bleibt bei geheimer und bei einfacher offener Wahl
+     * **leer**; gefüllt wird sie nur bei einer namentlichen Abstimmung, und
+     * dort ist die Zuordnung der ausdrückliche Zweck.
+     *
+     * Zwischen `voting_rights` und `cast_ballots` gibt es keinen
+     * Fremdschlüssel und keine gemeinsame Kennung. Das ist keine
+     * Nachlässigkeit, sondern die Aussage.
+     */
+    version: 10,
+    sql: `
+CREATE TABLE IF NOT EXISTS voting_sessions (
+  round_id    TEXT PRIMARY KEY REFERENCES rounds(id),
+  secrecy     TEXT NOT NULL,
+  devices     TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'prepared',
+  public_key  TEXT,
+  private_key TEXT,
+  opened_at   TEXT,
+  closed_at   TEXT,
+  created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS voting_rights (
+  id             TEXT PRIMARY KEY,
+  round_id       TEXT NOT NULL REFERENCES rounds(id),
+  participant_id TEXT NOT NULL REFERENCES participants(id),
+  weight         INTEGER NOT NULL DEFAULT 1,
+  issued_at      TEXT NOT NULL,
+  UNIQUE (round_id, participant_id)
+);
+
+CREATE TABLE IF NOT EXISTS cast_ballots (
+  id             TEXT PRIMARY KEY,
+  round_id       TEXT NOT NULL REFERENCES rounds(id),
+  serial         TEXT NOT NULL,
+  choice_json    TEXT NOT NULL,
+  weight         INTEGER NOT NULL DEFAULT 1,
+  participant_id TEXT REFERENCES participants(id),
+  ordnung        INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (round_id, serial)
+);
+
+CREATE INDEX IF NOT EXISTS idx_urne_wahlgang ON cast_ballots(round_id, ordnung);
+`
   }
 ]
 
