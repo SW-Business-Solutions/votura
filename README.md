@@ -27,6 +27,8 @@ Gesprochenen folgt.
 | Druck            | ESC/POS; Epson ePOS-Print (LAN/XML), RAW-Netzwerk (9100), Windows-Spooler (USB), Dateiausgabe           |
 | Akkreditierung   | Wer da ist, wer mitstimmen darf, Beschlussfähigkeit — Stimmkarten, Bändchen oder gedruckte Pässe mit QR |
 | Ausgabe          | Ein Stimmzettel gegen einen Ausweis; je Wahlgang genau einer, die Bilanz wird gezählt statt getippt     |
+| Abstimmung       | Auf Papier — und wahlweise digital: offen, namentlich oder geheim mit Blindsignaturen¹                  |
+| Saalnetz         | Verschlüsselt, auf Wunsch mit echtem Zertifikat (Let's Encrypt), Namensdienst und Adressvergabe         |
 | Bühnen           | Bis zu vier Anzeigeflächen, je eigenes Fenster und eigene Netzadresse, gemeinsam schaltbar              |
 | Beamer           | Rein lesende Fenster + optionale Netzwerkansicht im Browser                                             |
 | Präsentationen   | Eingespeiste HTML-Foliensätze und PDF (z. B. aus PowerPoint), Vortragssteuerung in eigenem Fenster      |
@@ -37,6 +39,13 @@ Gesprochenen folgt.
 | Begleitanwendung | **Votura Saal** — findet den Hauptrechner selbst: Bühne, Pult, Einlass oder Ausgabe                     |
 | Installation     | Windows: Installer (NSIS) und portable Fassung · Linux: `tar.gz` für x64 und arm64                      |
 | Raspberry Pi     | Pi 4/5 als Anzeigegerät: ein Befehl richtet Kiosk und Neustart nach Absturz ein                         |
+
+¹ **Die digitale geheime Wahl ist nicht für den produktiven Einsatz
+freigegeben.** Die Kryptografie ist nicht extern geprüft, und eine Lastprobe
+mit vielen Geräten steht aus. Für eine Wahl, an der etwas hängt, bleiben Papier
+und die offene Abstimmung der belastbare Weg — das Programm sagt es an der
+Stelle, an der entschieden wird. Was geprüft ist und was nicht, steht im
+[Bedrohungsmodell](docs/bedrohungsmodell-digitale-wahl.md).
 
 ## Herunterladen
 

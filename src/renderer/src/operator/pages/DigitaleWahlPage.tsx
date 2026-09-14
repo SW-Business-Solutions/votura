@@ -179,6 +179,25 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
               </div>
             )}
             {geheimnis === 'secret' && (
+              /*
+               * **Dieser Hinweis gehört ins Programm, nicht nur in die
+               * Dokumentation.** Wer eine geheime Wahl vorbereitet, soll ihn
+               * lesen, bevor er eröffnet — und nicht hinterher in einem ADR
+               * darauf stoßen.
+               *
+               * Die Aussage ist unbequem und bleibt trotzdem stehen, solange
+               * sie stimmt: Das Verfahren ist bekannt und nachrechenbar, dass
+               * es hier richtig umgesetzt ist, muss jemand anderes
+               * feststellen als der, der es gebaut hat.
+               */
+              <div className="notice error">
+                <strong>Noch nicht für den produktiven Einsatz freigegeben.</strong> Die Kryptografie der
+                geheimen digitalen Wahl ist <strong>nicht extern geprüft</strong>, und eine Lastprobe mit
+                vielen Geräten steht aus. Für eine Wahl, an der etwas hängt, bleiben Papier oder die offene
+                Abstimmung der belastbare Weg. Nachzulesen in ADR-0006 und im Bedrohungsmodell.
+              </div>
+            )}
+            {geheimnis === 'secret' && (
               <div className="notice warn">
                 Für die geheime Wahl empfehlen wir <strong>Wahlkabinen</strong>. Bei eigenen Geräten am Platz
                 lässt sich nicht verhindern, dass jemand über die Schulter schaut — und die Adresse des Geräts
