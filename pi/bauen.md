@@ -88,6 +88,19 @@ sudo VOTURA_WARTUNG_PASSWORT='…' ./pi/abbild-bauen.sh --paket … --wartung vo
 Jede Karte sollte ihr eigenes Passwort bekommen: Bis zum ersten Start liegt der Hash offen auf
 einer FAT-Partition, die jeder Kartenleser lesen kann.
 
+**Ohne Terminal bricht der Lauf still ab.** Wird `--wartung` ohne
+`VOTURA_WARTUNG_PASSWORT` verwendet und läuft das Skript ohne Eingabemöglichkeit — aus einem
+Dienst, einer Pipeline oder einer abgesetzten Sitzung heraus —, scheitert die Passwortabfrage,
+bevor die erste Zeile Ausgabe entsteht. Zurück bleibt ein leeres Protokoll und ein Fehlerkode: Es
+sieht aus, als wäre gar nichts geschehen. Wer unbeaufsichtigt baut, setzt also entweder die
+Umgebungsvariable oder lässt `--wartung` weg.
+
+**Für ein Abbild, das veröffentlicht wird, gehört `--wartung` weggelassen.** Ein eingebautes
+Passwort ist in jeder heruntergeladenen Kopie dasselbe — wer die Datei kennt, kommt auf jeden Pi,
+der damit läuft. Die Abbilder der Veröffentlichungen werden deshalb ohne Wartungskonto gebaut; wer
+Fernwartung braucht, baut sich sein eigenes Abbild oder legt das Konto nach dem ersten Start auf
+dem Gerät an.
+
 Das Skript
 
 1. lädt **Raspberry Pi OS Lite (64 Bit)** herunter und prüft die Prüfsumme,
