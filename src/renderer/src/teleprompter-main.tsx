@@ -361,8 +361,18 @@ function TeleprompterApp(): React.JSX.Element {
    * hieße, Mikrofon und Modell jede Sekunde neu zu laden.
    */
   const manuskript = view.speech?.markdown ?? ''
+  /*
+   * **Der Startknopf schaltet das Mikrofon.**
+   *
+   * In dieser Laufart bewegt nicht die Uhr den Text, sondern das Sprechen —
+   * „läuft" heißt hier also: hört zu. Vorher lief das Mikrofon, sobald die
+   * Laufart gewählt war, und der Knopf daneben war grau. Ein Mikrofon, das
+   * sich nicht abschalten lässt, ohne die Laufart zu wechseln, ist eine
+   * Zumutung: Für eine Zwischenfrage, eine Pause, ein Gespräch am Pult muss
+   * ein Griff genügen — derselbe Griff wie überall sonst.
+   */
   useEffect(() => {
-    if (view.laufart !== 'stimme' || !manuskript || !darfBedienen) {
+    if (view.laufart !== 'stimme' || !view.running || !manuskript || !darfBedienen) {
       setHoeren({ art: 'aus' })
       return
     }
@@ -381,7 +391,7 @@ function TeleprompterApp(): React.JSX.Element {
       abgebrochen = true
       laufend?.beenden()
     }
-  }, [view.laufart, darfBedienen, manuskript, rufe])
+  }, [view.laufart, view.running, darfBedienen, manuskript, rufe])
 
   useEffect(() => {
     /* Ist die Bedienung am Pult abgeschaltet, tun auch die Tasten nichts —
@@ -689,7 +699,11 @@ function TeleprompterApp(): React.JSX.Element {
               {hoeren.art === 'hoert' && `Hört mit${hoeren.zuletzt ? `: „${hoeren.zuletzt}"` : ' …'}`}
               {hoeren.art === 'fehler' && hoeren.text}
               {hoeren.art === 'aus' &&
-                (imFenster ? 'Mithören ist aus.' : 'Mithören läuft nur am Gerät mit Mikrofon.')}
+                (!imFenster
+                  ? 'Mithören läuft nur am Gerät mit Mikrofon.'
+                  : view.running
+                    ? 'Mithören ist aus.'
+                    : 'Mikrofon aus — mit „Zuhören" beginnen.')}
             </div>
           )}
         </div>
@@ -701,15 +715,28 @@ function TeleprompterApp(): React.JSX.Element {
             <button
               type="button"
               className={view.running ? 'tp-halt' : 'tp-los'}
-              disabled={view.laufart === 'stimme'}
               title={
-                view.laufart === 'stimme' ? 'Bei „Nach Stimme" bewegt das Sprechen den Text.' : undefined
+                view.laufart === 'stimme'
+                  ? 'Schaltet das Mikrofon ein und aus. Gehört wird nur im Gerät; aufgenommen wird nichts.'
+                  : undefined
               }
               onClick={() => void rufe('prompter.setRunning', !view.running)}
             >
-              {/* Am Ende sagt der Knopf, was er tut: von vorn. Sonst sähe es aus,
-                  als sei er kaputt — er zählt ja nicht weiter. */}
-              {view.running ? 'Anhalten' : amEnde ? 'Von vorn' : 'Starten'}
+              {/*
+                Der Knopf sagt, was er tut — und das ist je nach Laufart etwas
+                anderes: Bei „Nach Stimme" schaltet er das Mikrofon, sonst den
+                Lauf. Am Ende der Rede heißt „Starten" von vorn; sonst sähe es
+                aus, als sei der Knopf kaputt, denn er zählt ja nicht weiter.
+              */}
+              {view.laufart === 'stimme'
+                ? view.running
+                  ? 'Nicht mehr zuhören'
+                  : 'Zuhören'
+                : view.running
+                  ? 'Anhalten'
+                  : amEnde
+                    ? 'Von vorn'
+                    : 'Starten'}
             </button>
             <button type="button" onClick={() => void rufe('prompter.nudge', -12)} aria-label="Zurück">
               ▲

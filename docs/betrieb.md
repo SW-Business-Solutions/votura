@@ -149,7 +149,8 @@ _Prompter_ (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
   dem Beamer vorgestellt, legt der Prompter seinen Text von selbst auf — mitsamt seiner Uhr — und
   **beginnt zu laufen**: Die Redezeit zählt ab dem Aufruf, ein stillstehender Text wäre schon beim
   ersten Satz aus dem Tritt. Bei zwölf Bewerbern greift so niemand zwischendurch ans Board.
-  Gestartet wird nur bei _Gleichmäßig_; bei _Nach Stimme_ und _Von Hand_ wird nur aufgelegt.
+  Gestartet wird nur bei _Gleichmäßig_; bei _Nach Stimme_ und _Von Hand_ wird nur aufgelegt — ein
+  Mikrofon soll sich nicht einschalten, weil vorn jemand angekündigt wurde.
 - **Die Uhr gilt in beide Richtungen:** Wird die Redezeit auf dem Beamer **angehalten** — eine
   Zwischenfrage, eine Geschäftsordnungsmeldung —, ruht auch der Lauf am Pult, und die Restzeit
   steht dort gedämpft mit einem ‖ davor. Läuft sie weiter, läuft er weiter. Das gilt nur für die
@@ -193,6 +194,10 @@ Schreibweise seines Namens.
 Statt gleichmäßig zu rollen, kann der Prompter mithören und die Stelle dorthin setzen, wo gerade
 gesprochen wird. Unter _Prompter → Lauf_ die Laufart **Nach Stimme** wählen.
 
+- **Der Startknopf schaltet das Mikrofon.** In dieser Laufart bewegt nicht die Uhr den Text,
+  sondern das Sprechen — „läuft" heißt hier also: hört zu. Am Pult steht deshalb _Zuhören_ bzw.
+  _Nicht mehr zuhören_, und die Leertaste tut dasselbe. Für eine Zwischenfrage oder ein Gespräch am
+  Pult genügt ein Griff; die Laufart muss dafür niemand wechseln.
 - **Nur im Prompterfenster am Hauptrechner.** Ein Browser im Saalnetz bekommt kein Mikrofon —
   das ist eine Regel des Browsers, keine Einstellung.
 - **Nichts wird aufgenommen.** Der Ton geht in die Erkennung und ist danach weg; nach außen wandert

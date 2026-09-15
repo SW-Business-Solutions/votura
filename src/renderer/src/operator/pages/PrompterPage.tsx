@@ -385,9 +385,24 @@ export function PrompterPage(): React.JSX.Element {
                 <div className="prompter-lauf-zeile">
                   <button
                     className={view.running ? '' : 'primary'}
+                    title={
+                      view.laufart === 'stimme'
+                        ? 'Schaltet das Mikrofon am Pult ein und aus. Gehört wird nur dort; aufgenommen wird nichts.'
+                        : undefined
+                    }
                     onClick={() => void rufe(() => api('prompter.setRunning', !view.running))}
                   >
-                    {view.running ? 'Anhalten' : amEnde ? 'Von vorn' : 'Starten'}
+                    {/* Derselbe Knopf, je nach Laufart eine andere Handlung:
+                        Bei „Nach Stimme" schaltet er das Mikrofon. */}
+                    {view.laufart === 'stimme'
+                      ? view.running
+                        ? 'Nicht mehr zuhören'
+                        : 'Zuhören'
+                      : view.running
+                        ? 'Anhalten'
+                        : amEnde
+                          ? 'Von vorn'
+                          : 'Starten'}
                   </button>
                   <div className="segmented klein">
                     <button
@@ -444,8 +459,10 @@ export function PrompterPage(): React.JSX.Element {
                 </Field>
                 {view.laufart === 'stimme' && (
                   <div className="hint">
-                    Der Prompter hört mit und setzt die Stelle dorthin, wo gesprochen wird. Dafür muss am Pult
-                    ein Sprachmodell hinterlegt sein — siehe Einstellungen.
+                    Der Prompter hört mit und setzt die Stelle dorthin, wo gesprochen wird. Das Mikrofon
+                    schaltet <strong>{view.running ? 'Nicht mehr zuhören' : 'Zuhören'}</strong> — es läuft
+                    nur, solange es eingeschaltet ist. Dafür muss am Pult ein Sprachmodell hinterlegt sein —
+                    siehe Einstellungen.
                   </div>
                 )}
                 {view.laufart === 'hand' && (

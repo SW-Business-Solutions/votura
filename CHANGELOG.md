@@ -50,6 +50,13 @@ nach Wörtern, die niemand spricht.
 Dabei ist noch eine alte Ungenauigkeit mitgegangen: Der Lauf hielt um so viele Schritte zu früh an,
 wie die Rede Atempausen hat — der letzte Satz kam nie ganz bis zur Lesezeile.
 
+### Das Mikrofon hat jetzt einen Schalter
+
+Bei _Nach Stimme_ lief das Mikrofon, sobald die Laufart gewählt war, und der Startknopf daneben war
+grau. Jetzt schaltet genau dieser Knopf das Zuhören ein und aus — am Pult, am Board und mit der
+Leertaste. Für eine Zwischenfrage oder ein Gespräch am Pult genügt damit ein Griff, statt die
+Laufart zu wechseln.
+
 ### Der Prompter folgt dem Aufruf
 
 Eine Rede lässt sich einem **Bewerber zuordnen** — und diese Zuordnung tut jetzt auch etwas: Wird

@@ -129,7 +129,13 @@ export function refreshSpeech(id: UUID): PrompterViewState {
  * weiter — und am Pult sähe es aus, als sei der Knopf kaputt.
  */
 export function setPrompterRunning(running: boolean): PrompterViewState {
-  const amEnde = state.laenge > 0 && prompterPosition(state, Date.now()) >= state.laenge
+  /*
+   * Bei „Nach Stimme" schaltet derselbe Knopf das Mikrofon, nicht den Lauf —
+   * dann darf er den Text nicht an den Anfang werfen. Wer am Ende der Rede
+   * das Zuhören wieder einschaltet, will weiterhören und nicht neu beginnen.
+   */
+  const amEnde =
+    state.laufart === 'auto' && state.laenge > 0 && prompterPosition(state, Date.now()) >= state.laenge
   if (running && amEnde) return setze({ running: true, position: 0 })
   return setze({ running })
 }

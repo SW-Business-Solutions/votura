@@ -242,3 +242,31 @@ describe('Hinweise an die vortragende Person', () => {
     expect(folge).toContain('mitglieder')
   })
 })
+
+describe('Bei „Nach Stimme" schaltet der Startknopf das Mikrofon', () => {
+  /*
+   * Vorher lief das Mikrofon, sobald die Laufart gewählt war, und der Knopf
+   * daneben war grau. Ein Mikrofon, das sich nicht abschalten lässt, ohne die
+   * Laufart zu wechseln, ist eine Zumutung — für eine Zwischenfrage, eine
+   * Pause, ein Gespräch am Pult muss ein Griff genügen.
+   */
+  it('hört nur zu, solange der Lauf läuft', () => {
+    const pult = lies('src/renderer/src/teleprompter-main.tsx')
+    expect(pult).toContain("view.laufart !== 'stimme' || !view.running")
+    /* Und der Knopf ist nicht mehr grau. */
+    expect(pult).not.toContain("disabled={view.laufart === 'stimme'}")
+  })
+
+  it('sagt am Knopf, was er tut', () => {
+    const pult = lies('src/renderer/src/teleprompter-main.tsx')
+    expect(pult).toContain('Zuhören')
+    expect(pult).toContain('Nicht mehr zuhören')
+  })
+
+  it('wirft den Text dabei nicht an den Anfang', () => {
+    /* Das „von vorn" am Ende der Rede gehört zum gleichmäßigen Lauf. Wer beim
+       letzten Satz das Zuhören wieder einschaltet, will weiterhören. */
+    const dienst = lies('src/main/services/prompter.ts')
+    expect(dienst).toContain("state.laufart === 'auto' && state.laenge > 0")
+  })
+})
