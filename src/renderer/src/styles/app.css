@@ -1140,6 +1140,15 @@ button.linkartig:hover {
   color: var(--text-muted);
 }
 
+/*
+ * **Der Grund bleibt der des Feldes — nur der Rahmen tritt zurück.**
+ *
+ * `background: transparent` schien der ruhigere Weg und war ein Fehler: Die
+ * aufgeklappte Liste zeichnet Windows selbst, und sie übernimmt Grund und
+ * Farbe des Feldes. Ohne Grund malt sie weiß, mit gedämpfter Schrift darauf —
+ * die Namen standen kaum lesbar da. Zurückhaltung gehört an den Rahmen, nicht
+ * an den Grund.
+ */
 .rede-zuordnung select {
   width: auto;
   max-width: 220px;
@@ -1147,13 +1156,21 @@ button.linkartig:hover {
   padding: 1px 4px;
   font-size: 12px;
   color: var(--text-muted);
-  background: transparent;
+  background: var(--bg-input);
   border-color: transparent;
 }
 
 .rede-zuordnung select:hover,
 .rede-zuordnung select:focus {
-  border-color: var(--border);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* Die Einträge der Liste tragen dieselben Farben wie das Feld — sonst
+   entscheidet das Betriebssystem, und es entscheidet hell. */
+.rede-zuordnung option,
+.rede-zuordnung optgroup {
+  background: var(--bg-input);
   color: var(--text);
 }
 
