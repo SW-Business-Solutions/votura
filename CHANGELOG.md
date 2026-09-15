@@ -7,6 +7,17 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
 ### Behoben
 
+- **Das Kamerabild brauchte Sekunden, bis es an der Wand stand.** Die Suche kennt die Adresse, unter
+  der eine Kamera sendet — gab sie aber nicht an den Empfänger weiter, der daraufhin selbst noch
+  einmal suchte. Gemessen, im Wechsel und wiederholt: **4017 Millisekunden ohne die Adresse, 14 mit
+  ihr.** Sie wandert jetzt mit. Solange noch kein Bild gekommen ist, steht „verbindet …“ im Bild
+  und nicht „kein Bild“ — das eine schickt niemanden zur Kamera, wo nichts zu suchen ist.
+- **Die Kameraliste fing bei jedem Blick von vorn an.** Beim Verlassen der Karte wurde die Suche
+  sofort abgeschaltet und alles Gefundene weggeworfen. Dahinter stand die Sorge, NDI dürfe im Saal
+  nicht dauernd laufen — die gilt aber dem **Videostrom** mit seinen über hundert Megabit je
+  Sekunde, nicht der Suche, die ein paar Pakete verschickt. Die Suche läuft jetzt eine Minute nach,
+  und einmal gefundene Kameras bleiben in der Liste stehen.
+
 - **Jeder Wechsel der Ansicht setzte die Redezeit zurück.** Wer während einer
   laufenden Redezeit kurz die Tagesordnung, die Kandidatenliste oder das Kamerabild zeigte und
   danach zurückschaltete, hatte denselben Menschen vor sich — und schenkte ihm mit dem Rückweg

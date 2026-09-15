@@ -1,12 +1,19 @@
 /**
  * Die Kameras im Saal — Liste, Vorschau und der Griff zum Beamer.
  *
- * ## Warum die Suche nur hier läuft
+ * ## Wann die Suche läuft
  *
- * NDI findet Quellen, indem es sich selbst im Netz anmeldet und herumfragt.
- * Das ist harmlos, aber es soll nicht den ganzen Tag laufen, während eine
- * Wahl über dasselbe Netz geht. Die Suche beginnt deshalb, wenn diese Karte
- * sichtbar wird, und endet, wenn sie verschwindet.
+ * Sie beginnt, wenn diese Karte sichtbar wird, und läuft nach dem Weggehen
+ * noch eine Minute weiter. Der erste Entwurf schaltete sie sofort ab — und
+ * warf die gefundenen Quellen weg. Wer zwischen Kamerakarte, Videoliste und
+ * Einstellungen blätterte, fing damit jedes Mal von vorn an und sah für ein
+ * paar Sekunden eine leere Liste.
+ *
+ * Dahinter stand die Sorge, NDI dürfe im Saal nicht dauernd laufen. Die gilt
+ * dem **Videostrom** — über hundert Megabit je Sekunde —, nicht der Suche,
+ * die ein paar Pakete verschickt. Einmal gefundene Kameras bleiben deshalb
+ * auch dann in der Liste, wenn gerade nicht gesucht wird; der letzte bekannte
+ * Stand ist eine bessere Auskunft als nichts.
  *
  * ## Was die Vorschau ist und was nicht
  *
@@ -108,10 +115,10 @@ export function KameraLibrary(): JSX.Element {
 
           {stand.quellen.length === 0 ? (
             <p className="hint">
-              Es meldet sich keine Kamera. NDI findet nur Geräte im <strong>selben Netz</strong> — ein
-              Gastnetz oder ein zweites WLAN trennt sie. Und: Kameras gehören ans Kabel. Ein voller
-              Bildstrom belegt über hundert Megabit je Sekunde; über dasselbe Funknetz läuft die
-              Abstimmung.
+              {stand.sucht ? 'Es meldet sich keine Kamera.' : 'Die Suche läuft an …'} NDI findet nur
+              Geräte im <strong>selben Netz</strong> — ein Gastnetz oder ein zweites WLAN trennt sie.
+              Und: Kameras gehören ans Kabel. Ein voller Bildstrom belegt über hundert Megabit je
+              Sekunde; über dasselbe Funknetz läuft die Abstimmung.
             </p>
           ) : (
             <table className="liste">
@@ -136,6 +143,14 @@ export function KameraLibrary(): JSX.Element {
             </table>
           )}
 
+          {/*
+            Einmal gefundene Quellen bleiben stehen, auch wenn die Suche
+            ausgelaufen ist — der letzte bekannte Stand ist eine bessere
+            Auskunft als eine leere Liste. Gesagt werden muss es trotzdem.
+          */}
+          {!stand.sucht && stand.quellen.length > 0 && (
+            <p className="hint mt-3">Zuletzt gefunden; die Suche läuft gerade nicht.</p>
+          )}
           {stand.fehler && <p className="hint mt-3">{stand.fehler}</p>}
           {stand.sdk && <p className="hint mt-3 mono">{stand.sdk}</p>}
         </>

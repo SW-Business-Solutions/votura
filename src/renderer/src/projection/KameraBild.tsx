@@ -133,6 +133,14 @@ function ueberFunk(): boolean | undefined {
 export function KameraBild({ camera, speaker, logo, klein }: Props): JSX.Element {
   const flaeche = useRef<HTMLCanvasElement>(null)
   const [laeuft, setLaeuft] = useState(false)
+  /*
+   * „Noch nie ein Bild“ und „Bild abgerissen“ sind zweierlei.
+   *
+   * Der Aufbau einer NDI-Verbindung dauert — gemessen zwei Sekunden bis
+   * zum ersten Bild. Wer in dieser Zeit „kein Bild“ liest, sucht den
+   * Fehler an der Kamera, wo keiner ist.
+   */
+  const [jeGesehen, setJeGesehen] = useState(false)
   const [imFenster] = useState(() => Boolean(bruecke()))
   /* Die Bedienung zeigt zwei Kamerabilder im selben Fenster — jedes braucht
      einen eigenen Kanal. `useId` gibt je Einbau einen. */
@@ -146,6 +154,7 @@ export function KameraBild({ camera, speaker, logo, klein }: Props): JSX.Element
     let port: MessagePort | undefined
     let letztesBild = 0
     let ziel: ImageData | undefined
+    setJeGesehen(false)
 
     /*
      * Ein Bild landet auf der Fläche.
@@ -200,6 +209,7 @@ export function KameraBild({ camera, speaker, logo, klein }: Props): JSX.Element
       stift.putImageData(ziel, 0, 0)
       letztesBild = Date.now()
       setLaeuft(true)
+      setJeGesehen(true)
       /* Quittung — siehe Modulkopf. */
       port?.postMessage(1)
     }
@@ -253,9 +263,11 @@ export function KameraBild({ camera, speaker, logo, klein }: Props): JSX.Element
         <div className="kamera-warte">
           <div className="projection-status">KAMERA</div>
           <div className="projection-note">
-            {imFenster
-              ? `${camera.label ?? camera.quelle} — kein Bild`
-              : 'Kamerabilder gibt es nur am Hauptrechner und auf Votura Saal.'}
+            {!imFenster
+              ? 'Kamerabilder gibt es nur am Hauptrechner und auf Votura Saal.'
+              : jeGesehen
+                ? `${camera.label ?? camera.quelle} — kein Bild`
+                : `${camera.label ?? camera.quelle} — verbindet …`}
           </div>
         </div>
       )}

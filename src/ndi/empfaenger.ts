@@ -34,7 +34,20 @@ const ladeModul = new Function('name', 'return import(name)') as (name: string) 
 /** Was der Hauptprozess schicken kann. */
 export type AnEmpfaenger =
   | { art: 'suche'; an: boolean }
-  | { art: 'oeffnen'; kanal: string; quelle: string; qualitaet: KameraQualitaet }
+  | {
+      art: 'oeffnen'
+      kanal: string
+      quelle: string
+      qualitaet: KameraQualitaet
+      /**
+       * Die Adresse, unter der die Suche die Quelle gesehen hat.
+       *
+       * NDI findet sie auch ohne — nur dauert es. Gemessen: mit Adresse zwei
+       * Sekunden bis zum ersten Bild, ohne vier. Der Name bleibt trotzdem
+       * maßgeblich; die Adresse ist ein Hinweis, kein Ersatz.
+       */
+      adresse?: string
+    }
   | { art: 'schliessen'; kanal: string }
 
 /** Was der Empfänger zurückmeldet. */
@@ -97,7 +110,7 @@ interface NdiModul {
   ColorFormat?: { RGBX_RGBA: number }
   find(optionen: { showLocalSources?: boolean }): Promise<NdiSucher>
   receive(optionen: {
-    source: { name: string }
+    source: { name: string; urlAddress?: string }
     colorFormat?: number
     bandwidth?: number
     name?: string
@@ -171,7 +184,8 @@ async function oeffne(
   kanal: string,
   quelle: string,
   qualitaet: KameraQualitaet,
-  port: MessagePortMain
+  port: MessagePortMain,
+  adresse?: string
 ): Promise<void> {
   schliesse(kanal)
   const verbindung: Verbindung = { port, quelle, ausstehend: 0, lauf: true }
@@ -192,7 +206,7 @@ async function oeffne(
   let empfaenger: NdiEmpfaenger
   try {
     empfaenger = await ndi.receive({
-      source: { name: quelle },
+      source: adresse ? { name: quelle, urlAddress: adresse } : { name: quelle },
       colorFormat: ndi.ColorFormat?.RGBX_RGBA ?? 2,
       bandwidth: qualitaet === 'vorschau' ? 0 : 100,
       name: 'Votura'
@@ -285,7 +299,7 @@ process.parentPort.on('message', (nachricht) => {
   const daten = nachricht.data as AnEmpfaenger
   if (daten.art === 'suche') void suche(daten.an)
   else if (daten.art === 'oeffnen')
-    void oeffne(daten.kanal, daten.quelle, daten.qualitaet, nachricht.ports[0])
+    void oeffne(daten.kanal, daten.quelle, daten.qualitaet, nachricht.ports[0], daten.adresse)
   else if (daten.art === 'schliessen') schliesse(daten.kanal)
 })
 

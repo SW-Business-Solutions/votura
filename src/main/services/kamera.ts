@@ -42,6 +42,21 @@ const NEUSTARTS_MAX = 3
  */
 const QUELLE_GNADENFRIST_MS = 8000
 
+/**
+ * Wie lange die Suche nach dem letzten Hinsehen noch weiterläuft.
+ *
+ * Sie sofort abzuschalten war ein Fehlgriff: Wer zwischen Kamerakarte,
+ * Videoliste und Einstellungen hin- und herblättert, fing jedes Mal von vorn
+ * an und sah für ein paar Sekunden eine leere Liste. Dahinter stand die Sorge,
+ * NDI dürfe im Saal nicht dauernd laufen — die galt aber dem **Videostrom**,
+ * der über hundert Megabit belegt, nicht der Suche, die ein paar Pakete
+ * verschickt.
+ *
+ * Eine Minute Nachlauf trifft beides: kein Neuanfang beim Blättern, und auf
+ * einer Versammlung ohne Kameras bleibt am Ende trotzdem Ruhe im Netz.
+ */
+const SUCHE_NACHLAUF_MS = 60_000
+
 type Horcher = (stand: KameraStand) => void
 
 let prozess: UtilityProcess | undefined
@@ -50,6 +65,7 @@ let sdk: string | undefined
 let untauglich: string | undefined
 let letzterFehler: string | undefined
 let sucheLaeuft = false
+let nachlauf: NodeJS.Timeout | undefined
 
 /** Gefundene Quellen mit dem Zeitpunkt der letzten Meldung. */
 const gesehen = new Map<string, { quelle: KameraQuelle; zuletzt: number }>()
@@ -73,14 +89,22 @@ function melde(): void {
 
 export function kameraStand(): KameraStand {
   const jetzt = Date.now()
+  /*
+   * Die Gnadenfrist gilt nur, **solange gesucht wird**.
+   *
+   * Dann sagt das Ausbleiben einer Meldung etwas: Die Kamera ist weg. Läuft
+   * keine Suche, sagt es gar nichts — dann ist der letzte bekannte Stand die
+   * beste Auskunft, die es gibt, und allemal besser als eine leere Liste.
+   */
   const quellen = [...gesehen.values()]
-    .filter((eintrag) => jetzt - eintrag.zuletzt <= QUELLE_GNADENFRIST_MS)
+    .filter((eintrag) => !sucheLaeuft || jetzt - eintrag.zuletzt <= QUELLE_GNADENFRIST_MS)
     .map((eintrag) => eintrag.quelle)
     .sort((a, b) => a.name.localeCompare(b.name, 'de'))
   return {
     bereit: Boolean(prozess) && !untauglich,
     sdk,
     untauglich,
+    sucht: sucheLaeuft,
     quellen,
     fehler: letzterFehler
   }
@@ -204,10 +228,31 @@ function sende(nachricht: AnEmpfaenger, ports?: Electron.MessagePortMain[]): voi
  * Netz herum, und das soll nicht den ganzen Tag laufen.
  */
 export function sucheKameras(an: boolean): KameraStand {
-  sucheLaeuft = an
-  if (an) starte()
-  sende({ art: 'suche', an })
-  if (!an) gesehen.clear()
+  if (nachlauf) {
+    clearTimeout(nachlauf)
+    nachlauf = undefined
+  }
+
+  if (an) {
+    sucheLaeuft = true
+    starte()
+    sende({ art: 'suche', an: true })
+    return kameraStand()
+  }
+
+  /*
+   * Nicht sofort ausschalten — siehe SUCHE_NACHLAUF_MS. Und die gefundenen
+   * Quellen bleiben ohnehin stehen: Eine Kamera, die vor einer Minute im Netz
+   * war, ist mit großer Wahrscheinlichkeit noch da. Sie zu vergessen hieße,
+   * die Liste bei jedem Blick neu aufbauen zu lassen.
+   */
+  nachlauf = setTimeout(() => {
+    nachlauf = undefined
+    sucheLaeuft = false
+    if (prozess) prozess.postMessage({ art: 'suche', an: false } satisfies AnEmpfaenger)
+    melde()
+  }, SUCHE_NACHLAUF_MS)
+
   return kameraStand()
 }
 
@@ -231,7 +276,18 @@ export function kameraAn(
 
   const { port1, port2 } = new MessageChannelMain()
   empfaenger.postMessage('wz:kamera-port', { kanal: kanalName, quelle }, [port2])
-  kind.postMessage({ art: 'oeffnen', kanal, quelle, qualitaet } satisfies AnEmpfaenger, [port1])
+  /*
+   * Die Adresse aus der Suche wandert mit.
+   *
+   * Gemessen: Ohne sie braucht NDI vier Sekunden bis zum ersten Bild, mit ihr
+   * zwei. Wir kennen sie ohnehin — sie nicht weiterzureichen hieße, die
+   * Kamera zweimal suchen zu lassen.
+   */
+  const adresse = gesehen.get(quelle)?.quelle.adresse
+  kind.postMessage(
+    { art: 'oeffnen', kanal, quelle, qualitaet, adresse } satisfies AnEmpfaenger,
+    [port1]
+  )
   kanaele.set(kanal, { quelle, empfaenger })
 
   /*

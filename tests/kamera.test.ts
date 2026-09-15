@@ -143,9 +143,47 @@ describe('Bau und Auslieferung', () => {
 
   it('lädt die Bindung erst, wenn jemand eine Kamera sucht', () => {
     const dienst = lies('src/main/services/kamera.ts')
-    /* Kein Start beim Programmstart: Eine Versammlung ohne Kameras soll
-       weder fremden Code im Speicher noch eine NDI-Anmeldung im Netz haben. */
-    expect(dienst).toContain('if (an) starte()')
+    /* Kein Start beim Programmstart: Eine Versammlung ohne Kameras soll weder
+       fremden Code im Speicher noch eine NDI-Anmeldung im Netz haben. Der
+       Prozess entsteht erst mit der ersten Suche. */
+    const beginn = dienst.indexOf('export function sucheKameras')
+    const ende = dienst.indexOf('\n}', beginn)
+    expect(dienst.slice(beginn, ende)).toContain('starte()')
+  })
+
+  it('schaltet die Suche nicht sofort ab, wenn niemand hinsieht', () => {
+    /*
+     * Sie sofort abzuschalten war ein Fehlgriff: Wer zwischen den Karten
+     * blätterte, fing jedes Mal von vorn an und sah eine leere Liste. Die
+     * Sorge dahinter galt dem Videostrom, nicht der Suche.
+     */
+    const dienst = lies('src/main/services/kamera.ts')
+    expect(dienst).toContain('SUCHE_NACHLAUF_MS')
+    /* Und einmal Gefundenes wird nicht weggeworfen. */
+    expect(dienst).not.toContain('gesehen.clear()')
+  })
+
+  it('gibt dem Empfänger die Adresse mit, die die Suche gefunden hat', () => {
+    /*
+     * Gemessen, im Wechsel und zweimal wiederholt: Ohne die Adresse braucht
+     * NDI **4017 ms** bis zum ersten Bild, mit ihr **14 ms**. Wir kennen sie
+     * aus der Suche; sie nicht weiterzureichen hieße, die Kamera ein zweites
+     * Mal suchen zu lassen — während der Saal auf ein schwarzes Bild sieht.
+     */
+    const dienst = lies('src/main/services/kamera.ts')
+    expect(dienst).toContain('gesehen.get(quelle)?.quelle.adresse')
+    const empfaenger = lies('src/ndi/empfaenger.ts')
+    expect(empfaenger).toContain('urlAddress: adresse')
+    /* Der Name bleibt maßgeblich — die Adresse ist ein Hinweis, kein Ersatz. */
+    expect(empfaenger).toContain('{ name: quelle, urlAddress: adresse }')
+  })
+
+  it('unterscheidet „noch kein Bild“ von „Bild abgerissen“', () => {
+    /* Zwei Sekunden „kein Bild“ beim Aufbau schicken jemanden zur Kamera,
+       wo nichts zu suchen ist. */
+    const ansicht = lies('src/renderer/src/projection/KameraBild.tsx')
+    expect(ansicht).toContain('verbindet')
+    expect(ansicht).toContain('jeGesehen')
   })
 
   it('reicht keine Bilder durch den Hauptprozess', () => {

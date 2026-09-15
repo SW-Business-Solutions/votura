@@ -163,6 +163,13 @@ export interface KameraStand {
   sdk?: string
   /** Warum es hier keine Kameras gibt — fehlende Bibliothek, fremder Prozessor. */
   untauglich?: string
+  /**
+   * Läuft die Suche gerade?
+   *
+   * Steht sie, ist die Liste der letzte bekannte Stand und nicht das Ergebnis
+   * einer Messung von jetzt. Die Bedienung soll das sagen können.
+   */
+  sucht?: boolean
   quellen: KameraQuelle[]
   /** Letzte Störung, zur Anzeige in der Bedienung. */
   fehler?: string
