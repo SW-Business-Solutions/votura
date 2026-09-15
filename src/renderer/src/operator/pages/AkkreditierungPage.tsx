@@ -16,7 +16,7 @@ import type { Card as Ausweis, CardStock, Participant, PresenceSummary } from '@
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
-import { Card, EmptyState, Field, NumberInput } from '../components/ui'
+import { Card, EmptyState, Field, Modal, NumberInput } from '../components/ui'
 import { kameraVerfuegbar, QrScanner } from '../../qr-scanner'
 
 /** Wie ein Zeitpunkt am Einlass aussehen soll: kurz. */
@@ -52,7 +52,18 @@ export function AkkreditierungPage(): React.JSX.Element {
   /* Die Kamera als zweiter Weg neben dem Handscanner — für Geräte, an denen
      keiner steckt (ADR-0007). */
   const [kamera, setKamera] = useState(false)
+  /* Wen wir gerade sperren wollen — die Begründung steht im Protokoll. */
+  const [sperren, setSperren] = useState<{ person: Participant; grund: string } | null>(null)
+  /* Der Ausweisbestand, wenn jemand ihn sehen will. */
+  const [ausweise, setAusweise] = useState<Ausweis[] | null>(null)
   const sucheFeld = useRef<HTMLInputElement | null>(null)
+
+  /* Im Bestand steht nur die Teilnehmer-Kennung — der Name kommt aus der Liste,
+     die ohnehin geladen ist. */
+  const namen = useMemo(
+    () => new Map(liste.map((person) => [person.id, `${person.lastName}, ${person.firstName}`])),
+    [liste]
+  )
 
   const laden = useCallback(async () => {
     if (!event) return
@@ -100,6 +111,68 @@ export function AkkreditierungPage(): React.JSX.Element {
       await laden()
     } catch (error) {
       app.reportError(error)
+    }
+  }
+
+  /**
+   * Eine Person sperren — und damit jeden Ausweis, den sie hat.
+   *
+   * Der schärfste Eingriff auf dieser Seite: Danach kommt diese Person weder
+   * an einen Stimmzettel noch an eine digitale Berechtigung. Deshalb die
+   * Begründung, und deshalb steht sie im Protokoll.
+   */
+  const personSperren = async (): Promise<void> => {
+    if (!sperren || !sperren.grund.trim()) return
+    try {
+      await api('participant.block', { id: sperren.person.id, reason: sperren.grund.trim() })
+      setSperren(null)
+      await laden()
+      app.notify('ok', `${sperren.person.lastName}, ${sperren.person.firstName} ist gesperrt.`)
+    } catch (fehler) {
+      app.reportError(fehler)
+    }
+  }
+
+  const personEntsperren = async (person: Participant): Promise<void> => {
+    try {
+      await api('participant.unblock', person.id)
+      await laden()
+      app.notify('ok', 'Sperre aufgehoben.')
+    } catch (fehler) {
+      app.reportError(fehler)
+    }
+  }
+
+  /** Den Ausweisbestand holen — erst wenn jemand ihn sehen will. */
+  const ausweiseLaden = async (): Promise<void> => {
+    try {
+      setAusweise(await api('card.list'))
+    } catch (fehler) {
+      app.reportError(fehler)
+    }
+  }
+
+  /**
+   * Eine Karte oder ein Bändchen ungültig machen.
+   *
+   * „Verloren" ist der Fall, der im Saal zählt: Wer sie findet, soll damit
+   * nichts anfangen können. „Ausgemustert" ist das Ende eines Lebenslaufs —
+   * zerkratzt, unlesbar, verbraucht.
+   */
+  const ausweisStatus = async (karte: Ausweis, status: Ausweis['status']): Promise<void> => {
+    try {
+      await api('card.setStatus', { id: karte.id, status })
+      await Promise.all([ausweiseLaden(), laden()])
+      app.notify(
+        'ok',
+        status === 'lost'
+          ? `${karte.serial} ist als verloren gemeldet und gilt nicht mehr.`
+          : status === 'retired'
+            ? `${karte.serial} ist ausgemustert.`
+            : `${karte.serial} ist wieder im Bestand.`
+      )
+    } catch (fehler) {
+      app.reportError(fehler)
     }
   }
 
@@ -449,6 +522,91 @@ export function AkkreditierungPage(): React.JSX.Element {
         )}
       </div>
 
+      {/*
+        **Wo man einen Ausweis ungültig macht.**
+
+        Die Frage taucht am Einlass auf — „Ich habe meine Karte verloren" —
+        und war bisher nirgends beantwortet: Der Dienst konnte es seit jeher,
+        nur rief es keine Stelle der Oberfläche auf.
+      */}
+      {bestand && bestand.total > 0 && (
+        <div className="reihenfolge" style={{ order: 2 }}>
+          <Card
+            title="Ausweise sperren und verwalten"
+            actions={
+              <button onClick={() => void (ausweise ? setAusweise(null) : ausweiseLaden())}>
+                {ausweise ? 'Schließen' : 'Bestand anzeigen'}
+              </button>
+            }
+          >
+            <p className="hint">
+              Eine verlorene Karte oder ein verlorenes Bändchen wird hier ungültig — wer sie findet, kann
+              damit nichts mehr anfangen. Ein <strong>gedruckter Pass</strong> steht nicht in dieser Liste:
+              Den ersetzt man in der Teilnehmerliste über <em>Pass ersetzen</em>, und der alte gilt damit
+              nicht mehr. Soll eine <strong>Person</strong> gar nicht mehr abstimmen, gleich welchen Ausweis
+              sie vorzeigt, ist <em>Sperren</em> in der Teilnehmerzeile der richtige Weg.
+            </p>
+            {ausweise && (
+              <table className="mt-2">
+                <thead>
+                  <tr>
+                    <th>Nummer</th>
+                    <th>Art</th>
+                    <th>Status</th>
+                    <th>Bei</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {ausweise.map((karte) => (
+                    <tr key={karte.id}>
+                      <td className="mono">{karte.serial}</td>
+                      <td>{karte.kind === 'band' ? 'Bändchen' : 'Karte'}</td>
+                      <td>
+                        {karte.status === 'lost' ? (
+                          <span className="badge danger">verloren</span>
+                        ) : karte.status === 'retired' ? (
+                          <span className="badge">verbraucht</span>
+                        ) : karte.heldBy ? (
+                          <span className="badge ok">ausgegeben</span>
+                        ) : (
+                          'frei'
+                        )}
+                      </td>
+                      <td>{karte.heldBy ? (namen.get(karte.heldBy) ?? 'unbekannt') : '—'}</td>
+                      <td className="row">
+                        {karte.status === 'available' ? (
+                          <>
+                            <button
+                              className="ghost danger"
+                              title="Wer sie findet, kann damit nichts mehr anfangen."
+                              onClick={() => void ausweisStatus(karte, 'lost')}
+                            >
+                              Verloren
+                            </button>
+                            <button
+                              className="ghost"
+                              title="Zerkratzt, unlesbar, verbraucht — sie kommt nicht mehr in den Stapel."
+                              onClick={() => void ausweisStatus(karte, 'retired')}
+                            >
+                              Ausmustern
+                            </button>
+                          </>
+                        ) : (
+                          <button className="ghost" onClick={() => void ausweisStatus(karte, 'available')}>
+                            Wieder freigeben
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </div>
+      )}
+
       <div className="reihenfolge" style={{ order: 2 }}>
         <Card title="2. Ausweise vorbereiten — Karten und Bändchen einlesen">
           <div className="hint">
@@ -563,14 +721,44 @@ export function AkkreditierungPage(): React.JSX.Element {
                       {person.eligible ? (person.weight > 1 ? `${person.weight} Stimmen` : 'ja') : 'Gast'}
                     </td>
                     <td>{person.present ? uhrzeit(person.lastSeenAt) : '—'}</td>
-                    <td>{person.passIssued ? 'Pass' : '—'}</td>
+                    <td>
+                      {person.blockedAt ? (
+                        <span className="badge danger" title={person.blockedReason ?? undefined}>
+                          gesperrt
+                        </span>
+                      ) : person.passIssued ? (
+                        'Pass'
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="row" onClick={(ereignis) => ereignis.stopPropagation()}>
                       <button onClick={() => void anwesenheit(person, person.present ? 'out' : 'in')}>
                         {person.present ? 'Gegangen' : 'Da'}
                       </button>
                       {person.eligible && !person.blockedAt && (
-                        <button onClick={() => void passAusgeben(person)}>
-                          {person.passIssued ? 'Pass neu' : 'Pass'}
+                        <button
+                          onClick={() => void passAusgeben(person)}
+                          title={
+                            person.passIssued
+                              ? 'Druckt einen neuen Pass. Der alte gilt damit nicht mehr — je Person gibt es genau einen.'
+                              : 'Druckt einen Voting Pass mit QR-Code.'
+                          }
+                        >
+                          {person.passIssued ? 'Pass ersetzen' : 'Pass'}
+                        </button>
+                      )}
+                      {person.blockedAt ? (
+                        <button className="ghost" onClick={() => void personEntsperren(person)}>
+                          Entsperren
+                        </button>
+                      ) : (
+                        <button
+                          className="ghost danger"
+                          title="Sperrt die Person: kein Stimmzettel, keine digitale Berechtigung, gleich welchen Ausweis sie vorzeigt."
+                          onClick={() => setSperren({ person, grund: '' })}
+                        >
+                          Sperren
                         </button>
                       )}
                     </td>
@@ -581,6 +769,35 @@ export function AkkreditierungPage(): React.JSX.Element {
           )}
         </Card>
       </div>
+      {sperren && (
+        <Modal
+          title={`${sperren.person.lastName}, ${sperren.person.firstName} sperren`}
+          onClose={() => setSperren(null)}
+        >
+          <p className="hint">
+            Danach bekommt diese Person weder einen Stimmzettel noch eine digitale Berechtigung — gleich
+            welchen Ausweis sie vorzeigt. Die Sperre lässt sich jederzeit wieder aufheben, und beides steht
+            mit Begründung und Uhrzeit im Protokoll.
+          </p>
+          <Field label="Begründung">
+            <input
+              autoFocus
+              value={sperren.grund}
+              placeholder="z. B. nicht stimmberechtigt laut Mitgliederliste"
+              onChange={(ereignis) => setSperren({ ...sperren, grund: ereignis.target.value })}
+              onKeyDown={(ereignis) => {
+                if (ereignis.key === 'Enter') void personSperren()
+              }}
+            />
+          </Field>
+          <div className="row mt-2">
+            <button className="danger" disabled={!sperren.grund.trim()} onClick={() => void personSperren()}>
+              Sperren
+            </button>
+            <button onClick={() => setSperren(null)}>Abbrechen</button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

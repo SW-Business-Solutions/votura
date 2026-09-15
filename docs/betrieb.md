@@ -480,6 +480,22 @@ Die ausgegebene Menge geht damit unmittelbar in die Stimmzettelbilanz ein; sie w
 eingetippt. Ein Ersatzzettel (§23) verlangt einen Grund und wird getrennt geführt — der verdorbene
 muss zurückkommen.
 
+### Einen Ausweis ungültig machen
+
+„Ich habe meine Karte verloren" ist die häufigste Störung am Einlass. Drei Fälle, drei Wege — alle
+auf der Seite **Akkreditierung**:
+
+| Was weg ist | Was zu tun ist | Folge |
+| --- | --- | --- |
+| Gedruckter Pass | In der Teilnehmerzeile **Pass ersetzen** | Der alte Pass gilt nicht mehr — je Person gibt es genau einen gültigen. |
+| Karte oder Bändchen | In **Ausweise sperren und verwalten** → *Verloren* | Der Ausweis gilt nicht mehr; wer ihn findet, kann damit nichts anfangen. Er kommt nicht in den Stapel zurück. |
+| Zerkratzt, unlesbar, verbraucht | Dort → *Ausmustern* | Dasselbe, nur ohne Verlustverdacht — er ist am Ende seines Lebens. |
+| Die **Person** soll gar nicht mehr abstimmen | In der Teilnehmerzeile **Sperren**, mit Begründung | Weder Stimmzettel noch digitale Berechtigung, gleich welchen Ausweis sie vorzeigt. |
+
+*Verloren* und *Ausmustern* lassen sich mit **Wieder freigeben** zurücknehmen, die Sperre mit
+**Entsperren**. Jeder dieser Schritte steht mit Zeitpunkt, Begründung und handelndem Konto im
+Protokoll — die Wahlleitung muss am Ende erklären können, warum ein Ausweis nicht mehr galt.
+
 ### Am Ende der Versammlung
 
 Mit dem Abschluss **verfällt alles Ausgegebene**: Karten, Bändchen und gedruckte Pässe. Was jemand
