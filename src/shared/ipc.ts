@@ -233,6 +233,8 @@ export interface AntragEingabe {
   text: string
   antragsteller: string
   begruendung?: string
+  /** Geltende Fassung für die Synopse — freiwillig, nur bei Hauptanträgen sinnvoll. */
+  bisher?: string
   /** Bei einem Änderungsantrag: der Hauptantrag. */
   bezugId?: UUID
 }
@@ -745,7 +747,7 @@ export interface Api {
       /** Welche Kamera gezeigt wird (nur im Modus 'kamera'). */
       kamera?: { quelle: string; label?: string }
       /** Welcher Antrag gezeigt wird (nur im Modus 'antrag'). */
-      antrag?: { id?: UUID; seite?: number; mitAenderungen?: boolean }
+      antrag?: { id?: UUID; seite?: number; mitAenderungen?: boolean; synopse?: boolean }
     },
     stage?: Buehnenwahl
   ) => Promise<ProjectionState>

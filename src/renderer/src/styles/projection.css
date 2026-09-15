@@ -1046,26 +1046,81 @@ html {
  * ein Film füllt die Fläche, ein Antragswortlaut gehört in den Rahmen des
  * Saals.
  */
+/*
+ * Ein Antrag steht oben, nicht in der Mitte.
+ *
+ * Der Rumpf der Beameransicht zentriert senkrecht — richtig für „HERZLICH
+ * WILLKOMMEN" und für ein Ergebnis, das aus drei Zeilen besteht. Ein
+ * Antragswortlaut ist etwas anderes: Er ist der Inhalt, und er soll oben
+ * beginnen und nach unten laufen.
+ *
+ * Gemessen stand über der Kennzeile ein Drittel der Fläche leer, während der
+ * Text darunter gedrängt wurde.
+ */
+.projection-root.antrag-mode .projection-body {
+  justify-content: flex-start;
+}
+/*
+ * Und er beginnt oben, nicht in der Mitte.
+ *
+ * `.projection-fit` hat `margin: auto 0` — der Inhalt steht optisch mittig,
+ * und für eine Begrüßung oder ein Ergebnis ist das richtig. Bei einem
+ * Antragswortlaut hieß es: 118 Pixel leer oben, 118 leer unten, der Text
+ * dazwischen gedrängt. Gemessen an der laufenden Ansicht.
+ *
+ * Ein Text, den man liest, fängt oben an. Bleibt unten Platz, ist das kein
+ * Fehler — der Text ist eben kurz.
+ */
+.projection-root.antrag-mode .projection-fit {
+  width: 100%;
+  margin-top: 0;
+}
+
 .projection-antrag {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1cqh;
+  gap: 0.6cqh;
   width: 100%;
   text-align: left;
 }
 
 /*
- * Die Nebenzeile richtet sich hier nach links, nicht zur Mitte.
+ * Titel und Kennzeile sind hier **Beschriftung**, nicht Überschrift.
  *
- * `.projection-note` ist für die anderen Ansichten gedacht, die alle mittig
- * stehen — dort hat sie `margin: 0 auto`. Neben einem linksbündigen
- * Antragswortlaut sah der Antragsteller aus, als gehörte er zu etwas
- * anderem: Titel links, Absender in der Mitte.
+ * `.projection-title` ist auf 4,2cqw ausgelegt — für „Wahl des Vorsitzes",
+ * wo der Titel die ganze Aussage ist. Über einem Antragswortlaut nahm er mit
+ * 53 Pixeln ein Zehntel der Höhe, und bei zwei Zeilen ein Fünftel. Der
+ * Wortlaut ist hier die Aussage.
  */
+.projection-antrag .projection-title {
+  font-size: calc(2.6cqw * var(--s, 1));
+  line-height: 1.15;
+}
+.projection-antrag .projection-round-label {
+  font-size: calc(1.7cqw * var(--s, 1));
+}
 .projection-antrag .projection-note {
-  margin: 0;
+  font-size: calc(1.5cqw * var(--s, 1));
+}
+
+/*
+ * Alles richtet sich hier nach links, nicht zur Mitte.
+ *
+ * Titel, Kennzeile und Nebenzeile sind für die anderen Ansichten gemacht,
+ * die mittig stehen; `.projection-note` hat dort sogar `margin: 0 auto`.
+ *
+ * Beim Antrag fiel das zuerst nur an der Nebenzeile auf — ein kurzer Titel
+ * schrumpft auf seine Breite und **sieht** dann linksbündig aus. Erst eine
+ * Überschrift, die umbricht, zeigte den Fehler: „Satzungsänderung § 9
+ * (Vorstand)" stand zentriert über einem linksbündigen Wortlaut.
+ */
+.projection-antrag .projection-title,
+.projection-antrag .projection-round-label,
+.projection-antrag .projection-note {
+  width: 100%;
   max-width: 100%;
+  margin: 0;
   text-align: left;
 }
 
@@ -1084,4 +1139,40 @@ html {
   white-space: pre-wrap;
   font-size: 3.4cqh;
   line-height: 1.45;
+}
+
+/*
+ * Die Synopse — zwei Spalten nebeneinander.
+ *
+ * Links, was gilt oder bisher beantragt war; rechts, was beantragt ist.
+ * Gleich breit und mit derselben Schrift: Sobald eine Spalte größer wirkt,
+ * liest der Saal sie als die wichtigere, und das wäre eine Wertung, die
+ * niemand getroffen hat.
+ */
+.projection-synopse {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3cqw;
+  width: 100%;
+  margin-top: 1.5cqh;
+}
+
+.projection-synopse-spalte {
+  min-width: 0;
+}
+
+.projection-synopse-titel {
+  font-size: 2.4cqh;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--projection-muted, #9fb0bf);
+  margin-bottom: 0.8cqh;
+}
+
+/* In der Spalte trägt der Text seinen Balken schon über den Titel hinweg —
+   ein zweiter Einzug daneben machte die Spalte unnötig schmal. */
+.projection-synopse .projection-antrag-text {
+  margin-top: 0;
+  font-size: 2.9cqh;
 }

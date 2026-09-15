@@ -43,6 +43,7 @@ interface MotionRow {
   body: string
   proposer: string
   reasoning: string | null
+  previous_body: string | null
   status: string
   reference_id: string | null
   sort_index: number
@@ -61,6 +62,7 @@ function mapAntrag(row: MotionRow): Antrag {
     text: row.body,
     antragsteller: row.proposer,
     begruendung: optionalString(row.reasoning),
+    bisher: optionalString(row.previous_body),
     status: row.status as Antragsstatus,
     bezugId: optionalString(row.reference_id),
     reihenfolge: Number(row.sort_index),
@@ -97,6 +99,8 @@ export interface AntragEingabe {
   text: string
   antragsteller: string
   begruendung?: string
+  /** Geltende Fassung für die Synopse — freiwillig. */
+  bisher?: string
   bezugId?: UUID
 }
 
@@ -130,9 +134,9 @@ export function antragAnlegen(eingabe: AntragEingabe): Antrag {
 
   db()
     .prepare(
-      `INSERT INTO motions (id, event_id, kind, number, title, body, proposer, reasoning, status,
-                            reference_id, sort_index, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'eingereicht', ?, ?, ?)`
+      `INSERT INTO motions (id, event_id, kind, number, title, body, proposer, reasoning,
+                            previous_body, status, reference_id, sort_index, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'eingereicht', ?, ?, ?)`
     )
     .run(
       id,
@@ -143,6 +147,7 @@ export function antragAnlegen(eingabe: AntragEingabe): Antrag {
       eingabe.text,
       eingabe.antragsteller.trim(),
       eingabe.begruendung?.trim() || null,
+      eingabe.bisher?.trim() || null,
       eingabe.bezugId ?? null,
       Number(hoechste?.hoch ?? 0) + 1,
       new Date().toISOString()
@@ -166,13 +171,17 @@ export function antragAendern(
   const vorher = getAntrag(eingabe.id)
 
   db()
-    .prepare(`UPDATE motions SET number = ?, title = ?, body = ?, proposer = ?, reasoning = ? WHERE id = ?`)
+    .prepare(
+      `UPDATE motions SET number = ?, title = ?, body = ?, proposer = ?, reasoning = ?,
+                          previous_body = ? WHERE id = ?`
+    )
     .run(
       eingabe.nummer?.trim() || vorher.nummer,
       eingabe.titel?.trim() ?? vorher.titel,
       eingabe.text ?? vorher.text,
       eingabe.antragsteller?.trim() || vorher.antragsteller,
       eingabe.begruendung === undefined ? (vorher.begruendung ?? null) : eingabe.begruendung.trim() || null,
+      eingabe.bisher === undefined ? (vorher.bisher ?? null) : eingabe.bisher.trim() || null,
       eingabe.id
     )
 

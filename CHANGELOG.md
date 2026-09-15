@@ -72,6 +72,23 @@ Sie stehen untereinander, benannt und zurückverfolgbar.
 weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
 über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
 
+**Synopse.** Bei Anträgen, die einen bestehenden Text ändern, gehört der bisherige Wortlaut daneben
+— eine Satzungsänderung ohne ihn ist für die Versammlung nur die halbe Auskunft: Man liest, was
+künftig gelten soll, und weiß nicht, was sich ändert.
+
+An der Wand stehen dann zwei Spalten: links **Geltende Fassung**, rechts **beantragt**. Bei einem
+Änderungsantrag entsprechend links der Hauptantrag, rechts die Änderung — das ist die Frage, über
+die abgestimmt wird. Gleich breit und in derselben Schrift: Sobald eine Spalte größer wirkt, liest
+der Saal sie als die wichtigere, und das wäre eine Wertung, die niemand getroffen hat.
+
+**Zusammengeführt wird nichts.** Eine echte Gegenüberstellung Zeile für Zeile müsste erkennen,
+welche Stelle ein Änderungsantrag meint. Das geht nur mit einer Vermutung — und eine falsch
+geratene Stelle wäre ein verfälschter Beschluss. Es stehen deshalb zwei vollständige Texte
+nebeneinander, jeder für sich lesbar.
+
+Fehlt die geltende Fassung, gibt es keine Synopse und keinen Knopf dafür. Eine Gegenüberstellung
+mit einer leeren Spalte wäre schlechter als keine.
+
 **Und wenn das Handzeichen nicht reicht.** Den Fall kennt jede Versammlungsleitung: Zwei Reihen
 heben, eine halb, und niemand mag das Ergebnis verkünden. Dann muss es schnell gehen — und der Weg
 „Wahlgang anlegen, Titel abtippen, Antragstext einfügen, Verfahren wählen" ist in diesem Moment zu

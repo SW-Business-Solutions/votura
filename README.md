@@ -162,6 +162,25 @@ eine falsch geratene Stelle wäre ein verfälschter Beschluss.
 weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
 über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
 
+### Synopse
+
+Bei Anträgen, die einen bestehenden Text ändern — Satzung, Beitragsordnung, Geschäftsordnung —,
+gehört der bisherige Wortlaut daneben. Wer nur liest, was künftig gelten soll, weiß nicht, was sich
+ändert.
+
+Im Antrag gibt es dafür das Feld **Geltende Fassung**. Ist es gefüllt, erscheint der Knopf
+**Synopse auf den Beamer**, und an der Wand stehen zwei Spalten: links *Geltende Fassung*, rechts
+*beantragt*. Bei einem **Änderungsantrag** braucht es nichts weiter — dort steht links der
+Hauptantrag und rechts die Änderung, und das ist die Frage, über die abgestimmt wird.
+
+Beide Spalten sind gleich breit und in derselben Schrift. Sobald eine größer wirkt, liest der Saal
+sie als die wichtigere, und das wäre eine Wertung, die niemand getroffen hat.
+
+**Zusammengeführt wird nichts.** Eine Gegenüberstellung Zeile für Zeile müsste erkennen, welche
+Stelle ein Änderungsantrag meint — das geht nur mit einer Vermutung, und eine falsch geratene Stelle
+wäre ein verfälschter Beschluss. Es stehen zwei vollständige Texte nebeneinander, jeder für sich
+lesbar. Geblättert wird gemeinsam; die Seitenzahl richtet sich nach der längeren Spalte.
+
 ### Wenn das Handzeichen nicht reicht
 
 Den Fall kennt jede Versammlungsleitung: Zwei Reihen heben, eine halb, und niemand mag das Ergebnis

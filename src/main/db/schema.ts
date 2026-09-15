@@ -619,6 +619,24 @@ CREATE TABLE IF NOT EXISTS motions (
 CREATE INDEX IF NOT EXISTS idx_motions_event ON motions(event_id, kind, sort_index);
 CREATE INDEX IF NOT EXISTS idx_motions_reference ON motions(reference_id, sort_index);
 `
+  },
+  {
+    /**
+     * Die geltende Fassung — für die Synopse.
+     *
+     * Bei Anträgen, die einen bestehenden Text ändern (Satzung,
+     * Beitragsordnung, Geschäftsordnung), gehört der bisherige Wortlaut
+     * daneben. Eine Satzungsänderung ohne ihn ist für die Versammlung nur die
+     * halbe Auskunft: Man liest, was künftig gelten soll, und weiß nicht,
+     * was sich ändert.
+     *
+     * Freiwillig und leer erlaubt. Fehlt sie, gibt es keine Synopse — eine
+     * Gegenüberstellung mit einer leeren Spalte wäre schlechter als keine.
+     */
+    version: 15,
+    sql: `
+ALTER TABLE motions ADD COLUMN previous_body TEXT;
+`
   }
 ]
 

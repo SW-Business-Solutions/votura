@@ -84,6 +84,19 @@ export interface Antrag {
   antragsteller: string
   /** Optionale Begründung — sie wird nicht mitbeschlossen. */
   begruendung?: string
+  /**
+   * Die geltende Fassung, für die Synopse.
+   *
+   * Nur bei Hauptanträgen sinnvoll, die einen bestehenden Text ändern —
+   * Satzung, Beitragsordnung, Geschäftsordnung. Eine Satzungsänderung ohne
+   * den bisherigen Wortlaut daneben ist für die Versammlung nur die halbe
+   * Auskunft.
+   *
+   * Freiwillig. Fehlt sie, gibt es keine Synopse, und der Antrag steht wie
+   * jeder andere da — eine Gegenüberstellung mit einer leeren Spalte wäre
+   * schlechter als keine.
+   */
+  bisher?: string
   status: Antragsstatus
   /** Bei `aenderung`: der Hauptantrag, auf den er sich bezieht. */
   bezugId?: string
@@ -248,6 +261,14 @@ export interface ProjectionAntrag {
   schritt?: { nummer: number; von: number }
   /** Steht der Text schon samt übernommener Änderungen da? */
   mitAenderungen: boolean
+  /**
+   * Die Gegenüberstellung, wenn eine verlangt und möglich ist.
+   *
+   * Steht sie hier, zeigt die Wand zwei Spalten statt eines Textes. `seiten`
+   * bleibt trotzdem gefüllt: Wer von der Synopse zurückschaltet, soll den
+   * Wortlaut ohne neues Laden sehen.
+   */
+  synopse?: Synopse
 }
 
 /**
@@ -258,10 +279,10 @@ export interface ProjectionAntrag {
  * bleiben ungefähr so viele Zeilen. Lieber eine Seite mehr als eine Schrift,
  * die keiner entziffert.
  */
-export const ANTRAG_ZEILEN_JE_SEITE = 14
+export const ANTRAG_ZEILEN_JE_SEITE = 16
 
 /** Wie viele Zeichen eine Zeile an der Wand fasst. */
-export const ANTRAG_ZEICHEN_JE_ZEILE = 64
+export const ANTRAG_ZEICHEN_JE_ZEILE = 78
 
 /**
  * Bricht einen Antragstext in Beamerseiten.
@@ -338,4 +359,87 @@ function umbrechen(absatz: string, zeichenJeZeile: number): string[] {
     if (laufend) zeilen.push(laufend)
   }
   return zeilen
+}
+
+/* ----------------------------------------------------------- Synopse */
+
+/**
+ * Wie viele Zeichen eine Zeile in einer Synopsenspalte fasst.
+ *
+ * Knapp die Hälfte der vollen Breite — zwei Spalten nebeneinander, dazwischen
+ * Luft. Ein eigener Wert und nicht `ANTRAG_ZEICHEN_JE_ZEILE / 2`, weil eine
+ * Spalte auch ihren eigenen Rand hat und die Spaltenschrift kleiner ist.
+ *
+ * Auch dieser Wert ist eingemessen: Bei 28 blieb in jeder Spalte rechts ein
+ * Drittel leer.
+ */
+export const ANTRAG_ZEICHEN_JE_SPALTE = 38
+
+/** Eine Seite der Gegenüberstellung. */
+export interface Synopsenspalte {
+  /** Was darüber steht, etwa „Geltende Fassung". */
+  titel: string
+  seiten: string[]
+}
+
+export interface Synopse {
+  links: Synopsenspalte
+  rechts: Synopsenspalte
+  /** Wie viele Seiten die Gegenüberstellung hat — die längere Spalte zählt. */
+  seitenzahl: number
+}
+
+/**
+ * Stellt gegenüber, was gilt, und was beantragt ist.
+ *
+ * ## Zwei Fälle, eine Darstellung
+ *
+ * Bei einem **Änderungsantrag** steht links der Hauptantrag und rechts die
+ * Änderung: Das ist die Frage, über die abgestimmt wird.
+ *
+ * Bei einem **Hauptantrag** steht links die geltende Fassung — sofern jemand
+ * sie hinterlegt hat. Eine Satzungsänderung ohne den bisherigen Wortlaut
+ * daneben ist für die Versammlung nur die halbe Auskunft.
+ *
+ * Gibt es nichts gegenüberzustellen, kommt `null` zurück — und der Beamer
+ * zeigt den Antrag wie bisher. Eine Synopse mit einer leeren Spalte wäre
+ * schlechter als keine.
+ *
+ * ## Warum die Zeilen nicht zusammengeführt werden
+ *
+ * Eine echte Gegenüberstellung Zeile für Zeile müsste erkennen, welche Stelle
+ * ein Änderungsantrag meint. Das geht nur mit einer Vermutung — und eine
+ * falsch geratene Stelle wäre ein verfälschter Beschluss. Hier stehen deshalb
+ * zwei vollständige Texte nebeneinander, jeder für sich lesbar.
+ */
+export function synopse(
+  antrag: Antrag,
+  haupt?: Antrag,
+  zeilenJeSeite = ANTRAG_ZEILEN_JE_SEITE,
+  zeichenJeSpalte = ANTRAG_ZEICHEN_JE_SPALTE
+): Synopse | null {
+  const paar =
+    antrag.art === 'aenderung' && haupt
+      ? {
+          links: { titel: `${haupt.nummer} — bisher beantragt`, text: haupt.text },
+          rechts: { titel: `${antrag.nummer} — Änderung`, text: antrag.text }
+        }
+      : antrag.bisher?.trim()
+        ? {
+            links: { titel: 'Geltende Fassung', text: antrag.bisher },
+            rechts: { titel: `${antrag.nummer} — beantragt`, text: antrag.text }
+          }
+        : null
+
+  if (!paar) return null
+
+  const links = {
+    titel: paar.links.titel,
+    seiten: antragSeiten(paar.links.text, zeilenJeSeite, zeichenJeSpalte)
+  }
+  const rechts = {
+    titel: paar.rechts.titel,
+    seiten: antragSeiten(paar.rechts.text, zeilenJeSeite, zeichenJeSpalte)
+  }
+  return { links, rechts, seitenzahl: Math.max(links.seiten.length, rechts.seiten.length) }
 }

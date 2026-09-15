@@ -318,7 +318,9 @@ export function ProjectionScreen({
 
   return (
     <div
-      className={`projection-root${preview ? ' preview' : ''}${theme.transitions ? '' : ' no-transitions'}`}
+      className={`projection-root${preview ? ' preview' : ''}${theme.transitions ? '' : ' no-transitions'}${
+        state.mode === 'antrag' ? ' antrag-mode' : ''
+      }`}
       style={style}
     >
       {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
@@ -425,15 +427,34 @@ function renderMode(state: ProjectionState): JSX.Element {
           <div className="projection-note">
             {antrag.antragsteller}
             {antrag.mitAenderungen ? ' · mit übernommenen Änderungen' : ''}
-            {antrag.seiten.length > 1 ? ` · Seite ${antrag.seite + 1} von ${antrag.seiten.length}` : ''}
+            {(antrag.synopse?.seitenzahl ?? antrag.seiten.length) > 1
+              ? ` · Seite ${antrag.seite + 1} von ${antrag.synopse?.seitenzahl ?? antrag.seiten.length}`
+              : ''}
           </div>
           {/*
             Der Wortlaut in `pre-wrap`: Absätze und Einrückungen sind Teil
             dessen, worüber abgestimmt wird. Umbrochen ist er bereits in
             `@shared/antrag` — hier wird nur gezeichnet, damit jede Wand
             dieselbe Seite zeigt.
+
+            Bei einer Synopse stehen zwei Spalten statt eines Textes: links,
+            was gilt oder bisher beantragt war, rechts, was beantragt ist.
+            Zusammengeführt wird nichts — eine Gegenüberstellung Zeile für
+            Zeile müsste erkennen, welche Stelle gemeint ist, und eine falsch
+            geratene Stelle wäre ein verfälschter Beschluss.
           */}
-          <div className="projection-antrag-text">{antrag.seiten[antrag.seite] ?? ''}</div>
+          {antrag.synopse ? (
+            <div className="projection-synopse">
+              {[antrag.synopse.links, antrag.synopse.rechts].map((spalte, i) => (
+                <div className="projection-synopse-spalte" key={i}>
+                  <div className="projection-synopse-titel">{spalte.titel}</div>
+                  <div className="projection-antrag-text">{spalte.seiten[antrag.seite] ?? ''}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="projection-antrag-text">{antrag.seiten[antrag.seite] ?? ''}</div>
+          )}
         </div>
       )
     }

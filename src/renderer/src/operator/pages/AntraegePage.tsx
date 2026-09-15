@@ -284,6 +284,30 @@ export function AntraegePage(): React.JSX.Element {
                 >
                   Mit Änderungen auf den Beamer
                 </button>
+                {/*
+                  Die Synopse nur dort anbieten, wo es eine gibt.
+
+                  Ohne hinterlegte geltende Fassung wäre die linke Spalte
+                  leer — und eine Gegenüberstellung mit einer leeren Spalte
+                  ist schlechter als keine.
+                */}
+                {antrag.bisher?.trim() && (
+                  <button
+                    disabled={!darf}
+                    title="Geltende Fassung und beantragte Fassung nebeneinander."
+                    onClick={() =>
+                      void rufe(() =>
+                        api(
+                          'projection.setMode',
+                          { mode: 'antrag', antrag: { id: antrag.id, synopse: true } },
+                          app.ziel
+                        )
+                      )
+                    }
+                  >
+                    Synopse auf den Beamer
+                  </button>
+                )}
                 {!antrag.roundId && (
                   <button className="ghost" disabled={!darf} onClick={() => setLoeschen(antrag)}>
                     Löschen
@@ -367,6 +391,23 @@ export function AntraegePage(): React.JSX.Element {
                             }
                           >
                             Auf den Beamer
+                          </button>
+                          {/* Beim Änderungsantrag gibt es immer etwas
+                              gegenüberzustellen: den Hauptantrag. */}
+                          <button
+                            disabled={!darf}
+                            title="Hauptantrag und Änderung nebeneinander."
+                            onClick={() =>
+                              void rufe(() =>
+                                api(
+                                  'projection.setMode',
+                                  { mode: 'antrag', antrag: { id: aenderung.id, synopse: true } },
+                                  app.ziel
+                                )
+                              )
+                            }
+                          >
+                            Synopse
                           </button>
                           {aenderung.roundId ? (
                             <button onClick={() => navigate(`round/${aenderung.roundId}`)}>
@@ -494,6 +535,7 @@ function AntragDialog({
   const [text, setText] = useState(vorhanden?.text ?? '')
   const [antragsteller, setAntragsteller] = useState(vorhanden?.antragsteller ?? '')
   const [begruendung, setBegruendung] = useState(vorhanden?.begruendung ?? '')
+  const [bisher, setBisher] = useState(vorhanden?.bisher ?? '')
 
   return (
     <Modal
@@ -519,7 +561,8 @@ function AntragDialog({
                     titel,
                     text,
                     antragsteller,
-                    begruendung
+                    begruendung,
+                    bisher
                   })
                 } else {
                   await api('motion.create', {
@@ -530,6 +573,7 @@ function AntragDialog({
                     text,
                     antragsteller,
                     begruendung,
+                    bisher,
                     bezugId
                   })
                 }
@@ -562,6 +606,20 @@ function AntragDialog({
       <Field label="Antragstext" hint="Genau der Wortlaut, über den abgestimmt wird.">
         <textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
+      {/*
+        Die geltende Fassung — nur beim Hauptantrag.
+
+        Bei einem Änderungsantrag steht links ohnehin der Hauptantrag; ein
+        zweites Feld dafür wäre eine Frage, die niemand beantworten kann.
+      */}
+      {art === 'haupt' && (
+        <Field
+          label="Geltende Fassung (optional)"
+          hint="Für die Synopse: Was heute gilt. Eine Satzungsänderung ohne den bisherigen Wortlaut daneben ist für die Versammlung nur die halbe Auskunft."
+        >
+          <textarea rows={6} value={bisher} onChange={(e) => setBisher(e.target.value)} />
+        </Field>
+      )}
       <Field label="Begründung (optional)" hint="Wird nicht mitbeschlossen.">
         <textarea rows={4} value={begruendung} onChange={(e) => setBegruendung(e.target.value)} />
       </Field>

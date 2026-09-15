@@ -8,7 +8,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   abstimmungsreihenfolge,
+  ANTRAG_ZEICHEN_JE_SPALTE,
   antragSeiten,
+  synopse,
   beschlusstext,
   darfUebernehmen,
   nachNummer,
@@ -216,6 +218,84 @@ describe('Der Antrag auf dem Beamer', () => {
     const zurueck = antragSeiten(text, 2, 30).join(' ').replace(/\s+/g, ' ')
     for (const wort of ['Verband', 'beschließen:', 'Beitrag', 'fünf', 'Euro.', '2027.']) {
       expect(zurueck).toContain(wort)
+    }
+  })
+})
+
+describe('Die Synopse', () => {
+  it('stellt beim Änderungsantrag den Hauptantrag gegenüber', () => {
+    /* Das ist die Frage, über die abgestimmt wird: Hauptantrag gegen
+       Änderung. */
+    const haupt = antrag({ id: 'h', nummer: 'A 14', text: 'Der Beitrag beträgt drei Euro.' })
+    const ae = antrag({
+      nummer: 'Ä 1',
+      art: 'aenderung',
+      bezugId: 'h',
+      text: 'Der Beitrag beträgt fünf Euro.'
+    })
+    const s = synopse(ae, haupt)
+    expect(s).not.toBeNull()
+    expect(s!.links.titel).toContain('A 14')
+    expect(s!.rechts.titel).toContain('Ä 1')
+    /* Innerhalb einer Seite trennt ein Zeilenumbruch — für den Vergleich
+       wird er zum Leerzeichen. */
+    const fliess = (spalte: { seiten: string[] }): string =>
+      spalte.seiten.join(' ').replace(/\s+/g, ' ')
+    expect(fliess(s!.links)).toContain('drei Euro')
+    expect(fliess(s!.rechts)).toContain('fünf Euro')
+  })
+
+  it('stellt beim Hauptantrag die geltende Fassung gegenüber', () => {
+    const haupt = antrag({
+      nummer: 'A 20',
+      text: 'Der Vorstand wird auf zwei Jahre gewählt.',
+      bisher: 'Der Vorstand wird auf ein Jahr gewählt.'
+    })
+    const s = synopse(haupt)
+    expect(s!.links.titel).toBe('Geltende Fassung')
+    expect(s!.links.seiten.join(' ').replace(/\s+/g, ' ')).toContain('ein Jahr')
+    expect(s!.rechts.seiten.join(' ').replace(/\s+/g, ' ')).toContain('zwei Jahre')
+  })
+
+  it('gibt nichts zurück, wenn es nichts gegenüberzustellen gibt', () => {
+    /*
+     * **Der wichtigste Fall.** Eine Synopse mit einer leeren Spalte wäre
+     * schlechter als keine: Sie sähe aus wie eine Gegenüberstellung und
+     * behauptete, links stünde nichts — statt zu sagen, dass niemand den
+     * bisherigen Wortlaut hinterlegt hat.
+     */
+    expect(synopse(antrag({ nummer: 'A 21' }))).toBeNull()
+    expect(synopse(antrag({ nummer: 'A 21', bisher: '   ' }))).toBeNull()
+  })
+
+  it('braucht für einen Änderungsantrag den Hauptantrag', () => {
+    const ae = antrag({ nummer: 'Ä 1', art: 'aenderung', bezugId: 'h' })
+    expect(synopse(ae)).toBeNull()
+  })
+
+  it('zählt die Seiten nach der längeren Spalte', () => {
+    /* Sonst bräche die Gegenüberstellung mitten im längeren Text ab, und
+       niemand sähe, dass da noch etwas steht. */
+    const haupt = antrag({ id: 'h', nummer: 'A 14', text: 'Kurz.' })
+    const lang = Array.from({ length: 40 }, (_, i) => `Zeile ${i + 1}`).join('\n\n')
+    const ae = antrag({ nummer: 'Ä 1', art: 'aenderung', bezugId: 'h', text: lang })
+    const s = synopse(ae, haupt, 4, 28)
+    expect(s!.links.seiten).toHaveLength(1)
+    expect(s!.rechts.seiten.length).toBeGreaterThan(1)
+    expect(s!.seitenzahl).toBe(s!.rechts.seiten.length)
+  })
+
+  it('bricht schmaler um als die volle Breite', () => {
+    const haupt = antrag({ id: 'h', nummer: 'A 14', text: 'x' })
+    const ae = antrag({
+      nummer: 'Ä 1',
+      art: 'aenderung',
+      bezugId: 'h',
+      text: 'ein ziemlich langer satz der in einer schmalen spalte umbrechen muss'
+    })
+    const s = synopse(ae, haupt)
+    for (const zeile of s!.rechts.seiten[0].split('\n')) {
+      expect(zeile.length).toBeLessThanOrEqual(ANTRAG_ZEICHEN_JE_SPALTE)
     }
   })
 })

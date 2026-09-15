@@ -36,6 +36,7 @@ import {
   abstimmungsreihenfolge,
   antragSeiten,
   beschlusstext,
+  synopse as synopseBilden,
   type ProjectionAntrag
 } from '@shared/antrag'
 import { getAntrag, listAntraege } from './antraege'
@@ -450,7 +451,7 @@ export interface SetModeInput {
    * zu laden — und dabei ginge `mitAenderungen` verloren, wenn es der
    * Aufrufer nicht wiederholt.
    */
-  antrag?: { id?: UUID; seite?: number; mitAenderungen?: boolean }
+  antrag?: { id?: UUID; seite?: number; mitAenderungen?: boolean; synopse?: boolean }
   /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
   speaker?: {
     name: string
@@ -761,7 +762,10 @@ function antragFuer(
   if (!eingabe?.id) {
     /* Nur die Seite blättern: Der Antrag bleibt, die Seite wechselt. */
     if (bisher && eingabe?.seite !== undefined) {
-      return { ...bisher, seite: Math.max(0, Math.min(eingabe.seite, bisher.seiten.length - 1)) }
+      /* Die Grenze richtet sich nach dem, was gezeigt wird — bei einer
+         Synopse nach der längeren Spalte. */
+      const letzte = (bisher.synopse?.seitenzahl ?? bisher.seiten.length) - 1
+      return { ...bisher, seite: Math.max(0, Math.min(eingabe.seite, letzte)) }
     }
     return bisher
   }
@@ -783,14 +787,34 @@ function antragFuer(
   const stelle = folge.findIndex((schritt) => schritt.antrag.id === antrag.id)
 
   const seiten = antragSeiten(text)
+  /*
+   * Die Synopse wird nur gebaut, wenn sie verlangt ist **und** möglich.
+   *
+   * Möglich heißt: Es gibt etwas gegenüberzustellen — bei einem
+   * Änderungsantrag den Hauptantrag, bei einem Hauptantrag die hinterlegte
+   * geltende Fassung. Fehlt beides, kommt `undefined` zurück und die Wand
+   * zeigt den Wortlaut. Eine Gegenüberstellung mit einer leeren Spalte wäre
+   * schlechter als keine.
+   */
+  const gegenueber = eingabe.synopse
+    ? (synopseBilden(
+        antrag,
+        antrag.art === 'aenderung'
+          ? alle.find((eintrag) => eintrag.id === antrag.bezugId)
+          : undefined
+      ) ?? undefined)
+    : undefined
+
+  const hoechsteSeite = (gegenueber?.seitenzahl ?? seiten.length) - 1
   return {
     nummer: antrag.nummer,
     titel: antrag.titel,
     antragsteller: antrag.antragsteller,
     seiten,
-    seite: Math.max(0, Math.min(eingabe.seite ?? 0, seiten.length - 1)),
+    seite: Math.max(0, Math.min(eingabe.seite ?? 0, hoechsteSeite)),
     schritt: stelle >= 0 ? { nummer: stelle + 1, von: folge.length } : undefined,
-    mitAenderungen
+    mitAenderungen,
+    synopse: gegenueber
   }
 }
 
