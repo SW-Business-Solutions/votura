@@ -623,6 +623,139 @@ html {
   background: #000;
 }
 
+/* --------------------------------------------------------------- Kamera */
+
+.kamera-mode {
+  background: #000;
+}
+
+.kamera-bild {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+/*
+ * Das Bild wird eingepasst, nicht beschnitten.
+ *
+ * Eine Kamera im 16:9-Format auf einem 16:10-Beamer würde beim Füllen oben
+ * und unten angeschnitten — und das Erste, was verschwindet, ist der Kopf.
+ */
+.kamera-flaeche {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.kamera-warte {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  text-align: center;
+  background: #000;
+}
+
+/*
+ * Die Bauchbinde.
+ *
+ * Unten links, über dem unteren Fünftel: Dort ist auf einem Kamerabild am
+ * wenigsten los. Der dunkle Grund ist halbdurchsichtig, damit man sieht, dass
+ * etwas dahinter ist — aber deckend genug, dass weiße Schrift auf einem
+ * hellen Hemd lesbar bleibt.
+ */
+.kamera-bauchbinde {
+  position: absolute;
+  left: 4cqw;
+  bottom: 6cqh;
+  display: flex;
+  align-items: center;
+  gap: 2cqw;
+  max-width: 70cqw;
+  /* Unten mehr Luft: Dort läuft der Balken. */
+  padding: 2.4cqh 3cqw 3.4cqh;
+  border-radius: 0.6rem;
+  border-left: 0.8cqh solid var(--projection-primary, #4a9eff);
+  background: rgba(8, 12, 20, 0.86);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  /* Der Balken unten hängt an dieser Kante. */
+  overflow: hidden;
+}
+
+/*
+ * Das Logo bekommt eine feste Höhe **und** eine Breitengrenze.
+ *
+ * Ohne die zweite sprengte ein breites Logo — ein Schriftzug etwa — die
+ * Bauchbinde nach rechts, bis für den Namen kein Platz mehr blieb. Und ohne
+ * `flex-shrink: 0` wäre es umgekehrt: Bei einem langen Namen bliebe vom Logo
+ * ein Strich.
+ */
+.kamera-bauchbinde-logo {
+  height: 7cqh;
+  max-width: 12cqw;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.kamera-bauchbinde-text {
+  min-width: 0;
+}
+
+.kamera-bauchbinde-name {
+  font-size: 6cqh;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kamera-bauchbinde-zusatz {
+  margin-top: 0.6cqh;
+  font-size: 3.2cqh;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Die Redezeit als Balken an der Unterkante.
+ *
+ * Er läuft über die ganze Breite der Bauchbinde und zeigt, was **übrig** ist,
+ * nicht was verbraucht wurde — wer vorne steht, rechnet sonst im Kopf
+ * rückwärts. Neben dem Namen sah derselbe Balken aus wie ein Versehen; an der
+ * Kante ist er das, was er ist: eine ablaufende Uhr.
+ *
+ * Ruht sie, ruht auch der Balken sichtbar — halb durchsichtig statt einfach
+ * stehen geblieben, sonst sieht ein Halt aus wie ein Hänger.
+ */
+.kamera-bauchbinde-uhr {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.2cqh;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.kamera-bauchbinde-uhr.ruht {
+  opacity: 0.45;
+}
+
+.kamera-bauchbinde-balken {
+  height: 100%;
+  background: var(--projection-primary, #4a9eff);
+  transition: width 0.9s linear;
+}
+
+
 /* Das PDF wird auf eine Leinwand gezeichnet und mittig eingepasst. */
 .projection-pdf {
   display: flex;
@@ -728,4 +861,28 @@ html {
   content: '·';
   margin-right: 2cqw;
   color: var(--projection-muted);
+}
+
+/*
+ * Die Vorschau in der Bedienung.
+ *
+ * Feste Höhe statt Seitenverhältnis: Das Bild kommt erst nach dem Aufbau,
+ * und eine Karte, die beim ersten Bild in die Höhe springt, verschiebt alles
+ * darunter — mitten im Betrieb.
+ */
+.kamera-vorschau {
+  position: relative;
+  height: 180px;
+  border-radius: 0.4rem;
+  overflow: hidden;
+  background: #000;
+  /*
+   * Eigener Bezugsrahmen für die cq-Maße.
+   *
+   * Die Bauchbinde rechnet in Anteilen ihrer Fläche. Ohne diesen Rahmen
+   * bezöge sie sich auf das nächste Elternteil mit Rahmen — im
+   * Bedienfenster wäre sie dann riesig und verräte nichts darüber, wie sie
+   * an der Wand aussieht. So ist die Vorschau ein verkleinerter Beamer.
+   */
+  container-type: size;
 }

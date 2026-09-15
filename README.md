@@ -486,6 +486,49 @@ manchmal" ist im Saal wertlos. Eine kleine Probedatei liegt bei:
 </tr>
 </table>
 
+## Kameras im Saal (NDI)
+
+Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die
+verbleibende Redezeit**. Das Letzte ist der Grund, warum dieses Programm Kamerabilder überhaupt
+anfasst: Votura weiß als Einziges im Saal, wer da vorne steht. Getippt wird für die Bauchbinde
+nichts; sie kommt aus demselben Aufruf, der auch die Uhr auf dem Beamer stellt.
+
+Empfangen wird über **NDI** — das Verfahren, mit dem Produktionskameras im Netz senden. Wer solche
+Kameras hat, steckt sie ein; Votura findet sie und zeigt sie an.
+
+- **Jedes Gerät empfängt selbst.** Im Zustand steht nur der *Name* der Quelle. Der Beamerrechner
+  baut seine Verbindung zur Kamera auf, ein Pi hinter dem zweiten Beamer seine eigene. Der andere
+  Weg — einmal empfangen und weiterverteilen — hieße, jedes Bild neu zu kodieren, ausgerechnet auf
+  dem Rechner, der die Wahl führt.
+- **Eigener Prozess.** Die NDI-Bibliothek ist fremder, nativer Code und läuft deshalb getrennt.
+  Stürzt sie ab, fällt das Bild aus — die Versammlung läuft weiter.
+- **Rotes Licht.** Steht das Bild einer Kamera an der Wand, schaltet Votura ihr Tally-Signal. Wer
+  gefilmt wird, sieht es.
+- **Erst auf Verlangen.** Ohne einen Blick in die Kameraliste startet nichts: kein fremder Code im
+  Speicher, keine NDI-Anmeldung im Netz.
+
+**Kameras gehören ans Kabel.** Ein voller NDI-Strom belegt über hundert Megabit je Sekunde. Über
+dasselbe WLAN laufen Handzettel und digitale Abstimmung — und die haben Vorrang. Geräte im
+Funknetz bekommen darum den Nebenstrom, den jede NDI-Quelle zusätzlich sendet: kleiner, gröber,
+für einen Nebenbildschirm völlig ausreichend.
+
+Gefilmt wird nicht heimlich und nicht mitgeschnitten: Votura zeichnet **nichts** auf. Das Bild
+endet mit der Rede. Eine Ankündigung an die Versammlung bleibt trotzdem Sache der Leitung.
+
+> NDI® ist eine eingetragene Marke der Vizrt NDI AB. Die mitgelieferte Laufzeit unterliegt der
+> [NDI-SDK-Lizenz](http://ndi.link/ndisdk_license); die Lizenzdatei liegt dem Paket bei.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/31-beamer-kamera.png" alt="Kamerabild mit Bauchbinde auf dem Beamer"><br><sub><b>Auf dem Beamer</b> — das Kamerabild füllt die Fläche, darunter Name, Bewerbung und die ablaufende Redezeit. Getippt wurde dafür nichts.</sub></td>
+<td width="50%"><img src="docs/screenshots/32-kamerasteuerung.png" alt="Kameras in der Bedienung"><br><sub><b>Steuerung</b> — gefundene Quellen, Vorschau, Bauchbinde an oder aus, Bild spiegeln für den Rückblickschirm am Pult.</sub></td>
+</tr>
+</table>
+
+<sub>Die Aufnahmen zeigen das Testbild aus <code>tools/ndi-testbild.mjs</code> — eine erzeugte NDI-Quelle,
+mit der sich die Kameraansicht ohne Kamera prüfen lässt. Für Votura ist sie von einer Kamera nicht
+zu unterscheiden.</sub>
+
 ## Netzwerkbetrieb
 
 Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und nur für ein

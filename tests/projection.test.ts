@@ -176,6 +176,8 @@ describe('Seitenzahl je Ansicht', () => {
       'custom_message',
       'presentation',
       'video',
+      /* Ein Kamerabild hat keine Liste, durch die sich blättern ließe. */
+      'kamera',
       'session_finished'
     ])
   })

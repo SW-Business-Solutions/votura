@@ -14,7 +14,15 @@ import { IPC, type Api, type ApiMethod, type SaalnetzStatus } from '@shared/ipc'
 import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type Buehnenwahl } from '@shared/projection'
 import { db } from './db'
 import { appPaths } from './paths'
+import type { KameraQualitaet } from '@shared/kamera'
 import { logger } from './logger'
+import {
+  kameraAn as kameraAnschliessen,
+  kameraAus as kameraLoesen,
+  kameraStand,
+  onKameraStand,
+  sucheKameras
+} from './services/kamera'
 import {
   getPrompterView,
   loadSpeech,
@@ -106,6 +114,8 @@ import {
   setProjection,
   setPresentationSlide,
   setVideoMuted,
+  setKameraBauchbinde,
+  setKameraSpiegeln,
   setVideoSchleife,
   setVideoPlaying,
   seekVideo,
@@ -867,6 +877,19 @@ const api: Api = {
   'presentation.report': async ({ slide, slideCount, stage }) =>
     reportPresentationState(bezugsbuehne(stage), slide, slideCount),
   /* -------------------------------------------------------------- Videos */
+  'kamera.stand': async () => kameraStand(),
+  'kamera.suche': async (an) => {
+    requirePermission('round.manage')
+    return sucheKameras(an)
+  },
+  'kamera.setBauchbinde': async (an, stage) => {
+    requirePermission('round.manage')
+    return aufBuehnen(stage, (buehne) => setKameraBauchbinde(buehne, an))
+  },
+  'kamera.setSpiegeln': async (an, stage) => {
+    requirePermission('round.manage')
+    return aufBuehnen(stage, (buehne) => setKameraSpiegeln(buehne, an))
+  },
   'video.list': async () => listVideos(),
   'video.import': async () => {
     requirePermission('round.manage')
@@ -1239,6 +1262,33 @@ export function registerIpc(): void {
       if (input?.ended === true) videoEnded(buehne)
     }
   )
+
+  /*
+   * Ein Fenster bittet um ein Kamerabild.
+   *
+   * Es fragt selbst, und zwar erst, wenn es eine Kamera im Zustand sieht.
+   * Der Hauptprozess entscheidet nicht, wer ein Bild braucht: Ein Beamer, der
+   * ausgeschaltet im Nebenraum steht, soll keine Verbindung zur Kamera halten.
+   */
+  ipcMain.on(IPC.kameraAn, (event, input: { quelle?: string; qualitaet?: KameraQualitaet; kanal?: string }) => {
+    const quelle = input?.quelle?.trim()
+    if (!quelle) return
+    kameraAnschliessen(
+      event.sender,
+      quelle,
+      input?.qualitaet === 'vorschau' ? 'vorschau' : 'hoch',
+      input?.kanal ?? 'bild'
+    )
+  })
+
+  ipcMain.on(IPC.kameraAus, (event, input: { kanal?: string }) => {
+    kameraLoesen(event.sender, input?.kanal ?? 'bild')
+  })
+
+  /* Gefundene Kameras und Störungen wandern von selbst in die Bedienung —
+     eine Kamera, die eingesteckt wird, soll in der Liste erscheinen, ohne
+     dass jemand sie sucht. */
+  onKameraStand((stand) => sendToOperator(IPC.kameraStand, stand))
 
   ipcMain.on(
     IPC.prompterReport,

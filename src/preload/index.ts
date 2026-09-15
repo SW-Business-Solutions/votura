@@ -8,6 +8,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { ApiMethod, ApiParams, ApiResult, IpcChannels } from '@shared/ipc'
 import type { PrompterWindowState } from '@shared/presentation'
 import type { PrompterViewState } from '@shared/speech'
+import type { KameraStand } from '@shared/kamera'
 import type { AudienceWindowState, ProjectionState } from '@shared/projection'
 import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
@@ -29,7 +30,11 @@ const IPC: IpcChannels = {
   audienceVideoReport: 'wz:audience-video-report',
   prompterState: 'wz:prompter-state',
   prompterView: 'wz:prompter-view',
-  teleprompterState: 'wz:teleprompter-state'
+  teleprompterState: 'wz:teleprompter-state',
+  kameraAn: 'wz:kamera-an',
+  kameraAus: 'wz:kamera-aus',
+  kameraPort: 'wz:kamera-port',
+  kameraStand: 'wz:kamera-stand'
 }
 
 type IpcAnswer<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -65,9 +70,42 @@ const bridge = {
   onTeleprompterState: (listener: (state: PrompterWindowState) => void) =>
     subscribe<PrompterWindowState>(IPC.teleprompterState, listener),
   onPrompterState: (listener: (state: PrompterWindowState) => void) =>
-    subscribe<PrompterWindowState>(IPC.prompterState, listener)
+    subscribe<PrompterWindowState>(IPC.prompterState, listener),
+  onKameraStand: (listener: (stand: KameraStand) => void) => subscribe<KameraStand>(IPC.kameraStand, listener),
+  /**
+   * Eine Kamera anfordern — und wieder loslassen.
+   *
+   * `kanal` unterscheidet mehrere Bilder im selben Fenster: die Vorschau in
+   * der Bedienung neben der großen Ansicht.
+   */
+  kameraAn: (eingabe: { quelle: string; qualitaet?: 'hoch' | 'vorschau'; kanal?: string }): void => {
+    ipcRenderer.send(IPC.kameraAn, eingabe)
+  },
+  kameraAus: (kanal?: string): void => {
+    ipcRenderer.send(IPC.kameraAus, { kanal })
+  }
 }
 
 export type OperatorBridge = typeof bridge
 
 contextBridge.exposeInMainWorld('votura', bridge)
+
+/*
+ * Der Port geht **nicht** über die Brücke.
+ *
+ * `contextBridge` kann einen MessagePort nicht hinüberreichen — er ist kein
+ * Wert, der sich kopieren ließe. Der übliche und einzig verlässliche Weg ist
+ * `window.postMessage`: Die Seite bekommt dabei einen echten Port, und die
+ * Bilder laufen danach an jeder Brücke vorbei.
+ */
+/*
+ * `window` ist im Typbild dieses Prozesses nicht vorgesehen (kein DOM-Lib) —
+ * zur Laufzeit gibt es es. Derselbe Umweg wie oben bei `location`.
+ */
+const seite = globalThis as unknown as {
+  postMessage(nachricht: unknown, ziel: string, ports: unknown[]): void
+}
+
+ipcRenderer.on(IPC.kameraPort, (ereignis, daten: { kanal: string; quelle: string }) => {
+  seite.postMessage({ art: 'votura-kamera', ...daten }, '*', ereignis.ports)
+})

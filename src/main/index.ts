@@ -11,6 +11,7 @@ import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
 import { initLogger, logger } from './logger'
+import { beendeKameras } from './services/kamera'
 import { checkOnStartIfEnabled } from './services/updates'
 import { onPrompterViewChanged, sprecherAufgerufen } from './services/prompter'
 import { sprachmodellDatei } from './services/sprachmodell'
@@ -589,6 +590,10 @@ app.on('before-quit', () => {
 
 app.on('will-quit', async (event) => {
   event.preventDefault()
+  /* Zuerst die Kameras: Der Empfängerprozess ist ein eigener Prozess und
+     bliebe sonst stehen, wenn dieser hier geht — mitsamt dem roten Licht an
+     der Kamera. */
+  beendeKameras()
   await stopNetworkProjection()
   await stoppeSuchruf()
   await stoppeDns()

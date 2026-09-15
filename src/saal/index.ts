@@ -40,6 +40,9 @@ import {
   type SaalFund
 } from '@shared/saal'
 import { sucheHauptrechner } from '../main/suchruf'
+import { beendeKameras, kameraAn, kameraAus } from '../main/services/kamera'
+import type { KameraQualitaet } from '@shared/kamera'
+import { IPC } from '@shared/ipc'
 
 /**
  * Diese Anwendung benennt sich selbst — und zwar, bevor irgendetwas anderes
@@ -216,6 +219,9 @@ function oeffneAnzeige(einstellung: SaalEinstellung): void {
     backgroundColor: '#000000',
     title: titel,
     webPreferences: {
+      /* Nur für Kamerabilder — die Seite selbst kommt über das Netz und
+         bedient sich weiterhin wie jede Netzwerkansicht. */
+      preload: join(__dirname, '../preload/saal-kamera.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -318,6 +324,22 @@ async function erreichbareAdresse(antwort: SaalAntwort, absender: string): Promi
 }
 
 function registriereBruecke(): void {
+  /*
+   * Kamerabilder: Das Gerät empfängt selbst.
+   *
+   * Die Seite meldet, dass sie jetzt ein Bild zeichnen kann; dieser Prozess
+   * legt daraufhin einen Kanal zwischen dem Empfängerprozess und dem Fenster.
+   * Die Bilder laufen danach an ihm vorbei — dasselbe Verfahren wie am
+   * Hauptrechner, aus demselben Grund.
+   */
+  ipcMain.on(IPC.kameraAn, (ereignis, eingabe: { quelle?: string; qualitaet?: KameraQualitaet }) => {
+    const quelle = eingabe?.quelle?.trim()
+    if (!quelle) return
+    kameraAn(ereignis.sender, quelle, eingabe?.qualitaet === 'vorschau' ? 'vorschau' : 'hoch', 'bild')
+  })
+
+  ipcMain.on(IPC.kameraAus, (ereignis) => kameraAus(ereignis.sender, 'bild'))
+
   ipcMain.handle('saal:einstellung', async () => leseEinstellung())
 
   ipcMain.handle('saal:suchen', async (): Promise<SaalFund[]> => {
@@ -476,6 +498,8 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => app.quit())
 
   app.on('will-quit', () => {
+    /* Der Empfängerprozess ist ein eigener Prozess und bliebe sonst stehen. */
+    beendeKameras()
     if (stromsperre !== null) {
       powerSaveBlocker.stop(stromsperre)
       stromsperre = null

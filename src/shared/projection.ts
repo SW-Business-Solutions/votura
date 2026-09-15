@@ -7,6 +7,7 @@
  * Schreib-API.
  */
 import type { ProjectionPresentation } from './presentation'
+import type { ProjectionCamera } from './kamera'
 import type { ProjectionVideo } from './video'
 import type { ElectionProcedure, IsoDate, IsoDateTime, UUID } from './types'
 
@@ -26,6 +27,7 @@ export const PROJECTION_MODES = [
   'custom_message',
   'presentation',
   'video',
+  'kamera',
   'session_finished'
 ] as const
 export type ProjectionMode = (typeof PROJECTION_MODES)[number]
@@ -46,6 +48,7 @@ export const PROJECTION_MODE_LABELS: Record<ProjectionMode, string> = {
   custom_message: 'Freie Mitteilung',
   presentation: 'Präsentation',
   video: 'Video',
+  kamera: 'Kamera',
   session_finished: 'Versammlung beendet'
 }
 
@@ -280,6 +283,14 @@ export interface ProjectionState {
    * erreicht.
    */
   video?: ProjectionVideo
+  /**
+   * Das laufende Kamerabild — nur der Name der NDI-Quelle.
+   *
+   * Auch hier keine Bilder im Zustand: Jeder Bildschirm baut seine eigene
+   * Verbindung zur Kamera auf. Der Hauptrechner sähe sonst dreimal dasselbe
+   * Bild durch sich hindurchlaufen, während er die Wahl führt.
+   */
+  camera?: ProjectionCamera
   /**
    * Wer gerade spricht und wie lange noch.
    *

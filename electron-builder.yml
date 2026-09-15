@@ -10,6 +10,17 @@ files:
   - out/**
   - package.json
   - '!**/*.map'
+  # Die NDI-Bindung liegt je Plattform in einem eigenen Paket. `tools/ndi.mjs`
+  # legt alle drei bereit, damit auch die Linux-Pakete von diesem Rechner aus
+  # entstehen können. Welche mitkommt, entscheiden die Abschnitte `win:` und
+  # `linux:` weiter unten — sonst trüge jede Fassung neunzig Megabyte
+  # Bindungen für fremde Rechner mit sich.
+
+# Die Bindung ist nativer Code und muss als Datei auf der Platte liegen —
+# aus einem Archiv heraus lässt sie sich nicht laden.
+asarUnpack:
+  - 'node_modules/@grandi/**'
+  - 'node_modules/node-gyp-build/**'
 
 # Das Programmsymbol wird zur Laufzeit für die Fenster gebraucht.
 extraResources:
@@ -37,6 +48,9 @@ publish:
     releaseType: release
 
 win:
+  # Kein Linux-Paket in der Windows-Fassung.
+  files:
+    - '!node_modules/@grandi/linux-*/**'
   target:
     - target: nsis
       arch: [x64]
@@ -57,6 +71,11 @@ win:
 # Paketverwaltung voraussetzt. deb und AppImage entstehen in einer
 # Linux-Bauumgebung; sie brauchen Werkzeuge, die es unter Windows nicht gibt.
 linux:
+  # Kein Windows-Paket in den Linux-Fassungen. Beide Linux-Bauarten (x64
+  # und arm64) entstehen in einem Lauf und tragen deshalb beide Bindungen;
+  # das ist der Preis dafür, sie nicht einzeln bauen zu müssen.
+  files:
+    - '!node_modules/@grandi/win32-*/**'
   target:
     - target: tar.gz
       arch: [x64, arm64]

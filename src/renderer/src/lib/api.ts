@@ -11,6 +11,7 @@ import type { ApiMethod, ApiParams, ApiResult } from '@shared/ipc'
 import type { AudienceWindowState, Buehne, ProjectionState } from '@shared/projection'
 import type { PrompterWindowState } from '@shared/presentation'
 import type { PrompterViewState } from '@shared/speech'
+import type { KameraStand } from '@shared/kamera'
 import type { PrintProgress, Session, UpdateProgress } from '@shared/types'
 
 interface Bridge {
@@ -33,6 +34,15 @@ interface Bridge {
   onPrompterView(listener: (state: PrompterViewState) => void): () => void
   /** Ob das Teleprompterfenster am Hauptrechner offen steht. */
   onTeleprompterState(listener: (state: PrompterWindowState) => void): () => void
+  /** Gefundene Kameras und Störungen. */
+  onKameraStand(listener: (stand: KameraStand) => void): () => void
+  /**
+   * Eine Kamera für **dieses Fenster** anfordern — die Vorschau in der
+   * Bedienung. Am zweiten Gerät im Netz fehlt die Brücke; dort gibt es
+   * kein NDI und also auch keine Vorschau.
+   */
+  kameraAn(eingabe: { quelle: string; qualitaet?: 'hoch' | 'vorschau'; kanal?: string }): void
+  kameraAus(kanal?: string): void
 }
 
 declare global {
@@ -192,7 +202,19 @@ function pollingBridge(): Bridge {
     onPrompterView: (listener) =>
       poll(() => remoteInvoke('prompter.view', []) as Promise<PrompterViewState>, listener, 2000),
     onTeleprompterState: (listener) =>
-      poll(() => remoteInvoke('prompter.windowState', []) as Promise<PrompterWindowState>, listener, 5000)
+      poll(() => remoteInvoke('prompter.windowState', []) as Promise<PrompterWindowState>, listener, 5000),
+    onKameraStand: (listener) =>
+      poll(() => remoteInvoke('kamera.stand', []) as Promise<KameraStand>, listener, 3000),
+    /*
+     * Am zweiten Gerät im Netz gibt es keine Vorschau.
+     *
+     * Die Bilder lägen nur am Hauptrechner an, und sie über HTTP
+     * weiterzureichen hieße, sie neu zu kodieren — auf dem Rechner, der die
+     * Wahl führt. Die Kameraliste und das Schalten gehen von hier aus
+     * trotzdem; nur das Bild bleibt vorn.
+     */
+    kameraAn: () => undefined,
+    kameraAus: () => undefined
   }
 }
 

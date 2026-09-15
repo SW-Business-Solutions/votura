@@ -10,6 +10,7 @@ import { formatDateDe } from '@shared/format'
 import { presentationKind } from '@shared/presentation'
 import { PdfFrame } from './PdfFrame'
 import { PresentationFrame } from './PresentationFrame'
+import { KameraBild } from './KameraBild'
 import { VideoFrame } from './VideoFrame'
 import {
   DEFAULT_PROJECTION_THEME,
@@ -239,6 +240,34 @@ export function ProjectionScreen({
             <div className="projection-note">
               {state.video ? state.video.title : 'Es ist kein Video ausgewählt.'}
             </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  /*
+   * Die Kamera bekommt die ganze Fläche, wie Film und Foliensatz. Kopfzeile
+   * und Logo der Wahlansicht wären über einem Livebild ein Rahmen zu viel —
+   * das Logo taucht stattdessen in der Bauchbinde wieder auf, dort, wo es
+   * hingehört.
+   */
+  if (state.mode === 'kamera') {
+    return (
+      <div className={`projection-root kamera-mode${preview ? ' preview' : ''}`} style={style}>
+        {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.camera ? (
+          <KameraBild
+            key={state.camera.quelle}
+            camera={state.camera}
+            speaker={state.speaker}
+            logo={theme.logo}
+            klein={preview}
+          />
+        ) : (
+          <div className="projection-presentation-empty">
+            <div className="projection-status">KAMERA</div>
+            <div className="projection-note">Es ist keine Kamera ausgewählt.</div>
           </div>
         )}
       </div>

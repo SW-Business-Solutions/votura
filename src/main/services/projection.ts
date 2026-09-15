@@ -31,6 +31,7 @@ import {
   type ProjectionState
 } from '@shared/projection'
 import type { ProjectionPresentation } from '@shared/presentation'
+import type { ProjectionCamera } from '@shared/kamera'
 import type { ProjectionVideo } from '@shared/video'
 import { rankCandidates } from '@shared/result'
 import { profileFor } from '@shared/election'
@@ -424,6 +425,8 @@ export interface SetModeInput {
   presentationId?: UUID
   /** Welches Video gezeigt wird (nur im Modus 'video'). */
   videoId?: UUID
+  /** Welche Kamera gezeigt wird (nur im Modus 'kamera'). */
+  kamera?: { quelle: string; label?: string }
   /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
   speaker?: {
     name: string
@@ -539,12 +542,30 @@ export function setProjection(
      */
     video: input.mode === 'video' ? videoFuer(input.videoId) : undefined,
     /*
+     * Die Kamera wird beim Aufrufen gewählt, wie ein Video — und beim
+     * Wegschalten losgelassen. Das ist nicht nur Ordnung im Zustand: Solange
+     * eine Kamera im Zustand steht, halten alle Bildschirme eine Verbindung
+     * zu ihr offen, und an der Kamera brennt das rote Licht.
+     */
+    camera: input.mode === 'kamera' ? kameraFuer(input.kamera, state.camera) : undefined,
+    /*
      * Wie bei Präsentation und Video überlebt auch die Vorstellung keinen
      * Moduswechsel: Wer zurück auf den Wahlgang schaltet, will den Wahlgang
      * sehen — und beim nächsten Aufruf soll die Uhr von vorn laufen, nicht
      * beim Rest des vorigen Redners.
      */
-    speaker: input.mode === 'speaker' ? rednerFuer(input.speaker) : undefined,
+    /*
+     * Eine Ausnahme von der Regel darüber: Im Kameramodus **bleibt** der
+     * Redner stehen. Er ist dort kein eigener Inhalt, sondern die Bauchbinde
+     * über dem Bild — wer von der Vorstellung auf die Kamera schaltet, will
+     * denselben Menschen sehen, nur größer.
+     */
+    speaker:
+      input.mode === 'speaker'
+        ? rednerFuer(input.speaker)
+        : input.mode === 'kamera'
+          ? (rednerFuer(input.speaker) ?? state.speaker)
+          : undefined,
     updatedAt: new Date().toISOString()
   })
 
@@ -656,6 +677,30 @@ function seitenZahlFuer(
       return projectionPageCount(zahlen.candidateCount)
     default:
       return 1
+  }
+}
+
+/**
+ * Welche Kamera auf die Bühne kommt.
+ *
+ * Ohne Angabe bleibt die bisherige stehen: Wer aus der Vorstellung zurück auf
+ * die Kamera schaltet, hat sie eben erst gewählt und soll sie nicht noch
+ * einmal wählen müssen. Erst ein Wechsel des Modus lässt sie los.
+ */
+function kameraFuer(
+  eingabe: SetModeInput['kamera'],
+  bisher: ProjectionCamera | undefined
+): ProjectionCamera | undefined {
+  const quelle = eingabe?.quelle?.trim()
+  if (!quelle) return bisher
+  return {
+    quelle,
+    label: eingabe?.label?.trim() || undefined,
+    /* Eine neu gewählte Kamera bekommt die Bauchbinde, weil das der Anlass
+       ist, aus dem jemand eine Kamera auf die Wand legt. Die Spiegelung nicht:
+       Sie ist die Ausnahme für einen Rückblickschirm. */
+    bauchbinde: quelle === bisher?.quelle ? bisher.bauchbinde : true,
+    spiegeln: quelle === bisher?.quelle ? bisher.spiegeln : false
   }
 }
 
@@ -876,6 +921,46 @@ export function setVideoSchleife(buehne: number, schleife: boolean): ProjectionS
   if (state.mode !== 'video' || !state.video) return state
   if (state.video.schleife === schleife) return state
   return setzeVideo(buehne, { schleife, position: sollPosition(state.video) })
+}
+
+/**
+ * Bauchbinde über dem Kamerabild ein- oder ausblenden.
+ *
+ * Nicht jedes Kamerabild braucht einen Namen darunter: Ein Blick in den Saal
+ * während der Auszählung zeigt niemanden Bestimmtes.
+ */
+export function setKameraBauchbinde(buehne: number, an: boolean): ProjectionState {
+  const state = buehneVon(buehne)
+  if (state.mode !== 'kamera' || !state.camera) return state
+  if (state.camera.bauchbinde === an) return state
+  const neu = setzeUndGib(buehne, {
+    ...state,
+    camera: { ...state.camera, bauchbinde: an },
+    updatedAt: new Date().toISOString()
+  })
+  persist()
+  broadcast(buehne)
+  return neu
+}
+
+/**
+ * Bild spiegeln.
+ *
+ * Für den Bildschirm, den die vortragende Person selbst ansieht — dort ist
+ * ein seitenverkehrtes Bild verwirrend, an der Saalwand wäre es falsch.
+ */
+export function setKameraSpiegeln(buehne: number, an: boolean): ProjectionState {
+  const state = buehneVon(buehne)
+  if (state.mode !== 'kamera' || !state.camera) return state
+  if (state.camera.spiegeln === an) return state
+  const neu = setzeUndGib(buehne, {
+    ...state,
+    camera: { ...state.camera, spiegeln: an },
+    updatedAt: new Date().toISOString()
+  })
+  persist()
+  broadcast(buehne)
+  return neu
 }
 
 export function setVideoMuted(buehne: number, muted: boolean): ProjectionState {

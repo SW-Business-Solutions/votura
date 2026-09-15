@@ -14,6 +14,7 @@ import type {
   ProjectionState,
   ProjectionTheme
 } from './projection'
+import type { KameraStand } from './kamera'
 import type { Buehnenwahl } from './projection'
 import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
@@ -122,7 +123,25 @@ export const IPC = {
    * Ohne diesen Weg wüsste niemand, wann der Film zu Ende ist, denn die
    * Laufzeit steckt im Containerformat und nirgends sonst.
    */
-  audienceVideoReport: 'wz:audience-video-report'
+  audienceVideoReport: 'wz:audience-video-report',
+  /**
+   * Ein Fenster bittet um ein Kamerabild — oder gibt es zurück.
+   *
+   * Auch das durchbricht „rein lesend“ (Beamer §31) nicht: Die Nachricht sagt
+   * nur, dass **dieses Fenster** jetzt ein Bild braucht. Welche Kamera es
+   * zeigt, steht im Zustand und wird hier nicht entschieden.
+   */
+  kameraAn: 'wz:kamera-an',
+  kameraAus: 'wz:kamera-aus',
+  /**
+   * Der Kanal, über den der Hauptprozess den **Port** ins Fenster reicht.
+   *
+   * Danach laufen die Bilder daran vorbei: vom Empfängerprozess unmittelbar
+   * ins Fenster, ohne den Hauptprozess zu berühren.
+   */
+  kameraPort: 'wz:kamera-port',
+  /** Gefundene Kameras und Störungen — für die Bedienung. */
+  kameraStand: 'wz:kamera-stand'
 } as const
 
 /**
@@ -644,6 +663,8 @@ export interface Api {
       }
       presentationId?: UUID
       videoId?: UUID
+      /** Welche Kamera gezeigt wird (nur im Modus 'kamera'). */
+      kamera?: { quelle: string; label?: string }
     },
     stage?: Buehnenwahl
   ) => Promise<ProjectionState>
@@ -720,6 +741,24 @@ export interface Api {
    * wird sie mit Bereichsanfragen über ein eigenes Schema bzw. den
    * Projektionsserver.
    */
+  /**
+   * Was der Rechner über Kameras weiß — gefundene Quellen und Störungen.
+   *
+   * Ohne NDI-Bibliothek kommt hier eine Begründung zurück statt einer leeren
+   * Liste: „Geht auf diesem Rechner nicht“ und „es ist keine Kamera da“ sind
+   * zwei verschiedene Dinge, und die Bedienung soll sie unterscheiden können.
+   */
+  'kamera.stand': () => Promise<KameraStand>
+  /**
+   * Die Suche nach Kameras an- oder abstellen.
+   *
+   * Sie läuft nur, solange jemand hinschaut — NDI fragt dafür im Netz herum.
+   */
+  'kamera.suche': (an: boolean) => Promise<KameraStand>
+  /** Bauchbinde über dem Kamerabild ein- oder ausblenden. */
+  'kamera.setBauchbinde': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
+  /** Bild spiegeln — für den Rückblickschirm am Pult. */
+  'kamera.setSpiegeln': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
   'video.list': () => Promise<VideoInfo[]>
   /** Öffnet den Dateidialog und übernimmt die gewählte Videodatei. */
   'video.import': () => Promise<VideoInfo | null>

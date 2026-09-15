@@ -3,6 +3,42 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
+## Unveröffentlicht
+
+### Kameras im Saal
+
+Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die
+verbleibende Redezeit**. Empfangen wird über **NDI**, das Verfahren, mit dem Produktionskameras im
+Netz senden: Wer solche Kameras hat, steckt sie ein, und Votura findet sie.
+
+Die Bauchbinde ist der eigentliche Grund für die Sache. Einen Bildmischer hat mancher Saal; was
+keiner hat, ist das Wissen, **wer** da vorne steht und wie lange er noch hat. Genau das weiß
+Votura ohnehin — aus demselben Aufruf, der auch die Uhr auf dem Beamer stellt. Getippt wird
+nichts.
+
+Drei Entscheidungen, die man dem Bild nicht ansieht:
+
+- **Jedes Gerät empfängt selbst.** Im Zustand steht nur der Name der Quelle, nie ein Bild. Der
+  Beamerrechner baut seine Verbindung zur Kamera auf, ein Pi hinter dem zweiten Beamer seine
+  eigene. Einmal empfangen und weiterverteilen hieße, jedes Bild neu zu kodieren — auf dem
+  Rechner, der die Wahl führt.
+- **Eigener Prozess.** Die NDI-Bibliothek ist fremder, nativer Code. Stürzt sie ab, fällt das Bild
+  aus und sonst nichts.
+- **Erst auf Verlangen.** Ohne einen Blick in die Kameraliste startet nichts — eine Versammlung
+  ohne Kameras merkt von alledem nichts.
+
+Dazu: Steht das Bild einer Kamera an der Wand, schaltet Votura ihr **rotes Licht**. Wer gefilmt
+wird, sieht es.
+
+Und eine Grenze, die nicht verhandelbar ist: **Kameras gehören ans Kabel.** Ein voller NDI-Strom
+belegt über hundert Megabit je Sekunde; über dasselbe WLAN laufen Handzettel und digitale
+Abstimmung. Geräte im Funknetz bekommen deshalb den Nebenstrom, den jede NDI-Quelle zusätzlich
+sendet.
+
+Votura zeichnet **nichts** auf. Das Bild endet mit der Rede.
+
+NDI® ist eine eingetragene Marke der Vizrt NDI AB.
+
 ## 1.5.0 — Die Griffe, die gefehlt haben
 
 Diese Fassung bringt kaum neue Fähigkeiten — sie macht erreichbar, was das

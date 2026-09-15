@@ -54,7 +54,10 @@ export default defineConfig({
           index: resolve(__dirname, 'src/main/index.ts'),
           /* Die Begleitanwendung hat einen eigenen Hauptprozess, teilt sich
              aber alles unter `src/shared` mit dem Hauptrechner. */
-          saal: resolve(__dirname, 'src/saal/index.ts')
+          saal: resolve(__dirname, 'src/saal/index.ts'),
+          /* Der Kameraempfänger läuft als eigener Prozess — fremder, nativer
+             Code gehört nicht in den, der die Wahl führt. */
+          'kamera-empfaenger': resolve(__dirname, 'src/ndi/empfaenger.ts')
         }
       }
     },
@@ -71,7 +74,10 @@ export default defineConfig({
           audience: resolve(__dirname, 'src/preload/audience.ts'),
           prompter: resolve(__dirname, 'src/preload/prompter.ts'),
           teleprompter: resolve(__dirname, 'src/preload/teleprompter.ts'),
-          saal: resolve(__dirname, 'src/preload/saal.ts')
+          saal: resolve(__dirname, 'src/preload/saal.ts'),
+          /* Kamerabilder empfängt ein Gerät im Saal selbst — siehe
+             src/preload/saal-kamera.ts. */
+          'saal-kamera': resolve(__dirname, 'src/preload/saal-kamera.ts')
         },
         output: { format: 'cjs', entryFileNames: '[name].js' }
       }

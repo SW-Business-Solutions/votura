@@ -28,6 +28,15 @@ interface AudienceBridge {
    * ganz, deshalb optional.
    */
   reportVideo?(meldung: { durationSeconds?: number; ready?: boolean; ended?: boolean }): void
+  /**
+   * Dieses Fenster braucht ein Kamerabild — oder keines mehr.
+   *
+   * Wie `reportVideo` eine Aussage über das Fenster, nicht über die Wahl.
+   * In der Netzwerkansicht fehlt die Brücke; dort gibt es kein NDI, und
+   * die Kameraansicht sagt das.
+   */
+  kameraAn?(quelle: string, qualitaet: 'hoch' | 'vorschau'): void
+  kameraAus?(): void
 }
 
 declare global {

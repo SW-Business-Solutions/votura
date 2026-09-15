@@ -21,6 +21,7 @@ import { ProjectionScreen } from '../../projection/ProjectionScreen'
 import { useApp } from '../state'
 import { Card, Checkbox, Field, NumberInput } from '../components/ui'
 import { PresentationLibrary } from '../components/PresentationLibrary'
+import { KameraLibrary } from '../components/KameraLibrary'
 import { VideoLibrary } from '../components/VideoLibrary'
 
 const MODE_BUTTONS: { mode: ProjectionMode; label: string; needsRound?: boolean }[] = [
@@ -857,6 +858,7 @@ export function BeamerPage(): React.JSX.Element {
             <>
               <PresentationLibrary />
               <VideoLibrary />
+              <KameraLibrary />
             </>
           )}
 
