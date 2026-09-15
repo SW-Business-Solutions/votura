@@ -49,7 +49,7 @@ import {
   setPrompterTempo,
   setPrompterUntil
 } from './services/prompter'
-import { sprachmodellEinlegen, sprachmodellEntfernen, sprachmodellInfo } from './services/sprachmodell'
+import { sprachmodellEinlegen, sprachmodellEntfernen, sprachmodellInfo , sprachmodellLaden} from './services/sprachmodell'
 import {
   assignSpeech,
   createSpeech,
@@ -1070,6 +1070,10 @@ const api: Api = {
     })
     if (auswahl.canceled || !auswahl.filePaths[0]) return sprachmodellInfo()
     return sprachmodellEinlegen(auswahl.filePaths[0])
+  },
+  'speechmodel.download': async (datei) => {
+    requirePermission('system.manage')
+    return sprachmodellLaden(datei, (stand) => sendToOperator(IPC.speechmodelProgress, stand))
   },
   'speechmodel.remove': async () => {
     requirePermission('system.manage')

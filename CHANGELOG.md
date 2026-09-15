@@ -5,6 +5,34 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
 ## Unveröffentlicht
 
+### Sprachmodelle nachladen
+
+Bisher hieß die einzige Antwort auf „das Modell versteht mich schlecht": Gehen Sie auf die Webseite
+des Anbieters, suchen Sie das richtige Archiv heraus, laden Sie es herunter, kommen Sie zurück und
+hinterlegen Sie es. Drei dieser vier Schritte kann ein Programm selbst tun.
+
+Unter **Einstellungen → Prompter** steht deshalb jetzt eine Liste bekannter Modelle mit einem
+Knopf daneben. Vier Einträge, keine Suchaufgabe: zwei kleine deutsche, das große deutsche und ein
+englisches für Gäste.
+
+Das bricht **nicht** mit dem Grundsatz, dass Votura offline läuft:
+
+- Geladen wird **nur auf Klick**. Nie beim Start, nie im Hintergrund, nie von selbst.
+- Geladen wird **nur aus dieser Liste**. Der Ladeweg nimmt einen Dateinamen entgegen und schlägt
+  ihn nach — keine Adresse. Eine Adresse als Argument wäre eine offene Tür.
+- Geprüft wird **vor dem Tausch**: Größe und, wo hinterlegt, SHA-256. Bricht die Leitung nach
+  vierzig von fünfzig Megabyte ab, bleibt das vorhandene Modell unangetastet.
+- Im **Prüfpfad** steht hinterher, woher das Modell kam und welche Prüfsumme die Datei tatsächlich
+  hatte.
+
+Bei einem der vier Einträge — dem großen deutschen Modell mit zwei Gigabyte — fehlt die Prüfsumme,
+und die Liste sagt das offen: dort steht „nur Größe". Eine erfundene Prüfsumme wäre schlimmer als
+keine; sie behauptete eine Sicherheit, die es nicht gibt.
+
+**Welches nehmen?** Für den Prompter genügt das kleine — er muss nicht diktieren, sondern im
+bekannten Text die Stelle wiederfinden. Für Untertitel lohnt das große: Dort gibt es keinen Text
+zum Wiederfinden, und jeder Irrtum steht an der Wand.
+
 ### Untertitel im Saal
 
 Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge

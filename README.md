@@ -637,8 +637,16 @@ genügt ein kleines: Er muss nicht diktieren, sondern in einem Text, der schon d
 **wiederfinden** — ein paar halbwegs erkannte Wörter reichen dafür.
 
 Untertitel haben diesen Text nicht. Sie zeigen jeden Irrtum. Für sie lohnt deshalb ein größeres
-Modell, und genau dafür lässt sich unter **Einstellungen → Sprachmodell** eines hinterlegen; das
-eigene schlägt immer das mitgelieferte. Was noch hilft: ein Mikrofon am Pult statt eines im Raum.
+Modell — unter **Einstellungen → Prompter** steht eine Liste bekannter Modelle mit einem Knopf
+daneben; das eigene schlägt immer das mitgelieferte. Was noch hilft: ein Mikrofon am Pult statt
+eines im Raum.
+
+**Nachladen und offline bleiben ist kein Widerspruch.** Geladen wird nur auf Klick, nur aus der
+festen Liste, und die Adresse wird aus dem Dateinamen gebaut statt entgegengenommen — sonst wäre
+dieser Weg eine offene Tür. Geprüft wird vor dem Tausch: Größe und, wo hinterlegt, SHA-256. Beim
+großen deutschen Modell (zwei Gigabyte) ist keine Prüfsumme hinterlegt, und die Liste sagt das
+offen — eine erfundene wäre schlimmer als keine. Im Prüfpfad steht hinterher, woher das Modell kam
+und welche Prüfsumme die Datei tatsächlich hatte.
 
 Der Zwischenstand steht blasser als der fertige Satz. Die Erkennung meldet erst, was sie zu hören
 glaubt, und berichtigt sich danach — beides gleich auszuzeichnen hieße, eine Sicherheit zu

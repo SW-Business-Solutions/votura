@@ -5,6 +5,7 @@
  * Renderer bekommt weder Node-APIs noch direkten Datenbankzugriff.
  */
 import { contextBridge, ipcRenderer } from 'electron'
+import type { ModellLadestand } from '@shared/sprachmodell-angebot'
 import type { ApiMethod, ApiParams, ApiResult, IpcChannels } from '@shared/ipc'
 import type { PrompterWindowState } from '@shared/presentation'
 import type { PrompterViewState } from '@shared/speech'
@@ -23,6 +24,7 @@ const IPC: IpcChannels = {
   notice: 'wz:notice',
   audienceGetState: 'wz:audience-get-state',
   updateProgress: 'wz:update-progress',
+  speechmodelProgress: 'wz:speechmodel-progress',
   prompterCommand: 'wz:prompter-command',
   prompterReport: 'wz:prompter-report',
   beamerSize: 'wz:beamer-size',
@@ -65,6 +67,9 @@ const bridge = {
     subscribe<{ level: 'info' | 'warning' | 'error'; message: string }>(IPC.notice, listener),
   onUpdateProgress: (listener: (progress: UpdateProgress) => void) =>
     subscribe<UpdateProgress>(IPC.updateProgress, listener),
+  /** Wie weit das Laden eines Sprachmodells ist. */
+  onSpeechmodelProgress: (listener: (stand: ModellLadestand) => void) =>
+    subscribe<ModellLadestand>(IPC.speechmodelProgress, listener),
   onPrompterView: (listener: (state: PrompterViewState) => void) =>
     subscribe<PrompterViewState>(IPC.prompterView, listener),
   onTeleprompterState: (listener: (state: PrompterWindowState) => void) =>

@@ -21,6 +21,7 @@ import type { Buehnenwahl } from './projection'
 import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
 import type { SprachmodellInfo } from './sprachmodell'
+import type { ModellLadestand } from './sprachmodell-angebot'
 import type { Laufart, PrompterAnsicht, PrompterViewState, SpeechContent, SpeechInfo } from './speech'
 import type { VideoInfo } from './video'
 import type {
@@ -79,6 +80,8 @@ export const IPC = {
   notice: 'wz:notice',
   audienceGetState: 'wz:audience-get-state',
   updateProgress: 'wz:update-progress',
+  /** Wie weit das Laden eines Sprachmodells ist. */
+  speechmodelProgress: 'wz:speechmodel-progress',
   /** Der Prompter meldet einen Folienwechsel an den Hauptprozess. */
   prompterCommand: 'wz:prompter-command',
   /** Der Hauptprozess meldet dem Prompter den aktuellen Stand. */
@@ -916,6 +919,16 @@ export interface Api {
   'speechmodel.info': () => Promise<SprachmodellInfo>
   /** Öffnet den Dateidialog und legt das gewählte Archiv ab. */
   'speechmodel.install': () => Promise<SprachmodellInfo>
+  /**
+   * Lädt ein bekanntes Modell aus dem Netz nach.
+   *
+   * Übergeben wird der **Dateiname** aus `BEKANNTE_MODELLE`, nie eine
+   * Adresse: Eine Adresse als Argument wäre eine offene Tür — wer diesen Weg
+   * aufrufen kann, ließe das Programm sonst beliebige Dateien holen.
+   *
+   * Der Fortschritt kommt über `speechmodelProgress`, nicht als Antwort.
+   */
+  'speechmodel.download': (datei: string) => Promise<SprachmodellInfo>
   'speechmodel.remove': () => Promise<SprachmodellInfo>
 
   'presentation.prompterState': () => Promise<PrompterWindowState>
@@ -948,4 +961,5 @@ export interface OperatorEvents {
   sessionChanged: Session | null
   notice: { level: 'info' | 'warning' | 'error'; message: string }
   updateProgress: UpdateProgress
+  speechmodelProgress: ModellLadestand
 }

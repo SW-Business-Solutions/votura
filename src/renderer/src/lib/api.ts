@@ -8,6 +8,7 @@
  * Der übrige Renderer merkt davon nichts; er ruft immer `api(...)` auf.
  */
 import type { ApiMethod, ApiParams, ApiResult } from '@shared/ipc'
+import type { ModellLadestand } from '@shared/sprachmodell-angebot'
 import type { AudienceWindowState, Buehne, ProjectionState } from '@shared/projection'
 import type { PrompterWindowState } from '@shared/presentation'
 import type { PrompterViewState } from '@shared/speech'
@@ -22,6 +23,8 @@ interface Bridge {
   onSessionChanged(listener: (session: Session | null) => void): () => void
   onNotice(listener: (notice: { level: 'info' | 'warning' | 'error'; message: string }) => void): () => void
   onUpdateProgress(listener: (progress: UpdateProgress) => void): () => void
+  /** Wie weit das Laden eines Sprachmodells ist. */
+  onSpeechmodelProgress(listener: (stand: ModellLadestand) => void): () => void
   /**
    * Ob das Fenster der Vortragssteuerung offen ist.
    *
@@ -191,6 +194,7 @@ function pollingBridge(): Bridge {
     onNotice: () => () => undefined,
     // Ein zweites Gerät spielt keine Fassung ein – das geschieht am Hauptrechner.
     onUpdateProgress: () => () => undefined,
+    onSpeechmodelProgress: () => () => undefined,
     /* Die Vortragssteuerung ist ein Fenster am Hauptrechner; ein Gerät im Netz
        kann es weder öffnen noch sehen. */
     onPrompterState: (listener) =>
