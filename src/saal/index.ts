@@ -341,6 +341,25 @@ function registriereBruecke(): void {
        * nächsten Handgriff, nicht den Namen der Funktion, die aufgegeben hat.
        */
       const text = fehler instanceof Error ? fehler.message : String(fehler)
+      /*
+       * **Zwei Fehlschläge, die gleich aussehen und nichts miteinander zu tun
+       * haben.** `fetch` meldet beide als „fetch failed"; worin sie sich
+       * unterscheiden, steht in der Ursache.
+       *
+       * Scheitert die **Zertifikatsprüfung**, dann hat jemand geantwortet —
+       * er heißt nur anders, als in der Adresse steht. Das ist der Normalfall
+       * bei einer eingetippten IP-Adresse: Ein Zertifikat gilt für einen
+       * Namen, nie für eine Adresse. Hier „antwortet niemand" zu melden,
+       * schickt die Suche in die falsche Richtung — ins Netzwerk, wo alles in
+       * Ordnung ist.
+       */
+      const ursache = (fehler as { cause?: { code?: string } })?.cause?.code ?? ''
+      if (/CERT|ALTNAME|SELF_SIGNED|UNABLE_TO_VERIFY|SSL/i.test(`${ursache} ${text}`)) {
+        return {
+          ok: false,
+          fehler: `Der Rechner unter ${master} antwortet — aber sein Zertifikat gilt für einen anderen Namen. Ein Zertifikat gilt immer für einen Namen, nie für eine Adresse. Klicken Sie oben den gefundenen Rechner an: Dann wird sein Name benutzt und die Adresse nur zum Auflösen.`
+        }
+      }
       const unerreichbar = /fetch failed|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENOTFOUND|timed out/i.test(text)
       return {
         ok: false,

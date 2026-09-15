@@ -171,6 +171,35 @@ button.primaer {
   font-size: 14px;
 }
 
+/*
+ * Worauf der Knopf zeigt.
+ *
+ * Ruhig, aber nicht versteckt: Es ist die einzige Angabe der Seite, die man
+ * hinterher nicht mehr nachlesen kann, ohne wieder hierher zu kommen.
+ */
+.ziel {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--akzent) 6%, transparent);
+  color: var(--schrift);
+  font-size: 14px;
+}
+
+.ziel .mono {
+  font-size: 14px;
+}
+
+button.linkartig {
+  padding: 0;
+  min-height: 0;
+  background: none;
+  border: none;
+  color: var(--akzent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .fehler {
   padding: 12px 14px;
   border: 1px solid var(--warn);

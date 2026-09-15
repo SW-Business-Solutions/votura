@@ -119,6 +119,31 @@ describe('Der Hauptrechner nennt brauchbare Adressen', () => {
   })
 })
 
+describe('Was die Einrichtung meldet, wenn es nicht geht', () => {
+  /*
+   * Zwei Fehlschläge, die gleich aussehen und nichts miteinander zu tun
+   * haben: „niemand da" und „jemand da, aber er heißt anders". `fetch` meldet
+   * beide als „fetch failed". Sie zu verwechseln schickt die Suche ins Netz,
+   * wo alles in Ordnung ist — bei einer eingetippten IP-Adresse ist das der
+   * Normalfall, denn ein Zertifikat gilt für einen Namen, nie für eine
+   * Adresse.
+   */
+  it('unterscheidet ein fehlendes Gegenüber von einem fremden Namen', () => {
+    const saal = lies('src/saal/index.ts')
+    expect(saal).toContain('CERT|ALTNAME|SELF_SIGNED|UNABLE_TO_VERIFY|SSL')
+    expect(saal).toContain('sein Zertifikat gilt für einen anderen Namen')
+    expect(saal).toContain('antwortet niemand')
+  })
+
+  it('sagt in der Einrichtung, mit wem sich das Gerät verbindet', () => {
+    /* Ein Fund oben und ein Eintrag im Feld „von Hand" schließen einander
+       aus — das Feld gewinnt, und das sah man der Seite nicht an. */
+    const seite = lies('src/renderer/src/einrichtung-main.tsx')
+    expect(seite).toContain('Dieses Gerät verbindet sich mit')
+    expect(seite).toContain('Stattdessen den gefundenen Rechner benutzen')
+  })
+})
+
 describe('Die Adresse einer Rolle', () => {
   it('führt für eine Bühne auf die Beameransicht', () => {
     expect(

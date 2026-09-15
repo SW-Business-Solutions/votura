@@ -137,6 +137,10 @@ function EinrichtungsApp(): React.JSX.Element {
 
         <label className="feld">
           Oder Adresse von Hand
+          <span className="leise">
+            Für Netze, in denen der Suchruf nicht durchkommt. Steht hier etwas, gilt es — der Fund darüber
+            wird dann nicht benutzt.
+          </span>
           <input
             value={handAdresse}
             placeholder="http://192.168.1.5:8477"
@@ -254,6 +258,33 @@ function EinrichtungsApp(): React.JSX.Element {
             <input value={token} onChange={(event) => setToken(event.target.value)} />
           </label>
         </section>
+      )}
+
+      {/*
+        **Welche Adresse tatsächlich gilt.**
+        Ein Fund oben und ein Eintrag im Feld „von Hand" schließen einander
+        aus — das Feld gewinnt. Wer beides ausgefüllt hatte, sah eine Adresse
+        in der Liste und bekam die Meldung zu einer anderen. Jetzt steht über
+        dem Knopf, worauf er zeigt.
+      */}
+      {master && (
+        <p className="ziel">
+          Dieses Gerät verbindet sich mit <strong className="mono">{master}</strong>
+          {gewaehlt?.zertifikatsName && (
+            <>
+              {' '}
+              <span className="leise">(Name des Zertifikats, aufgelöst auf {gewaehlt.adresse})</span>
+            </>
+          )}
+          {!gewaehlt && funde.length > 0 && (
+            <>
+              {' '}
+              <button className="linkartig" onClick={() => setHandAdresse('')}>
+                Stattdessen den gefundenen Rechner benutzen
+              </button>
+            </>
+          )}
+        </p>
       )}
 
       {pruefung.fehler && <div className="fehler">{pruefung.fehler}</div>}
