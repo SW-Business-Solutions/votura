@@ -28,6 +28,12 @@ type Antwort =
    * die Wahlleitung treffen und begründen muss.
    */
   | { art: 'digital'; text: string; person: Participant }
+  /*
+   * Eine zurückgenommene Ausgabe. Sie sieht aus wie eine gute Nachricht und
+   * ist auch eine — aber der Rückweg darf daran nicht ein zweites Mal
+   * ansetzen, sonst nähme der nächste Klick den Vorgang davor zurück.
+   */
+  | { art: 'zurueck'; text: string }
   | null
 
 export function AusgabePage(): React.JSX.Element {
@@ -39,6 +45,12 @@ export function AusgabePage(): React.JSX.Element {
   const [antwort, setAntwort] = useState<Antwort>(null)
   const feld = useRef<HTMLInputElement | null>(null)
   const [entwertungsgrund, setEntwertungsgrund] = useState('')
+  /*
+   * Eine Ausgabe zurücknehmen — der falsche Ausweis lag auf dem Tisch, der
+   * Zettel ist nie über die Kante gegangen. Ohne diesen Weg blieb der Fehler
+   * für immer in der Bilanz stehen und die Person ohne Stimmzettel.
+   */
+  const [ruecknahmegrund, setRuecknahmegrund] = useState<string | null>(null)
   /* Die Kamera als zweiter Weg neben dem Handscanner (ADR-0007). */
   const [kamera, setKamera] = useState(false)
   /* Wer gerade gescannt wurde — für den Fall, dass die Ausgabe scheitert und
@@ -165,6 +177,34 @@ export function AusgabePage(): React.JSX.Element {
     }
   }
 
+  /**
+   * Die letzte Ausgabe an diese Person zurücknehmen.
+   *
+   * Der Dienst kennt nur die Kennung des Vorgangs, nicht die Person — deshalb
+   * erst die Liste holen und den jüngsten Eintrag nehmen. Ein Ersatzzettel
+   * (§23) zählt dabei mit: Zurückgenommen wird, was zuletzt geschah.
+   */
+  const ruecknehmen = async (person: Participant): Promise<void> => {
+    const grund = (ruecknahmegrund ?? '').trim()
+    if (!wahlgang || !grund) return
+    try {
+      const vorgaenge = await api('handout.for', { roundId: wahlgang.id, participantId: person.id })
+      const letzter = vorgaenge.at(-1)
+      if (!letzter) throw new Error('Für diese Person ist in diesem Wahlgang nichts ausgegeben.')
+      await api('handout.revoke', { issueId: letzter.id, reason: grund })
+      setRuecknahmegrund(null)
+      setAntwort({
+        art: 'zurueck',
+        text: `Zurückgenommen: ${person.firstName} ${person.lastName} kann erneut einen Zettel bekommen.`
+      })
+      await laden()
+    } catch (error) {
+      setAntwort({ art: 'schlecht', text: error instanceof Error ? error.message : String(error) })
+    } finally {
+      feld.current?.focus()
+    }
+  }
+
   return (
     <>
       <div className="page-header">
@@ -231,10 +271,54 @@ export function AusgabePage(): React.JSX.Element {
               )}
               {antwort && (
                 <div
-                  className={`notice mt-2 ${antwort.art === 'gut' ? 'ok' : 'warn'}`}
+                  className={`notice mt-2 ${antwort.art === 'gut' || antwort.art === 'zurueck' ? 'ok' : 'warn'}`}
                   style={{ fontSize: '18px' }}
                 >
                   {antwort.text}
+                </div>
+              )}
+              {/*
+                Der Rückweg steht nur dort, wo der Fehler auffällt: unmittelbar
+                unter der Bestätigung, solange die Person noch am Tisch steht.
+                Er verlangt dasselbe Recht wie ein Ersatzzettel — wer Zettel
+                nachdrucken darf, darf auch einen Fehlgriff zurücknehmen.
+              */}
+              {antwort?.art === 'gut' && app.can('print.reprint') && (
+                <div className="mt-2">
+                  {ruecknahmegrund === null ? (
+                    <button className="ghost" onClick={() => setRuecknahmegrund('')}>
+                      Ausgabe zurücknehmen
+                    </button>
+                  ) : (
+                    <Card title="Ausgabe zurücknehmen" tight>
+                      <p className="hint">
+                        Nur wenn der Zettel <strong>nicht über den Tisch gegangen</strong> ist — etwa weil der
+                        falsche Ausweis gescannt wurde. Danach kann diese Person erneut einen Zettel bekommen.
+                        Der Vorgang verschwindet aus der Bilanz und steht mit Begründung im Protokoll.
+                      </p>
+                      <Field label="Begründung">
+                        <input
+                          autoFocus
+                          value={ruecknahmegrund}
+                          placeholder="z. B. falscher Ausweis gescannt, Zettel nicht ausgehändigt"
+                          onChange={(ereignis) => setRuecknahmegrund(ereignis.target.value)}
+                          onKeyDown={(ereignis) => {
+                            if (ereignis.key === 'Enter') void ruecknehmen(antwort.person)
+                          }}
+                        />
+                      </Field>
+                      <div className="row mt-2">
+                        <button
+                          className="danger"
+                          disabled={!ruecknahmegrund.trim()}
+                          onClick={() => void ruecknehmen(antwort.person)}
+                        >
+                          Zurücknehmen
+                        </button>
+                        <button onClick={() => setRuecknahmegrund(null)}>Abbrechen</button>
+                      </div>
+                    </Card>
+                  )}
                 </div>
               )}
               {antwort?.art === 'digital' && (
