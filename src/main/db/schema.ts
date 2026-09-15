@@ -578,6 +578,47 @@ ALTER TABLE voting_rights ADD COLUMN voided_reason TEXT;
 ALTER TABLE candidates ADD COLUMN quota_group TEXT;
 ALTER TABLE rounds ADD COLUMN quota_json TEXT;
 `
+  },
+  {
+    /**
+     * Das Antragsbuch.
+     *
+     * Bis hierher war „Antrag" eine **Abstimmungsart**: ein Wahlgang mit
+     * einem Beschlusstext. Das genügt für eine einzelne Sachfrage und für
+     * nichts darüber hinaus — Anträge haben Nummern, Antragsteller,
+     * Änderungsanträge und eine Reihenfolge, in der über sie abgestimmt wird.
+     *
+     * **`sort_index` hält die Abstimmungsreihenfolge der Änderungsanträge.**
+     * Sie wird gesetzt, nicht gerechnet: Welcher Änderungsantrag
+     * „weitergehend" ist, ist eine Wertung der Versammlungsleitung. Ein
+     * Programm, das hier selbst sortierte, träfe unsichtbar eine anfechtbare
+     * Entscheidung.
+     *
+     * **`round_id` ist die Brücke zur Abstimmung** und bleibt leer, solange
+     * noch keine stattgefunden hat. Ein Antrag kann zurückgezogen oder
+     * übernommen werden, ohne dass je ein Wahlgang entstand.
+     */
+    version: 14,
+    sql: `
+CREATE TABLE IF NOT EXISTS motions (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  number TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  proposer TEXT NOT NULL,
+  reasoning TEXT,
+  status TEXT NOT NULL,
+  reference_id TEXT REFERENCES motions(id) ON DELETE CASCADE,
+  sort_index INTEGER NOT NULL DEFAULT 0,
+  round_id TEXT REFERENCES rounds(id) ON DELETE SET NULL,
+  remark TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_motions_event ON motions(event_id, kind, sort_index);
+CREATE INDEX IF NOT EXISTS idx_motions_reference ON motions(reference_id, sort_index);
+`
   }
 ]
 

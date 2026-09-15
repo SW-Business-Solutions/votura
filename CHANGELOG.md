@@ -40,6 +40,42 @@ Quelltext hält fest, dass dort nichts Größeres hineingehört, ohne dass es je
 Für Untertitel heißt das: Es bleibt bei dem, was ein kleines Modell hergibt — verständlich, aber
 nicht wörtlich. Mehr als jeder Modellwechsel bringt ein **Mikrofon am Pult statt eines im Raum**.
 
+### Antragsverwaltung
+
+„Antrag" war in Votura bisher eine **Abstimmungsart**: ein Wahlgang mit einem Beschlusstext auf dem
+Stimmzettel. Das genügt für eine einzelne Sachfrage. Eine Versammlung, auf der wirklich Anträge
+behandelt werden, sieht anders aus — und dafür gibt es jetzt unter **Anträge** ein Antragsbuch.
+
+- **Nummer und Antragsteller.** Beides steht später im Protokoll, und der Antragsteller ist es, der
+  übernehmen und zurückziehen kann.
+- **Änderungsanträge** hängen an ihrem Hauptantrag. Über sie wird **zuerst** abgestimmt — der
+  Hauptantrag kommt zuletzt, in der Fassung, die er nach den Änderungen hat.
+- **Übernahme.** Nimmt der Antragsteller einen Änderungsantrag an, wird darüber nicht abgestimmt;
+  sein Text gehört zum Hauptantrag. Er verschwindet aus der Abstimmungsreihenfolge und erscheint im
+  Beschlusstext.
+- **Beschlusstext.** Was am Ende beschlossen wurde, setzt Votura zusammen: der Antragstext plus die
+  übernommenen und angenommenen Änderungen, jede einzeln benannt. Im Archiv liegt er als
+  `antraege.json` bei.
+
+Drei Entscheidungen, die dahinterstehen:
+
+**Die Reihenfolge wird gesetzt, nicht gerechnet.** Welcher Änderungsantrag „weitergehend" ist, ist
+eine Wertung der Versammlungsleitung — zwei Anträge können sich in verschiedene Richtungen weiter
+vom Original entfernen. Votura schlägt den Eingang vor und lässt umordnen; ein Programm, das hier
+selbst sortierte, träfe unsichtbar eine anfechtbare Entscheidung.
+
+**Texte werden nicht ineinander verschmolzen.** Das ginge nur mit einer Vermutung darüber, welche
+Stelle ein Änderungsantrag meint — und eine falsch geratene Stelle wäre ein verfälschter Beschluss.
+Sie stehen untereinander, benannt und zurückverfolgbar.
+
+**Zurückziehen und Erledigen verlangen einen Vermerk.** „Erledigt" heißt fast immer: Ein
+weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
+über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
+
+Jeder Schritt — eingereicht, geändert, übernommen, umgeordnet, erledigt — geht in den Prüfpfad. Ein
+Antrag ist kein Datensatz, sondern ein Vorgang; wer später fragt, was beschlossen wurde, fragt nach
+diesem Weg und nicht nach dem Endstand.
+
 ### Quotenprüfung bei Listenwahlen
 
 Viele Satzungen — bei Parteien fast alle — binden die Gültigkeit einer gewählten Liste an eine

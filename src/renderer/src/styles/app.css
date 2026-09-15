@@ -1551,3 +1551,23 @@ select[aria-invalid='true'] {
   min-width: 5.5rem;
   color: var(--text-muted);
 }
+
+/*
+ * Antragstexte.
+ *
+ * Als `pre`, weil der Wortlaut zählt: Ein Antrag hat Absätze, Einrückungen
+ * und Aufzählungen, über die genau so abgestimmt wird, wie sie dastehen.
+ * Fließsatz machte daraus eine Fassung, die niemand beschlossen hat.
+ */
+.antrag-text {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--rahmen, #2a3441);
+  background: var(--flaeche, #12151a);
+  border-radius: 0.3rem;
+  font-family: inherit;
+  font-size: 0.95em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -162,6 +162,18 @@ import {
   updateRound
 } from './services/rounds'
 import {
+  antragAendern,
+  antraegeSortieren,
+  antragAnlegen,
+  antragAnWahlgang,
+  antragBeschlusstext,
+  antragLoeschen,
+  antragReihenfolge,
+  antragStand,
+  antragUebernehmen,
+  listAntraege
+} from './services/antraege'
+import {
   addAgendaItem,
   listAgenda,
   removeAgendaItem,
@@ -788,6 +800,18 @@ const api: Api = {
   'accounting.save': async (input) => saveAccounting(input),
 
   /* -------------------------------------------------------------- Ergebnis */
+  /* --------------------------------------------------------------- Anträge */
+  'motion.list': async (eventId) => listAntraege(eventId),
+  'motion.create': async (input) => antragAnlegen(input),
+  'motion.update': async (input) => antragAendern(input),
+  'motion.setStatus': async (input) => antragStand(input),
+  'motion.adopt': async (id) => antragUebernehmen(id),
+  'motion.delete': async (id) => antragLoeschen(id),
+  'motion.reorder': async (input) => antraegeSortieren(input),
+  'motion.order': async (hauptId) => antragReihenfolge(hauptId),
+  'motion.text': async (hauptId) => antragBeschlusstext(hauptId),
+  'motion.linkRound': async (input) => antragAnWahlgang(input),
+
   'result.get': async (roundId) => getResult(roundId),
   'result.papier': async (roundId) => getPapierergebnis(roundId),
   'result.save': async (input) => saveResult(input),

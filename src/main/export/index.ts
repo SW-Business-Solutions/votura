@@ -11,6 +11,8 @@ import { checkAccounting } from '@shared/accounting'
 import { formatDateDe, formatDateTimeDe } from '@shared/format'
 import type { ExportResult } from '@shared/ipc'
 import { rankCandidates, resultInputKind } from '@shared/result'
+import { beschlusstext } from '@shared/antrag'
+import { listAntraege } from '../services/antraege'
 import {
   PROCEDURE_LABELS,
   PURPOSE_LABELS,
@@ -469,6 +471,39 @@ export async function exportEventArchive(eventId: UUID, targetDirectory?: string
   writeFileSync(eventFile, eventJson, 'utf8')
   zip.add('archive/event.json', eventJson)
   files.push(eventFile)
+
+  /*
+   * Das Antragsbuch gehört ins Archiv — und zwar mit dem Beschlusstext.
+   *
+   * Der Antragstext allein ist nicht das, was beschlossen wurde: Übernommene
+   * und angenommene Änderungsanträge gehören dazu. Wer später fragt, was die
+   * Versammlung beschlossen hat, soll das lesen können, ohne sich den
+   * Beschluss aus fünf Einträgen selbst zusammenzusuchen.
+   */
+  const antraege = listAntraege(eventId)
+  if (antraege.length > 0) {
+    const antraegeJson = JSON.stringify(
+      {
+        antraege,
+        beschluesse: antraege
+          .filter((antrag) => antrag.art === 'haupt')
+          .map((antrag) => ({
+            nummer: antrag.nummer,
+            titel: antrag.titel,
+            antragsteller: antrag.antragsteller,
+            status: antrag.status,
+            vermerk: antrag.vermerk,
+            beschlusstext: beschlusstext(antrag, antraege)
+          }))
+      },
+      null,
+      2
+    )
+    const antraegeFile = join(directory, 'antraege.json')
+    writeFileSync(antraegeFile, antraegeJson, 'utf8')
+    zip.add('archive/antraege.json', antraegeJson)
+    files.push(antraegeFile)
+  }
 
   const auditJson = JSON.stringify(auditForExport({ eventId }), null, 2)
   const auditFile = join(directory, 'audit.json')

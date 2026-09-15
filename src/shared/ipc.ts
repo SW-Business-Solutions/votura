@@ -20,6 +20,7 @@ import type { PtzFund, PtzKamera, PtzRichtung, PtzStellung } from './ptz'
 import type { Buehnenwahl } from './projection'
 import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
+import type { Abstimmungsschritt, Antrag, Antragsstatus } from './antrag'
 import type { Quotenbefund, Quotenregel } from './quote'
 import type { SprachmodellInfo } from './sprachmodell'
 import type { ModellLadestand } from './sprachmodell-angebot'
@@ -221,6 +222,19 @@ export interface RoundPatch {
   positions?: { id?: UUID; title: string }[]
   /** Optimistic Locking (§59). */
   rowVersion: number
+}
+
+/** Ein neuer Antrag fürs Antragsbuch. */
+export interface AntragEingabe {
+  eventId: UUID
+  art: 'haupt' | 'aenderung'
+  nummer: string
+  titel: string
+  text: string
+  antragsteller: string
+  begruendung?: string
+  /** Bei einem Änderungsantrag: der Hauptantrag. */
+  bezugId?: UUID
 }
 
 export interface CandidateInput {
@@ -604,6 +618,32 @@ export interface Api {
   /* ------------------------------------------------------------- Bilanz */
   'accounting.get': (roundId: UUID) => Promise<BallotAccounting>
   'accounting.save': (input: AccountingInput) => Promise<BallotAccounting>
+
+  /* --------------------------------------------------------------- Anträge */
+  /**
+   * Das Antragsbuch einer Versammlung.
+   *
+   * Hauptanträge und Änderungsanträge in einer Liste — die Zuordnung steht
+   * in `bezugId`. Sortiert kommt sie so heraus, wie man sie liest.
+   */
+  'motion.list': (eventId: UUID) => Promise<Antrag[]>
+  'motion.create': (input: AntragEingabe) => Promise<Antrag>
+  'motion.update': (
+    input: { id: UUID } & Partial<Omit<AntragEingabe, 'eventId' | 'art' | 'bezugId'>>
+  ) => Promise<Antrag>
+  /** Stand ändern; Zurückziehen und Erledigen verlangen einen Vermerk. */
+  'motion.setStatus': (input: { id: UUID; status: Antragsstatus; vermerk?: string }) => Promise<Antrag>
+  /** Der Antragsteller des Hauptantrags übernimmt einen Änderungsantrag. */
+  'motion.adopt': (id: UUID) => Promise<Antrag>
+  'motion.delete': (id: UUID) => Promise<void>
+  /** Abstimmungsreihenfolge der Änderungsanträge setzen — kleiner heißt früher. */
+  'motion.reorder': (input: { bezugId: UUID; reihenfolge: UUID[] }) => Promise<Antrag[]>
+  /** Was in welcher Reihenfolge abzustimmen ist, samt Begründung je Schritt. */
+  'motion.order': (hauptId: UUID) => Promise<Abstimmungsschritt[]>
+  /** Der Text, über den abgestimmt wird — samt übernommener Änderungen. */
+  'motion.text': (hauptId: UUID) => Promise<string>
+  /** Verknüpft einen Antrag mit dem Wahlgang, in dem abgestimmt wurde. */
+  'motion.linkRound': (input: { id: UUID; roundId: UUID }) => Promise<Antrag>
 
   /* ----------------------------------------------------------------- Ergebnis */
   'result.get': (roundId: UUID) => Promise<ElectionResult | null>

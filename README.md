@@ -136,6 +136,35 @@ ein Stapel Zettel, von jedem im Saal.
 
 <sub><b>Vier Schritte in fester Folge</b> — vorbereiten, eröffnen, schließen, übernehmen. Der Schlüssel des Wahlgangs gehört <b>vor</b> der Eröffnung auf die Leinwand; danach lässt er sich nicht mehr unbemerkt austauschen.</sub>
 
+## Anträge
+
+Unter **Anträge** steht das Antragsbuch der Versammlung. Ein Antrag ist dort kein Wahlgang, sondern
+ein Vorgang: Er wird eingereicht, zugelassen, geändert, übernommen, zurückgezogen oder beschlossen —
+und viele erreichen nie eine Abstimmung.
+
+**Änderungsanträge** hängen an ihrem Hauptantrag. Über sie wird **zuerst** abgestimmt; der
+Hauptantrag kommt zuletzt, in der Fassung, die er nach den Änderungen hat. Die Reihenfolge steht
+unter jedem Antrag als nummerierte Liste, mit einem Satz dazu, warum ein Schritt dort steht.
+
+**Die Reihenfolge wird gesetzt, nicht gerechnet.** Welcher Änderungsantrag „weitergehend" ist, ist
+eine Wertung der Versammlungsleitung — zwei Anträge können sich in verschiedene Richtungen weiter
+vom Original entfernen. Votura schlägt den Eingang vor; umgeordnet wird mit den Pfeilen.
+
+**Übernahme:** Nimmt der Antragsteller des Hauptantrags einen Änderungsantrag an, wird darüber nicht
+abgestimmt. Er verschwindet aus der Reihenfolge und erscheint im Beschlusstext.
+
+**Der Beschlusstext** ist das, was die Versammlung wirklich beschlossen hat: der Antragstext plus
+die übernommenen und angenommenen Änderungen — jede einzeln benannt, mit Nummer und Antragsteller.
+Verschmolzen wird nichts: Das ginge nur mit einer Vermutung darüber, welche Stelle gemeint ist, und
+eine falsch geratene Stelle wäre ein verfälschter Beschluss.
+
+**Zurückziehen und Erledigen brauchen einen Vermerk.** „Erledigt" heißt fast immer: Ein
+weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
+über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
+
+Im Archiv der Veranstaltung liegt das Antragsbuch als `antraege.json` bei, samt fertigem
+Beschlusstext je Hauptantrag.
+
 ## Wahlverfahren
 
 Wahlzweck (`purpose`) und Wahlverfahren (`procedure`) sind strikt getrennt: Aus „Delegiertenwahl"

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { api } from '../lib/api'
 import { useApp } from './state'
 import { AgendaPage } from './pages/AgendaPage'
+import { AntraegePage } from './pages/AntraegePage'
 import { AkkreditierungPage } from './pages/AkkreditierungPage'
 import { AusgabePage } from './pages/AusgabePage'
 import { DigitaleWahlPage } from './pages/DigitaleWahlPage'
@@ -25,6 +26,7 @@ export type Route =
   | { name: 'dashboard' }
   | { name: 'event' }
   | { name: 'agenda' }
+  | { name: 'antraege' }
   | { name: 'akkreditierung' }
   | { name: 'ausgabe' }
   | { name: 'digitalewahl' }
@@ -44,6 +46,8 @@ function parseHash(): Route {
       return { name: 'event' }
     case 'agenda':
       return { name: 'agenda' }
+    case 'antraege':
+      return { name: 'antraege' }
     case 'akkreditierung':
       return { name: 'akkreditierung' }
     case 'ausgabe':
@@ -82,7 +86,11 @@ const GRUPPEN: {
     punkte: [
       { label: 'Übersicht', ziel: 'dashboard', route: 'dashboard' },
       { label: 'Veranstaltung', ziel: 'event', route: 'event' },
-      { label: 'Tagesordnung', ziel: 'agenda', route: 'agenda', hint: 'Strg+T' }
+      { label: 'Tagesordnung', ziel: 'agenda', route: 'agenda', hint: 'Strg+T' },
+      /* Anträge stehen bei der Versammlung, nicht bei den Wahlgängen: Ein
+         Antrag wird eingereicht, bevor jemand weiß, ob darüber abgestimmt
+         wird — und viele erreichen nie einen Wahlgang. */
+      { label: 'Anträge', ziel: 'antraege', route: 'antraege' }
     ]
   },
   {
@@ -329,6 +337,7 @@ export function App(): React.JSX.Element {
         {route.name === 'dashboard' && <DashboardPage />}
         {route.name === 'event' && <EventPage />}
         {route.name === 'agenda' && <AgendaPage />}
+        {route.name === 'antraege' && <AntraegePage />}
         {route.name === 'akkreditierung' && <AkkreditierungPage />}
         {route.name === 'ausgabe' && <AusgabePage />}
         {route.name === 'digitalewahl' && <DigitaleWahlPage />}
