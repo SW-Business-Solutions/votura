@@ -1174,12 +1174,36 @@ button.linkartig:hover {
   color: var(--text);
 }
 
-/* Die Knöpfe einer Redenzeile bleiben zusammen und rechtsbündig. */
+/*
+ * Die Knöpfe einer Redenzeile bleiben zusammen und rechtsbündig.
+ *
+ * **Die Zelle bleibt eine Zelle.** Sie war `display: flex` — und damit kein
+ * Teil des Zeilenmodells der Tabelle mehr: Ihre Trennlinie saß auf halber
+ * Höhe statt am Zeilenende, und die Zeile hatte einen sichtbaren Bruch.
+ * Geflext wird deshalb **in** der Zelle, nicht die Zelle selbst.
+ */
 td.rede-knoepfe {
-  display: flex;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+td.rede-knoepfe .knopfreihe {
+  display: inline-flex;
   gap: 6px;
-  justify-content: flex-end;
   align-items: center;
+}
+
+/* In derselben Zeile steht alles auf einer Mittellinie — sonst klebt die
+   Zahl oben, während die Knöpfe daneben in der Mitte stehen. */
+td.rede-titel,
+td.rede-umfang {
+  vertical-align: middle;
+}
+
+td.rede-umfang,
+th.rede-umfang {
+  text-align: right;
   white-space: nowrap;
 }
 

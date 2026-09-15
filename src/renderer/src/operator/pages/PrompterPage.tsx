@@ -227,7 +227,7 @@ export function PrompterPage(): React.JSX.Element {
                 <thead>
                   <tr>
                     <th>Rede</th>
-                    <th style={{ textAlign: 'right' }}>Umfang</th>
+                    <th className="rede-umfang">Umfang</th>
                     <th />
                   </tr>
                 </thead>
@@ -236,7 +236,7 @@ export function PrompterPage(): React.JSX.Element {
                     const liegtAuf = view.speech?.id === rede.id
                     return (
                       <tr key={rede.id} className={liegtAuf ? 'hervorgehoben' : ''}>
-                        <td>
+                        <td className="rede-titel">
                           <button className="linkartig" onClick={() => void oeffne(rede)}>
                             {rede.title}
                           </button>
@@ -283,36 +283,38 @@ export function PrompterPage(): React.JSX.Element {
                             rede.candidateName && <div className="hint">für {rede.candidateName}</div>
                           )}
                         </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td className="rede-umfang">
                           {rede.words} Wörter
                           <div className="hint">etwa {mss(redeDauer(rede.words))} min</div>
                         </td>
                         <td className="rede-knoepfe">
-                          <button
-                            className="mini"
-                            onClick={() => void rufe(() => api('prompter.load', rede.id))}
-                          >
-                            Auflegen
-                          </button>
-                          <button className="mini" onClick={() => setUmbenennen(rede)}>
-                            Umbenennen
-                          </button>
-                          <button
-                            className="mini ghost danger"
-                            onClick={() =>
-                              void rufe(async () => {
-                                if (!window.confirm(`„${rede.title}" entfernen?`)) return
-                                await api('speech.delete', rede.id)
-                                if (offen === rede.id) {
-                                  setOffen(null)
-                                  setEntwurf('')
-                                }
-                                await laden()
-                              })
-                            }
-                          >
-                            Entfernen
-                          </button>
+                          <div className="knopfreihe">
+                            <button
+                              className="mini"
+                              onClick={() => void rufe(() => api('prompter.load', rede.id))}
+                            >
+                              Auflegen
+                            </button>
+                            <button className="mini" onClick={() => setUmbenennen(rede)}>
+                              Umbenennen
+                            </button>
+                            <button
+                              className="mini ghost danger"
+                              onClick={() =>
+                                void rufe(async () => {
+                                  if (!window.confirm(`„${rede.title}" entfernen?`)) return
+                                  await api('speech.delete', rede.id)
+                                  if (offen === rede.id) {
+                                    setOffen(null)
+                                    setEntwurf('')
+                                  }
+                                  await laden()
+                                })
+                              }
+                            >
+                              Entfernen
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
