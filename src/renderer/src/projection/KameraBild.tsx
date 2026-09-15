@@ -25,7 +25,7 @@
  */
 import { useEffect, useId, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { KAMERA_STILLE_MS, bauchbinde, qualitaetFuer, type ProjectionCamera } from '@shared/kamera'
-import { redezeitRest, type ProjectionSpeaker } from '@shared/projection'
+import { REDNER_VORSCHAU, redezeitRest, type ProjectionSpeaker } from '@shared/projection'
 
 interface Props {
   camera: ProjectionCamera
@@ -272,6 +272,32 @@ export function KameraBild({ camera, speaker, logo, klein }: Props): JSX.Element
         </div>
       )}
       {camera.bauchbinde && inhalt && <Bauchbinde inhalt={inhalt} logo={logo} speaker={speaker} />}
+      {camera.naechste && <Naechste speaker={speaker} />}
+    </div>
+  )
+}
+
+/**
+ * Wer danach an der Reihe ist.
+ *
+ * Dieselbe Reihe, die die Vorstellung an der Wand zeigt — nur über dem
+ * Kamerabild. Bewusst auf der **anderen Seite** als die Bauchbinde und
+ * kleiner: Sie ist eine Auskunft am Rand, kein Titel.
+ */
+function Naechste({ speaker }: { speaker?: ProjectionSpeaker }): JSX.Element | null {
+  const anzahl = speaker?.upcomingShown ?? REDNER_VORSCHAU
+  const reihe = (speaker?.upcoming ?? []).slice(0, Math.max(0, anzahl))
+  if (reihe.length === 0) return null
+  return (
+    <div className="kamera-naechste">
+      <div className="kamera-naechste-titel">Als Nächstes</div>
+      {/* Einer je Zeile. Als Aufzählung mit Trenner brach die Reihe mitten im
+          Namen um — „Ruben ·" oben, „Thiele" darunter. */}
+      <ol className="kamera-naechste-namen">
+        {reihe.map((name) => (
+          <li key={name}>{name}</li>
+        ))}
+      </ol>
     </div>
   )
 }

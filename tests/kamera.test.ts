@@ -117,13 +117,18 @@ describe('Beamerzustand', () => {
   })
 
   it('trägt im Zustand nur den Namen der Quelle, niemals Bilddaten', () => {
-    const kamera: ProjectionCamera = { quelle: 'PULT (OBSBOT)', bauchbinde: true, spiegeln: false }
+    const kamera: ProjectionCamera = {
+      quelle: 'PULT (OBSBOT)',
+      bauchbinde: true,
+      naechste: true,
+      spiegeln: false
+    }
     /*
      * Das ist keine Förmlichkeit: Der Zustand geht mehrmals je Sekunde durch
      * die SSE-Leitungen an jedes Gerät im Saal. Läge dort ein Bild, wäre die
      * Netzwerkansicht mit dem ersten Kamerabild erledigt.
      */
-    expect(Object.keys(kamera).sort()).toEqual(['bauchbinde', 'quelle', 'spiegeln'])
+    expect(Object.keys(kamera).sort()).toEqual(['bauchbinde', 'naechste', 'quelle', 'spiegeln'])
     expect(JSON.stringify(kamera).length).toBeLessThan(120)
   })
 })

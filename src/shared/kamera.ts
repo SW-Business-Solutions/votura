@@ -78,6 +78,14 @@ export interface ProjectionCamera {
    */
   bauchbinde: boolean
   /**
+   * Die nächsten Redner einblenden.
+   *
+   * Dieselbe Reihe, die die Vorstellung an der Wand zeigt — nur eben über dem
+   * Kamerabild. Auf einer Versammlung mit zwölf Bewerbern ist das die Auskunft,
+   * nach der im Saal am häufigsten gefragt wird: Wer kommt nach mir?
+   */
+  naechste: boolean
+  /**
    * Bild spiegeln.
    *
    * Für den Rückblickschirm, den die vortragende Person selbst sieht — ein

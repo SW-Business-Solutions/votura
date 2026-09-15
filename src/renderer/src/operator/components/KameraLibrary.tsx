@@ -88,6 +88,24 @@ export function KameraLibrary(): JSX.Element {
                   {kamera.bauchbinde ? '🏷 Bauchbinde an' : '🏷 Bauchbinde aus'}
                 </button>
                 {/*
+                  Getrennt von der Bauchbinde: Der Name dessen, der spricht,
+                  gehört fast immer ins Bild; die Reihe dahinter nicht immer —
+                  bei einem Grußwort gibt es keine.
+                */}
+                <button
+                  className={kamera.naechste ? 'primary' : ''}
+                  title={
+                    kamera.naechste
+                      ? 'Die nächsten Redner stehen im Bild.'
+                      : 'Die Reihe der nächsten Redner bleibt aus.'
+                  }
+                  onClick={() =>
+                    void api('kamera.setNaechste', !kamera.naechste, app.ziel).catch(app.reportError)
+                  }
+                >
+                  {kamera.naechste ? '📋 Nächste an' : '📋 Nächste aus'}
+                </button>
+                {/*
                   Die Spiegelung ist für den Rückblickschirm am Pult: Wer sich
                   selbst sieht, erwartet ein Spiegelbild. An der Saalwand wäre
                   dasselbe schlicht falsch herum.
