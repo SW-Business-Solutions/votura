@@ -172,6 +172,28 @@ mount -t sysfs sys "$arbeit/wurzel/sys"
 cp "$arbeit/wurzel/etc/resolv.conf" "$arbeit/wurzel/etc/resolv.conf.votura-sicherung" 2>/dev/null || true
 echo 'nameserver 1.1.1.1' > "$arbeit/wurzel/etc/resolv.conf"
 
+# Paketquellen über HTTPS.
+#
+# Raspberry Pi OS holt seine Pakete über einfaches HTTP. Das ist für Debian
+# kein Versehen — jedes Paket ist signiert, eine Veränderung unterwegs fällt
+# auf. Wogegen die Signatur nicht hilft, ist eine **Wand**: In Firmennetzen
+# und hinter Schulfiltern sitzen Geräte, die HTTP mitlesen und Downloads nach
+# Dateityp umleiten. Hier lief der Bau gegen eine solche Umleitung — jedes
+# `.deb` kam als 307 auf eine Sperrseite zurück, die aus dem Abbild heraus
+# nicht einmal auflösbar war.
+#
+# Über HTTPS sieht so ein Gerät nur eine Verbindung zum Spiegel und keine
+# Dateinamen. Beide Spiegel liefern HTTPS aus, `ca-certificates` liegt im
+# Abbild bereit. Die Signaturprüfung bleibt davon unberührt — sie ist die
+# eigentliche Sicherung, HTTPS räumt nur den Weg frei.
+for quelle in "$arbeit/wurzel/etc/apt/sources.list" "$arbeit/wurzel/etc/apt/sources.list.d"/*; do
+  [[ -f "$quelle" ]] || continue
+  sed -i 's|http://deb\.debian\.org|https://deb.debian.org|g;
+          s|http://security\.debian\.org|https://security.debian.org|g;
+          s|http://archive\.raspberrypi\.com|https://archive.raspberrypi.com|g;
+          s|http://raspbian\.raspberrypi\.com|https://raspbian.raspberrypi.com|g' "$quelle"
+done
+
 mkdir -p "$arbeit/wurzel/tmp/votura"
 cp "$hier/pi/install.sh" "$arbeit/wurzel/tmp/votura/"
 cp "$paket" "$arbeit/wurzel/tmp/votura/paket.tar.gz"
