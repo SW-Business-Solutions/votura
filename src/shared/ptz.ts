@@ -67,6 +67,16 @@ export interface PtzFaehigkeiten {
   /** Auf die Ausgangsstellung fahren. */
   heim: boolean
   autofokus: boolean
+  /**
+   * Die Stellung abfragen und wieder genau anfahren.
+   *
+   * Der Ausweg für Kameras **ohne eigenen Positionsspeicher**: Statt der
+   * Kamera zu sagen „merk dir das unter Nummer 2", fragt Votura sie nach
+   * ihren Zahlen, legt sie in die eigene Datenbank und schickt sie später
+   * genau dorthin zurück. Fast jede VISCA-Kamera kann das, auch wenn sie
+   * keine Presets hat.
+   */
+  absolut: boolean
 }
 
 /**
@@ -114,7 +124,8 @@ const ALLES: PtzFaehigkeiten = {
   schwenken: true,
   zoom: true,
   heim: true,
-  autofokus: true
+  autofokus: true,
+  absolut: true
 }
 
 /**
@@ -216,6 +227,17 @@ export interface PtzKamera {
   profil: string
   /** Der NDI-Name des Bildes dieser Kamera, sofern bekannt. */
   quelle?: string
+  /**
+   * Wer die Positionen führt.
+   *
+   * `kamera` ist der Regelfall und der bessere Weg: Die Kamera fährt selbst
+   * an, das geht schneller und überlebt einen Wechsel des Rechners. `votura`
+   * ist für Geräte **ohne eigenen Positionsspeicher** — dann stehen die
+   * Zahlen in der Datenbank, und Votura schickt die Kamera hin.
+   *
+   * Fehlt die Angabe, gilt `kamera`.
+   */
+  ablage?: 'kamera' | 'votura'
   /** Benannte Positionen — „Pult", „Präsidium", „Saal". */
   positionen: PtzPosition[]
   /**
@@ -234,6 +256,24 @@ export interface PtzPosition {
   /** Die Nummer im Speicher der Kamera. */
   nummer: number
   name: string
+  /**
+   * Die Stellung in Zahlen — nur bei Ablage in Votura.
+   *
+   * Siehe `PtzKamera.ablage`: Kameras ohne eigenen Positionsspeicher merken
+   * sich nichts. Dann merkt Votura es sich, und zwar so, wie die Kamera
+   * selbst es ausdrückt: Schwenk, Neigung, Zoom als die Zahlen, die sie auf
+   * Nachfrage nennt.
+   */
+  koordinaten?: PtzStellung
+}
+
+/** Wo eine Kamera hinschaut, in ihren eigenen Zahlen. */
+export interface PtzStellung {
+  /** Schwenk — vorzeichenbehaftet, Mitte ist 0. */
+  pan: number
+  /** Neigung — vorzeichenbehaftet, Mitte ist 0. */
+  tilt: number
+  zoom: number
 }
 
 /** Vorgeschlagene Positionen für eine Versammlung. */
@@ -348,6 +388,85 @@ export function viscaHeim(geraet = 1): Uint8Array {
 /** Einmal scharfstellen. */
 export function viscaAutofokus(geraet = 1): Uint8Array {
   return new Uint8Array([kopf(geraet), 0x01, 0x04, 0x18, 0x01, ENDE])
+}
+
+/**
+ * Eine Zahl in vier Halbbytes zerlegen.
+ *
+ * VISCA überträgt 16-Bit-Werte als vier Bytes, die je vier Bit tragen. Der
+ * Grund ist alt: Das oberste Bit bleibt frei, damit kein Nutzbyte wie ein
+ * Abschluss (`0xFF`) aussieht. Wer das übersieht, schickt ein Paket, das die
+ * Kamera mitten im Wort für beendet hält.
+ */
+function halbbytes(wert: number): number[] {
+  const w = wert & 0xffff
+  return [(w >> 12) & 0x0f, (w >> 8) & 0x0f, (w >> 4) & 0x0f, w & 0x0f]
+}
+
+/** Und zurück — die vier Halbbytes zu einer vorzeichenbehafteten Zahl. */
+function ausHalbbytes(bytes: Uint8Array, ab: number, vorzeichen = true): number {
+  const roh =
+    ((bytes[ab] & 0x0f) << 12) |
+    ((bytes[ab + 1] & 0x0f) << 8) |
+    ((bytes[ab + 2] & 0x0f) << 4) |
+    (bytes[ab + 3] & 0x0f)
+  /* Schwenk und Neigung zählen in beide Richtungen; der Zoom nicht. */
+  return vorzeichen && roh > 0x7fff ? roh - 0x10000 : roh
+}
+
+/**
+ * Genau dorthin fahren.
+ *
+ * Der Weg für Kameras ohne eigenen Positionsspeicher: Statt „fahre auf
+ * Position 2" wird die Stellung selbst geschickt.
+ */
+export function viscaPositionAbsolut(
+  stellung: Pick<PtzStellung, 'pan' | 'tilt'>,
+  tempoSchwenk: number,
+  tempoNeigen: number,
+  geraet = 1
+): Uint8Array {
+  return new Uint8Array([
+    kopf(geraet),
+    0x01,
+    0x06,
+    0x02,
+    begrenze(tempoSchwenk, 1, 24),
+    begrenze(tempoNeigen, 1, 20),
+    ...halbbytes(stellung.pan),
+    ...halbbytes(stellung.tilt),
+    ENDE
+  ])
+}
+
+/** Den Zoom auf einen genauen Wert setzen. */
+export function viscaZoomAbsolut(zoom: number, geraet = 1): Uint8Array {
+  return new Uint8Array([kopf(geraet), 0x01, 0x04, 0x47, ...halbbytes(zoom), ENDE])
+}
+
+/** Die Frage nach Schwenk und Neigung. */
+export function viscaFragePosition(geraet = 1): Uint8Array {
+  return new Uint8Array([kopf(geraet), 0x09, 0x06, 0x12, ENDE])
+}
+
+/**
+ * Schwenk und Neigung aus der Antwort lesen.
+ *
+ * Erwartet wird `90 50 0p 0p 0p 0p 0t 0t 0t 0t FF`. Kommt etwas anderes,
+ * gibt es `undefined` — eine geratene Stellung wäre schlimmer als keine:
+ * Sie führte die Kamera später zuverlässig an den falschen Ort.
+ */
+export function pantiltAusAntwort(bytes: Uint8Array): { pan: number; tilt: number } | undefined {
+  if (!istViscaAntwort(bytes) || bytes.length < 11) return undefined
+  if ((bytes[1] & 0xf0) !== 0x50) return undefined
+  return { pan: ausHalbbytes(bytes, 2), tilt: ausHalbbytes(bytes, 6) }
+}
+
+/** Der Zoomstand aus der Antwort `90 50 0z 0z 0z 0z FF`. */
+export function zoomAusAntwort(bytes: Uint8Array): number | undefined {
+  if (!istViscaAntwort(bytes) || bytes.length < 7) return undefined
+  if ((bytes[1] & 0xf0) !== 0x50) return undefined
+  return ausHalbbytes(bytes, 2, false)
 }
 
 /**

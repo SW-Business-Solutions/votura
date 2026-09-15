@@ -886,3 +886,58 @@ html {
    */
   container-type: size;
 }
+
+/*
+ * Die Reihe der nächsten Redner über dem Kamerabild.
+ *
+ * Unten **rechts**, gegenüber der Bauchbinde: Zwei Blöcke auf derselben Seite
+ * wären ein Balken, und der nähme dem Bild die untere Hälfte. Kleiner
+ * geschrieben als der Name — sie ist eine Auskunft am Rand, kein Titel.
+ */
+.kamera-naechste {
+  position: absolute;
+  right: 4cqw;
+  bottom: 6cqh;
+  max-width: 30cqw;
+  padding: 1.6cqh 2cqw;
+  border-radius: 0.6rem;
+  /* So deckend wie die Bauchbinde: Über einem hellen Bildteil war der
+     durchsichtigere Grund nicht mehr zu lesen. */
+  background: rgba(8, 12, 20, 0.86);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  text-align: right;
+}
+
+.kamera-naechste-titel {
+  font-size: 2.2cqh;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.kamera-naechste-namen {
+  margin: 0.6cqh 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 3cqh;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/*
+ * Ein langer Name bricht nicht um, er wird gekürzt.
+ *
+ * Zwei Zeilen für einen Namen sähen aus wie zwei Personen — und in einer
+ * Reihe der nächsten Redner wäre das eine falsche Auskunft.
+ */
+.kamera-naechste-namen li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* In der Briefmarke der Bedienung ist dafür kein Platz. */
+.kamera-vorschau .kamera-naechste {
+  display: none;
+}

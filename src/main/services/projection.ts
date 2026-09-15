@@ -713,6 +713,7 @@ function kameraFuer(
        ist, aus dem jemand eine Kamera auf die Wand legt. Die Spiegelung nicht:
        Sie ist die Ausnahme für einen Rückblickschirm. */
     bauchbinde: quelle === bisher?.quelle ? bisher.bauchbinde : true,
+    naechste: quelle === bisher?.quelle ? bisher.naechste : true,
     spiegeln: quelle === bisher?.quelle ? bisher.spiegeln : false
   }
 }
@@ -1042,6 +1043,27 @@ export function setKameraBauchbinde(buehne: number, an: boolean): ProjectionStat
  * Für den Bildschirm, den die vortragende Person selbst ansieht — dort ist
  * ein seitenverkehrtes Bild verwirrend, an der Saalwand wäre es falsch.
  */
+/**
+ * Die nächsten Redner über dem Kamerabild ein- oder ausblenden.
+ *
+ * Getrennt von der Bauchbinde schaltbar: Der Name dessen, der spricht, gehört
+ * fast immer ins Bild; die Reihe dahinter nicht immer — bei einem Grußwort
+ * gibt es keine.
+ */
+export function setKameraNaechste(buehne: number, an: boolean): ProjectionState {
+  const state = buehneVon(buehne)
+  if (state.mode !== 'kamera' || !state.camera) return state
+  if (state.camera.naechste === an) return state
+  const neu = setzeUndGib(buehne, {
+    ...state,
+    camera: { ...state.camera, naechste: an },
+    updatedAt: new Date().toISOString()
+  })
+  persist()
+  broadcast(buehne)
+  return neu
+}
+
 export function setKameraSpiegeln(buehne: number, an: boolean): ProjectionState {
   const state = buehneVon(buehne)
   if (state.mode !== 'kamera' || !state.camera) return state

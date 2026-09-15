@@ -23,6 +23,7 @@ import {
   ptzPositionSpeichern,
   ptzScharfstellen,
   ptzSchwenken,
+  ptzStellungLesen,
   ptzZoomen
 } from './services/ptz'
 import { logger } from './logger'
@@ -126,6 +127,7 @@ import {
   setVideoMuted,
   endeVorstellung,
   setKameraBauchbinde,
+  setKameraNaechste,
   setKameraSpiegeln,
   setVideoSchleife,
   setVideoPlaying,
@@ -906,6 +908,7 @@ const api: Api = {
   'ptz.erkennen': async (eingabe) => ptzErkennen(eingabe.host, eingabe.port),
   'ptz.position': async (eingabe) => ptzPositionAbrufen(eingabe.id, eingabe.nummer),
   'ptz.positionSpeichern': async (eingabe) => ptzPositionSpeichern(eingabe.id, eingabe.nummer),
+  'ptz.stellungLesen': async (id) => ptzStellungLesen(id),
   'ptz.schwenken': async (eingabe) => ptzSchwenken(eingabe.id, eingabe.x, eingabe.y, eingabe.tempo),
   'ptz.halt': async (id) => ptzHalt(id),
   'ptz.zoom': async (eingabe) => ptzZoomen(eingabe.id, eingabe.richtung, eingabe.tempo),
@@ -919,6 +922,10 @@ const api: Api = {
   'kamera.setBauchbinde': async (an, stage) => {
     requirePermission('round.manage')
     return aufBuehnen(stage, (buehne) => setKameraBauchbinde(buehne, an))
+  },
+  'kamera.setNaechste': async (an, stage) => {
+    requirePermission('round.manage')
+    return aufBuehnen(stage, (buehne) => setKameraNaechste(buehne, an))
   },
   'kamera.setSpiegeln': async (an, stage) => {
     requirePermission('round.manage')

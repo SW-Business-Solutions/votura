@@ -1473,3 +1473,41 @@ select[aria-invalid='true'] {
   display: flex;
   gap: 4px;
 }
+
+/* ------------------------------------------------------- Kamera hinstellen */
+
+/*
+ * Ein Steuerkreuz, kein Bedienpult.
+ *
+ * Es dient dem **Einrichten** einer Position, nicht der Regie im Saal: Wer
+ * live schwenken will, hat ein Pult mit einem Knüppel. Drei mal drei Felder
+ * sind dafür genug, und die Anordnung entspricht dem, was sie tun.
+ */
+.steuerkreuz {
+  display: grid;
+  /* Vier Spalten: drei fürs Kreuz, eine für Zoom und Schärfe. Ohne die
+     vierte Angabe nimmt sich die implizite Spalte den ganzen Rest, und
+     die Zoomknöpfe laufen über die Kartenbreite. */
+  grid-template-columns: repeat(3, 44px) max-content;
+  gap: 4px;
+  align-items: start;
+  margin: var(--abstand-2) 0;
+}
+
+.steuerkreuz > button {
+  padding: 8px 0;
+  font-size: 1.1rem;
+}
+
+/*
+ * Zoom und Schärfe stehen rechts neben dem Kreuz, nicht darunter: Sie gehören
+ * zur selben Handlung, sind aber keine Richtung.
+ */
+.zoomknoepfe {
+  grid-column: 4;
+  grid-row: 1 / span 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: var(--abstand-3);
+}

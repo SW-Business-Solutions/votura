@@ -31,6 +31,11 @@ import { connect } from 'node:net'
 import {
   PTZ_ERKENNUNG,
   istViscaAntwort,
+  pantiltAusAntwort,
+  viscaFragePosition,
+  viscaPositionAbsolut,
+  viscaZoomAbsolut,
+  zoomAusAntwort,
   ptzAntwort,
   ptzPaket,
   ptzProfil,
@@ -46,7 +51,8 @@ import {
   type PtzKamera,
   type PtzFund,
   type PtzProfil,
-  type PtzRichtung
+  type PtzRichtung,
+  type PtzStellung
 } from '@shared/ptz'
 import { getPtzKameras } from './settings'
 import { requirePermission } from './auth'
@@ -175,10 +181,77 @@ async function anDieKamera(id: string, nutzlast: Uint8Array): Promise<void> {
 
 /* ------------------------------------------------------------- Die Befehle */
 
+/**
+ * Eine Position anfahren.
+ *
+ * Zwei Wege, und der Unterschied liegt nicht bei Votura, sondern bei der
+ * Kamera: Hat sie einen eigenen Positionsspeicher, bekommt sie die Nummer und
+ * fährt selbst — das ist schneller und überlebt einen Wechsel des Rechners.
+ * Hat sie keinen, stehen die Zahlen in Voturas Datenbank, und sie bekommt sie
+ * geschickt.
+ */
 export async function ptzPositionAbrufen(id: string, nummer: number): Promise<void> {
   requirePermission('round.manage')
-  const { profil } = kameraVon(id)
+  const { kamera, profil } = kameraVon(id)
+  const position = kamera.positionen.find((eintrag) => eintrag.nummer === nummer)
+
+  if (kamera.ablage === 'votura') {
+    if (!position?.koordinaten) {
+      throw new Error(
+        `Zu „${position?.name ?? nummer}" ist keine Stellung hinterlegt. Die Kamera dorthin stellen und „Hier ablegen" drücken.`
+      )
+    }
+    /* Gemächlich: Ein Schwenk vor dem Publikum darf nicht hetzen. */
+    await anDieKamera(
+      id,
+      viscaPositionAbsolut(
+        position.koordinaten,
+        Math.round(profil.tempoMax.schwenk * 0.6),
+        Math.round(profil.tempoMax.neigen * 0.6),
+        profil.geraet
+      )
+    )
+    await anDieKamera(id, viscaZoomAbsolut(position.koordinaten.zoom, profil.geraet))
+    return
+  }
+
   await anDieKamera(id, viscaPresetAbrufen(nummer, profil.geraet))
+}
+
+/**
+ * Die Kamera nach ihrer Stellung fragen.
+ *
+ * Für Kameras ohne eigenen Positionsspeicher: Was sie hier nennt, legt Votura
+ * in seine Datenbank und schickt es ihr später zurück.
+ *
+ * Kommt keine oder eine unverständliche Antwort, gibt es einen Fehler und
+ * keine geratene Zahl. Eine erfundene Stellung führte die Kamera später
+ * zuverlässig an den falschen Ort — und zwar mitten in der Versammlung.
+ */
+export async function ptzStellungLesen(id: string): Promise<PtzStellung> {
+  requirePermission('system.manage')
+  const { kamera, profil } = kameraVon(id)
+  const port = zielPort(kamera, profil)
+
+  const schwenk = await sende(profil, kamera.host, port, viscaFragePosition(profil.geraet), {
+    warten: true,
+    art: 'frage'
+  })
+  const pantilt = schwenk.antwort && pantiltAusAntwort(schwenk.antwort)
+  if (!pantilt) {
+    throw new Error(
+      `„${kamera.name}" nennt ihre Stellung nicht. Nicht jede Kamera kann das — dann bleibt nur, die Positionen in der Kamera selbst abzulegen.`
+    )
+  }
+
+  const zoomAntwort = await sende(profil, kamera.host, port, viscaFrageZoom(profil.geraet), {
+    warten: true,
+    art: 'frage'
+  })
+  /* Ohne Zoomangabe ist die Stellung trotzdem brauchbar — dann bleibt der
+     Zoom, wie er gerade steht. */
+  const zoom = (zoomAntwort.antwort && zoomAusAntwort(zoomAntwort.antwort)) ?? 0
+  return { ...pantilt, zoom }
 }
 
 export async function ptzPositionSpeichern(id: string, nummer: number): Promise<void> {

@@ -15,7 +15,7 @@ import type {
   ProjectionTheme
 } from './projection'
 import type { KameraStand } from './kamera'
-import type { PtzFund, PtzKamera, PtzRichtung } from './ptz'
+import type { PtzFund, PtzKamera, PtzRichtung, PtzStellung } from './ptz'
 import type { Buehnenwahl } from './projection'
 import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
@@ -774,8 +774,15 @@ export interface Api {
   'ptz.erkennen': (eingabe: { host: string; port?: number }) => Promise<PtzFund>
   /** Eine gespeicherte Position anfahren. */
   'ptz.position': (eingabe: { id: string; nummer: number }) => Promise<void>
-  /** Die aktuelle Stellung als Position ablegen. */
+  /** Die aktuelle Stellung als Position ablegen — im Speicher der Kamera. */
   'ptz.positionSpeichern': (eingabe: { id: string; nummer: number }) => Promise<void>
+  /**
+   * Die Kamera nach ihrer Stellung fragen.
+   *
+   * Für Kameras **ohne eigenen Positionsspeicher**: Was sie nennt, legt
+   * Votura in seine Datenbank und schickt es ihr später zurück.
+   */
+  'ptz.stellungLesen': (id: string) => Promise<PtzStellung>
   /** Schwenken, bis ein Halt kommt. */
   'ptz.schwenken': (eingabe: {
     id: string
@@ -803,6 +810,8 @@ export interface Api {
   'kamera.suche': (an: boolean) => Promise<KameraStand>
   /** Bauchbinde über dem Kamerabild ein- oder ausblenden. */
   'kamera.setBauchbinde': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
+  /** Die nächsten Redner über dem Kamerabild ein- oder ausblenden. */
+  'kamera.setNaechste': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
   /** Bild spiegeln — für den Rückblickschirm am Pult. */
   'kamera.setSpiegeln': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
   'video.list': () => Promise<VideoInfo[]>

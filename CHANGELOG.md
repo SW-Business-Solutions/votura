@@ -65,8 +65,33 @@ Welche Spielart eine Kamera spricht, muss niemand raten: Der Port verrät sie ni
 schweigen oft dazu. Votura klopft die Adresse mit einer Frage ab, die nichts verstellt, und nimmt
 die Form, die antwortet.
 
-Kein Joystick. Wer live schwenken will, hat ein Pult mit einem Knüppel, und das kann es besser als
-jede Maus.
+Zum **Einrichten** einer Position gibt es ein Steuerkreuz: Kamera hinstellen, wo sie stehen soll,
+dann „Hier ablegen". Das ist kein Bedienpult für den Saal — wer live schwenken will, hat ein Pult
+mit einem Knüppel, und das kann es besser als jede Maus. Drücken und halten bewegt, Loslassen hält
+an, und nach fünf Sekunden hält sie ohnehin: Eine Kamera, die weiterdreht, weil ein Halt ausblieb,
+ist im Saal ein Ärgernis.
+
+**Auch für Kameras ohne eigenen Positionsspeicher.** Der Regelfall ist, dass die Kamera sich ihre
+Positionen selbst merkt — das geht schneller und überlebt einen Wechsel des Rechners. Kann sie das
+nicht, führt Votura die Positionen: Es fragt die Kamera nach ihrer Stellung, legt die Zahlen in die
+Datenbank und schickt sie ihr später zurück. Umzuschalten mit **Positionen liegen: in Votura**.
+
+Antwortet die Kamera dabei nicht oder unverständlich, gibt es einen Fehler statt einer geratenen
+Zahl. Eine erfundene Stellung führte die Kamera später zuverlässig an den falschen Ort — mitten in
+der Versammlung.
+
+Und die Einstellungsseite zeigt jetzt oben, **was im Netz gefunden wurde**. Das ist nicht nur
+Auskunft: Eine Kamera, die ihr Bild sendet, verrät dabei ihre Adresse — genau die, die die
+Steuerung braucht. „Steuerung einrichten" legt den Eintrag fertig ausgefüllt an.
+
+### Die nächsten Redner über dem Kamerabild
+
+Dieselbe Reihe, die die Vorstellung an der Wand zeigt, lässt sich auch über das Kamerabild legen —
+unten rechts, gegenüber der Bauchbinde, einer je Zeile. Auf einer Versammlung mit zwölf Bewerbern
+ist das die Auskunft, nach der im Saal am häufigsten gefragt wird: Wer kommt nach mir?
+
+Getrennt von der Bauchbinde schaltbar, denn der Name dessen, der spricht, gehört fast immer ins
+Bild; die Reihe dahinter nicht immer — bei einem Grußwort gibt es keine.
 
 ### Kameras im Saal
 

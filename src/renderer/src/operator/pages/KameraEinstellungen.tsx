@@ -21,7 +21,7 @@
  * einmal eingerichtet und danach abgerufen werden. Wer wirklich live schwenken
  * will, hat ein Pult mit einem Knüppel; das kann es besser als jede Maus.
  */
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import {
   PTZ_POSITIONEN_VORSCHLAG,
   PTZ_PROFILE,
@@ -31,7 +31,7 @@ import {
 } from '@shared/ptz'
 import type { KameraStand } from '@shared/kamera'
 import { kurzerQuellenname } from '@shared/kamera'
-import { api } from '../../lib/api'
+import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
 import { Card, Checkbox, Field } from '../components/ui'
 
@@ -68,15 +68,42 @@ export function KameraEinstellungen(): JSX.Element {
   const [stand, setStand] = useState<KameraStand>({ bereit: false, quellen: [] })
   const [pruefung, setPruefung] = useState<Record<string, string>>({})
   const [laeuft, setLaeuft] = useState(false)
+  /*
+   * Welche Kameras der Hauptprozess kennt.
+   *
+   * Bewegen und Positionen ablegen sprechen die **gespeicherte** Kamera an —
+   * ein Eintrag, den es nur in diesem Formular gibt, ist dort unbekannt. Ohne
+   * diese Unterscheidung drückt jemand „Hier ablegen" und bekommt „Diese
+   * Kamera ist nicht eingerichtet" zu lesen, ohne zu ahnen, warum.
+   */
+  const [gespeichert, setGespeichert] = useState<string[]>([])
+  /* Siehe `bewegen`: Eine Kamera, die weiterdreht, weil ein Halt ausblieb,
+     ist im Saal ein Ärgernis und beim Einrichten ein Rätsel. */
+  const notbremse = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    void api('ptz.liste').then(setKameras).catch(app.reportError)
+    void api('ptz.liste')
+      .then((liste) => {
+        setKameras(liste)
+        setGespeichert(liste.map((kamera) => kamera.id))
+      })
+      .catch(app.reportError)
     /*
      * Die NDI-Suche läuft, solange diese Seite offen ist — nur so lässt sich
      * einer Kamera ihr Bild zuordnen, ohne den Namen abzutippen.
      */
+    void api('kamera.stand').then(setStand).catch(() => undefined)
     void api('kamera.suche', true).then(setStand).catch(() => undefined)
+    /*
+     * Und dann zuhören.
+     *
+     * Ohne das fragte die Seite genau einmal — und zwar in dem Augenblick, in
+     * dem der Empfängerprozess gerade erst hochkommt. Die Antwort war eine
+     * leere Liste, und dabei blieb es, während die Kamera längst gefunden war.
+     */
+    const ab = bridge.onKameraStand(setStand)
     return () => {
+      ab()
       void api('kamera.suche', false).catch(() => undefined)
     }
   }, [])
@@ -88,7 +115,9 @@ export function KameraEinstellungen(): JSX.Element {
   const sichern = async (liste: PtzKamera[]): Promise<void> => {
     setLaeuft(true)
     try {
-      setKameras(await api('ptz.speichern', liste))
+      const neu = await api('ptz.speichern', liste)
+      setKameras(neu)
+      setGespeichert(neu.map((kamera) => kamera.id))
       app.notify('info', 'Die Kameras sind gespeichert.')
     } catch (fehler) {
       app.reportError(fehler)
@@ -113,6 +142,62 @@ export function KameraEinstellungen(): JSX.Element {
       }
     } catch (fehler) {
       setPruefung((alt) => ({ ...alt, [kamera.id]: (fehler as Error).message }))
+    }
+  }
+
+  /**
+   * Schwenken, solange die Taste gedrückt ist.
+   *
+   * Die Kamera fährt nach dem Befehl **weiter**, bis ein Halt kommt — so ist
+   * VISCA gedacht, und so arbeitet jedes Steuerpult. Im Browser ist das eine
+   * Gefahr: Geht die Maustaste außerhalb des Knopfes hoch oder wechselt das
+   * Fenster, bleibt der Halt aus und die Kamera dreht sich weiter. Deshalb
+   * hängt der Halt an `mouseup`, `mouseleave` **und** an einer Uhr, die nach
+   * fünf Sekunden ohnehin stoppt. Länger als fünf Sekunden schwenkt niemand
+   * am Stück, der eine Position einrichtet.
+   */
+  const bewegen = (kamera: PtzKamera, x: -1 | 0 | 1, y: -1 | 0 | 1): void => {
+    void api('ptz.schwenken', { id: kamera.id, x, y }).catch(app.reportError)
+    window.clearTimeout(notbremse.current)
+    notbremse.current = window.setTimeout(() => halten(kamera), 5000)
+  }
+
+  const zoomen = (kamera: PtzKamera, richtung: -1 | 1): void => {
+    void api('ptz.zoom', { id: kamera.id, richtung }).catch(app.reportError)
+    window.clearTimeout(notbremse.current)
+    notbremse.current = window.setTimeout(() => halten(kamera), 5000)
+  }
+
+  const halten = (kamera: PtzKamera): void => {
+    window.clearTimeout(notbremse.current)
+    void api('ptz.halt', kamera.id).catch(() => undefined)
+    void api('ptz.zoom', { id: kamera.id, richtung: 0 }).catch(() => undefined)
+  }
+
+  /**
+   * Die jetzige Stellung als Position festhalten.
+   *
+   * Zwei Wege, je nachdem, wer die Positionen führt. Liegt die Ablage in der
+   * Kamera, bekommt sie einen Befehl und merkt es sich selbst. Liegt sie in
+   * Votura — für Geräte ohne eigenen Speicher —, wird die Kamera nach ihren
+   * Zahlen gefragt und die Antwort gespeichert.
+   */
+  const ablegen = async (kamera: PtzKamera, position: PtzPosition, i: number): Promise<void> => {
+    try {
+      if (kamera.ablage === 'votura') {
+        const stellung = await api('ptz.stellungLesen', kamera.id)
+        const positionen = kamera.positionen.map((p, j) =>
+          j === i ? { ...p, koordinaten: stellung } : p
+        )
+        /* Gleich sichern: Eine gemerkte Stellung, die nur im Formular steht,
+           ist beim nächsten Neustart weg — und niemand ahnt es. */
+        await sichern(kameras.map((k) => (k.id === kamera.id ? { ...k, positionen } : k)))
+      } else {
+        await api('ptz.positionSpeichern', { id: kamera.id, nummer: position.nummer })
+        app.notify('info', `„${position.name}" ist in der Kamera abgelegt.`)
+      }
+    } catch (fehler) {
+      app.reportError(fehler)
     }
   }
 
@@ -163,7 +248,16 @@ export function KameraEinstellungen(): JSX.Element {
                         </span>
                       ) : (
                         <button
-                          onClick={() => setKameras([...kameras, neueKamera(quelle)])}
+                          /*
+                           * Wird gleich gespeichert.
+                           *
+                           * Alles Nötige ist bekannt — Name, Adresse, Bild. Ein
+                           * Eintrag, der erst nach einem zweiten Klick
+                           * existiert, ist eine Falle: Bewegen und Ablegen
+                           * sprechen das Gerät an und brauchen die
+                           * gespeicherte Kamera.
+                           */
+                          onClick={() => void sichern([...kameras, neueKamera(quelle)])}
                         >
                           Steuerung einrichten
                         </button>
@@ -295,6 +389,26 @@ export function KameraEinstellungen(): JSX.Element {
                 nachführen. Vorgabe ist trotzdem „nichts" — eine Kamera, die
                 unaufgefordert losfährt, erschrickt einen Saal.
               */}
+              {/*
+                Wer die Positionen führt.
+
+                Der Regelfall ist die Kamera: Sie fährt selbst an, das geht
+                schneller und überlebt einen Wechsel des Rechners. Nicht jede
+                Kamera hat aber einen Positionsspeicher — dann führt Votura ihn
+                und schickt ihr die Zahlen.
+              */}
+              <Field label="Positionen liegen">
+                <select
+                  value={kamera.ablage ?? 'kamera'}
+                  onChange={(e) =>
+                    aendern(kamera.id, { ablage: e.target.value === 'votura' ? 'votura' : 'kamera' })
+                  }
+                >
+                  <option value="kamera">in der Kamera (Regelfall)</option>
+                  <option value="votura">in Votura — für Kameras ohne eigenen Speicher</option>
+                </select>
+              </Field>
+
               <Field label="Beim Aufruf eines Redners">
                 <select
                   value={kamera.beiAufruf ?? ''}
@@ -330,6 +444,87 @@ export function KameraEinstellungen(): JSX.Element {
               )}
 
               <label className="mt-3">Positionen</label>
+              {/*
+                Ohne diese zwei Sätze ist die Tabelle darunter nicht zu deuten.
+                Die Nummer gehört der Kamera, der Name gehört euch — und
+                „Hier ablegen" schreibt in die Kamera, nicht in Votura.
+              */}
+              <p className="hint">
+                Zum Einrichten: Kamera mit dem Steuerkreuz hinstellen, wo sie stehen soll, dann{' '}
+                <strong>Hier ablegen</strong>. <strong>Anfahren</strong> holt sie zurück.
+                {kamera.ablage === 'votura' ? (
+                  <>
+                    {' '}
+                    Die Stellung wird <strong>in Votura</strong> gespeichert — die{' '}
+                    <strong>Nummer</strong> ist dann nur eine Ordnungszahl.
+                  </>
+                ) : (
+                  <>
+                    {' '}
+                    Die <strong>Nummer</strong> ist der Speicherplatz <strong>in der Kamera</strong>,
+                    der <strong>Name</strong> nur eure Bezeichnung dafür.
+                  </>
+                )}
+              </p>
+
+              {!gespeichert.includes(kamera.id) ? (
+                <p className="hint">
+                  Diese Kamera ist noch nicht gespeichert. Bewegen und Ablegen sprechen das Gerät an
+                  und brauchen deshalb einen gespeicherten Eintrag — erst <strong>Speichern</strong>.
+                </p>
+              ) : (
+                <div className="steuerkreuz">
+                  {(
+                    [
+                      ['↖', -1, -1],
+                      ['↑', 0, -1],
+                      ['↗', 1, -1],
+                      ['←', -1, 0],
+                      ['⌂', 0, 0],
+                      ['→', 1, 0],
+                      ['↙', -1, 1],
+                      ['↓', 0, 1],
+                      ['↘', 1, 1]
+                    ] as [string, -1 | 0 | 1, -1 | 0 | 1][]
+                  ).map(([zeichen, x, y]) => (
+                    <button
+                      key={zeichen}
+                      title={zeichen === '⌂' ? 'Auf die Ausgangsstellung fahren' : 'Halten zum Schwenken'}
+                      onMouseDown={() =>
+                        zeichen === '⌂'
+                          ? void api('ptz.heim', kamera.id).catch(app.reportError)
+                          : bewegen(kamera, x, y)
+                      }
+                      onMouseUp={() => halten(kamera)}
+                      onMouseLeave={() => halten(kamera)}
+                    >
+                      {zeichen}
+                    </button>
+                  ))}
+                  <div className="zoomknoepfe">
+                    <button
+                      title="Halten zum Hineinzoomen"
+                      onMouseDown={() => zoomen(kamera, 1)}
+                      onMouseUp={() => halten(kamera)}
+                      onMouseLeave={() => halten(kamera)}
+                    >
+                      Zoom +
+                    </button>
+                    <button
+                      title="Halten zum Herauszoomen"
+                      onMouseDown={() => zoomen(kamera, -1)}
+                      onMouseUp={() => halten(kamera)}
+                      onMouseLeave={() => halten(kamera)}
+                    >
+                      Zoom −
+                    </button>
+                    <button onClick={() => void api('ptz.scharfstellen', kamera.id).catch(app.reportError)}>
+                      Scharfstellen
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <table className="liste">
                 <tbody>
                   {kamera.positionen.map((position, i) => (
@@ -347,6 +542,12 @@ export function KameraEinstellungen(): JSX.Element {
                         />
                       </td>
                       <td>
+                        {position.koordinaten && kamera.ablage === 'votura' && (
+                          <div className="hint mono">
+                            Schwenk {position.koordinaten.pan} · Neigung {position.koordinaten.tilt} ·
+                            Zoom {position.koordinaten.zoom}
+                          </div>
+                        )}
                         <input
                           value={position.name}
                           onChange={(e) =>
@@ -359,20 +560,22 @@ export function KameraEinstellungen(): JSX.Element {
                         />
                       </td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button onClick={() => void anfahren(kamera, position)}>Anfahren</button>{' '}
                         <button
+                          disabled={!gespeichert.includes(kamera.id)}
+                          onClick={() => void anfahren(kamera, position)}
+                        >
+                          Anfahren
+                        </button>{' '}
+                        <button
+                          disabled={!gespeichert.includes(kamera.id)}
                           title="Die Kamera steht jetzt richtig? Dann hier ablegen."
-                          onClick={() =>
-                            void api('ptz.positionSpeichern', {
-                              id: kamera.id,
-                              nummer: position.nummer
-                            }).catch(app.reportError)
-                          }
+                          onClick={() => void ablegen(kamera, position, i)}
                         >
                           Hier ablegen
                         </button>{' '}
                         <button
-                          className="danger"
+                          className="ghost danger"
+                          title="Diese Position aus der Liste nehmen (die Kamera behält sie)."
                           onClick={() =>
                             aendern(kamera.id, {
                               positionen: kamera.positionen.filter((_, j) => j !== i)

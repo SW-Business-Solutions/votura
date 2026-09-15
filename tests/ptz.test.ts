@@ -16,19 +16,24 @@ import {
   PTZ_ERKENNUNG,
   PTZ_PROFILE,
   istViscaAntwort,
+  pantiltAusAntwort,
   ptzAntwort,
   ptzPaket,
   ptzProfil,
   rahmeFolgeZuruecksetzen,
   rahmeGekapselt,
   viscaAutofokus,
+  viscaFragePosition,
   viscaFrageZoom,
   viscaHeim,
+  viscaPositionAbsolut,
   viscaPresetAbrufen,
   viscaPresetSpeichern,
   viscaSchwenkStopp,
   viscaSchwenken,
-  viscaZoom
+  viscaZoom,
+  viscaZoomAbsolut,
+  zoomAusAntwort
 } from '../src/shared/ptz'
 
 /** Bytes lesbar machen — Testausgaben in Hex sind sonst nicht zu deuten. */
@@ -112,6 +117,72 @@ describe('VISCA-Befehle', () => {
       viscaFrageZoom()
     ]
     for (const befehl of alle) expect(befehl[befehl.length - 1]).toBe(0xff)
+  })
+})
+
+describe('Stellungen statt Speicherplätze', () => {
+  /*
+   * Der Ausweg für Kameras ohne eigenen Positionsspeicher: Votura fragt die
+   * Kamera nach ihren Zahlen, merkt sie sich und schickt sie ihr zurück.
+   *
+   * VISCA überträgt 16-Bit-Werte als vier Bytes mit je vier Bit. Wer das
+   * übersieht, schickt ein Paket, das die Kamera mitten im Wort für beendet
+   * hält — deshalb stehen die Halbbytes hier ausdrücklich im Test.
+   */
+  it('zerlegt die Stellung in Halbbytes', () => {
+    expect(hex(viscaPositionAbsolut({ pan: 0x0123, tilt: 0x0456 }, 8, 6))).toBe(
+      '81 01 06 02 08 06 00 01 02 03 00 04 05 06 ff'
+    )
+  })
+
+  it('schickt auch negative Werte richtig', () => {
+    /* Nach links ist ein Schwenk unter null; als Zweierkomplement wird daraus
+       0xFFFF für −1. */
+    const befehl = viscaPositionAbsolut({ pan: -1, tilt: 0 }, 8, 6)
+    expect(hex(befehl.subarray(6, 10))).toBe('0f 0f 0f 0f')
+    expect(hex(befehl.subarray(10, 14))).toBe('00 00 00 00')
+  })
+
+  it('setzt den Zoom auf einen genauen Wert', () => {
+    expect(hex(viscaZoomAbsolut(0x4000))).toBe('81 01 04 47 04 00 00 00 ff')
+  })
+
+  it('fragt nach Schwenk und Neigung', () => {
+    expect(hex(viscaFragePosition())).toBe('81 09 06 12 ff')
+  })
+
+  it('liest die Stellung aus der Antwort', () => {
+    /* `90 50 0p 0p 0p 0p 0t 0t 0t 0t FF` */
+    const antwort = new Uint8Array([
+      0x90, 0x50, 0x00, 0x01, 0x02, 0x03, 0x00, 0x04, 0x05, 0x06, 0xff
+    ])
+    expect(pantiltAusAntwort(antwort)).toEqual({ pan: 0x0123, tilt: 0x0456 })
+  })
+
+  it('liest auch eine Stellung links der Mitte', () => {
+    const antwort = new Uint8Array([
+      0x90, 0x50, 0x0f, 0x0f, 0x0f, 0x0f, 0x00, 0x00, 0x00, 0x00, 0xff
+    ])
+    expect(pantiltAusAntwort(antwort)).toEqual({ pan: -1, tilt: 0 })
+  })
+
+  it('liest den Zoomstand', () => {
+    expect(zoomAusAntwort(new Uint8Array([0x90, 0x50, 0x04, 0x00, 0x00, 0x00, 0xff]))).toBe(0x4000)
+  })
+
+  it('r\u00e4t nicht, wenn die Antwort nicht passt', () => {
+    /*
+     * Eine erfundene Stellung f\u00fchrte die Kamera sp\u00e4ter zuverl\u00e4ssig an den
+     * falschen Ort — und zwar mitten in der Versammlung. Lieber nichts.
+     */
+    expect(pantiltAusAntwort(new Uint8Array([0x90, 0x41, 0xff]))).toBeUndefined()
+    expect(pantiltAusAntwort(new Uint8Array([0x90, 0x50, 0x00, 0x01, 0xff]))).toBeUndefined()
+    expect(pantiltAusAntwort(new Uint8Array([]))).toBeUndefined()
+    expect(zoomAusAntwort(new Uint8Array([0x48, 0x54, 0x54, 0x50]))).toBeUndefined()
+  })
+
+  it('nennt die F\u00e4higkeit in jedem Profil', () => {
+    for (const profil of PTZ_PROFILE) expect(typeof profil.kann.absolut).toBe('boolean')
   })
 })
 
