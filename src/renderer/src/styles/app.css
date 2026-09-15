@@ -1167,6 +1167,13 @@ td.rede-knoepfe {
   flex: none;
 }
 
+/* Eine Trennlinie zwischen zwei Gedanken — im Dialog, in einer Karte. */
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--abstand-3) 0;
+}
+
 .mt-1 {
   margin-top: var(--abstand-1);
 }

@@ -12,7 +12,7 @@
  * kann vortreten, ohne dass jemand die Maus anfasst.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Card as Ausweis, CardStock, Participant, PresenceSummary } from '@shared/types'
+import type { AttendanceEntry, Card as Ausweis, CardStock, Participant, PresenceSummary } from '@shared/types'
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
@@ -52,8 +52,25 @@ export function AkkreditierungPage(): React.JSX.Element {
   /* Die Kamera als zweiter Weg neben dem Handscanner — für Geräte, an denen
      keiner steckt (ADR-0007). */
   const [kamera, setKamera] = useState(false)
-  /* Wen wir gerade sperren wollen — die Begründung steht im Protokoll. */
-  const [sperren, setSperren] = useState<{ person: Participant; grund: string } | null>(null)
+  /*
+   * Eine Person bearbeiten. Der Dialog trägt alles, was selten gebraucht wird
+   * und deshalb nicht in die Zeile gehört: die Korrektur eines Tippfehlers,
+   * die Sperre und den Anwesenheitsverlauf. In der Zeile bleiben die drei
+   * Handgriffe des Einlasses — mehr steht dort im Weg.
+   */
+  const [bearbeiten, setBearbeiten] = useState<{
+    person: Participant
+    form: {
+      lastName: string
+      firstName: string
+      number: string
+      note: string
+      weight: number
+      eligible: boolean
+    }
+    grund: string
+  } | null>(null)
+  const [verlauf, setVerlauf] = useState<AttendanceEntry[] | null>(null)
   /* Der Ausweisbestand, wenn jemand ihn sehen will. */
   const [ausweise, setAusweise] = useState<Ausweis[] | null>(null)
   const sucheFeld = useRef<HTMLInputElement | null>(null)
@@ -114,6 +131,55 @@ export function AkkreditierungPage(): React.JSX.Element {
     }
   }
 
+  /** Den Dialog öffnen und gleich den Verlauf nachladen. */
+  const bearbeitenOeffnen = (person: Participant): void => {
+    setBearbeiten({
+      person,
+      form: {
+        lastName: person.lastName,
+        firstName: person.firstName,
+        number: person.number ?? '',
+        note: person.note ?? '',
+        weight: person.weight,
+        eligible: person.eligible
+      },
+      grund: ''
+    })
+    setVerlauf(null)
+    void api('participant.history', person.id)
+      .then(setVerlauf)
+      .catch(() => setVerlauf([]))
+  }
+
+  /**
+   * Eine Korrektur speichern.
+   *
+   * `rowVersion` geht mit: Hat jemand anders die Zeile zwischenzeitlich
+   * angefasst, scheitert das Speichern, statt die fremde Änderung zu
+   * überschreiben. Am Einlass sitzen mehrere Leute an derselben Liste.
+   */
+  const bearbeitenSpeichern = async (): Promise<void> => {
+    if (!bearbeiten || !bearbeiten.form.lastName.trim()) return
+    try {
+      await api('participant.update', {
+        id: bearbeiten.person.id,
+        rowVersion: bearbeiten.person.rowVersion,
+        eventId: bearbeiten.person.eventId,
+        lastName: bearbeiten.form.lastName,
+        firstName: bearbeiten.form.firstName,
+        number: bearbeiten.form.number.trim() || undefined,
+        note: bearbeiten.form.note.trim() || undefined,
+        weight: bearbeiten.form.weight,
+        eligible: bearbeiten.form.eligible
+      })
+      setBearbeiten(null)
+      await laden()
+      app.notify('ok', 'Der Eintrag ist geändert.')
+    } catch (fehler) {
+      app.reportError(fehler)
+    }
+  }
+
   /**
    * Eine Person sperren — und damit jeden Ausweis, den sie hat.
    *
@@ -122,12 +188,13 @@ export function AkkreditierungPage(): React.JSX.Element {
    * Begründung, und deshalb steht sie im Protokoll.
    */
   const personSperren = async (): Promise<void> => {
-    if (!sperren || !sperren.grund.trim()) return
+    if (!bearbeiten || !bearbeiten.grund.trim()) return
+    const person = bearbeiten.person
     try {
-      await api('participant.block', { id: sperren.person.id, reason: sperren.grund.trim() })
-      setSperren(null)
+      await api('participant.block', { id: person.id, reason: bearbeiten.grund.trim() })
+      setBearbeiten(null)
       await laden()
-      app.notify('ok', `${sperren.person.lastName}, ${sperren.person.firstName} ist gesperrt.`)
+      app.notify('ok', `${person.lastName}, ${person.firstName} ist gesperrt.`)
     } catch (fehler) {
       app.reportError(fehler)
     }
@@ -136,6 +203,7 @@ export function AkkreditierungPage(): React.JSX.Element {
   const personEntsperren = async (person: Participant): Promise<void> => {
     try {
       await api('participant.unblock', person.id)
+      setBearbeiten(null)
       await laden()
       app.notify('ok', 'Sperre aufgehoben.')
     } catch (fehler) {
@@ -714,24 +782,18 @@ export function AkkreditierungPage(): React.JSX.Element {
                   >
                     <td>
                       {person.lastName}, {person.firstName}
-                      {person.blockedAt && <span className="badge">gesperrt</span>}
+                      {person.blockedAt && (
+                        <span className="badge danger" title={person.blockedReason ?? undefined}>
+                          gesperrt
+                        </span>
+                      )}
                     </td>
                     <td>{person.number ?? '—'}</td>
                     <td>
                       {person.eligible ? (person.weight > 1 ? `${person.weight} Stimmen` : 'ja') : 'Gast'}
                     </td>
                     <td>{person.present ? uhrzeit(person.lastSeenAt) : '—'}</td>
-                    <td>
-                      {person.blockedAt ? (
-                        <span className="badge danger" title={person.blockedReason ?? undefined}>
-                          gesperrt
-                        </span>
-                      ) : person.passIssued ? (
-                        'Pass'
-                      ) : (
-                        '—'
-                      )}
-                    </td>
+                    <td>{person.passIssued ? 'Pass' : '—'}</td>
                     <td className="row" onClick={(ereignis) => ereignis.stopPropagation()}>
                       <button onClick={() => void anwesenheit(person, person.present ? 'out' : 'in')}>
                         {person.present ? 'Gegangen' : 'Da'}
@@ -748,19 +810,13 @@ export function AkkreditierungPage(): React.JSX.Element {
                           {person.passIssued ? 'Pass ersetzen' : 'Pass'}
                         </button>
                       )}
-                      {person.blockedAt ? (
-                        <button className="ghost" onClick={() => void personEntsperren(person)}>
-                          Entsperren
-                        </button>
-                      ) : (
-                        <button
-                          className="ghost danger"
-                          title="Sperrt die Person: kein Stimmzettel, keine digitale Berechtigung, gleich welchen Ausweis sie vorzeigt."
-                          onClick={() => setSperren({ person, grund: '' })}
-                        >
-                          Sperren
-                        </button>
-                      )}
+                      <button
+                        className="ghost"
+                        title="Angaben berichtigen, sperren, Verlauf ansehen."
+                        onClick={() => bearbeitenOeffnen(person)}
+                      >
+                        Bearbeiten
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -769,33 +825,158 @@ export function AkkreditierungPage(): React.JSX.Element {
           )}
         </Card>
       </div>
-      {sperren && (
+      {bearbeiten && (
         <Modal
-          title={`${sperren.person.lastName}, ${sperren.person.firstName} sperren`}
-          onClose={() => setSperren(null)}
+          title={`${bearbeiten.person.lastName}, ${bearbeiten.person.firstName}`}
+          onClose={() => setBearbeiten(null)}
+          actions={
+            <>
+              <button onClick={() => setBearbeiten(null)}>Abbrechen</button>
+              <button
+                className="primary"
+                disabled={!bearbeiten.form.lastName.trim()}
+                onClick={() => void bearbeitenSpeichern()}
+              >
+                Speichern
+              </button>
+            </>
+          }
         >
-          <p className="hint">
-            Danach bekommt diese Person weder einen Stimmzettel noch eine digitale Berechtigung — gleich
-            welchen Ausweis sie vorzeigt. Die Sperre lässt sich jederzeit wieder aufheben, und beides steht
-            mit Begründung und Uhrzeit im Protokoll.
-          </p>
-          <Field label="Begründung">
+          <div className="row">
+            <Field label="Nachname">
+              <input
+                autoFocus
+                value={bearbeiten.form.lastName}
+                onChange={(ereignis) =>
+                  setBearbeiten({
+                    ...bearbeiten,
+                    form: { ...bearbeiten.form, lastName: ereignis.target.value }
+                  })
+                }
+              />
+            </Field>
+            <Field label="Vorname">
+              <input
+                value={bearbeiten.form.firstName}
+                onChange={(ereignis) =>
+                  setBearbeiten({
+                    ...bearbeiten,
+                    form: { ...bearbeiten.form, firstName: ereignis.target.value }
+                  })
+                }
+              />
+            </Field>
+            <Field label="Nummer" hint="Mitglieds- oder Delegiertennummer, wie sie in der Einladung steht.">
+              <input
+                value={bearbeiten.form.number}
+                onChange={(ereignis) =>
+                  setBearbeiten({
+                    ...bearbeiten,
+                    form: { ...bearbeiten.form, number: ereignis.target.value }
+                  })
+                }
+              />
+            </Field>
+            <Field
+              label="Stimmen"
+              hint="Wie viele Stimmen diese Person führt — bei Delegierten mehr als eine."
+            >
+              <NumberInput
+                value={bearbeiten.form.weight}
+                min={1}
+                max={999}
+                disabled={!bearbeiten.form.eligible}
+                onChange={(wert) =>
+                  setBearbeiten({ ...bearbeiten, form: { ...bearbeiten.form, weight: wert } })
+                }
+              />
+            </Field>
+          </div>
+          <Field label="Rolle">
+            <select
+              value={bearbeiten.form.eligible ? 'ja' : 'nein'}
+              onChange={(ereignis) =>
+                setBearbeiten({
+                  ...bearbeiten,
+                  form: { ...bearbeiten.form, eligible: ereignis.target.value === 'ja' }
+                })
+              }
+            >
+              <option value="ja">Stimmberechtigt</option>
+              <option value="nein">Gast — ohne Stimmrecht</option>
+            </select>
+          </Field>
+          <Field label="Notiz" hint="Steht nur in der Liste, nicht auf dem Ausweis.">
             <input
-              autoFocus
-              value={sperren.grund}
-              placeholder="z. B. nicht stimmberechtigt laut Mitgliederliste"
-              onChange={(ereignis) => setSperren({ ...sperren, grund: ereignis.target.value })}
-              onKeyDown={(ereignis) => {
-                if (ereignis.key === 'Enter') void personSperren()
-              }}
+              value={bearbeiten.form.note}
+              onChange={(ereignis) =>
+                setBearbeiten({ ...bearbeiten, form: { ...bearbeiten.form, note: ereignis.target.value } })
+              }
             />
           </Field>
-          <div className="row mt-2">
-            <button className="danger" disabled={!sperren.grund.trim()} onClick={() => void personSperren()}>
-              Sperren
-            </button>
-            <button onClick={() => setSperren(null)}>Abbrechen</button>
-          </div>
+
+          {/*
+            Die Sperre steht bewusst unter den Angaben und nicht in der Zeile:
+            Sie ist der schärfste Eingriff dieser Seite und soll einen Moment
+            Aufmerksamkeit kosten.
+          */}
+          <hr className="mt-2" />
+          {bearbeiten.person.blockedAt ? (
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong>Gesperrt</strong> seit {uhrzeit(bearbeiten.person.blockedAt)}
+                {bearbeiten.person.blockedReason ? ` — ${bearbeiten.person.blockedReason}` : ''}
+              </div>
+              <button onClick={() => void personEntsperren(bearbeiten.person)}>Entsperren</button>
+            </div>
+          ) : (
+            <Field
+              label="Sperren"
+              hint="Danach bekommt diese Person weder einen Stimmzettel noch eine digitale Berechtigung — gleich welchen Ausweis sie vorzeigt. Aufheben geht jederzeit; beides steht mit Begründung und Uhrzeit im Protokoll."
+            >
+              <div className="row">
+                <input
+                  value={bearbeiten.grund}
+                  placeholder="Begründung, z. B. nicht stimmberechtigt laut Mitgliederliste"
+                  onChange={(ereignis) => setBearbeiten({ ...bearbeiten, grund: ereignis.target.value })}
+                />
+                <button
+                  className="danger"
+                  disabled={!bearbeiten.grund.trim()}
+                  onClick={() => void personSperren()}
+                >
+                  Sperren
+                </button>
+              </div>
+            </Field>
+          )}
+
+          <hr className="mt-2" />
+          <h3>Kommen und Gehen</h3>
+          {verlauf === null ? (
+            <p className="hint">Wird geladen …</p>
+          ) : verlauf.length === 0 ? (
+            <p className="hint">Noch kein Eintrag — diese Person war heute nicht am Einlass.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Zeit</th>
+                  <th>Vorgang</th>
+                  <th>Notiz</th>
+                </tr>
+              </thead>
+              <tbody>
+                {verlauf.map((eintrag) => (
+                  <tr key={eintrag.id}>
+                    <td className="mono">{uhrzeit(eintrag.at)}</td>
+                    <td>{eintrag.kind === 'in' ? 'gekommen' : 'gegangen'}</td>
+                    <td>{eintrag.note ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Modal>
       )}
     </div>
