@@ -804,6 +804,8 @@ function videoFuer(id?: UUID): ProjectionVideo | undefined {
        jedes Gerät für sich — ein Saal mit zehn Tablets im Chor wäre
        unerträglich. */
     muted: false,
+    /* Ein Film läuft einmal — die Schleife ist eine ausdrückliche Ansage. */
+    schleife: false,
     readyCount: 0
   }
 }
@@ -862,6 +864,20 @@ export function seekVideo(buehne: number, seconds: number): ProjectionState {
   return setzeVideo(buehne, { position: ziel, readyCount: 0 })
 }
 
+/**
+ * Dauerschleife an oder aus.
+ *
+ * Wirkt erst am Ende des Films — ein laufender wird davon nicht angefasst.
+ * Das ist beabsichtigt: Wer die Schleife mitten im Film einschaltet, will,
+ * dass es danach weitergeht, und nicht, dass es jetzt von vorn beginnt.
+ */
+export function setVideoSchleife(buehne: number, schleife: boolean): ProjectionState {
+  let state = buehneVon(buehne)
+  if (state.mode !== 'video' || !state.video) return state
+  if (state.video.schleife === schleife) return state
+  return setzeVideo(buehne, { schleife, position: sollPosition(state.video) })
+}
+
 export function setVideoMuted(buehne: number, muted: boolean): ProjectionState {
   let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video) return state
@@ -906,10 +922,16 @@ export function reportVideoDuration(buehne: number, seconds: number): Projection
  * Es bleibt am Ende stehen statt zurückzuspringen: Ein Film, der von vorn
  * beginnt, während die Versammlungsleitung schon spricht, zieht die
  * Aufmerksamkeit zurück auf die Wand.
+ *
+ * **Es sei denn, die Dauerschleife ist eingeschaltet.** Dann beginnt er hier
+ * von vorn — an einer Stelle, für alle Geräte zugleich. Die Uhr wird dabei
+ * neu verankert; die Bildschirme im Saal rechnen sich ihren Stand wie immer
+ * selbst aus und springen zurück.
  */
 export function videoEnded(buehne: number): ProjectionState {
   let state = buehneVon(buehne)
   if (state.mode !== 'video' || !state.video || !state.video.playing) return state
+  if (state.video.schleife) return setzeVideo(buehne, { playing: true, position: 0 })
   return setzeVideo(buehne, {
     playing: false,
     position: state.video.durationSeconds ?? sollPosition(state.video)

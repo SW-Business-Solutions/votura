@@ -186,3 +186,41 @@ describe('Ton nur an einer Stelle', () => {
     expect(rahmen).toContain('muted={!audio || video.muted}')
   })
 })
+
+describe('Dauerschleife', () => {
+  /*
+   * Der Regelfall bleibt: Ein Film bleibt am Ende stehen. Für den
+   * Willkommensfilm vor dem Beginn und die Bilderschleife in der Pause gibt
+   * es die Ausnahme — und sie wird an **einer** Stelle entschieden, nämlich
+   * im Zustand.
+   */
+  it('entscheidet der Dienst, nicht das Videoelement', () => {
+    /*
+     * Mit `loop` am Element wüsste jedes Gerät für sich, wann es von vorn
+     * beginnt, und die Uhr des Zustands wüsste es nicht: Nach der ersten
+     * Runde liefen die Bildschirme im Saal auseinander.
+     */
+    const anzeige = lies('src/renderer/src/projection/VideoFrame.tsx')
+    expect(anzeige).not.toMatch(/<video[^>]*\sloop/)
+    const dienst = lies('src/main/services/projection.ts')
+    expect(dienst).toContain(
+      'if (state.video.schleife) return setzeVideo(buehne, { playing: true, position: 0 })'
+    )
+  })
+
+  it('läuft nach dem Rücksprung auch wirklich weiter', () => {
+    /*
+     * Das Anstoßen hing am Wechsel von `playing` — und der findet beim
+     * Rücksprung nicht statt: Der Zustand sagt durchgehend „läuft", das
+     * Element ist trotzdem stehengeblieben. Ohne diese Zeile spränge das Bild
+     * auf Sekunde null und bliebe dort stehen.
+     */
+    const anzeige = lies('src/renderer/src/projection/VideoFrame.tsx')
+    expect(anzeige).toContain('if (video.playing && v.paused) void v.play()')
+  })
+
+  it('ist von Haus aus aus', () => {
+    const dienst = lies('src/main/services/projection.ts')
+    expect(dienst).toContain('schleife: false')
+  })
+})

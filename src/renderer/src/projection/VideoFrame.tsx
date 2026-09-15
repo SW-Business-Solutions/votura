@@ -82,6 +82,16 @@ export function VideoFrame({ video, src, audio, onDuration, onReady, onEnded }: 
 
     const pruefe = (): void => {
       if (!Number.isFinite(v.currentTime)) return
+      /*
+       * **Weiterlaufen, wenn der Zustand es sagt.**
+       *
+       * Das Anstoßen hängt sonst am Wechsel von `playing` — und am Ende einer
+       * Dauerschleife wechselt der nicht: Der Zustand sagt durchgehend
+       * „läuft", das Element ist trotzdem stehengeblieben, weil der Film zu
+       * Ende war. Ohne diese Zeile spränge das Bild zurück auf Sekunde null
+       * und bliebe dort stehen.
+       */
+      if (video.playing && v.paused) void v.play().catch(() => undefined)
       const lauf = berechneGleichlauf(video, v.currentTime, Date.now())
       if (lauf.springen) {
         v.currentTime = lauf.soll

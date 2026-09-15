@@ -386,7 +386,12 @@ Wahlansicht. Zurück zum Wahlgang geht es mit jeder Schaltfläche unter _Anzeige
   im Saal.
 - Nach dem Einspeisen einmal kurz anspielen: Erst dann steht die Laufzeit fest, und der Beamer
   hat vorgepuffert.
-- Am Ende bleibt der Film stehen statt zurückzuspringen.
+- Am Ende bleibt der Film stehen statt zurückzuspringen — ein Film, der von selbst neu startet,
+  während die Versammlungsleitung schon spricht, zieht die Aufmerksamkeit zurück auf die Wand.
+- **Dauerschleife** für den anderen Fall: den Willkommensfilm vor dem Beginn, die Bilderschleife in
+  der Pause. Der Knopf schaltet zwischen _Einmal_ und _Dauerschleife_; er wirkt erst am Ende, ein
+  laufender Film wird davon nicht angefasst. Entschieden wird das an einer Stelle für alle Geräte,
+  damit die Bildschirme im Saal nach der ersten Runde nicht auseinanderlaufen.
 
 ## Zweites Gerät im Veranstaltungsnetz
 

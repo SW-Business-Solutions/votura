@@ -151,6 +151,23 @@ export function VideoLibrary(): JSX.Element {
               >
                 {video.muted ? '🔇 Ton aus' : '🔊 Ton an'}
               </button>
+              {/*
+                Die Dauerschleife für den Willkommensfilm und die Pause. Sie
+                wirkt erst am Ende: Wer sie mitten im Film einschaltet, will,
+                dass es danach weitergeht — nicht, dass es jetzt von vorn
+                beginnt.
+              */}
+              <button
+                className={video.schleife ? 'primary' : ''}
+                title={
+                  video.schleife ? 'Der Film beginnt am Ende von vorn.' : 'Der Film bleibt am Ende stehen.'
+                }
+                onClick={() =>
+                  void api('video.setSchleife', !video.schleife, app.ziel).catch(app.reportError)
+                }
+              >
+                {video.schleife ? '🔁 Dauerschleife' : '🔁 Einmal'}
+              </button>
               <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
                 {zeit(position)} / {zeit(video.durationSeconds)}
               </span>

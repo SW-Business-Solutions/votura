@@ -730,6 +730,14 @@ export interface Api {
   /** Springt an diese Stelle (Sekunden). */
   'video.seek': (seconds: number, stage?: Buehnenwahl) => Promise<ProjectionState>
   'video.setMuted': (muted: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
+  /**
+   * Dauerschleife: Am Ende beginnt der Film von vorn.
+   *
+   * Für den Willkommensfilm vor dem Beginn und die Bilderschleife in der
+   * Pause. Wirkt erst am Ende — ein laufender Film wird davon nicht
+   * angefasst.
+   */
+  'video.setSchleife': (schleife: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
   /** Was das Gerät aus der Datei gelesen hat. */
   'video.reportDuration': (seconds: number, stage?: Buehnenwahl) => Promise<ProjectionState>
   /** Dieses Gerät hat genug gepuffert. */

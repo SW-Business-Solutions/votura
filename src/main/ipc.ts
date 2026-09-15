@@ -106,6 +106,7 @@ import {
   setProjection,
   setPresentationSlide,
   setVideoMuted,
+  setVideoSchleife,
   setVideoPlaying,
   seekVideo,
   reportVideoDuration,
@@ -895,6 +896,8 @@ const api: Api = {
     aufBuehnen(stage, (buehne) => setVideoPlaying(buehne, playing)),
   'video.seek': async (seconds, stage) => aufBuehnen(stage, (buehne) => seekVideo(buehne, seconds)),
   'video.setMuted': async (muted, stage) => aufBuehnen(stage, (buehne) => setVideoMuted(buehne, muted)),
+  'video.setSchleife': async (schleife, stage) =>
+    aufBuehnen(stage, (buehne) => setVideoSchleife(buehne, schleife)),
   'video.reportDuration': async (seconds, stage) => reportVideoDuration(bezugsbuehne(stage), seconds),
   'video.reportReady': async (stage) => reportVideoReady(bezugsbuehne(stage)),
   'video.reportEnded': async (stage) => videoEnded(bezugsbuehne(stage)),

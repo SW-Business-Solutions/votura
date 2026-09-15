@@ -29,6 +29,12 @@ einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
 - **Beleg über den Losentscheid.** Kein Stimmzettel, sondern ein Zettel zum
   Unterschreiben fürs Protokoll.
 
+### Filme in Dauerschleife
+
+Ein Film bleibt am Ende stehen — das ist richtig, solange er zwischen zwei Wahlgängen läuft. Für den
+Willkommensfilm vor dem Beginn und die Bilderschleife in der Pause gibt es jetzt den Knopf
+**Dauerschleife**: Dann beginnt er am Ende von vorn, auf allen Bildschirmen zugleich.
+
 ### Behoben
 
 - **Votura Saal fand den Hauptrechner unter einer Adresse, die es nur in ihm selbst gibt.** Gemerkt

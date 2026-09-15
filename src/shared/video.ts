@@ -69,6 +69,21 @@ export interface ProjectionVideo {
   /** Ton an? Der Beamer hat ihn an, Nebenbildschirme im Saal in der Regel nicht. */
   muted: boolean
   /**
+   * Von vorn beginnen, wenn der Film durchgelaufen ist.
+   *
+   * Der Regelfall ist das Gegenteil: Ein Film, der von selbst neu startet,
+   * während die Versammlungsleitung schon spricht, zieht die Aufmerksamkeit
+   * zurück auf die Wand. Es gibt aber den anderen Fall — ein Willkommensfilm
+   * oder eine Bilderschleife, die vor dem Beginn und in den Pausen einfach
+   * laufen soll, ohne dass jemand danebensteht.
+   *
+   * Gesteuert wird die Wiederholung **hier** und nicht über das `loop`-Merkmal
+   * des Videoelements: Dann wüsste jedes Gerät für sich, wann es von vorn
+   * beginnt, und die Uhr des Zustands wüsste es nicht — nach der ersten
+   * Runde liefen die Bildschirme im Saal auseinander.
+   */
+  schleife: boolean
+  /**
    * Wie viele Geräte gemeldet haben, dass sie genug gepuffert haben.
    *
    * Nur zur Anzeige in der Bedienung — der Start wartet darauf, damit nicht
