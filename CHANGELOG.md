@@ -3,7 +3,13 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
-## Unveröffentlicht
+## 1.5.0 — Die Griffe, die gefehlt haben
+
+Diese Fassung bringt kaum neue Fähigkeiten — sie macht erreichbar, was das
+Programm längst konnte, und repariert drei Stellen, an denen ein Knopf nichts
+tat. Wer 1.4.0 benutzt hat und sich gefragt hat, wo man eine verlorene Karte
+ungültig macht oder einen Tippfehler berichtigt: Hier ist die Antwort.
+
 
 ### Was das Programm konnte und niemand erreichte
 
@@ -51,6 +57,11 @@ Willkommensfilm vor dem Beginn und die Bilderschleife in der Pause gibt es jetzt
 - **Umbenennen ging nicht** — in der Redenbibliothek, bei den Präsentationen und bei den Videos.
   Der Knopf öffnete `window.prompt`, das es in Electron nicht gibt: Es erschien nur die Meldung
   „prompt() is not supported". Jetzt fragt ein richtiger Dialog nach dem Namen.
+- **Die Aktualisierung aus dem Programm heraus fand keine Prüfsumme.** Der Veröffentlichung zu
+  1.4.0 lag die Prüfsummenliste unter einem Namen mit Fassungsnummer bei — gesucht wird
+  `pruefsummen.txt`. Die Anwendung lud deshalb nichts, sondern meldete, zu der Datei sei keine
+  Prüfsumme veröffentlicht; auf der Bezugsseite blieb die Liste der Dateien leer. Die Liste
+  heißt wieder wie erwartet.
 
 ### Hinweise im Manuskript
 
