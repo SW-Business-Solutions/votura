@@ -153,6 +153,50 @@ export function sprachmodellEntfernen(): SprachmodellInfo {
  * vorhandene Modell unangetastet; ein halbes Archiv fiele sonst erst am Pult
  * auf, wenn jemand auf „Nach Stimme" schaltet.
  */
+/**
+ * Sagt, was wirklich schiefging.
+ *
+ * `fetch` wirft bei jeder Störung der Leitung dieselben zwei Wörter: „fetch
+ * failed". Der eigentliche Grund — Namensauflösung, Zeitablauf, abgewiesene
+ * Verbindung, ein Zertifikat — steckt in `cause`, und zwar mitunter zwei
+ * Ebenen tief.
+ *
+ * Das ist kein Schönheitsfehler: Eine Meldung, die nichts sagt, macht aus
+ * einem Netzproblem eine Suche im Dunkeln — erlebt an genau dieser Stelle.
+ */
+function grund(fehler: unknown): string {
+  const teile: string[] = []
+  let aktuell: unknown = fehler
+  for (let tiefe = 0; aktuell instanceof Error && tiefe < 4; tiefe++) {
+    const code = (aktuell as NodeJS.ErrnoException).code
+    const text = aktuell.message || aktuell.name
+    teile.push(code && !text.includes(code) ? `${text} (${code})` : text)
+    aktuell = (aktuell as { cause?: unknown }).cause
+  }
+  if (teile.length === 0) return String(fehler)
+  return teile.join(' — ')
+}
+
+/**
+ * Holt die Antwort — und versucht es bei einer gestörten Leitung ein zweites
+ * Mal.
+ *
+ * Nicht aus Hartnäckigkeit: Eine Verbindung, die zwischen zwei Abrufen
+ * offengehalten und vom Gegenüber inzwischen geschlossen wurde, scheitert
+ * beim ersten Schreiben und beim zweiten nicht mehr. Ein einzelner erneuter
+ * Versuch fängt genau das ab. Antwortet der Server dagegen mit einem Fehler,
+ * wird nichts wiederholt — dann liegt es nicht an der Leitung.
+ */
+async function holeMitZweitemVersuch(adresse: string): Promise<Response> {
+  try {
+    return await fetch(adresse)
+  } catch (erster) {
+    logger.warn(`Sprachmodell: erster Versuch gescheitert (${grund(erster)}) — noch einmal`)
+    await new Promise((weiter) => setTimeout(weiter, 500))
+    return fetch(adresse)
+  }
+}
+
 export async function sprachmodellLaden(
   datei: string,
   aufFortschritt?: (stand: ModellLadestand) => void
@@ -171,7 +215,7 @@ export async function sprachmodellLaden(
   logger.info(`Sprachmodell wird geladen: ${angebot.datei} (${angebot.bytes} Bytes)`)
 
   try {
-    const antwort = await fetch(modellAdresse(angebot))
+    const antwort = await holeMitZweitemVersuch(modellAdresse(angebot))
     if (!antwort.ok || !antwort.body) {
       throw new Error(`Der Server antwortete mit ${antwort.status} ${antwort.statusText}.`)
     }
@@ -239,7 +283,7 @@ export async function sprachmodellLaden(
     return sprachmodellInfo()
   } catch (fehler) {
     rmSync(arbeitsdatei, { force: true })
-    const text = fehler instanceof Error ? fehler.message : String(fehler)
+    const text = grund(fehler)
     logger.warn(`Sprachmodell ${angebot.datei} nicht geladen: ${text}`)
     melde(0, { fehler: text })
     throw new Error(`${angebot.name} konnte nicht geladen werden: ${text}`)
