@@ -271,6 +271,26 @@ mkdir -p "$ZIEL"
 tar -xzf "$arbeit/paket.tar.gz" -C "$ZIEL" --strip-components=1
 [[ -x "$ZIEL/$PROGRAMM" ]] || fehler "Im Archiv fehlt die Programmdatei $PROGRAMM."
 
+# ------------------------------------------------------------------ NDI weg
+#
+# Ein fest eingerichtetes Abbild ist kein Allzweckrechner, sondern ein Gerät
+# mit fester Funktion: Es bootet ohne Anmeldung in Votura, es gibt keinen
+# Zugang, und wer daran etwas ändern will, muss die Karte neu schreiben.
+#
+# Der Produktbegriff der NDI-SDK-Lizenz schließt genau das aus (§1b: keine
+# „appliances", keine eingebetteten Geräte). Ob ein Pi-Abbild darunter fällt,
+# ist ungeklärt — und solange es das ist, kommt die NDI-Laufzeit hier nicht
+# mit. Die Kameraansicht meldet auf dem Pi dann schlicht, dass sie auf diesem
+# Rechner nicht zu haben ist; alles andere läuft.
+#
+# Für die Desktop-Fassungen (Windows, Linux) gilt das nicht: Die sind
+# Allzweckrechner und von der Lizenz gedeckt.
+ndi_weg="$ZIEL/resources/app.asar.unpacked/node_modules/@grandi"
+if [[ -d "$ndi_weg" ]]; then
+  rm -rf "$ndi_weg"
+  melde 'NDI-Laufzeit aus dem Abbild entfernt (siehe Lizenzhinweis im Quelltext)'
+fi
+
 # ---------------------------------------------------------------- Benutzer
 
 melde 'Benutzer und Rechte'

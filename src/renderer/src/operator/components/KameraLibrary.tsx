@@ -260,6 +260,12 @@ export function KameraLibrary(): JSX.Element {
           )}
           {stand.fehler && <p className="hint mt-3">{stand.fehler}</p>}
           {stand.sdk && <p className="hint mt-3 mono">{stand.sdk}</p>}
+          {/*
+            Die Lizenz des NDI-SDK verlangt, dass bei jeder Verwendung der
+            Marke klar gesagt wird, dass es eine Marke ist — und dass nichts
+            den Eindruck erweckt, das Programm komme von NDI.
+          */}
+          <p className="hint">NDI® ist eine eingetragene Marke der Vizrt NDI AB.</p>
         </>
       )}
     </Card>

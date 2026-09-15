@@ -3,52 +3,68 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
-## Unveröffentlicht
+## 1.6.0 — Das Bild aus dem Saal
 
-### Behoben
+Diese Fassung bringt eine Fähigkeit, die Votura bisher nicht hatte und die kein Bildmischer
+mitbringt: Sie zeigt **Kamerabilder** — und weiß dabei als Einzige im Saal, **wer** da vorne steht.
+Aus dem Bild wird dadurch eine Bauchbinde, die stimmt, ohne dass jemand sie tippt.
 
-- **Das Kamerabild brauchte Sekunden, bis es an der Wand stand.** Die Suche kennt die Adresse, unter
-  der eine Kamera sendet — gab sie aber nicht an den Empfänger weiter, der daraufhin selbst noch
-  einmal suchte. Gemessen, im Wechsel und wiederholt: **4017 Millisekunden ohne die Adresse, 14 mit
-  ihr.** Sie wandert jetzt mit. Solange noch kein Bild gekommen ist, steht „verbindet …“ im Bild
-  und nicht „kein Bild“ — das eine schickt niemanden zur Kamera, wo nichts zu suchen ist.
-- **Die Kameraliste fing bei jedem Blick von vorn an.** Beim Verlassen der Karte wurde die Suche
-  sofort abgeschaltet und alles Gefundene weggeworfen. Dahinter stand die Sorge, NDI dürfe im Saal
-  nicht dauernd laufen — die gilt aber dem **Videostrom** mit seinen über hundert Megabit je
-  Sekunde, nicht der Suche, die ein paar Pakete verschickt. Die Suche läuft jetzt eine Minute nach,
-  und einmal gefundene Kameras bleiben in der Liste stehen.
+Dazu kommt eine Berichtigung, die längst fällig war: Die Redezeit startet jetzt, wenn sie starten
+soll — und nicht schon, wenn der Name auf dem Beamer erscheint.
 
-- **Jeder Wechsel der Ansicht setzte die Redezeit zurück.** Wer während einer
-  laufenden Redezeit kurz die Tagesordnung, die Kandidatenliste oder das Kamerabild zeigte und
-  danach zurückschaltete, hatte denselben Menschen vor sich — und schenkte ihm mit dem Rückweg
-  stillschweigend seine volle Zeit noch einmal. Der Grund stand als Absicht im Programm: Die
-  Vorstellung überlebte einen Ansichtswechsel nicht. Das war falsch. **Dass da vorne jemand steht
-  und spricht, hat nichts damit zu tun, was gerade an der Wand hängt** — die Uhr gehört zu der
-  Person. Sie läuft jetzt weiter, eine angehaltene bleibt angehalten, und die Reihe der nächsten
-  Redner bleibt stehen. Beendet wird eine Vorstellung ausdrücklich (**Beenden**) oder dadurch, dass
-  jemand anderes aufgerufen wird; ein Neustart räumt ohnehin auf. Wer dieselbe Person neu beginnen
-  lassen will, sagt es mit **Zeit neu**; eine geänderte Redezeit zählt ohnehin als Entscheidung.
-- **Im Kameramodus ließ sich die Redezeit nicht mehr anfassen.** Die Bauchbinde zeigte eine
-  laufende Uhr, aber Anhalten, Zeit geben und „Nächster“ waren gesperrt — sie fragten nach der
-  Ansicht statt nach dem Redner. Jetzt gelten die Griffe, solange jemand aufgerufen ist, und die
-  Bedienung zeigt sie auch dann.
+### Kameras im Saal
 
-### Die Redezeit startet, wenn sie starten soll
+Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die
+verbleibende Redezeit**. Empfangen wird über **NDI**, das Verfahren, mit dem Produktionskameras im
+Netz senden: Wer solche Kameras hat, steckt sie ein, und Votura findet sie.
 
-Bisher lief die Uhr ab dem Augenblick, in dem jemand den Namen auf den Beamer legte. Das war
-falsch herum: Ein Aufruf ist keine Ansage, dass jetzt gesprochen wird. Wer aufgerufen wird, steht
-auf und geht nach vorn — und diese Zeit ging von seiner Redezeit ab.
+Die Bauchbinde ist der eigentliche Grund für die Sache. Einen Bildmischer hat mancher Saal; was
+keiner hat, ist das Wissen, **wer** da vorne steht und wie lange er noch hat. Genau das weiß
+Votura ohnehin — aus demselben Aufruf, der auch die Uhr auf dem Beamer stellt. Getippt wird
+nichts.
 
-Jetzt zeigt der Beamer **Name und zugestandene Zeit**, und die Uhr wartet. Losgeschickt wird sie
-mit **Starten**. Das gilt auch für *Nächster*: Der rückt die Reihe weiter, startet aber nichts.
+Drei Entscheidungen, die man dem Bild nicht ansieht:
 
-Drei Zustände, drei Wörter in der Bedienung: **Starten** für die Uhr, die noch nie lief,
-**Anhalten** für die laufende, **Weiter** für die angehaltene. Und sichtbar unterschieden werden
-sie auch an der Wand — eine ruhende Uhr wird gedimmt, damit ein Halt zu sehen ist; eine, die noch
-gar nicht lief, nicht: Sie ist nicht unterbrochen, sondern bereit.
+- **Jedes Gerät empfängt selbst.** Im Zustand steht nur der Name der Quelle, nie ein Bild. Der
+  Beamerrechner baut seine Verbindung zur Kamera auf, ein Pi hinter dem zweiten Beamer seine
+  eigene. Einmal empfangen und weiterverteilen hieße, jedes Bild neu zu kodieren — auf dem
+  Rechner, der die Wahl führt.
+- **Eigener Prozess.** Die NDI-Bibliothek ist fremder, nativer Code. Stürzt sie ab, fällt das Bild
+  aus und sonst nichts.
+- **Erst auf Verlangen.** Ohne einen Blick in die Kameraliste startet nichts — eine Versammlung
+  ohne Kameras merkt von alledem nichts.
 
-Am Pult gilt dasselbe: Der Lauf des Manuskripts beginnt mit dem Start der Redezeit, nicht mit dem
-Aufruf.
+Dazu: Steht das Bild einer Kamera an der Wand, schaltet Votura ihr **rotes Licht**. Wer gefilmt
+wird, sieht es.
+
+Und eine Grenze, die nicht verhandelbar ist: **Kameras gehören ans Kabel.** Ein voller NDI-Strom
+belegt über hundert Megabit je Sekunde; über dasselbe WLAN laufen Handzettel und digitale
+Abstimmung. Geräte im Funknetz bekommen deshalb den Nebenstrom, den jede NDI-Quelle zusätzlich
+sendet.
+
+Votura zeichnet **nichts** auf. Das Bild endet mit der Rede.
+
+NDI® ist eine eingetragene Marke der Vizrt NDI AB.
+
+### Ein Bild aus dem Saal
+
+Eine neu gewählte Kamera zeigt zunächst **nur ihr Bild**. Das war einmal umgekehrt: Bauchbinde und
+Rednerreihe kamen von selbst mit, weil eine Vorstellung der häufigste Anlass ist. Wer aber einen
+Blick in den Saal zeigen wollte, bekam damit den Namen der Person über das Bild, die zuletzt
+gesprochen hat — und musste zwei Schalter umlegen, bevor das Bild sauber war. Etwas einzublenden
+ist eine Entscheidung; ein Name, der von selbst erscheint, ist eine Überraschung.
+
+Und weil eine Vorstellung einen Ansichtswechsel überlebt, sagt die Bedienung jetzt, **wen die
+Bauchbinde nennen würde** — man entdeckt es nicht erst an der Wand.
+
+### Die nächsten Redner über dem Kamerabild
+
+Dieselbe Reihe, die die Vorstellung an der Wand zeigt, lässt sich auch über das Kamerabild legen —
+unten rechts, gegenüber der Bauchbinde, einer je Zeile. Auf einer Versammlung mit zwölf Bewerbern
+ist das die Auskunft, nach der im Saal am häufigsten gefragt wird: Wer kommt nach mir?
+
+Getrennt von der Bauchbinde schaltbar, denn der Name dessen, der spricht, gehört fast immer ins
+Bild; die Reihe dahinter nicht immer — bei einem Grußwort gibt es keine.
 
 ### Kameras steuern
 
@@ -84,17 +100,6 @@ Und die Einstellungsseite zeigt jetzt oben, **was im Netz gefunden wurde**. Das 
 Auskunft: Eine Kamera, die ihr Bild sendet, verrät dabei ihre Adresse — genau die, die die
 Steuerung braucht. „Steuerung einrichten" legt den Eintrag fertig ausgefüllt an.
 
-### Ein Bild aus dem Saal
-
-Eine neu gewählte Kamera zeigt zunächst **nur ihr Bild**. Das war einmal umgekehrt: Bauchbinde und
-Rednerreihe kamen von selbst mit, weil eine Vorstellung der häufigste Anlass ist. Wer aber einen
-Blick in den Saal zeigen wollte, bekam damit den Namen der Person über das Bild, die zuletzt
-gesprochen hat — und musste zwei Schalter umlegen, bevor das Bild sauber war. Etwas einzublenden
-ist eine Entscheidung; ein Name, der von selbst erscheint, ist eine Überraschung.
-
-Und weil eine Vorstellung einen Ansichtswechsel überlebt, sagt die Bedienung jetzt, **wen die
-Bauchbinde nennen würde** — man entdeckt es nicht erst an der Wand.
-
 ### Positionen während der Versammlung
 
 Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihrem Bild: „Pult",
@@ -102,48 +107,50 @@ Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihr
 Einrichten davor — dafür in die Einstellungen zu wechseln, wäre einer zu viel. Sie erscheinen nur,
 wenn zu dem laufenden Bild eine Steuerung eingerichtet ist.
 
-### Die nächsten Redner über dem Kamerabild
+### Die Redezeit startet, wenn sie starten soll
 
-Dieselbe Reihe, die die Vorstellung an der Wand zeigt, lässt sich auch über das Kamerabild legen —
-unten rechts, gegenüber der Bauchbinde, einer je Zeile. Auf einer Versammlung mit zwölf Bewerbern
-ist das die Auskunft, nach der im Saal am häufigsten gefragt wird: Wer kommt nach mir?
+Bisher lief die Uhr ab dem Augenblick, in dem jemand den Namen auf den Beamer legte. Das war
+falsch herum: Ein Aufruf ist keine Ansage, dass jetzt gesprochen wird. Wer aufgerufen wird, steht
+auf und geht nach vorn — und diese Zeit ging von seiner Redezeit ab.
 
-Getrennt von der Bauchbinde schaltbar, denn der Name dessen, der spricht, gehört fast immer ins
-Bild; die Reihe dahinter nicht immer — bei einem Grußwort gibt es keine.
+Jetzt zeigt der Beamer **Name und zugestandene Zeit**, und die Uhr wartet. Losgeschickt wird sie
+mit **Starten**. Das gilt auch für *Nächster*: Der rückt die Reihe weiter, startet aber nichts.
 
-### Kameras im Saal
+Drei Zustände, drei Wörter in der Bedienung: **Starten** für die Uhr, die noch nie lief,
+**Anhalten** für die laufende, **Weiter** für die angehaltene. Und sichtbar unterschieden werden
+sie auch an der Wand — eine ruhende Uhr wird gedimmt, damit ein Halt zu sehen ist; eine, die noch
+gar nicht lief, nicht: Sie ist nicht unterbrochen, sondern bereit.
 
-Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die
-verbleibende Redezeit**. Empfangen wird über **NDI**, das Verfahren, mit dem Produktionskameras im
-Netz senden: Wer solche Kameras hat, steckt sie ein, und Votura findet sie.
+Am Pult gilt dasselbe: Der Lauf des Manuskripts beginnt mit dem Start der Redezeit, nicht mit dem
+Aufruf.
 
-Die Bauchbinde ist der eigentliche Grund für die Sache. Einen Bildmischer hat mancher Saal; was
-keiner hat, ist das Wissen, **wer** da vorne steht und wie lange er noch hat. Genau das weiß
-Votura ohnehin — aus demselben Aufruf, der auch die Uhr auf dem Beamer stellt. Getippt wird
-nichts.
+### Behoben
 
-Drei Entscheidungen, die man dem Bild nicht ansieht:
+- **Das Kamerabild brauchte Sekunden, bis es an der Wand stand.** Die Suche kennt die Adresse, unter
+  der eine Kamera sendet — gab sie aber nicht an den Empfänger weiter, der daraufhin selbst noch
+  einmal suchte. Gemessen, im Wechsel und wiederholt: **4017 Millisekunden ohne die Adresse, 14 mit
+  ihr.** Sie wandert jetzt mit. Solange noch kein Bild gekommen ist, steht „verbindet …“ im Bild
+  und nicht „kein Bild“ — das eine schickt niemanden zur Kamera, wo nichts zu suchen ist.
+- **Die Kameraliste fing bei jedem Blick von vorn an.** Beim Verlassen der Karte wurde die Suche
+  sofort abgeschaltet und alles Gefundene weggeworfen. Dahinter stand die Sorge, NDI dürfe im Saal
+  nicht dauernd laufen — die gilt aber dem **Videostrom** mit seinen über hundert Megabit je
+  Sekunde, nicht der Suche, die ein paar Pakete verschickt. Die Suche läuft jetzt eine Minute nach,
+  und einmal gefundene Kameras bleiben in der Liste stehen.
 
-- **Jedes Gerät empfängt selbst.** Im Zustand steht nur der Name der Quelle, nie ein Bild. Der
-  Beamerrechner baut seine Verbindung zur Kamera auf, ein Pi hinter dem zweiten Beamer seine
-  eigene. Einmal empfangen und weiterverteilen hieße, jedes Bild neu zu kodieren — auf dem
-  Rechner, der die Wahl führt.
-- **Eigener Prozess.** Die NDI-Bibliothek ist fremder, nativer Code. Stürzt sie ab, fällt das Bild
-  aus und sonst nichts.
-- **Erst auf Verlangen.** Ohne einen Blick in die Kameraliste startet nichts — eine Versammlung
-  ohne Kameras merkt von alledem nichts.
-
-Dazu: Steht das Bild einer Kamera an der Wand, schaltet Votura ihr **rotes Licht**. Wer gefilmt
-wird, sieht es.
-
-Und eine Grenze, die nicht verhandelbar ist: **Kameras gehören ans Kabel.** Ein voller NDI-Strom
-belegt über hundert Megabit je Sekunde; über dasselbe WLAN laufen Handzettel und digitale
-Abstimmung. Geräte im Funknetz bekommen deshalb den Nebenstrom, den jede NDI-Quelle zusätzlich
-sendet.
-
-Votura zeichnet **nichts** auf. Das Bild endet mit der Rede.
-
-NDI® ist eine eingetragene Marke der Vizrt NDI AB.
+- **Jeder Wechsel der Ansicht setzte die Redezeit zurück.** Wer während einer
+  laufenden Redezeit kurz die Tagesordnung, die Kandidatenliste oder das Kamerabild zeigte und
+  danach zurückschaltete, hatte denselben Menschen vor sich — und schenkte ihm mit dem Rückweg
+  stillschweigend seine volle Zeit noch einmal. Der Grund stand als Absicht im Programm: Die
+  Vorstellung überlebte einen Ansichtswechsel nicht. Das war falsch. **Dass da vorne jemand steht
+  und spricht, hat nichts damit zu tun, was gerade an der Wand hängt** — die Uhr gehört zu der
+  Person. Sie läuft jetzt weiter, eine angehaltene bleibt angehalten, und die Reihe der nächsten
+  Redner bleibt stehen. Beendet wird eine Vorstellung ausdrücklich (**Beenden**) oder dadurch, dass
+  jemand anderes aufgerufen wird; ein Neustart räumt ohnehin auf. Wer dieselbe Person neu beginnen
+  lassen will, sagt es mit **Zeit neu**; eine geänderte Redezeit zählt ohnehin als Entscheidung.
+- **Im Kameramodus ließ sich die Redezeit nicht mehr anfassen.** Die Bauchbinde zeigte eine
+  laufende Uhr, aber Anhalten, Zeit geben und „Nächster“ waren gesperrt — sie fragten nach der
+  Ansicht statt nach dem Redner. Jetzt gelten die Griffe, solange jemand aufgerufen ist, und die
+  Bedienung zeigt sie auch dann.
 
 ## 1.5.0 — Die Griffe, die gefehlt haben
 

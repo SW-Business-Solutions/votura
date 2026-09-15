@@ -640,6 +640,9 @@ try {
         upcomingShown: 4
       }
     })
+    /* Seit 1.6.0 startet die Uhr nicht mehr mit dem Aufruf. Für die Aufnahme
+       soll sie laufen — eine stehende Uhr zeigt nicht, worum es geht. */
+    await window.votura.invoke('projection.setSpeakerPaused', false)
     return true
   })()`)
   await warte(2000)
@@ -788,15 +791,23 @@ try {
       console.log('  Stand:', JSON.stringify(quelle?.fehlschlag ?? null))
     } else {
       await sitzung.auswerten(`(async () => {
-        await window.votura.invoke('projection.setMode', {
+        const ruf = (m, ...a) => window.votura.invoke(m, ...a)
+        await ruf('projection.setMode', {
           mode: 'kamera',
           kamera: { quelle: ${JSON.stringify(quelle)} },
           speaker: {
             name: 'Clara Fenske',
             note: 'Bewerbung um den Vorsitz',
-            seconds: 180
+            seconds: 180,
+            upcoming: ['Paul Marquardt', 'Nina Lorenz', 'Ruben Thiele'],
+            upcomingShown: 3
           }
         })
+        /* Seit 1.6.0 zeigt eine neu gewählte Kamera zunächst nur ihr Bild.
+           Für die Aufnahme wird ausdrücklich eingeschaltet, worum es geht. */
+        await ruf('kamera.setBauchbinde', true)
+        await ruf('kamera.setNaechste', true)
+        await ruf('projection.setSpeakerPaused', false)
         return true
       })()`)
       await warte(3000)

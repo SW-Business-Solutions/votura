@@ -264,6 +264,18 @@ Zuruf, **±10 s** zum Nachjustieren kurz vor Schluss. Redezeit 0 zeigt nur den N
 
 <sub><b>Vorstellung</b> — Name, Anlass und die verbleibende Redezeit. Die letzten dreißig Sekunden werden gelb, danach zählt die Anzeige rot ins Minus weiter.</sub>
 
+Die Uhr **startet nicht von selbst**. Ein Aufruf zeigt Name und zugestandene Zeit; losgeschickt wird
+sie mit **Starten**. Wer aufgerufen wird, steht auf und geht nach vorn — diese Zeit gehört ihm nicht
+abgezogen. Das gilt auch für *Nächster*: Der rückt die Reihe weiter und startet nichts.
+
+Drei Zustände, drei Wörter: **Starten** für die Uhr, die noch nie lief, **Anhalten** für die
+laufende, **Weiter** für die angehaltene. An der Wand wird eine ruhende Uhr gedimmt, damit ein Halt
+zu sehen ist; eine wartende nicht — sie ist nicht unterbrochen, sondern bereit.
+
+Und sie **gehört zur Person, nicht zur Ansicht**: Wer während einer laufenden Redezeit kurz die
+Tagesordnung, die Kandidatenliste oder das Kamerabild zeigt, findet beim Zurückschalten dieselbe Uhr
+vor. Beendet wird eine Vorstellung ausdrücklich oder dadurch, dass jemand anderes aufgerufen wird.
+
 ## Sicherheitszusagen (technisch durchgesetzt)
 
 - **Kein Personenbezug:** Es existiert keine Datenstruktur, die eine Person mit einem Stimmzettel
@@ -512,6 +524,15 @@ dasselbe WLAN laufen Handzettel und digitale Abstimmung — und die haben Vorran
 Funknetz bekommen darum den Nebenstrom, den jede NDI-Quelle zusätzlich sendet: kleiner, gröber,
 für einen Nebenbildschirm völlig ausreichend.
 
+**Was im Bild steht, entscheidet die Bedienung.** Eine neu gewählte Kamera zeigt zunächst nur ihr
+Bild — Bauchbinde und Rednerreihe werden ausdrücklich eingeschaltet. Etwas einzublenden ist eine
+Entscheidung; ein Name, der von selbst über einem Blick in den Saal erscheint, wäre eine
+Überraschung. Zuschaltbar sind:
+
+- **Bauchbinde** — Logo, Name, Bewerbung und die ablaufende Redezeit
+- **Nächste** — die Reihe der folgenden Redner, unten rechts, einer je Zeile
+- **Spiegeln** — für einen Rückblickschirm am Pult, wo ein seitenrichtiges Bild verwirrt
+
 Gefilmt wird nicht heimlich und nicht mitgeschnitten: Votura zeichnet **nichts** auf. Das Bild
 endet mit der Rede. Eine Ankündigung an die Versammlung bleibt trotzdem Sache der Leitung.
 
@@ -556,7 +577,17 @@ sondern die Spielarten von VISCA, läuft auch eine Kamera, die in der Tabelle ga
 Welche Spielart gilt, muss niemand raten: Votura klopft die Adresse mit einer Frage ab, die nichts
 verstellt, und nimmt die Form, die antwortet. Einzurichten unter **Einstellungen → Kameras**.
 
-Die Befehle sind **gerechnete Bytes** und als solche geprüft — 32 Tests, ohne dass eine Kamera im
+**Positionen einrichten** geht mit einem Steuerkreuz in den Einstellungen: Kamera hinstellen, wo sie
+stehen soll, dann „Hier ablegen". Während der Versammlung stehen die Positionen dort, wo hingesehen
+wird — als Knöpfe unter dem Kamerabild in der Bedienung.
+
+**Auch für Kameras ohne eigenen Positionsspeicher.** Der Regelfall ist, dass die Kamera sich ihre
+Positionen selbst merkt; das geht schneller und überlebt einen Wechsel des Rechners. Kann sie das
+nicht, führt Votura sie: Es fragt die Kamera nach ihrer Stellung, legt die Zahlen ab und schickt sie
+ihr später zurück. Antwortet sie dabei nicht oder unverständlich, gibt es einen Fehler statt einer
+geratenen Zahl — eine erfundene Stellung führte die Kamera später zuverlässig an den falschen Ort.
+
+Die Befehle sind **gerechnete Bytes** und als solche geprüft — 41 Tests, ohne dass eine Kamera im
 Raum steht. Was sich ohne Gerät nicht prüfen lässt, steht ehrlich aus: Ob ein bestimmtes Modell so
 antwortet, wie sein Handbuch behauptet, zeigt erst das Modell.
 
@@ -641,6 +672,24 @@ Gliederung gilt; die zugrunde gelegte Fassung wird je Veranstaltung dokumentiert
 
 Noch keine Lizenz vergeben — es gelten die gesetzlichen Vorgaben (alle Rechte vorbehalten).
 Wer den Code nutzen möchte, wendet sich bitte an den Autor.
+
+### Mitgelieferte fremde Bestandteile
+
+Für Kamerabilder liegt die **NDI®-Laufzeit** von Vizrt NDI AB bei (über das Paket
+[`grandi`](https://www.npmjs.com/package/grandi), Apache-2.0). Sie unterliegt der
+[NDI-SDK-Lizenz](http://ndi.link/ndisdk_license); die Lizenzdatei `libndi_licenses.txt` liegt jedem
+Paket bei.
+
+> NDI® ist eine eingetragene Marke der Vizrt NDI AB. Votura ist kein Produkt von NDI, und nichts
+> hier behauptet eine Zusammenarbeit — die Marke steht ausschließlich dort, wo es um die
+> Verträglichkeit mit NDI-Geräten geht.
+
+**Offen:** Die NDI-SDK-Lizenz verlangt, dass die eigenen Nutzungsbedingungen bestimmte Klauseln
+enthalten (§3d: kein Verändern, kein Nachbauen des Protokolls, Gewährleistungs- und
+Haftungsausschluss zugunsten NDI, Exportklauseln, Urheberrechtsvermerk). Votura hat bislang keine
+Endnutzerbedingungen. Ebenso ungeklärt ist, ob ein **fest eingerichtetes Pi-Abbild** unter die
+Lizenz fällt — deren Produktbegriff schließt Geräte mit fester Funktion ausdrücklich aus. Die
+Pi-Abbilder enthalten deshalb **keine** Kamerafähigkeit.
 
 ## Dokumentation
 

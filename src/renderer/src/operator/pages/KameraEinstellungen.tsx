@@ -626,6 +626,7 @@ export function KameraEinstellungen(): JSX.Element {
           eingeschaltet sein — bei vielen Modellen ist sie es ab Werk nicht. Sie steht meist unter
           „VISCA over IP" oder „Netzwerksteuerung" in deren Weboberfläche.
         </p>
+        <p className="hint">NDI® ist eine eingetragene Marke der Vizrt NDI AB.</p>
       </Card>
     </>
   )

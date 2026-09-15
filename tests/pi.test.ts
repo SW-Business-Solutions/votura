@@ -94,6 +94,29 @@ describe('Das Einrichtungsskript', () => {
   })
 })
 
+describe('Die NDI-Laufzeit auf dem Pi', () => {
+  it('kommt nicht mit ins Abbild', () => {
+    /*
+     * Ein fest eingerichtetes Abbild ist kein Allzweckrechner, sondern ein
+     * Gerät mit fester Funktion: Es bootet ohne Anmeldung in Votura, es gibt
+     * keinen Zugang, und wer etwas ändern will, schreibt die Karte neu.
+     *
+     * Der Produktbegriff der NDI-SDK-Lizenz schließt genau das aus. Solange
+     * ungeklärt ist, ob ein Pi-Abbild darunter fällt, kommt die Laufzeit hier
+     * nicht mit — und die Anleitung sagt es auch so.
+     */
+    expect(install).toContain('app.asar.unpacked/node_modules/@grandi')
+    expect(install).toMatch(/rm -rf "\$ndi_weg"/)
+  })
+
+  it('betrifft nur das Abbild, nicht die Desktop-Fassungen', () => {
+    /* Windows und Linux sind Allzweckrechner und von der Lizenz gedeckt —
+       dort bleibt die Kamerafähigkeit. */
+    const bau = lies('electron-builder.yml')
+    expect(bau).toContain('node_modules/@grandi/**')
+  })
+})
+
 describe('Die Adresse, von der das Paket kommt', () => {
   it('trägt die Versionsnummer im Dateinamen', () => {
     /*
