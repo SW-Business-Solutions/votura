@@ -166,6 +166,15 @@ export interface PrompterViewState {
   /** Ende der zugestandenen Redezeit (ISO) — dieselbe Uhr wie auf dem Beamer. */
   until?: string
   /**
+   * Angehalten bei dieser Restzeit in Sekunden.
+   *
+   * Hält die Versammlungsleitung die Redezeit an — eine Zwischenfrage, eine
+   * Geschäftsordnungsmeldung —, dann ruht sie auf dem Beamer **und** am Pult.
+   * Eine Uhr, die vorn weiterzählt, während hinten angehalten ist, wäre
+   * schlimmer als gar keine: Wer vorn steht, richtet sich nach ihr.
+   */
+  pausedSecondsLeft?: number
+  /**
    * Legt der Prompter die Rede des Aufgerufenen von selbst auf — und beginnt?
    *
    * Wird auf dem Beamer ein Bewerber vorgestellt, dem eine Rede zugeordnet

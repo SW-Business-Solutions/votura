@@ -150,6 +150,10 @@ _Prompter_ (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
   **beginnt zu laufen**: Die Redezeit zählt ab dem Aufruf, ein stillstehender Text wäre schon beim
   ersten Satz aus dem Tritt. Bei zwölf Bewerbern greift so niemand zwischendurch ans Board.
   Gestartet wird nur bei _Gleichmäßig_; bei _Nach Stimme_ und _Von Hand_ wird nur aufgelegt.
+- **Die Uhr gilt in beide Richtungen:** Wird die Redezeit auf dem Beamer **angehalten** — eine
+  Zwischenfrage, eine Geschäftsordnungsmeldung —, ruht auch der Lauf am Pult, und die Restzeit
+  steht dort gedämpft mit einem ‖ davor. Läuft sie weiter, läuft er weiter. Das gilt nur für die
+  Rede, die dem Aufruf folgend aufgelegt wurde: Was jemand von Hand darauflegt, bleibt unberührt.
 
 ### Wenn jemand mehrmals spricht
 

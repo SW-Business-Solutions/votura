@@ -182,11 +182,23 @@ const LAUFARTEN = [
   ['hand', 'Von Hand']
 ] as const
 
-/** Restzeit als m:ss — dieselbe Darstellung wie auf dem Beamer. */
-function restzeit(until: string | undefined, jetzt: number): string | undefined {
-  if (!until) return undefined
-  const sekunden = Math.max(0, Math.round((Date.parse(until) - jetzt) / 1000))
-  return `${Math.floor(sekunden / 60)}:${String(sekunden % 60).padStart(2, '0')}`
+/**
+ * Restzeit als m:ss — dieselbe Darstellung wie auf dem Beamer.
+ *
+ * Ruht die Redezeit, steht hier die eingefrorene Zahl. Eine Uhr, die am Pult
+ * weiterzählt, während sie vorn steht, wäre schlimmer als gar keine: Wer
+ * vorn steht, richtet sich nach ihr.
+ */
+function restzeit(view: PrompterViewState, jetzt: number): string | undefined {
+  const sekunden =
+    view.pausedSecondsLeft !== undefined
+      ? view.pausedSecondsLeft
+      : view.until
+        ? Math.round((Date.parse(view.until) - jetzt) / 1000)
+        : undefined
+  if (sekunden === undefined) return undefined
+  const ganz = Math.max(0, sekunden)
+  return `${Math.floor(ganz / 60)}:${String(ganz % 60).padStart(2, '0')}`
 }
 
 function Block({ block }: { block: RedeBlock }): React.JSX.Element {
@@ -419,7 +431,10 @@ function TeleprompterApp(): React.JSX.Element {
     return () => window.removeEventListener('keydown', taste)
   }, [rufe, view.running, view.tempo, view.spiegel, darfBedienen])
 
-  const rest = restzeit(view.until, jetzt)
+  const rest = restzeit(view, jetzt)
+  /* Die ruhende Uhr sieht anders aus als die laufende — sonst fragt sich die
+     vortragende Person, warum die Zahl klebt. */
+  const uhrRuht = view.pausedSecondsLeft !== undefined
 
   /*
    * Vortragsansicht: dieselbe Folie wie an der Wand, daneben die nächste.
@@ -491,7 +506,15 @@ function TeleprompterApp(): React.JSX.Element {
             </button>
           )}
           {meldung && <span className="tp-getrennt">{meldung}</span>}
-          {view.zeigeUhr && rest && <span className="tp-uhr">{rest}</span>}
+          {view.zeigeUhr && rest && (
+            <span
+              className={`tp-uhr${uhrRuht ? ' ruht' : ''}`}
+              title={uhrRuht ? 'Die Redezeit ruht.' : undefined}
+            >
+              {uhrRuht && <span aria-hidden="true">‖ </span>}
+              {rest}
+            </span>
+          )}
           {getrennt && <span className="tp-getrennt">Verbindung unterbrochen</span>}
         </div>
       </div>
@@ -723,7 +746,15 @@ function TeleprompterApp(): React.JSX.Element {
         )}
         {amEnde && <span className="tp-ende">Ende der Rede</span>}
         {meldung && <span className="tp-getrennt">{meldung}</span>}
-        {view.zeigeUhr && rest && <span className="tp-uhr">{rest}</span>}
+        {view.zeigeUhr && rest && (
+          <span
+            className={`tp-uhr${uhrRuht ? ' ruht' : ''}`}
+            title={uhrRuht ? 'Die Redezeit ruht.' : undefined}
+          >
+            {uhrRuht && <span aria-hidden="true">‖ </span>}
+            {rest}
+          </span>
+        )}
         {getrennt && <span className="tp-getrennt">Verbindung unterbrochen</span>}
         {!imFenster && !getrennt && !darfBedienen && <span className="tp-netz">Nur Anzeige</span>}
       </div>

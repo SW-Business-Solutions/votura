@@ -212,6 +212,11 @@
   color: #7ab6ff;
 }
 
+/* Ruhende Uhr: dieselbe Zahl, nur gedämpft — damit niemand glaubt, sie hänge. */
+.tp-uhr.ruht {
+  color: #8b96a5;
+}
+
 .tp-getrennt {
   color: #ff8181;
   border: 1px solid #ff8181;

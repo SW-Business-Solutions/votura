@@ -87,14 +87,20 @@ function setze(aenderung: Partial<PrompterViewState>, verankern = true): Prompte
 
 /** Legt eine Rede auf den Prompter — von vorn, angehalten. */
 export function loadSpeech(id: UUID | undefined): PrompterViewState {
-  if (!id) return setze({ speech: undefined, position: 0, laenge: 0, running: false })
+  /* Wer von Hand etwas auflegt, folgt nicht mehr dem Aufruf: Die Uhr der
+     Bühne gehört dann nicht mehr zu diesem Text. */
+  gefolgteRede = undefined
+  if (!id) {
+    return setze({ speech: undefined, position: 0, laenge: 0, running: false, pausedSecondsLeft: undefined })
+  }
   const rede = getSpeech(id)
   if (!rede) throw new Error('Diese Rede gibt es nicht.')
   return setze({
     speech: { id: rede.id, title: rede.title, markdown: rede.markdown },
     laenge: redeLaenge(rede.markdown),
     position: 0,
-    running: false
+    running: false,
+    pausedSecondsLeft: undefined
   })
 }
 
@@ -179,7 +185,9 @@ export function setPrompterLaufart(laufart: Laufart): PrompterViewState {
 
 /** Die zugestandene Redezeit — dieselbe Uhr, die auch auf dem Beamer läuft. */
 export function setPrompterUntil(until?: string): PrompterViewState {
-  return setze({ until }, false)
+  /* Von Hand geholt heißt: läuft. Eine eingefrorene Restzeit von vorhin
+     stünde sonst still, obwohl gerade eine neue Uhr gesetzt wurde. */
+  return setze({ until, pausedSecondsLeft: undefined }, false)
 }
 
 /**
@@ -215,24 +223,59 @@ export function setPrompterFolgtDemAufruf(folgt: boolean): PrompterViewState {
  */
 let zuletztGerufen: string | undefined
 
-/**
- * Auf dem Beamer wurde jemand aufgerufen.
+/*
+ * Welche Rede wir dem Aufruf folgend aufgelegt haben.
  *
- * Liegt für diesen Namen eine Rede bereit, kommt sie auf den Prompter — mit
- * der Uhr, die der Saal sieht, damit vorn und hinten nicht zwei verschiedene
- * Zahlen laufen. Ist keine Rede zugeordnet, bleibt alles, wie es ist: Ein
- * Gast, ein Bericht, ein Grußwort räumen den Prompter nicht leer.
+ * Nur für sie gilt die Uhr der Bühne. Legt jemand von Hand etwas anderes auf,
+ * ist die Verbindung gelöst — sonst hielte ein „Redezeit anhalten" auf dem
+ * Beamer plötzlich die Notizen der Versammlungsleitung an.
  */
-export function sprecherAufgerufen(sprecher?: { name: string; until?: string; roundId?: UUID }): void {
+let gefolgteRede: UUID | undefined
+
+/** Ob die Redezeit beim letzten Blick ruhte — sonst spiegelten wir sie ständig neu. */
+let zuletztAngehalten = false
+
+/** Der Aufruf, wie ihn die Bühne meldet. */
+export interface Sprecheraufruf {
+  name: string
+  /** Ende der Redezeit (ISO). */
+  until?: string
+  /** Bezugswahlgang — er entscheidet bei mehreren Bewerbungen einer Person. */
+  roundId?: UUID
+  /** Gesetzt, solange die Redezeit ruht. */
+  pausedSecondsLeft?: number
+}
+
+/**
+ * Auf dem Beamer wurde jemand aufgerufen — oder seine Uhr hat sich geändert.
+ *
+ * Zwei Aufgaben, weil es zwei Dinge sind, die aus derselben Quelle kommen:
+ *
+ * 1. **Ein neuer Name.** Liegt für ihn eine Rede bereit, kommt sie auf den
+ *    Prompter, mit der Uhr, die der Saal sieht, und der Lauf beginnt. Ist
+ *    keine Rede zugeordnet, bleibt alles, wie es ist: Ein Gast, ein Bericht,
+ *    ein Grußwort räumen den Prompter nicht leer.
+ * 2. **Derselbe Name, andere Uhr.** Wird die Redezeit angehalten, ruht auch
+ *    der Lauf am Pult; läuft sie weiter, läuft er weiter. Alles andere wäre
+ *    ein Widerspruch vor den Augen der vortragenden Person: vorn eine
+ *    stehende Uhr, hier ein Text, der weiterrollt.
+ */
+export function sprecherAufgerufen(sprecher?: Sprecheraufruf): void {
   const name = sprecher?.name?.trim()
-  if (!name || name === zuletztGerufen) return
+  if (!sprecher || !name) return
+  if (name === zuletztGerufen) {
+    uhrSpiegeln(sprecher)
+    return
+  }
   zuletztGerufen = name
+  zuletztAngehalten = sprecher.pausedSecondsLeft !== undefined
   if (!state.folgtDemAufruf) return
 
-  const rede = redeFuerBewerber(name, sprecher?.roundId)
+  const rede = redeFuerBewerber(name, sprecher.roundId)
   if (!rede || rede.id === state.speech?.id) return
 
   loadSpeech(rede.id)
+  gefolgteRede = rede.id
   /*
    * **Und der Lauf beginnt.**
    *
@@ -246,14 +289,52 @@ export function sprecherAufgerufen(sprecher?: { name: string; until?: string; ro
    * bewegen soll — die beiden umzustoßen hieße, eine Einstellung zu
    * überfahren.
    */
-  const laeuftLos = state.laufart === 'auto'
-  setze({ until: sprecher?.until, running: laeuftLos }, false)
+  const laeuftLos = state.laufart === 'auto' && !zuletztAngehalten
+  setze(
+    {
+      until: sprecher.until,
+      pausedSecondsLeft: sprecher.pausedSecondsLeft,
+      running: laeuftLos
+    },
+    false
+  )
   logger.info(`Prompter: „${rede.title}" für ${name} aufgelegt${laeuftLos ? ' — der Lauf beginnt' : ''}.`)
+}
+
+/**
+ * Die Uhr der Bühne auf das Pult spiegeln.
+ *
+ * Nur für die Rede, die wir dem Aufruf folgend aufgelegt haben: Was jemand
+ * von Hand darauflegt, gehört ihm und nicht der Bühne.
+ *
+ * Beim Anhalten wird **verankert** — die Stelle im Text muss festgehalten
+ * werden, bevor der Lauf stehenbleibt, sonst spränge der Text beim
+ * Weiterlaufen dorthin zurück, wo er zuletzt verankert wurde.
+ */
+function uhrSpiegeln(sprecher: Sprecheraufruf): void {
+  const angehalten = sprecher.pausedSecondsLeft !== undefined
+  if (angehalten === zuletztAngehalten) return
+  zuletztAngehalten = angehalten
+  if (!state.folgtDemAufruf || !gefolgteRede || gefolgteRede !== state.speech?.id) return
+
+  if (angehalten) {
+    setze({ running: false, pausedSecondsLeft: sprecher.pausedSecondsLeft })
+    logger.info('Prompter: Redezeit angehalten — der Lauf ruht.')
+  } else {
+    setze({
+      running: state.laufart === 'auto',
+      until: sprecher.until,
+      pausedSecondsLeft: undefined
+    })
+    logger.info('Prompter: Redezeit läuft weiter — der Lauf auch.')
+  }
 }
 
 /** Setzt alles zurück — nach der Versammlung und beim Start. */
 export function resetPrompter(): PrompterViewState {
   zuletztGerufen = undefined
+  gefolgteRede = undefined
+  zuletztAngehalten = false
   state = {
     ...PROMPTER_VORGABE,
     serverInstanceId: state.serverInstanceId,

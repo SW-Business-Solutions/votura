@@ -60,6 +60,10 @@ in einer Liste.
 Der Lauf beginnt dabei von selbst — die Redezeit zählt ab dem Aufruf, und wer vorn steht, hat die
 Hände am Manuskript und nicht am Board. Bei _Nach Stimme_ und _Von Hand_ wird nur aufgelegt.
 
+Und die Uhr gilt in beide Richtungen: Wird die Redezeit angehalten, ruht auch der Lauf am Pult;
+läuft sie weiter, läuft er weiter. Vorn eine stehende Uhr und hier ein davonlaufender Text wäre ein
+Widerspruch vor den Augen der vortragenden Person.
+
 Weil derselbe Mensch oft mehrmals spricht — Vorstandsbericht, später Bewerbung um die Wiederwahl —,
 hängt die Zuordnung an der **Bewerbung** und nicht an der Person: Der auf dem Beamer eingestellte
 Wahlgang entscheidet, welche Rede gemeint ist. Bleibt es mehrdeutig, legt der Prompter nichts auf.

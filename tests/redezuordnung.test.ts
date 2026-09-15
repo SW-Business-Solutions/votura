@@ -263,6 +263,65 @@ describe('Der Prompter folgt dem Aufruf', () => {
     prompter.setPrompterFolgtDemAufruf(true)
   })
 
+  it('hält den Lauf an, wenn die Redezeit ruht — und lässt ihn wieder laufen', () => {
+    /*
+     * Eine Zwischenfrage hält vorn die Uhr an. Ein Text, der daneben
+     * weiterrollt, wäre ein Widerspruch vor den Augen der vortragenden
+     * Person: vorn eine stehende Uhr, hier eine davonlaufende Zeile.
+     */
+    const bis = new Date(Date.now() + 300_000).toISOString()
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis })
+    expect(prompter.getPrompterView().running).toBe(true)
+
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis, pausedSecondsLeft: 118 })
+    const ruhend = prompter.getPrompterView()
+    expect(ruhend.running).toBe(false)
+    expect(ruhend.pausedSecondsLeft).toBe(118)
+
+    const weiter = new Date(Date.now() + 118_000).toISOString()
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: weiter })
+    const laufend = prompter.getPrompterView()
+    expect(laufend.running).toBe(true)
+    expect(laufend.pausedSecondsLeft).toBeUndefined()
+    expect(laufend.until).toBe(weiter)
+  })
+
+  it('verliert die Stelle beim Anhalten nicht', () => {
+    /* Ohne Verankern spränge der Text beim Weiterlaufen dorthin zurück, wo er
+       zuletzt verankert wurde — mitten im Satz. */
+    const bis = new Date(Date.now() + 300_000).toISOString()
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis })
+    /* Die Probe-Rede ist kurz; weiter als bis zu ihrem Ende kann keine Stelle
+       reichen, und genau dorthin wird sonst begrenzt. */
+    prompter.setPrompterPosition(2)
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis, pausedSecondsLeft: 60 })
+    expect(prompter.getPrompterView().position).toBeGreaterThanOrEqual(2)
+  })
+
+  it('lässt in Ruhe, was jemand von Hand aufgelegt hat', () => {
+    /*
+     * Sonst hielte „Redezeit anhalten" auf dem Beamer plötzlich die Notizen
+     * der Versammlungsleitung an — mit einer Uhr, die gar nicht zu ihnen
+     * gehört.
+     */
+    const bis = new Date(Date.now() + 300_000).toISOString()
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis })
+    prompter.loadSpeech(redeZwei)
+    prompter.setPrompterRunning(true)
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis, pausedSecondsLeft: 60 })
+    const stand = prompter.getPrompterView()
+    expect(stand.speech?.id).toBe(redeZwei)
+    expect(stand.running).toBe(true)
+    expect(stand.pausedSecondsLeft).toBeUndefined()
+  })
+
+  it('legt bei einem Aufruf, der schon ruht, auf — ohne zu starten', () => {
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', pausedSecondsLeft: 200 })
+    const stand = prompter.getPrompterView()
+    expect(stand.speech?.id).toBe(redeEins)
+    expect(stand.running).toBe(false)
+  })
+
   it('rührt sich nicht ohne Namen', () => {
     prompter.loadSpeech(redeZwei)
     prompter.sprecherAufgerufen(undefined)
