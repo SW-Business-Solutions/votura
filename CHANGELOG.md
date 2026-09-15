@@ -25,9 +25,10 @@ Das bricht **nicht** mit dem Grundsatz, dass Votura offline läuft:
 - Im **Prüfpfad** steht hinterher, woher das Modell kam und welche Prüfsumme die Datei tatsächlich
   hatte.
 
-Bei einem der vier Einträge — dem großen deutschen Modell mit zwei Gigabyte — fehlt die Prüfsumme,
-und die Liste sagt das offen: dort steht „nur Größe". Eine erfundene Prüfsumme wäre schlimmer als
-keine; sie behauptete eine Sicherheit, die es nicht gibt.
+Alle vier Einträge tragen eine **Prüfsumme**, auch das große deutsche Modell mit zwei Gigabyte —
+nachgerechnet an dem, was der Server ausliefert, nicht abgeschrieben. Die Liste zeigt bei jedem
+Eintrag an, was geprüft wird; käme je einer ohne Prüfsumme dazu, stünde dort „nur Größe". Eine
+erfundene wäre schlimmer als keine: Sie behauptete eine Sicherheit, die es nicht gibt.
 
 **Welches nehmen?** Für den Prompter genügt das kleine — er muss nicht diktieren, sondern im
 bekannten Text die Stelle wiederfinden. Für Untertitel lohnt das große: Dort gibt es keinen Text

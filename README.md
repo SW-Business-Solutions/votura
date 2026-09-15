@@ -643,10 +643,10 @@ eines im Raum.
 
 **Nachladen und offline bleiben ist kein Widerspruch.** Geladen wird nur auf Klick, nur aus der
 festen Liste, und die Adresse wird aus dem Dateinamen gebaut statt entgegengenommen — sonst wäre
-dieser Weg eine offene Tür. Geprüft wird vor dem Tausch: Größe und, wo hinterlegt, SHA-256. Beim
-großen deutschen Modell (zwei Gigabyte) ist keine Prüfsumme hinterlegt, und die Liste sagt das
-offen — eine erfundene wäre schlimmer als keine. Im Prüfpfad steht hinterher, woher das Modell kam
-und welche Prüfsumme die Datei tatsächlich hatte.
+dieser Weg eine offene Tür. Geprüft wird vor dem Tausch: Größe **und** SHA-256, bei allen vier
+Einträgen. Die Liste zeigt an, was geprüft wird; stünde dort einmal „nur Größe", wäre das ehrlich
+gemeint und keine Formalie — eine erfundene Prüfsumme wäre schlimmer als keine. Im Prüfpfad steht
+hinterher, woher das Modell kam und welche Prüfsumme die Datei tatsächlich hatte.
 
 Der Zwischenstand steht blasser als der fertige Satz. Die Erkennung meldet erst, was sie zu hören
 glaubt, und berichtigt sich danach — beides gleich auszuzeichnen hieße, eine Sicherheit zu

@@ -16,18 +16,20 @@
  * jemand austauschen könnte. Wer den Rechner nie ans Netz hängt, merkt von
  * dieser Datei nichts — das mitgelieferte Modell liegt im Paket.
  *
- * ## Warum Prüfsummen, und warum nicht überall
+ * ## Warum Prüfsummen
  *
  * Ein halb geladenes Archiv fällt sonst erst am Pult auf. Größe **und**
  * SHA-256 sind deshalb vorab festgeschrieben — nachgesehen an dem, was der
  * Server heute ausliefert, nicht abgeschrieben.
  *
- * Bei einem Eintrag fehlt die Prüfsumme: Das große deutsche Modell wiegt
- * zwei Gigabyte, und die Prüfsumme dafür hätte bedeutet, diese zwei Gigabyte
- * einmal zu laden, nur um eine Zeile zu schreiben. Dort wird die Größe
- * geprüft, und die Oberfläche sagt offen, dass mehr nicht geprüft wird.
- * Eine erfundene Prüfsumme wäre schlimmer als keine: Sie behauptete eine
- * Sicherheit, die es nicht gibt.
+ * Für das große deutsche Modell stand hier zunächst keine — zwei Gigabyte
+ * einmal zu laden, nur um eine Zeile zu schreiben, schien zu viel. Sie wurde
+ * nachgetragen, als das Modell ohnehin einmal durch die Leitung ging.
+ *
+ * Das Feld bleibt trotzdem **freiwillig**, und die Oberfläche zeigt weiter
+ * an, was geprüft wird. Käme je ein Eintrag ohne Prüfsumme dazu, soll das zu
+ * sehen sein statt verborgen: Eine erfundene wäre schlimmer als keine — sie
+ * behauptete eine Sicherheit, die es nicht gibt.
  */
 
 export interface Modellangebot {
@@ -87,6 +89,7 @@ export const BEKANNTE_MODELLE: Modellangebot[] = [
     name: 'Deutsch, groß',
     sprache: 'Deutsch',
     bytes: 2_031_717_803,
+    sha256: '245060756f8d8394fc5b13639cf220b7620205795f30f37b6823878d4f603b2a',
     hinweis:
       'Das große deutsche Modell — die eigentliche Verbesserung für Untertitel. Zwei Gigabyte, und es braucht beim ersten Start spürbar länger.'
   },
