@@ -1439,3 +1439,37 @@ select[aria-invalid='true'] {
 .seite-sortiert > * {
   flex: none;
 }
+
+/* ------------------------------------------------- Die laufende Vorstellung */
+
+/*
+ * Drei Zeilen statt einer Reihe.
+ *
+ * Acht Knöpfe nebeneinander brachen in einen Haufen um, in dem „Beenden" so
+ * laut war wie „+10 s". Jetzt trennt die Gliederung, was verschieden wichtig
+ * ist: **wer** spricht, **was als Nächstes** geschieht, und wie die Uhr
+ * nachjustiert wird.
+ */
+.redezeit-lauf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-2);
+  margin-top: var(--abstand-3);
+  padding-top: var(--abstand-3);
+  border-top: 1px solid var(--border);
+}
+
+.redezeit-wer {
+  color: var(--text-muted);
+}
+
+/*
+ * Die Uhrschritte rücken enger zusammen als der Rest.
+ *
+ * Sie gehören zusammen und werden hintereinander gedrückt — mit dem normalen
+ * Abstand sahen sie aus wie vier einzelne Entscheidungen.
+ */
+.zeitschritte {
+  display: flex;
+  gap: 4px;
+}

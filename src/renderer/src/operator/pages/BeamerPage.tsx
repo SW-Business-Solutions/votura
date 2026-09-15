@@ -708,100 +708,115 @@ export function BeamerPage(): React.JSX.Element {
                   Vorher standen sie nur im Modus „Vorstellung“ — wer auf das
                   Kamerabild schaltete, sah die Uhr in der Bauchbinde laufen
                   und konnte sie nicht mehr anhalten.
+
+                  Drei Zeilen statt einer Reihe: Wer spricht, was als Nächstes
+                  geschieht, und wie die Uhr nachjustiert wird. Acht Knöpfe
+                  nebeneinander umbrachen zu einem Haufen, in dem „Beenden“
+                  neben „+10 s“ gleich laut war.
                 */}
                 {projection.speaker && (
-                  <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 8 }}>
-                    <span className="hint">
-                      Läuft: {projection.speaker.name}
-                      {projection.mode !== 'speaker' && ' (im Bild)'}
-                    </span>
-                    <button
-                      className="primary"
-                      disabled={(projection.speaker.upcoming ?? []).length === 0}
-                      title={
-                        (projection.speaker.upcoming ?? [])[0]
-                          ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
-                          : 'Niemand mehr in der Reihe'
-                      }
-                      onClick={() => void api('projection.nextSpeaker', ziel).catch(app.reportError)}
-                    >
-                      Nächster{' '}
-                      {(projection.speaker.upcoming ?? [])[0]
-                        ? `— ${(projection.speaker.upcoming ?? [])[0]}`
-                        : ''}
-                    </button>
-                    <button
-                      onClick={() =>
-                        void api(
-                          'projection.setSpeakerPaused',
-                          projection.speaker?.pausedSecondsLeft === undefined,
-                          ziel
-                        ).catch(app.reportError)
-                      }
-                      disabled={
-                        !projection.speaker.until && projection.speaker.pausedSecondsLeft === undefined
-                      }
-                    >
-                      {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
-                    </button>
-                    {/* Grob und fein: Eine Minute ist der übliche Zuruf, zehn
-                    Sekunden reichen fürs Nachjustieren kurz vor Schluss. */}
-                    {[
-                      ['+1 Min.', 60],
-                      ['−1 Min.', -60],
-                      ['+10 s', 10],
-                      ['−10 s', -10]
-                    ].map(([beschriftung, sekunden]) => (
+                  <div className="redezeit-lauf">
+                    <div className="redezeit-wer">
+                      Läuft: <strong>{projection.speaker.name}</strong>
+                      {projection.mode !== 'speaker' && ' — im Bild'}
+                    </div>
+
+                    <div className="row">
                       <button
-                        key={beschriftung}
+                        className="primary"
+                        disabled={(projection.speaker.upcoming ?? []).length === 0}
+                        title={
+                          (projection.speaker.upcoming ?? [])[0]
+                            ? `Weiter zu ${(projection.speaker.upcoming ?? [])[0]}`
+                            : 'Niemand mehr in der Reihe'
+                        }
+                        onClick={() => void api('projection.nextSpeaker', ziel).catch(app.reportError)}
+                      >
+                        Nächster{' '}
+                        {(projection.speaker.upcoming ?? [])[0]
+                          ? `— ${(projection.speaker.upcoming ?? [])[0]}`
+                          : ''}
+                      </button>
+                      <button
                         onClick={() =>
-                          void api('projection.addSpeakerSeconds', sekunden as number, ziel).catch(
-                            app.reportError
-                          )
+                          void api(
+                            'projection.setSpeakerPaused',
+                            projection.speaker?.pausedSecondsLeft === undefined,
+                            ziel
+                          ).catch(app.reportError)
+                        }
+                        disabled={
+                          !projection.speaker.until &&
+                          projection.speaker.pausedSecondsLeft === undefined
                         }
                       >
-                        {beschriftung}
+                        {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
                       </button>
-                    ))}
-                    {/*
-                      Der ausdrückliche Neubeginn. Er wird selten gebraucht —
-                      und genau deshalb steht er hier und nicht als stille Folge
-                      eines Ansichtswechsels: Dieselbe Person behält sonst ihre
-                      Uhr, was beim Hin- und Herschalten zur Kamera das
-                      Richtige ist.
-                    */}
-                    <button
-                      title="Die Redezeit dieser Person von vorn beginnen lassen."
-                      onClick={() =>
-                        void setMode('speaker', {
-                          speaker: {
-                            name: projection.speaker?.name ?? '',
-                            note: projection.speaker?.note,
-                            seconds: projection.speaker?.totalSeconds,
-                            upcoming: projection.speaker?.upcoming,
-                            upcomingShown: projection.speaker?.upcomingShown,
-                            uhrNeu: true
-                          }
-                        })
-                      }
-                      disabled={!projection.speaker.totalSeconds}
-                    >
-                      Zeit neu
-                    </button>
-                    {/*
-                      Seit die Vorstellung einen Ansichtswechsel überlebt, muss
-                      sie sich abräumen lassen — sonst stünde Stunden später ein
-                      Name in der Bauchbinde über einem Blick in den Saal.
-                    */}
-                    <button
-                      className="danger"
-                      title="Die laufende Vorstellung beenden. Die Uhr ist damit weg."
-                      onClick={() =>
-                        void api('projection.endSpeaker', ziel).catch(app.reportError)
-                      }
-                    >
-                      Beenden
-                    </button>
+                    </div>
+
+                    <div className="row">
+                      {/*
+                        Grob und fein, und in der Reihenfolge einer Waage:
+                        Abziehen links, Draufgeben rechts. Vorher standen sie
+                        als +1, −1, +10, −10 durcheinander — man musste lesen,
+                        statt zu zielen.
+                      */}
+                      <div className="zeitschritte">
+                        {[
+                          ['−1 Min.', -60],
+                          ['−10 s', -10],
+                          ['+10 s', 10],
+                          ['+1 Min.', 60]
+                        ].map(([beschriftung, sekunden]) => (
+                          <button
+                            key={beschriftung}
+                            onClick={() =>
+                              void api('projection.addSpeakerSeconds', sekunden as number, ziel).catch(
+                                app.reportError
+                              )
+                            }
+                          >
+                            {beschriftung}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="spacer" />
+
+                      {/*
+                        Zwei Griffe, die selten gebraucht werden und deshalb
+                        zurückhaltend aussehen: Der Neubeginn der Uhr — nötig,
+                        seit dieselbe Person beim Hin- und Herschalten ihre
+                        behält — und das Ende der Vorstellung, nötig, seit sie
+                        einen Ansichtswechsel überlebt.
+                      */}
+                      <button
+                        className="ghost"
+                        title="Die Redezeit dieser Person von vorn beginnen lassen."
+                        onClick={() =>
+                          void setMode('speaker', {
+                            speaker: {
+                              name: projection.speaker?.name ?? '',
+                              note: projection.speaker?.note,
+                              seconds: projection.speaker?.totalSeconds,
+                              upcoming: projection.speaker?.upcoming,
+                              upcomingShown: projection.speaker?.upcomingShown,
+                              uhrNeu: true
+                            }
+                          })
+                        }
+                        disabled={!projection.speaker.totalSeconds}
+                      >
+                        Zeit neu
+                      </button>
+                      <button
+                        className="ghost danger"
+                        title="Die laufende Vorstellung beenden. Die Uhr ist damit weg."
+                        onClick={() => void api('projection.endSpeaker', ziel).catch(app.reportError)}
+                      >
+                        Beenden
+                      </button>
+                    </div>
                   </div>
                 )}
               </Card>
