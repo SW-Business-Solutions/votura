@@ -1037,63 +1037,51 @@ html {
 /*
  * Der Antrag an der Wand.
  *
- * Kopf, Text, Fuß — und der Text bekommt den ganzen Platz dazwischen. Die
- * Maße hängen an `cqh`, wie alles in dieser Ansicht: Dieselbe Fläche trägt
- * eine Vorschau von 300 Pixeln und einen Beamer von vier Metern.
+ * Er steht im **normalen Rahmen** — Kopfzeile, Logo, Fußzeile, Sicherheitsrand
+ * wie bei Tagesordnung und Ergebnis. Hier steht nur, was den Wortlaut betrifft.
+ *
+ * Beim ersten Anlauf hatte er eine eigene Fläche mit eigener Kopf- und
+ * Fußzeile, wie Film und Kamerabild. Das sah aus wie ein fremdes Programm:
+ * kein Verband, kein Datum, kein Logo. Der Unterschied ist nicht Geschmack —
+ * ein Film füllt die Fläche, ein Antragswortlaut gehört in den Rahmen des
+ * Saals.
  */
-.projection-root.antrag-mode {
-  padding: 4cqh 5cqw;
-  gap: 2cqh;
-}
-
-.projection-antrag-kopf {
-  flex: 0 0 auto;
-  border-bottom: 0.4cqh solid var(--projection-primary, #4a9eff);
-  padding-bottom: 1.5cqh;
-}
-
-.projection-antrag-nummer {
-  font-size: 3.2cqh;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--projection-primary, #4a9eff);
-}
-
-.projection-antrag-titel {
-  font-size: 5cqh;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.projection-antrag-steller {
-  margin-top: 0.6cqh;
-  font-size: 2.6cqh;
-  color: var(--projection-muted, #9fb0bf);
+.projection-antrag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1cqh;
+  width: 100%;
+  text-align: left;
 }
 
 /*
- * Der Antragstext.
+ * Die Nebenzeile richtet sich hier nach links, nicht zur Mitte.
  *
- * `pre-wrap`, weil der Wortlaut zählt: Absätze, Einrückungen und
- * Aufzählungen sind Teil dessen, worüber abgestimmt wird. Umbrochen ist er
- * bereits in `@shared/antrag` — hier wird nur gezeichnet, damit jede Wand
- * dieselbe Seite zeigt.
+ * `.projection-note` ist für die anderen Ansichten gedacht, die alle mittig
+ * stehen — dort hat sie `margin: 0 auto`. Neben einem linksbündigen
+ * Antragswortlaut sah der Antragsteller aus, als gehörte er zu etwas
+ * anderem: Titel links, Absender in der Mitte.
  */
-.projection-antrag-text {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  white-space: pre-wrap;
-  font-size: 3.6cqh;
-  line-height: 1.45;
+.projection-antrag .projection-note {
+  margin: 0;
+  max-width: 100%;
+  text-align: left;
 }
 
-.projection-antrag-fuss {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: space-between;
-  font-size: 2.4cqh;
-  color: var(--projection-muted, #9fb0bf);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+/*
+ * Der Wortlaut.
+ *
+ * `pre-wrap`, weil Absätze und Einrückungen Teil dessen sind, worüber
+ * abgestimmt wird. Umbrochen ist er bereits in `@shared/antrag`; die Größe
+ * regelt `useFitToBody` wie bei jeder anderen Ansicht mit — deshalb hier ein
+ * Ausgangswert und keine feste Zahl.
+ */
+.projection-antrag-text {
+  margin-top: 1.5cqh;
+  padding-left: 1.5cqw;
+  border-left: 0.5cqh solid var(--projection-primary, #4a9eff);
+  white-space: pre-wrap;
+  font-size: 3.4cqh;
+  line-height: 1.45;
 }

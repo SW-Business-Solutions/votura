@@ -281,57 +281,6 @@ export function ProjectionScreen({
     )
   }
 
-  /*
-   * Der Antrag bekommt die ganze Fläche — aber mit Kopf.
-   *
-   * Anders als Bild, Film und Foliensatz: Nummer, Titel und Antragsteller
-   * gehören zum Text. Ein Antragswortlaut ohne Nummer an der Wand ist für
-   * jeden, der den Saal betritt, ein Zettel ohne Absender.
-   */
-  if (state.mode === 'antrag') {
-    return (
-      <div
-        className={`projection-root antrag-mode${preview ? ' preview' : ''}`}
-        style={style}
-      >
-        {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
-        {state.untertitel && <Untertitelband untertitel={state.untertitel} />}
-        {state.antrag ? (
-          <>
-            <header className="projection-antrag-kopf">
-              <div className="projection-antrag-nummer">{state.antrag.nummer}</div>
-              <div className="projection-antrag-titel">{state.antrag.titel}</div>
-              <div className="projection-antrag-steller">
-                {state.antrag.antragsteller}
-                {state.antrag.mitAenderungen ? ' · mit übernommenen Änderungen' : ''}
-              </div>
-            </header>
-            <div className="projection-antrag-text">
-              {state.antrag.seiten[state.antrag.seite] ?? ''}
-            </div>
-            <footer className="projection-antrag-fuss">
-              <span>
-                {state.antrag.schritt
-                  ? `Abstimmung ${state.antrag.schritt.nummer} von ${state.antrag.schritt.von}`
-                  : ''}
-              </span>
-              <span>
-                {state.antrag.seiten.length > 1
-                  ? `Seite ${state.antrag.seite + 1} von ${state.antrag.seiten.length}`
-                  : ''}
-              </span>
-            </footer>
-          </>
-        ) : (
-          <div className="projection-presentation-empty">
-            <div className="projection-status">ANTRAG</div>
-            <div className="projection-note">Es ist kein Antrag ausgewählt.</div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   if (state.mode === 'presentation') {
     return (
       <div className={`projection-root presentation-mode${preview ? ' preview' : ''}`} style={style}>
@@ -441,6 +390,53 @@ function renderMode(state: ProjectionState): JSX.Element {
           <div className="projection-note">{state.event.organization}</div>
         </>
       )
+
+    /*
+     * Ein Antrag ist **Inhalt der Versammlung**, kein eigenes Medium.
+     *
+     * Beim ersten Anlauf stand er wie Bild, Film und Foliensatz auf der
+     * ganzen Fläche, mit eigener Kopf- und Fußzeile. Das sah aus wie ein
+     * fremdes Programm: keine Kopfzeile mit Verband und Datum, kein Logo,
+     * keine Schriftskalierung, kein Sicherheitsrand — alles, was jede andere
+     * Ansicht des Saals trägt, fehlte.
+     *
+     * Der Unterschied ist nicht Geschmack: Film und Kamerabild füllen die
+     * Fläche, weil ein Rahmen darum ein Rahmen zu viel wäre. Ein
+     * Antragswortlaut gehört daneben wie die Tagesordnung und das Ergebnis —
+     * in denselben Rahmen, mit derselben Gestaltung.
+     */
+    case 'antrag': {
+      const antrag = state.antrag
+      if (!antrag) {
+        return (
+          <>
+            <div className="projection-round-label">ANTRAG</div>
+            <div className="projection-note">Es ist kein Antrag ausgewählt.</div>
+          </>
+        )
+      }
+      return (
+        <div className="projection-antrag">
+          <div className="projection-round-label">
+            {antrag.nummer}
+            {antrag.schritt ? ` · ABSTIMMUNG ${antrag.schritt.nummer} VON ${antrag.schritt.von}` : ''}
+          </div>
+          <div className="projection-title">{antrag.titel}</div>
+          <div className="projection-note">
+            {antrag.antragsteller}
+            {antrag.mitAenderungen ? ' · mit übernommenen Änderungen' : ''}
+            {antrag.seiten.length > 1 ? ` · Seite ${antrag.seite + 1} von ${antrag.seiten.length}` : ''}
+          </div>
+          {/*
+            Der Wortlaut in `pre-wrap`: Absätze und Einrückungen sind Teil
+            dessen, worüber abgestimmt wird. Umbrochen ist er bereits in
+            `@shared/antrag` — hier wird nur gezeichnet, damit jede Wand
+            dieselbe Seite zeigt.
+          */}
+          <div className="projection-antrag-text">{antrag.seiten[antrag.seite] ?? ''}</div>
+        </div>
+      )
+    }
 
     case 'agenda': {
       const allItems = state.agenda?.items ?? []
