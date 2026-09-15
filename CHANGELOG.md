@@ -124,6 +124,25 @@ gar nicht lief, nicht: Sie ist nicht unterbrochen, sondern bereit.
 Am Pult gilt dasselbe: Der Lauf des Manuskripts beginnt mit dem Start der Redezeit, nicht mit dem
 Aufruf.
 
+### Nutzungsbedingungen — zum ersten Mal
+
+Votura wird ab dieser Fassung unter **[Nutzungsbedingungen](NUTZUNGSBEDINGUNGEN.md)** weitergegeben.
+Sie liegen jedem Paket bei und werden beim Installieren zur Zustimmung vorgelegt.
+
+Der Anlass ist die mitgelieferte NDI-Laufzeit: Deren Lizenz verlangt in §3d, dass die Weitergabe
+„under the terms of a license agreement" geschieht, und dass dieses Abkommen acht bestimmte
+Klauseln enthält. Eine Datei im Programmordner ist keine Vereinbarung — eine Seite, auf der jemand
+zustimmt, ist eine.
+
+Was darüber hinausgeht, ist knapp gehalten und sagt vor allem, was erlaubt ist: **kostenlos laden,
+betreiben und weitergeben**, von wem auch immer, auf beliebig vielen Rechnern, ohne Anmeldung. Nicht
+erlaubt ist, das Programm zu verändern, es zu verkaufen oder vorkonfigurierte Geräte damit zu
+verkaufen. Für den **Quelltext** ändert sich nichts: alle Rechte vorbehalten.
+
+Ein Punkt steht dort, der kein Kleingedrucktes ist: **Die Verantwortung für die Wahl bleibt bei der
+Versammlung.** Votura ist ein Werkzeug; ob ein Wahlgang gültig ist, entscheidet die Satzung und die
+Versammlungsleitung.
+
 ### Behoben
 
 - **Das Kamerabild brauchte Sekunden, bis es an der Wand stand.** Die Suche kennt die Adresse, unter

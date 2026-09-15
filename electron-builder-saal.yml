@@ -42,6 +42,11 @@ asarUnpack:
 extraResources:
   - from: build/icon.png
     to: build/icon.png
+  # Die Nutzungsbedingungen liegen jedem Paket bei — auch der portablen
+  # Fassung und den Linux-Archiven, die kein Installationsprogramm haben und
+  # deshalb keine Zustimmungsseite zeigen können.
+  - from: NUTZUNGSBEDINGUNGEN.md
+    to: NUTZUNGSBEDINGUNGEN.md
 
 win:
   # ACHTUNG: Diese Liste **ersetzt** die obige, sie ergänzt sie nicht.
@@ -102,6 +107,14 @@ linux:
   icon: build/icon.png
 
 nsis:
+  # Die Zustimmungsseite des Installationsprogramms.
+  #
+  # Nicht Zierde: Die Lizenz der mitgelieferten NDI-Laufzeit verlangt, dass
+  # die Weitergabe „under the terms of a license agreement" geschieht (§3d).
+  # Eine Datei im Programmordner ist keine Vereinbarung — eine Seite, auf der
+  # jemand zustimmt, ist eine. Der Text entsteht aus NUTZUNGSBEDINGUNGEN.md
+  # mit `node tools/bedingungen.mjs`.
+  license: build/nutzungsbedingungen.txt
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true

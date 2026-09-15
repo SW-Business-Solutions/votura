@@ -684,12 +684,7 @@ Paket bei.
 > hier behauptet eine Zusammenarbeit — die Marke steht ausschließlich dort, wo es um die
 > Verträglichkeit mit NDI-Geräten geht.
 
-**Offen:** Die NDI-SDK-Lizenz verlangt, dass die eigenen Nutzungsbedingungen bestimmte Klauseln
-enthalten (§3d: kein Verändern, kein Nachbauen des Protokolls, Gewährleistungs- und
-Haftungsausschluss zugunsten NDI, Exportklauseln, Urheberrechtsvermerk). Votura hat bislang keine
-Endnutzerbedingungen.
-
-**Geklärt:** Der Produktbegriff der Lizenz schließt Hardware und Geräte fester Funktion aus (§1b) —
+**Und die Pi-Abbilder?** Der Produktbegriff der Lizenz schließt Hardware und Geräte fester Funktion aus (§1b) —
 für die Pi-Abbilder greift das nicht. Der Maßstab dort ist nicht, dass ein Gerät nur eine Sache
 tut, sondern dass es den Nutzer daran *hindert*, das Betriebssystem zu wechseln oder fremde
 Software zu installieren, und dass diese feste Funktion *verkauft* wird. Ein Pi hindert niemanden:
@@ -697,6 +692,21 @@ Software zu installieren, und dass diese feste Funktion *verkauft* wird. Ein Pi 
 schreiben. Die Pi-Abbilder zeigen deshalb Kamerabilder wie jede andere Fassung. Wer allerdings
 **vorkonfigurierte Pis verkaufen** will, verkauft ein Hardwareprodukt — dafür braucht es eine
 eigene Vereinbarung mit NDI.
+
+### Nutzungsbedingungen
+
+Das fertige Programm wird unter **[NUTZUNGSBEDINGUNGEN.md](NUTZUNGSBEDINGUNGEN.md)** weitergegeben —
+kostenlos, unverändert, ohne Gewähr. Sie liegen jedem Paket bei und werden beim Installieren zur
+Zustimmung vorgelegt.
+
+Der Grund für ihre Existenz ist §3d der NDI-SDK-Lizenz: Wer die NDI-Laufzeit weitergibt, muss das
+„under the terms of a license agreement" tun, und dieses Abkommen muss acht bestimmte Klauseln
+enthalten (kein Verändern, kein Nachbauen des Protokolls, Gewährleistungs- und Haftungsausschluss
+zugunsten NDI, Ausfuhrrecht, Urheberrechtsvermerk und die Bindung von Weiterentwicklern). Sie
+stehen dort vollständig, und [tests/bedingungen.test.ts](tests/bedingungen.test.ts) wacht darüber,
+dass keine beim Kürzen verlorengeht.
+
+Für den **Quelltext** ändert das nichts: keine Lizenz vergeben, alle Rechte vorbehalten.
 
 ## Dokumentation
 

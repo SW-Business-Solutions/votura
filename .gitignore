@@ -21,3 +21,8 @@ Thumbs.db
 spezifikation/
 *.tsbuildinfo
 resources/sprachmodell/
+
+# Die Textfassung der Nutzungsbedingungen für das Installationsprogramm.
+# Entsteht beim Bauen aus NUTZUNGSBEDINGUNGEN.md — zwei gepflegte Fassungen
+# desselben Textes wären zwei Fassungen zu viel.
+build/nutzungsbedingungen.txt
