@@ -82,6 +82,31 @@ export interface ProjectionUntertitel {
    * blasser gezeigt und nicht als Wahrheit.
    */
   vorlaeufigAbWort?: number
+  /**
+   * Welches Gerät zuhört.
+   *
+   * `hauptrechner` — das versteckte Zuhörerfenster am Rechner, an dem die
+   * Versammlung geführt wird. Der Regelfall, und der einzige, der ohne
+   * weiteres Gerät auskommt.
+   *
+   * `pult` — das Pult: das Prompterfenster, gleich ob am Hauptrechner oder
+   * auf einem Saalgerät am Rednerpult. Dort steht das Mikrofon, wo
+   * gesprochen wird; der Hauptrechner steht oft hinten im Saal oder im
+   * Nebenraum und hört nur Hall.
+   *
+   * Die Angabe steht **im Zustand** und nicht in den Einstellungen, weil
+   * jedes Gerät sie sehen muss: Das Pult erfährt daran, dass es zuhören
+   * soll, und der Hauptrechner, dass er es lassen kann. Zwei Geräte, die
+   * gleichzeitig zuhören, schrieben zwei Untertitelspuren übereinander.
+   */
+  quelle?: Untertitelquelle
+}
+
+export type Untertitelquelle = 'hauptrechner' | 'pult'
+
+export const UNTERTITELQUELLE_LABELS: Record<Untertitelquelle, string> = {
+  hauptrechner: 'Hauptrechner',
+  pult: 'Pult (Prompterfenster oder Saalgerät)'
 }
 
 /**

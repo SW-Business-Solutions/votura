@@ -23,6 +23,7 @@ import type { PresentationInfo, PrompterWindowState } from './presentation'
 import type { Abstimmungsschritt, Antrag, Antragsstatus } from './antrag'
 import type { Quotenbefund, Quotenregel } from './quote'
 import type { SprachmodellInfo } from './sprachmodell'
+import type { Untertitelquelle } from './untertitel'
 import type { ModellLadestand } from './sprachmodell-angebot'
 import type { Laufart, PrompterAnsicht, PrompterViewState, SpeechContent, SpeechInfo } from './speech'
 import type { VideoInfo } from './video'
@@ -903,7 +904,11 @@ export interface Api {
    * Je Bühne, wie die Einblendungen über dem Kamerabild — die Saalwand zeigt
    * sie, der Rückblickschirm am Pult nicht.
    */
-  'untertitel.setAn': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
+  'untertitel.setAn': (
+    an: boolean,
+    stage?: Buehnenwahl,
+    quelle?: Untertitelquelle
+  ) => Promise<ProjectionState>
   /**
    * Neu erkannten Text melden.
    *

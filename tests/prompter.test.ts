@@ -159,7 +159,16 @@ describe('Der Prompter geht seinen eigenen Weg', () => {
     /* Kein Wahlgang, kein Druck, kein Ergebnis. */
     const liste = /const PROMPTER_BEFEHLE = new Set\(\[([^\]]*)\]\)/.exec(server)?.[1] ?? ''
     expect(liste).not.toMatch(/round\.|print\.|result\.|ballot\./)
-    expect(liste.match(/'/g)?.length).toBe(14)
+    /*
+     * Acht Namen, sieben für den Prompter und einer für die Untertitel.
+     *
+     * Die Zahl steht hier, damit ein neunter nicht unbemerkt dazukommt: Jeder
+     * Eintrag ist ein Weg von außen nach innen, und die Liste ist bewusst
+     * eine Liste und keine Regel. Wer sie erweitert, ändert diese Zahl — und
+     * überlegt dabei, ob der Name wirklich hingehört.
+     */
+    expect(liste.match(/'/g)?.length).toBe(16)
+    expect(liste).toContain('untertitel.melde')
   })
 
   it('ist standardmäßig aus', () => {

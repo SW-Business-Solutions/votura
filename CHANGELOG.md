@@ -3,6 +3,67 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
+## 1.6.1 — Näher am Mikrofon
+
+Drei Nachträge zu dem, was 1.6.0 in den Saal gebracht hat — keiner davon groß, alle drei an
+Stellen, an denen es sonst gehakt hätte.
+
+### Untertitel hören jetzt dort zu, wo gesprochen wird
+
+Untertitel sind nur so gut wie das Mikrofon, das sie hört — und der Rechner, an dem die
+Versammlung geführt wird, steht selten dort, wo gesprochen wird. Meist hinten im Saal, oft im
+Nebenraum. Von dort kommt vom Rednerpult vor allem **Hall** an, und den erkennt kein Modell.
+
+Unter „Im Saal" ist deshalb jetzt zu wählen, **wer zuhört**: der **Hauptrechner** wie bisher —
+oder das **Pult**. Das ist das Prompterfenster, und das kann auf einem Saalgerät am Rednerpult
+stehen: auf dem Rückblickschirm, den der Redner ohnehin vor sich hat, oder auf einem Gerät am
+Mischpult, wo das Saalmikrofon anliegt. Es ist derselbe Weg, den der Prompter längst geht — er
+hört seit jeher am Pult mit, um dem Redner zu folgen. Neu ist nur, dass dabei auch der Untertitel
+abfällt.
+
+**Das bringt mehr als jedes größere Sprachmodell.** Ein sauberes Signal vom Pult schlägt ein
+besseres Modell an einem halligen Mikrofon, und zwar deutlich.
+
+Dazu drei Dinge, die dabei gelten:
+
+- **Erkannt wird auf dem Gerät, das zuhört.** Was es weitergibt, sind zwei Zeilen Text — kein Ton
+  verlässt das Gerät, und aufgezeichnet wird auch hier nichts.
+- **Immer nur eines.** Steht die Quelle auf „Pult", hört der Hauptrechner nicht mehr mit. Zwei
+  Geräte schrieben zwei Untertitelspuren übereinander.
+- **Über das Netz nur mit Freigabe.** Läuft das Pult auf einem Saalgerät, braucht es dafür
+  „Bedienung am Pult" — denselben Schalter, der dem Pult das Weiterblättern erlaubt.
+
+### Einblendungen für einen Livestream
+
+Wer die Versammlung überträgt, nimmt das Kamerabild direkt: NDI bedient mehrere Empfänger
+gleichzeitig, die Bildmischung holt sich dieselbe Quelle wie der Saal. Was dabei bisher fehlte,
+waren die **Einblendungen** — Votura zeichnet Bauchbinde, Rednerreihe und Untertitel auf seine
+eigene Fläche und nicht in den NDI-Strom hinein.
+
+Die Netzansicht trägt jetzt einen Zusatz: **`?ueberlagerung=1`** zeigt genau diese drei Dinge auf
+**durchsichtigem** Grund, sonst nichts. In OBS oder vMix kommt sie als Browser-Quelle über das
+Kamerabild, und der Stream trägt dieselben Einblendungen wie die Wand — aus derselben Quelle, ohne
+dass jemand etwas zweimal tippt. Die Adresse steht in der Beamersteuerung unter **Ausgabe & Netz**.
+
+Sie hält sich dabei an die Schalter der Bedienung: Wer im Saal die Bauchbinde ausschaltet, weil
+gerade niemand aufgerufen ist, hat sie auch im Stream nicht. Sonst behauptete die Übertragung etwas,
+das der Saal nicht sieht.
+
+**Alles andere ging schon vorher** — Tagesordnung, Ergebnis, Kandidatenliste, Pause: Dieselbe
+Netzadresse **ohne** den Zusatz zeigt sie vollständig und lässt sich genauso einbinden. Nur das
+Kamerabild fehlt dort, und das holt die Bildmischung ohnehin direkt.
+
+### Kleinschreibung, mit zwei Ausnahmen
+
+Die Erkennung liefert alles klein und ohne Satzzeichen; deutsche Rechtschreibung daraus
+zurückzugewinnen hieße, Substantive zu erraten, und das ginge daneben. „Das Essen war gut" gegen
+„wir wollen gleich essen" ist ohne Satzbau nicht zu trennen, und eine Regel, die rät, schriebe an
+der Wand Wörter groß, die klein gehören — das sähe schlechter aus als Kleinschreibung, weil es
+nach Absicht aussieht.
+
+Groß werden deshalb nur der **Satzanfang** und die **Namen, die Votura kennt** — aufgerufene
+Person, Bewerber, Verband, Veranstaltungstitel. Das ist Nachschlagen, kein Raten.
+
 ## 1.6.0 — Der Saal und das Verfahren
 
 Diese Fassung hat zwei Hälften.
@@ -114,26 +175,6 @@ Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihr
 Einrichten davor — dafür in die Einstellungen zu wechseln, wäre einer zu viel. Sie erscheinen nur,
 wenn zu dem laufenden Bild eine Steuerung eingerichtet ist.
 
-### Einblendungen für einen Livestream
-
-Wer die Versammlung überträgt, nimmt das Kamerabild direkt: NDI bedient mehrere Empfänger
-gleichzeitig, die Bildmischung holt sich dieselbe Quelle wie der Saal. Was dabei bisher fehlte,
-waren die **Einblendungen** — Votura zeichnet Bauchbinde, Rednerreihe und Untertitel auf seine
-eigene Fläche und nicht in den NDI-Strom hinein.
-
-Die Netzansicht trägt jetzt einen Zusatz: **`?ueberlagerung=1`** zeigt genau diese drei Dinge auf
-**durchsichtigem** Grund, sonst nichts. In OBS oder vMix kommt sie als Browser-Quelle über das
-Kamerabild, und der Stream trägt dieselben Einblendungen wie die Wand — aus derselben Quelle, ohne
-dass jemand etwas zweimal tippt. Die Adresse steht in der Beamersteuerung unter **Ausgabe & Netz**.
-
-Sie hält sich dabei an die Schalter der Bedienung: Wer im Saal die Bauchbinde ausschaltet, weil
-gerade niemand aufgerufen ist, hat sie auch im Stream nicht. Sonst behauptete die Übertragung etwas,
-das der Saal nicht sieht.
-
-**Alles andere ging schon vorher** — Tagesordnung, Ergebnis, Kandidatenliste, Pause: Dieselbe
-Netzadresse **ohne** den Zusatz zeigt sie vollständig und lässt sich genauso einbinden. Nur das
-Kamerabild fehlt dort, und das holt die Bildmischung ohnehin direkt.
-
 ### Untertitel im Saal
 
 Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge
@@ -168,11 +209,6 @@ Was dabei zu wissen ist:
 - **Bleibt nicht stehen.** Wird das Fenster am Hauptrechner geschlossen oder neu geladen, räumt
   eine Wache im Hauptprozess die Wand. Ein leeres Band sagt „nichts verstanden"; ein
   stehengebliebenes behauptet etwas Falsches.
-
-**Kleinschreibung, mit zwei Ausnahmen.** Die Erkennung liefert alles klein und ohne Satzzeichen;
-deutsche Rechtschreibung daraus zurückzugewinnen hieße, Substantive zu erraten, und das ginge
-daneben. Groß werden deshalb nur der Satzanfang und die Namen, die Votura **kennt** — aufgerufene
-Person, Bewerber, Verband. Das ist Nachschlagen, kein Raten.
 
 **Ehrlich zur Güte:** Der Prompter braucht nur ein paar halbwegs erkannte Wörter, um sich in einem
 Text wiederzufinden, der schon dasteht. Untertitel haben diesen Text nicht — sie zeigen jeden

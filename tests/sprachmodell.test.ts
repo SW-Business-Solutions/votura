@@ -46,7 +46,11 @@ describe('Wer zuhört, bekommt, was die Erkennung braucht', () => {
        man erst im Saal bemerkt. */
     const bedienung = lies('src/renderer/src/operator/App.tsx')
     expect(bedienung).not.toContain('Untertitelgeber')
-    expect(lies('src/renderer/src/zuhoerer-main.ts')).toContain('starteZuhoeren')
+    /* Der Zuhörer ruft den gemeinsamen Geber auf, und der das Zuhören —
+       die Rechnung dazwischen steht seit den Untertiteln am Pult an einer
+       Stelle für beide Orte. */
+    expect(lies('src/renderer/src/zuhoerer-main.ts')).toContain('starteUntertitelgeber')
+    expect(lies('src/renderer/src/sprache/untertitelgeber.ts')).toContain('starteZuhoeren')
   })
 
   it('darf Worker aus Blobs starten', () => {

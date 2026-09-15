@@ -44,7 +44,8 @@ import { listEventCandidates } from './candidates'
 import {
   namenGrossschreiben,
   UNTERTITEL_STILLE_MS,
-  type ProjectionUntertitel
+  type ProjectionUntertitel,
+  type Untertitelquelle
 } from '@shared/untertitel'
 import type { ProjectionVideo } from '@shared/video'
 import { rankCandidates } from '@shared/result'
@@ -1214,12 +1215,16 @@ export function setKameraSpiegeln(buehne: number, an: boolean): ProjectionState 
  * Anders als die Kameraschalter hängen sie an **keiner** Ansicht: Gesprochen
  * wird auch vor einer Tagesordnung und vor einem leeren Bild.
  */
-export function setUntertitel(buehne: number, an: boolean): ProjectionState {
+export function setUntertitel(
+  buehne: number,
+  an: boolean,
+  quelle: Untertitelquelle = 'hauptrechner'
+): ProjectionState {
   const state = buehneVon(buehne)
-  if (Boolean(state.untertitel) === an) return state
+  if (Boolean(state.untertitel) === an && state.untertitel?.quelle === quelle) return state
   const neu = setzeUndGib(buehne, {
     ...state,
-    untertitel: an ? { zeilen: [] } : undefined,
+    untertitel: an ? { zeilen: [], quelle } : undefined,
     updatedAt: new Date().toISOString()
   })
   pruefeUntertitelWache()
@@ -1259,6 +1264,18 @@ function bekannteNamen(): string[] {
  */
 export function untertitelIrgendwo(): boolean {
   return [...zustaende.values()].some((state) => Boolean(state.untertitel))
+}
+
+/**
+ * Soll der **Hauptrechner** zuhören?
+ *
+ * Nur dann öffnet sich sein Zuhörerfenster. Steht die Quelle auf `pult`,
+ * bleibt es zu — und damit bleibt das Mikrofon dieses Rechners unangetastet.
+ */
+export function untertitelAmHauptrechner(): boolean {
+  return [...zustaende.values()].some(
+    (state) => state.untertitel && (state.untertitel.quelle ?? 'hauptrechner') === 'hauptrechner'
+  )
 }
 
 /**
@@ -1313,7 +1330,8 @@ export function meldeUntertitel(roh: ProjectionUntertitel): void {
      * Ein Untertitel ändert den Inhalt nicht. Er steht in einem eigenen Band,
      * das über der Fläche liegt und nichts verschiebt.
      */
-    setzeUndGib(id, { ...state, untertitel: stand })
+    /* Die Quelle gehört zum Schalter, nicht zum Text — sie bleibt. */
+    setzeUndGib(id, { ...state, untertitel: { ...stand, quelle: state.untertitel.quelle } })
     broadcast(id)
   }
 }
@@ -1356,7 +1374,7 @@ function pruefeUntertitelWache(): void {
       for (const [id, state] of zustaende) {
         if (!state.untertitel || state.untertitel.zeilen.length === 0) continue
         /* Aus demselben Grund wie in `meldeUntertitel`: kein neuer Stempel. */
-        setzeUndGib(id, { ...state, untertitel: { zeilen: [] } })
+        setzeUndGib(id, { ...state, untertitel: { zeilen: [], quelle: state.untertitel.quelle } })
         broadcast(id)
       }
     }, UNTERTITEL_STILLE_MS)

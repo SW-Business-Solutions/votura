@@ -524,7 +524,22 @@ const PROMPTER_BEFEHLE = new Set([
   'prompter.setTempo',
   'prompter.setDarstellung',
   'prompter.setAnsicht',
-  'prompter.setLaufart'
+  'prompter.setLaufart',
+  /*
+   * Untertitel vom Pult.
+   *
+   * Der Hauptrechner steht oft hinten im Saal oder im Nebenraum — von dort
+   * kommt vom Rednerpult nur Hall an. Ein Saalgerät am Pult hört, wo
+   * gesprochen wird, erkennt **vor Ort** und schickt nur den fertigen Text.
+   * Der Ton verlässt das Gerät nicht, so wenig wie beim Mithören des
+   * Prompters.
+   *
+   * Dass der Name hier steht, ist eine Entscheidung und kein Versehen: Es ist
+   * ein Weg von außen nach innen. Er ändert nichts an einer Wahl, schreibt
+   * nichts in die Datenbank und wird nicht einmal abgelegt — er setzt zwei
+   * Zeilen Text, die an der Wand stehen, solange sie dort stehen.
+   */
+  'untertitel.melde'
 ])
 
 /* ------------------------------------------------------- Stimmabgabe */

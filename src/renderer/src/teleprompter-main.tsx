@@ -36,6 +36,7 @@ import {
   type RedeBlock
 } from '@shared/speech'
 import { HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
+import { starteUntertitelgeber } from './sprache/untertitelgeber'
 import { presentationKind, presentationPath, presentationUrl } from '@shared/presentation'
 import { FolienVorschau } from './prompter/FolienVorschau'
 import { starteMithoeren, type Mithoeren, type MithoerenStand } from './prompter/mithoeren'
@@ -175,6 +176,58 @@ function useProjektion(aktiv: boolean): Record<number, ProjectionState> {
   return zustaende
 }
 
+/**
+ * Zuhören, wenn der Saal es von diesem Gerät verlangt.
+ *
+ * ## Warum am Pult
+ *
+ * Der Hauptrechner steht oft hinten im Saal oder im Nebenraum — von dort
+ * kommt vom Rednerpult nur Hall an. Dieses Fenster steht am Pult, gleich ob
+ * als Fenster am Hauptrechner oder als Saalgerät: dort, wo gesprochen wird,
+ * und im Zweifel am Mischpult.
+ *
+ * ## Woran es erkennt, dass es gemeint ist
+ *
+ * Am Zustand: `untertitel.quelle === 'pult'`. Die Angabe steht dort und nicht
+ * in den Einstellungen, weil jedes Gerät sie sehen muss — zwei Geräte, die
+ * gleichzeitig zuhören, schrieben zwei Untertitelspuren übereinander.
+ *
+ * ## Der Ton bleibt hier
+ *
+ * Erkannt wird auf diesem Gerät; hinausgeschickt werden zwei Zeilen Text.
+ * Dieselbe Zusage wie beim Mithören des Prompters, und derselbe Weg: über das
+ * Netz genau ein freigeschalteter Aufruf, sonst nichts.
+ */
+function useUntertitelAmPult(zustand: ProjectionState | undefined): void {
+  const gefragt = zustand?.untertitel?.quelle === 'pult'
+
+  useEffect(() => {
+    if (!gefragt) return
+    let lebt = true
+    let geber: { beenden(): void } | undefined
+
+    void starteUntertitelgeber({
+      melde: (stand) => {
+        if (window.teleprompter) void window.teleprompter.invoke('untertitel.melde', stand)
+        else void rufeUeberNetz('untertitel.melde', stand).catch(() => undefined)
+      }
+    })
+      .then((laufend) => {
+        if (!lebt) {
+          laufend.beenden()
+          return
+        }
+        geber = laufend
+      })
+      .catch((fehler) => console.error('[Untertitel am Pult]', fehler))
+
+    return () => {
+      lebt = false
+      geber?.beenden()
+    }
+  }, [gefragt])
+}
+
 /** Die Laufarten in der Reihenfolge, in der sie am Pult zur Wahl stehen. */
 const LAUFARTEN = [
   ['auto', 'Gleichmäßig'],
@@ -286,7 +339,15 @@ function TeleprompterApp(): React.JSX.Element {
     return wert === 'vortrag' || wert === 'rede' ? wert : undefined
   }, [])
   const vortrag = (festeAnsicht ?? view.ansicht) === 'vortrag'
-  const projektionen = useProjektion(vortrag)
+  /*
+   * Der Zustand wird jetzt immer geholt, nicht nur in der Vortragsansicht.
+   *
+   * An ihm hängt seit den Untertiteln eine zweite Frage: Soll dieses Gerät
+   * zuhören? Eine Leitung mehr kostet nichts — es ist derselbe Strom, den die
+   * Beameransicht ohnehin führt.
+   */
+  const projektionen = useProjektion(true)
+  useUntertitelAmPult(projektionen[HAUPTBUEHNE])
 
   useEffect(() => {
     const bridge = window.teleprompter

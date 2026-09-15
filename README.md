@@ -735,12 +735,34 @@ Rückblickschirm am Pult nicht: Wer vorne steht, braucht nicht zu lesen, was er 
 Kamerabild oder einer leeren Fläche; das Band bleibt, wenn die Ansicht wechselt. Über einem
 Kamerabild rückt es nach oben, damit Bauchbinde und Rednerreihe frei bleiben.
 
-### Erkannt wird am Hauptrechner
+### Wo zugehört wird — und warum das die wichtigere Frage ist
 
-Ein Mikrofon gibt es nur in einem sicheren Kontext — die Saalgeräte hängen über einfaches HTTP am
-Netz und bekommen keines. Zugehört wird deshalb an dem Rechner, an dem die Versammlung geführt
-wird; an die Wände geht nur der fertige Text. Das ist auch die sparsamere Richtung: Ein Modell,
-zehn Bildschirme.
+Untertitel sind nur so gut wie das Mikrofon, das sie hören. Und der Rechner, an dem die
+Versammlung geführt wird, steht selten dort, wo gesprochen wird: meist hinten im Saal, oft im
+Nebenraum. Von dort kommt vom Rednerpult vor allem Hall an. Deshalb ist unter „Im Saal" neben dem
+Schalter zu wählen, **wer zuhört**:
+
+- **Hauptrechner** — das Mikrofon dieses Rechners. Der Regelfall, und der einzige, der ohne ein
+  zweites Gerät auskommt.
+- **Pult** — das **Prompterfenster**. Das läuft am Hauptrechner, kann aber ebenso gut auf einem
+  Saalgerät am Rednerpult stehen: auf dem Rückblickschirm, den der Redner ohnehin vor sich hat,
+  oder auf einem Gerät am Mischpult, wo das Saalmikrofon anliegt. Dort hört es, was wirklich
+  gesagt wird.
+
+Ein Mikrofon bekommt nicht jedes Fenster. Die Bedienoberfläche ausdrücklich nicht — dort hätte es
+nichts zu suchen. Zugehört wird an genau zwei Stellen: in einem versteckten Zuhörerfenster am
+Hauptrechner und im Prompterfenster. Beide laufen unter dem Pult-Schema, beide benutzen dieselbe
+Rechnung; wer wissen will, wer zuhört, findet es an diesen zwei Stellen und nirgends sonst.
+
+**Erkannt wird auf dem Gerät, das zuhört.** Was es weitergibt, sind zwei Zeilen Text — kein Ton
+verlässt das Gerät. Steht die Quelle auf „Pult", öffnet der Hauptrechner sein Zuhörerfenster gar
+nicht erst: Zwei Geräte, die gleichzeitig zuhören, schrieben zwei Untertitelspuren übereinander.
+Welches Gerät zuständig ist, steht deshalb im Beamerzustand, den ohnehin jeder Bildschirm sieht.
+
+Läuft das Prompterfenster auf einem Saalgerät über das Netz, muss dafür **„Bedienung am Pult"**
+freigeschaltet sein — derselbe Schalter, der dem Pult das Weiterblättern erlaubt. Der Weg führt von
+außen nach innen, also steht er auf derselben Liste und unter derselben Bedingung wie jeder andere.
+Geschrieben wird dabei nichts in die Datenbank; der Untertitel lebt im Zustand und stirbt mit ihm.
 
 Gemeldet wird viermal je Sekunde, nicht im Silbentakt. Der Beamerzustand geht über dieselben
 Leitungen wie alles andere, und ein Text, den ohnehin niemand schneller liest, muss sie nicht
@@ -773,7 +795,7 @@ deshalb nur Modelle, die auch laufen.
 
 Was bleibt: das zweite kleine deutsche Modell versuchen, wenn eine Stimme schlecht erkannt wird —
 und vor allem ein **Mikrofon am Pult statt eines im Raum**. Das bringt mehr als jeder
-Modellwechsel.
+Modellwechsel, und genau dafür ist die Quelle „Pult" da.
 
 **Nachladen und offline bleiben ist kein Widerspruch.** Geladen wird nur auf Klick, nur aus der
 festen Liste, und die Adresse wird aus dem Dateinamen gebaut statt entgegengenommen — sonst wäre

@@ -236,7 +236,10 @@ describe('Untertitel im Beamerzustand', () => {
      * braucht nicht zu lesen, was er selbst gerade sagt.
      */
     dienst.setUntertitel(HAUPTBUEHNE, true)
-    expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel).toEqual({ zeilen: [] })
+    expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel).toEqual({
+      zeilen: [],
+      quelle: 'hauptrechner'
+    })
     expect(dienst.getProjectionState(2).untertitel).toBeUndefined()
   })
 
@@ -298,6 +301,36 @@ describe('Untertitel im Beamerzustand', () => {
     expect(dienst.getProjectionState(HAUPTBUEHNE).updatedAt).toBe(vorher)
     /* Angekommen ist der Text trotzdem. */
     expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel?.zeilen).toEqual(['Erstes wort zweites'])
+    dienst.setUntertitel(HAUPTBUEHNE, false)
+  })
+
+  it('öffnet das Zuhörerfenster nur, wenn der Hauptrechner zuhören soll', () => {
+    /*
+     * **Zwei Geräte, die gleichzeitig zuhören, schrieben zwei Spuren
+     * übereinander.** Steht die Quelle auf `pult`, hört das Prompterfenster
+     * zu — dann muss der Hauptrechner es lassen, und zwar nachweislich: Sein
+     * Mikrofon bleibt unangetastet.
+     */
+    dienst.setUntertitel(HAUPTBUEHNE, true, 'pult')
+    expect(dienst.untertitelIrgendwo()).toBe(true)
+    expect(dienst.untertitelAmHauptrechner()).toBe(false)
+
+    dienst.setUntertitel(HAUPTBUEHNE, true, 'hauptrechner')
+    expect(dienst.untertitelAmHauptrechner()).toBe(true)
+
+    dienst.setUntertitel(HAUPTBUEHNE, false)
+    expect(dienst.untertitelIrgendwo()).toBe(false)
+    expect(dienst.untertitelAmHauptrechner()).toBe(false)
+  })
+
+  it('behält die Quelle, wenn Text kommt', () => {
+    /* Die Quelle gehört zum Schalter, nicht zum Text. Ginge sie bei der
+       ersten Meldung verloren, zöge der Hauptrechner sein Fenster wieder
+       hoch — und beide hörten zu. */
+    dienst.setUntertitel(HAUPTBUEHNE, true, 'pult')
+    dienst.meldeUntertitel({ zeilen: ['vom pult gesprochen'] })
+    expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel?.quelle).toBe('pult')
+    expect(dienst.untertitelAmHauptrechner()).toBe(false)
     dienst.setUntertitel(HAUPTBUEHNE, false)
   })
 

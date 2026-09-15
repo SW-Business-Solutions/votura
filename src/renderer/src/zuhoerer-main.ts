@@ -25,19 +25,21 @@
  * steht in der Beamer-Ansicht; ein leeres Fenster in der Leiste wäre nur eine
  * Stelle, an der jemand aus Versehen auf „Schließen" klickt.
  *
+ * ## Es ist nicht der einzige Ort
+ *
+ * Steht die Quelle auf **Pult**, öffnet der Hauptprozess dieses Fenster gar
+ * nicht erst; dann hört das Prompterfenster zu — das ebenso gut auf einem
+ * Saalgerät am Rednerpult laufen kann, dort, wo gesprochen wird. Die Rechnung
+ * dahinter ist an beiden Orten dieselbe und steht in
+ * `@renderer/sprache/untertitelgeber`.
+ *
  * ## Aufgezeichnet wird nichts
  *
- * Der Ton geht in die Erkennung und ist danach weg. Was dieses Fenster nach
- * außen gibt, sind zwei Zeilen Text — mehr fasst der Puffer nicht.
+ * Der Ton geht in die Erkennung und ist danach weg. Der Puffer fasst zwei
+ * Zeilen — gerade so viel, wie an der Wand steht.
  */
-import {
-  UNTERTITEL_STILLE_MS,
-  UNTERTITEL_TAKT_MS,
-  untertitelBilden,
-  untertitelKuerzen,
-  type ProjectionUntertitel
-} from '@shared/untertitel'
-import { starteZuhoeren } from './sprache/zuhoeren'
+import type { ProjectionUntertitel } from '@shared/untertitel'
+import { starteUntertitelgeber } from './sprache/untertitelgeber'
 
 declare global {
   interface Window {
@@ -47,54 +49,8 @@ declare global {
 
 const bruecke = window.voturaZuhoerer
 
-/** Was zuletzt gemeldet wurde — um Unverändertes nicht noch einmal zu schicken. */
-let offen: ProjectionUntertitel = { zeilen: [] }
-let sicher = ''
-let vorlaeufig = ''
-let zuletztGehoert = Date.now()
-
-const gleich = (a: ProjectionUntertitel, b: ProjectionUntertitel): boolean =>
-  a.vorlaeufigAbWort === b.vorlaeufigAbWort &&
-  a.zeilen.length === b.zeilen.length &&
-  a.zeilen.every((zeile, i) => zeile === b.zeilen[i])
-
-/*
- * Gemeldet wird im Takt, nicht im Silbentakt.
- *
- * Die Erkennung meldet Zwischenstände, sobald sie ein Wort zu hören glaubt —
- * mehrmals je Sekunde. Jede einzelne durch die Leitungen an jeden Bildschirm
- * zu schicken hieße, den Beamerzustand im Sprechtempo zu erneuern, für einen
- * Text, den ohnehin niemand so schnell liest.
- */
-setInterval(() => {
-  /*
-   * Nach einer Weile Stille fängt der Puffer neu an.
-   *
-   * Sonst stünde nach der Pause der halbe Satz des Vorredners vor dem ersten
-   * Wort des nächsten — zwei Sätze, die nie zusammengehört haben, in einer
-   * Zeile.
-   */
-  if (Date.now() - zuletztGehoert > UNTERTITEL_STILLE_MS) {
-    sicher = ''
-    vorlaeufig = ''
-  }
-
-  const stand = untertitelBilden(sicher, vorlaeufig)
-  if (gleich(stand, offen)) return
-  offen = stand
-  bruecke?.melde(stand)
-}, UNTERTITEL_TAKT_MS)
-
-void starteZuhoeren({
-  aufText: (text, endgueltig) => {
-    zuletztGehoert = Date.now()
-    if (endgueltig) {
-      sicher = untertitelKuerzen(`${sicher} ${text}`)
-      vorlaeufig = ''
-    } else {
-      vorlaeufig = text
-    }
-  },
+void starteUntertitelgeber({
+  melde: (stand) => bruecke?.melde(stand),
   aufStand: (stand) => {
     /*
      * Niemand sieht dieses Fenster, also geht die Meldung in die Konsole des

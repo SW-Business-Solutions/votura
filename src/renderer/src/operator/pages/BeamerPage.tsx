@@ -16,6 +16,7 @@ import {
   type ProjectionMode
 } from '@shared/projection'
 import { formatTimeDe } from '@shared/format'
+import { UNTERTITELQUELLE_LABELS, type Untertitelquelle } from '@shared/untertitel'
 import { api } from '../../lib/api'
 import { ProjectionScreen } from '../../projection/ProjectionScreen'
 import { useApp } from '../state'
@@ -527,8 +528,9 @@ export function BeamerPage(): React.JSX.Element {
              *
              * Gesprochen wird vor der Tagesordnung genauso wie vor einem
              * Kamerabild — deshalb steht der Schalter hier unter der
-             * Ansichtsreihe und nicht bei den Kameras. Erkannt wird dabei am
-             * Hauptrechner; die Wände bekommen nur den fertigen Text.
+             * Ansichtsreihe und nicht bei den Kameras. Zugehört wird an
+             * einem Gerät, gewählt gleich daneben; die Wände bekommen nur
+             * den fertigen Text.
              */}
             <div className="beamer-nebenschalter">
               <span className="beamer-nebenschalter-marke">Im Saal</span>
@@ -538,11 +540,43 @@ export function BeamerPage(): React.JSX.Element {
                 label="Untertitel – was gesprochen wird, mitlesbar an der Wand"
               />
               {projection.untertitel && (
-                <p className="hint">
-                  Das Mikrofon dieses Rechners hört mit. Aufgezeichnet wird nichts — der Text steht
-                  an der Wand und sonst nirgends. Wie gut er stimmt, hängt am hinterlegten
-                  Sprachmodell.
-                </p>
+                <>
+                  {/*
+                    Wo zugehört wird, ist die Frage, die über die Güte
+                    entscheidet — mehr als jedes Modell. Der Hauptrechner
+                    steht oft hinten im Saal oder im Nebenraum und hört von
+                    dort nur Hall.
+                  */}
+                  <Field
+                    label="Zuhören"
+                    hint="Am Pult steht das Mikrofon, wo gesprochen wird — im Zweifel am Mischpult. Das bringt mehr als ein größeres Sprachmodell."
+                  >
+                    <select
+                      value={projection.untertitel.quelle ?? 'hauptrechner'}
+                      onChange={(e) =>
+                        void api(
+                          'untertitel.setAn',
+                          true,
+                          app.ziel,
+                          e.target.value as Untertitelquelle
+                        ).catch(app.reportError)
+                      }
+                    >
+                      {(Object.keys(UNTERTITELQUELLE_LABELS) as Untertitelquelle[]).map((wert) => (
+                        <option key={wert} value={wert}>
+                          {UNTERTITELQUELLE_LABELS[wert]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <p className="hint">
+                    {(projection.untertitel.quelle ?? 'hauptrechner') === 'pult'
+                      ? 'Das Prompterfenster hört zu — am Hauptrechner oder auf einem Saalgerät am Rednerpult. Es muss dafür geöffnet sein; über das Netz zusätzlich „Bedienung am Pult" freigeschaltet.'
+                      : 'Das Mikrofon dieses Rechners hört mit.'}{' '}
+                    Aufgezeichnet wird nichts — der Text steht an der Wand und sonst nirgends. Wie
+                    gut er stimmt, hängt am hinterlegten Sprachmodell.
+                  </p>
+                </>
               )}
             </div>
           </Card>

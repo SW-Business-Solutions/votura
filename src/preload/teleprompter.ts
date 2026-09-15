@@ -35,7 +35,15 @@ const ERLAUBT = new Set<string>([
   'prompter.setLaufart',
   /* Nur lesend, und nur, um die laufenden Folien am Pult zu zeigen. */
   'projection.state',
-  'projection.buehnen'
+  'projection.buehnen',
+  /*
+   * Untertitel vom Pult.
+   *
+   * Hier steht das Mikrofon, wo gesprochen wird — der Hauptrechner steht oft
+   * hinten im Saal. Erkannt wird auf diesem Gerät; hinaus gehen zwei Zeilen
+   * Text. Der Ton verlässt es nicht, so wenig wie beim Mithören.
+   */
+  'untertitel.melde'
 ])
 
 async function rufe<M extends ApiMethod>(method: M, ...args: ApiParams<M>): Promise<ApiResult<M>> {

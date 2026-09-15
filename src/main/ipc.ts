@@ -133,7 +133,7 @@ import {
   setKameraSpiegeln,
   setUntertitel,
   meldeUntertitel,
-  untertitelIrgendwo,
+  untertitelAmHauptrechner,
   setVideoSchleife,
   setVideoPlaying,
   seekVideo,
@@ -968,9 +968,9 @@ const api: Api = {
     requirePermission('round.manage')
     return aufBuehnen(stage, (buehne) => setKameraSpiegeln(buehne, an))
   },
-  'untertitel.setAn': async (an, stage) => {
+  'untertitel.setAn': async (an, stage, quelle) => {
     requirePermission('round.manage')
-    const zustand = aufBuehnen(stage, (buehne) => setUntertitel(buehne, an))
+    const zustand = aufBuehnen(stage, (buehne) => setUntertitel(buehne, an, quelle))
     /*
      * Das Zuhören hängt am Schalter, nicht am Fenster.
      *
@@ -980,7 +980,15 @@ const api: Api = {
      * manchmal nichts sendet: Solange niemand mitliest, hat dieses Programm
      * kein offenes Mikrofon.
      */
-    if (untertitelIrgendwo()) openZuhoererWindow()
+    /*
+     * Das Zuhörerfenster nur, wenn **dieser** Rechner zuhören soll.
+     *
+     * Steht die Quelle auf `pult`, hört das Prompterfenster zu — am
+     * Hauptrechner oder auf einem Saalgerät am Rednerpult. Dann bleibt das
+     * Mikrofon hier unangetastet, und zwei Spuren übereinander gibt es
+     * nicht.
+     */
+    if (untertitelAmHauptrechner()) openZuhoererWindow()
     else closeZuhoererWindow()
     return zustand
   },
