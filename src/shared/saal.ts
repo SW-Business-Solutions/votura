@@ -86,6 +86,16 @@ export interface SaalFund extends SaalAntwort {
 export type SaalRolle =
   | { art: 'buehne'; nummer: number }
   | { art: 'prompter' }
+  /**
+   * Nur die Folien: die aktuelle und die nächste, ohne Redetext.
+   *
+   * Der Prompter kann beides und schaltet um — aber die Ansicht gehört zum
+   * **Zustand des Pults** und gilt damit für alle, die ihn zeigen. Ein zweites
+   * Gerät, das nur die Folien braucht, könnte sie nicht wählen, ohne dem Pult
+   * den Text wegzunehmen. Als eigene Rolle steht die Ansicht an diesem Gerät
+   * fest, und niemand verstellt sie versehentlich.
+   */
+  | { art: 'vortrag' }
   /** Einlass: Teilnehmer suchen, Ausweis ausgeben und zurücknehmen. */
   | { art: 'akkreditierung' }
   /** Ausgabe: Stimmzettel gegen Ausweis herausgeben. */
@@ -145,6 +155,10 @@ export function rollenAdresse(einstellung: SaalEinstellung): string {
   switch (einstellung.rolle.art) {
     case 'prompter':
       return `${basis}/prompter${frage}`
+    /* Dieselbe Seite, nur festgelegt: Der Suchteil sagt ihr, was sie zeigen
+       soll, und sie rührt den gemeinsamen Zustand des Pults nicht an. */
+    case 'vortrag':
+      return `${basis}/prompter?ansicht=vortrag${token}`
     /*
      * Die bedienenden Rollen führen auf die Fernbedienung des Hauptrechners.
      * Sie bauen nichts nach — es ist dieselbe Oberfläche, dieselbe Anmeldung,
@@ -176,6 +190,8 @@ export function rollenName(rolle: SaalRolle, buehnen: { id: number; name: string
   switch (rolle.art) {
     case 'prompter':
       return 'Prompter am Pult'
+    case 'vortrag':
+      return 'Präsentationsansicht'
     case 'akkreditierung':
       return 'Akkreditierung am Einlass'
     case 'ausgabe':

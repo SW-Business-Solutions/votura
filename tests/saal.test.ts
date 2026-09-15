@@ -85,6 +85,29 @@ describe('Die Adresse einer Rolle', () => {
     )
   })
 
+  it('führt für die Präsentationsansicht auf denselben Endpunkt — festgelegt', () => {
+    /*
+     * Dieselbe Seite wie der Prompter, nur mit einer Ansicht, die dieses Gerät
+     * nicht verstellt. Sie gehört sonst zum gemeinsamen Zustand des Pults: Ein
+     * zweiter Bildschirm könnte die Folien nicht wählen, ohne dem Pult den
+     * Text wegzunehmen.
+     */
+    expect(rollenAdresse({ master: 'http://10.0.0.5:8477', token: '', rolle: { art: 'vortrag' } })).toBe(
+      'http://10.0.0.5:8477/prompter?ansicht=vortrag'
+    )
+  })
+
+  it('nimmt das Token auch in die festgelegte Ansicht mit', () => {
+    expect(
+      rollenAdresse({ master: 'http://10.0.0.5:8477', token: 'geheim 1', rolle: { art: 'vortrag' } })
+    ).toBe('http://10.0.0.5:8477/prompter?ansicht=vortrag&t=geheim%201')
+  })
+
+  it('verlangt für die Präsentationsansicht keine Anmeldung', () => {
+    /* Sie zeigt, was ohnehin an der Wand steht. */
+    expect(rolleBrauchtAnmeldung({ art: 'vortrag' })).toBe(false)
+  })
+
   it('hängt das Token an, wenn eines gesetzt ist', () => {
     const mitToken = rollenAdresse({
       master: 'http://10.0.0.5:8477/',
@@ -185,9 +208,7 @@ describe('Die bedienenden Rollen', () => {
      * Verglichen wird deshalb gegen dieselben Begriffe, die der
      * Projektionsserver benutzt, nicht gegen abgeschriebene Zeichenketten.
      */
-    expect(rollenAdresse(einstellung({ art: 'wahlkabine' }))).toBe(
-      `http://192.168.1.5:8477${WAHL_PFAD}`
-    )
+    expect(rollenAdresse(einstellung({ art: 'wahlkabine' }))).toBe(`http://192.168.1.5:8477${WAHL_PFAD}`)
     expect(rollenAdresse(einstellung({ art: 'wahlausschuss' }))).toBe(
       `http://192.168.1.5:8477${AUSSCHUSS_PFAD}`
     )

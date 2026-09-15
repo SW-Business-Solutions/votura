@@ -50,6 +50,15 @@ nach Wörtern, die niemand spricht.
 Dabei ist noch eine alte Ungenauigkeit mitgegangen: Der Lauf hielt um so viele Schritte zu früh an,
 wie die Rede Atempausen hat — der letzte Satz kam nie ganz bis zur Lesezeile.
 
+### Votura Saal: ein Bildschirm nur für die Folien
+
+Die Begleitanwendung kennt eine neue Rolle: **Präsentationsansicht**. Sie zeigt die Folie, die
+gerade an der Wand steht, und daneben die nächste — ohne Redetext, ohne Bedienung, ohne Mikrofon.
+
+Der Prompter konnte beides schon, aber die Ansicht gilt dort für alle Geräte zugleich: Ein zweiter
+Bildschirm hätte die Folien nicht wählen können, ohne dem Pult den Text wegzunehmen. Als eigene
+Rolle steht sie an diesem Gerät fest.
+
 ### Das Mikrofon hat jetzt einen Schalter
 
 Bei _Nach Stimme_ lief das Mikrofon, sobald die Laufart gewählt war, und der Startknopf daneben war

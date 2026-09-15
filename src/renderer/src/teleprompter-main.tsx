@@ -268,7 +268,24 @@ function TeleprompterApp(): React.JSX.Element {
   }, [])
 
   const bloecke = useMemo(() => redeBloecke(view.speech?.markdown ?? ''), [view.speech?.markdown])
-  const vortrag = view.ansicht === 'vortrag'
+  /*
+   * **Ein Gerät kann auf eine Ansicht festgelegt sein.**
+   *
+   * Die Ansicht gehört sonst zum gemeinsamen Zustand des Pults: Wer am Board
+   * auf „Folien statt Text" drückt, schaltet jedes Gerät um, das den Prompter
+   * zeigt. Ein zweiter Bildschirm neben der vortragenden Person, der **nur**
+   * die Folien zeigen soll, könnte das nicht wählen, ohne dem Pult den Text
+   * wegzunehmen.
+   *
+   * Der Suchteil der Adresse legt die Ansicht deshalb örtlich fest — er
+   * ändert nichts am gemeinsamen Zustand und gilt nur für dieses Fenster.
+   * Die Begleitanwendung setzt ihn für die Rolle „Präsentationsansicht".
+   */
+  const festeAnsicht = useMemo(() => {
+    const wert = new URLSearchParams(window.location.search).get('ansicht')
+    return wert === 'vortrag' || wert === 'rede' ? wert : undefined
+  }, [])
+  const vortrag = (festeAnsicht ?? view.ansicht) === 'vortrag'
   const projektionen = useProjektion(vortrag)
 
   useEffect(() => {
@@ -510,7 +527,7 @@ function TeleprompterApp(): React.JSX.Element {
             <strong>{folie}</strong>
             <span> / {laufend?.slideCount ?? '?'}</span>
           </span>
-          {darfBedienen && view.speech && (
+          {darfBedienen && view.speech && !festeAnsicht && (
             <button type="button" onClick={() => void rufe('prompter.setAnsicht', 'rede')}>
               Zum Redetext
             </button>
@@ -688,9 +705,11 @@ function TeleprompterApp(): React.JSX.Element {
             >
               Restzeit
             </button>
-            <button type="button" onClick={() => void rufe('prompter.setAnsicht', 'vortrag')}>
-              Folien statt Text
-            </button>
+            {!festeAnsicht && (
+              <button type="button" onClick={() => void rufe('prompter.setAnsicht', 'vortrag')}>
+                Folien statt Text
+              </button>
+            )}
           </div>
 
           {view.laufart === 'stimme' && (

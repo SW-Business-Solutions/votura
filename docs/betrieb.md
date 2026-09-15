@@ -228,7 +228,8 @@ sie fragt.
    nicht auf den Suchruf.
 2. **Votura Saal auf dem Gerät starten.** Beim ersten Mal erscheint die Einrichtung: Sie zeigt die
    gefundenen Hauptrechner mit Namen der Versammlung, Fassung und Zahl der Bühnen.
-3. **Rolle wählen:** eine der Bühnen oder _Prompter am Pult_.
+3. **Rolle wählen:** eine der Bühnen, _Prompter am Pult_, _Präsentationsansicht_ oder eine der
+   bedienenden Rollen.
 4. **Token eintragen,** falls der Hauptrechner eines verlangt. Die Einrichtung sagt es.
 5. **Übernehmen.** Die Anwendung prüft die Angaben, startet einmal neu und zeigt danach ihre Seite —
    bei einem einzelnen Bildschirm im Vollbild.
@@ -240,6 +241,19 @@ sie fragt.
   Hauptrechner. Damit läuft das Mitlaufen nach Gehör auch auf einem Gerät am Pult — im Browser geht
   es nicht.
 - **Das Sprachmodell** kommt über das Netz vom Hauptrechner; auf dem Saalgerät ist keines nötig.
+
+### Präsentationsansicht — ein Bildschirm nur für die Folien
+
+Ein Gerät neben der vortragenden Person, das **nur** zeigt, was der Vortrag gerade macht: die Folie
+an der Wand und daneben die nächste. Kein Redetext, keine Bedienung, kein Mikrofon.
+
+Der Prompter kann beides und schaltet um — aber die Ansicht gehört zum Zustand des Pults und gilt
+damit für **alle**, die ihn zeigen. Ein zweiter Bildschirm könnte die Folien also nicht wählen, ohne
+dem Pult den Text wegzunehmen. Als eigene Rolle steht die Ansicht an diesem Gerät fest: Wer am Pult
+zwischen Text und Folien wechselt, ändert hier nichts — und umgekehrt genauso wenig.
+
+Praktisch für das Rednerpult neben einem Prompter, für die Versammlungsleitung am Tisch oder für
+einen Kontrollmonitor in der Regie.
 
 ## Ein Raspberry Pi als Anzeigegerät
 

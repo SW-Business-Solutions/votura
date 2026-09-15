@@ -270,3 +270,25 @@ describe('Bei „Nach Stimme" schaltet der Startknopf das Mikrofon', () => {
     expect(dienst).toContain("state.laufart === 'auto' && state.laenge > 0")
   })
 })
+
+describe('Ein Gerät kann auf eine Ansicht festgelegt sein', () => {
+  /*
+   * Die Ansicht — Redetext oder Folien — gehört zum gemeinsamen Zustand des
+   * Pults: Wer am Board umschaltet, schaltet jedes Gerät um. Ein zweiter
+   * Bildschirm neben der vortragenden Person, der nur die Folien zeigen soll,
+   * könnte sie deshalb nicht wählen, ohne dem Pult den Text wegzunehmen.
+   */
+  it('liest die Ansicht aus dem Suchteil der Adresse', () => {
+    const pult = lies('src/renderer/src/teleprompter-main.tsx')
+    expect(pult).toContain("new URLSearchParams(window.location.search).get('ansicht')")
+    expect(pult).toContain('(festeAnsicht ?? view.ansicht)')
+  })
+
+  it('ändert dabei nichts am gemeinsamen Zustand', () => {
+    /* Sonst zöge ein zweiter Bildschirm das Pult mit sich — die Umschalter
+       verschwinden deshalb, wo die Ansicht feststeht. */
+    const pult = lies('src/renderer/src/teleprompter-main.tsx')
+    expect(pult).toContain('!festeAnsicht && (')
+    expect(pult).toContain('view.speech && !festeAnsicht')
+  })
+})

@@ -172,6 +172,13 @@ function EinrichtungsApp(): React.JSX.Element {
             </span>
           </button>
           <button
+            className={rolle.art === 'vortrag' ? 'gewaehlt' : ''}
+            onClick={() => setRolle({ art: 'vortrag' })}
+          >
+            Präsentationsansicht
+            <span className="leise">Aktuelle und nächste Folie · rein anzeigend</span>
+          </button>
+          <button
             className={rolle.art === 'akkreditierung' ? 'gewaehlt' : ''}
             onClick={() => setRolle({ art: 'akkreditierung' })}
           >
@@ -224,6 +231,13 @@ function EinrichtungsApp(): React.JSX.Element {
           <p className="hinweis">
             Als Prompter darf dieses Gerät das Mikrofon nutzen — nur dann, und nur gegenüber dem oben
             gewählten Rechner. Aufgenommen wird nichts.
+          </p>
+        )}
+        {rolle.art === 'vortrag' && (
+          <p className="hinweis">
+            Ein Bildschirm neben der vortragenden Person: die Folie, die gerade an der Wand steht, und daneben
+            die nächste. Diese Ansicht steht an diesem Gerät <strong>fest</strong> — wer am Pult zwischen Text
+            und Folien umschaltet, ändert hier nichts, und umgekehrt genauso wenig.
           </p>
         )}
       </section>
