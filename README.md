@@ -687,9 +687,16 @@ Paket bei.
 **Offen:** Die NDI-SDK-Lizenz verlangt, dass die eigenen Nutzungsbedingungen bestimmte Klauseln
 enthalten (§3d: kein Verändern, kein Nachbauen des Protokolls, Gewährleistungs- und
 Haftungsausschluss zugunsten NDI, Exportklauseln, Urheberrechtsvermerk). Votura hat bislang keine
-Endnutzerbedingungen. Ebenso ungeklärt ist, ob ein **fest eingerichtetes Pi-Abbild** unter die
-Lizenz fällt — deren Produktbegriff schließt Geräte mit fester Funktion ausdrücklich aus. Die
-Pi-Abbilder enthalten deshalb **keine** Kamerafähigkeit.
+Endnutzerbedingungen.
+
+**Geklärt:** Der Produktbegriff der Lizenz schließt Hardware und Geräte fester Funktion aus (§1b) —
+für die Pi-Abbilder greift das nicht. Der Maßstab dort ist nicht, dass ein Gerät nur eine Sache
+tut, sondern dass es den Nutzer daran *hindert*, das Betriebssystem zu wechseln oder fremde
+Software zu installieren, und dass diese feste Funktion *verkauft* wird. Ein Pi hindert niemanden:
+`apt` bleibt, SSH bleibt, das Dateisystem bleibt beschreibbar, und die Karte lässt sich neu
+schreiben. Die Pi-Abbilder zeigen deshalb Kamerabilder wie jede andere Fassung. Wer allerdings
+**vorkonfigurierte Pis verkaufen** will, verkauft ein Hardwareprodukt — dafür braucht es eine
+eigene Vereinbarung mit NDI.
 
 ## Dokumentation
 

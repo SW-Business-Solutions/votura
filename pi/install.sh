@@ -271,25 +271,36 @@ mkdir -p "$ZIEL"
 tar -xzf "$arbeit/paket.tar.gz" -C "$ZIEL" --strip-components=1
 [[ -x "$ZIEL/$PROGRAMM" ]] || fehler "Im Archiv fehlt die Programmdatei $PROGRAMM."
 
-# ------------------------------------------------------------------ NDI weg
+# ----------------------------------------------------------- NDI und der Pi
 #
-# Ein fest eingerichtetes Abbild ist kein Allzweckrechner, sondern ein Gerät
-# mit fester Funktion: Es bootet ohne Anmeldung in Votura, es gibt keinen
-# Zugang, und wer daran etwas ändern will, muss die Karte neu schreiben.
+# Hier stand einmal ein `rm -rf` auf die NDI-Laufzeit, aus Sorge, ein fest
+# eingerichtetes Abbild falle unter den Ausschluss im Produktbegriff der
+# NDI-SDK-Lizenz. Das war zu vorsichtig gelesen — und teuer: Ein Saal-Pi ohne
+# NDI zeigt kein Kamerabild, kann also genau das nicht, wofür Fassung 1.6.0
+# gebaut wurde.
 #
-# Der Produktbegriff der NDI-SDK-Lizenz schließt genau das aus (§1b: keine
-# „appliances", keine eingebetteten Geräte). Ob ein Pi-Abbild darunter fällt,
-# ist ungeklärt — und solange es das ist, kommt die NDI-Laufzeit hier nicht
-# mit. Die Kameraansicht meldet auf dem Pi dann schlicht, dass sie auf diesem
-# Rechner nicht zu haben ist; alles andere läuft.
+# §1b schließt aus:
+#   i)   Hardware, beziehungsweise als Hardware verkaufte Produkte.
+#   ii)  Geräte fester Funktion, die "designed, marketed, or intended to
+#        prevent or restrict the end user from modifying the installed
+#        operating system or installing third-party software applications"
+#        sind.
+#   iii) Produkte auf eingebetteter Hardware mit eingebettetem Betriebssystem,
+#        deren Funktion "cannot easily be changed to perform significantly
+#        different functions from its intended purpose at the time of sale".
 #
-# Für die Desktop-Fassungen (Windows, Linux) gilt das nicht: Die sind
-# Allzweckrechner und von der Lizenz gedeckt.
-ndi_weg="$ZIEL/resources/app.asar.unpacked/node_modules/@grandi"
-if [[ -d "$ndi_weg" ]]; then
-  rm -rf "$ndi_weg"
-  melde 'NDI-Laufzeit aus dem Abbild entfernt (siehe Lizenzhinweis im Quelltext)'
-fi
+# Entscheidend ist in allen dreien nicht, dass ein Geraet nur eine Sache tut,
+# sondern dass es den Nutzer an etwas anderem **hindert** — und dass es
+# verkauft wird. Beides trifft hier nicht zu. Was dieses Skript hinterlässt,
+# ist ein gewöhnliches Raspberry Pi OS: `apt` bleibt, SSH bleibt, das
+# Dateisystem bleibt beschreibbar (`pi/README.md`: "Kein schreibgeschütztes
+# Dateisystem"), und die Karte lässt sich in jedem Rechner neu schreiben. Ein
+# Pi ist ein Allzweckrechner, der erst durch ein Abbild zu etwas wird — und der
+# sich durch ein anderes Abbild in etwas völlig anderes verwandeln lässt.
+#
+# Wo die Grenze läge: Wer **vorkonfigurierte Pis verkauft**, verkauft ein
+# Hardwareprodukt. Dann greifen i) und iii), und dann muss die Laufzeit vor der
+# Auslieferung heraus oder es braucht eine eigene Vereinbarung mit NDI.
 
 # ---------------------------------------------------------------- Benutzer
 

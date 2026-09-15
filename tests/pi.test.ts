@@ -121,23 +121,35 @@ describe('Was ins Paket kommt', () => {
 })
 
 describe('Die NDI-Laufzeit auf dem Pi', () => {
-  it('kommt nicht mit ins Abbild', () => {
+  it('bleibt im Abbild', () => {
     /*
-     * Ein fest eingerichtetes Abbild ist kein Allzweckrechner, sondern ein
-     * Gerät mit fester Funktion: Es bootet ohne Anmeldung in Votura, es gibt
-     * keinen Zugang, und wer etwas ändern will, schreibt die Karte neu.
+     * Hier stand einmal das Gegenteil: Das Skript entfernte die NDI-Laufzeit,
+     * weil ein fest eingerichtetes Abbild unter den Ausschluss im
+     * Produktbegriff der NDI-SDK-Lizenz fallen könnte.
      *
-     * Der Produktbegriff der NDI-SDK-Lizenz schließt genau das aus. Solange
-     * ungeklärt ist, ob ein Pi-Abbild darunter fällt, kommt die Laufzeit hier
-     * nicht mit — und die Anleitung sagt es auch so.
+     * Der Lizenztext traegt das nicht. Sein Maßstab ist nicht, dass ein
+     * Geraet nur eine Sache tut, sondern dass es den Nutzer daran **hindert**,
+     * das Betriebssystem zu wechseln oder fremde Software zu installieren
+     * (§1b ii), beziehungsweise dass eine feste Funktion mit der Hardware
+     * **verkauft** wird (§1b i und iii). Ein Pi hindert niemanden: `apt`
+     * bleibt, SSH bleibt, das Dateisystem bleibt beschreibbar, und die Karte
+     * lässt sich neu schreiben. Verkauft wird er von uns ohnehin nicht.
+     *
+     * Der Preis des vorsichtigen Wegs wäre ein Saal-Pi ohne Kamerabild
+     * gewesen — genau die Fähigkeit, für die 1.6.0 gebaut wurde.
      */
-    expect(install).toContain('app.asar.unpacked/node_modules/@grandi')
-    expect(install).toMatch(/rm -rf "\$ndi_weg"/)
+    expect(install).not.toMatch(/rm -rf "\$ndi_weg"/)
+    expect(install).toContain('NDI und der Pi')
   })
 
-  it('betrifft nur das Abbild, nicht die Desktop-Fassungen', () => {
-    /* Windows und Linux sind Allzweckrechner und von der Lizenz gedeckt —
-       dort bleibt die Kamerafähigkeit. */
+  it('hält die Grenze fest, an der es kippt', () => {
+    /* Vorkonfigurierte Pis zu **verkaufen** wäre ein Hardwareprodukt — dann
+       greifen i) und iii). Das steht im Skript, damit es niemand neu
+       herleiten muss. */
+    expect(install).toContain('vorkonfigurierte Pis verkauft')
+  })
+
+  it('steckt auch in den Desktop-Fassungen', () => {
     const bau = lies('electron-builder.yml')
     expect(bau).toContain('node_modules/@grandi/**')
   })
