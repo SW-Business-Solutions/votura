@@ -318,7 +318,7 @@ export function ProjectionScreen({
 
   return (
     <div
-      className={`projection-root${preview ? ' preview' : ''}${theme.transitions ? '' : ' no-transitions'}`}
+      className={`projection-root${preview ? ' preview' : ''}${theme.transitions ? '' : ' no-transitions'}${state.untertitel ? ' mit-untertitel' : ''}`}
       style={style}
     >
       {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}

@@ -20,7 +20,6 @@ import { SetupPage } from './pages/SetupPage'
 import { RecoveryDialog } from './pages/RecoveryDialog'
 import logo from '../assets/logo.svg'
 import logoHell from '../assets/logo-dunkelmodus.svg'
-import { Untertitelgeber } from './components/Untertitelgeber'
 
 export type Route =
   | { name: 'dashboard' }
@@ -227,12 +226,6 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="app">
-      {/*
-        Hört zu, solange irgendeine Wand mitliest — und zeichnet dabei nichts.
-        Hängt im Gerüst und nicht auf einer Seite: Gesprochen wird die ganze
-        Versammlung über, die Bedienung wechselt dabei die Seite.
-      */}
-      <Untertitelgeber />
       <nav className="sidebar">
         <div className="brand">
           {/* Zwei Fassungen der Wortmarke: die dunkelblaue Vorlage wäre auf

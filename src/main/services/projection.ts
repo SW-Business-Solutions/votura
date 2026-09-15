@@ -583,6 +583,19 @@ export function setProjection(
      * Begrüßung.
      */
     speaker: rednerFuer(input.speaker, state.speaker) ?? state.speaker,
+    /*
+     * Untertitel überleben jeden Ansichtswechsel — und zwar alle.
+     *
+     * Sie hängen an keinem Modus: Gesprochen wird vor der Tagesordnung
+     * genauso wie vor einem Kamerabild oder einer leeren Fläche. Hier stand
+     * das zunächst nicht, und die Folge war tückisch: Der Schalter blieb in
+     * der Bedienung sichtbar gesetzt, das Zuhörerfenster lief weiter — nur
+     * kam an der Wand nichts mehr an, sobald jemand die Ansicht wechselte.
+     *
+     * Derselbe Fehler wie einst bei der Redezeit, und aus demselben Grund
+     * schwer zu finden: Es bricht nichts, es fehlt nur etwas.
+     */
+    untertitel: state.untertitel,
     updatedAt: new Date().toISOString()
   })
 
@@ -1113,6 +1126,16 @@ export function setUntertitel(buehne: number, an: boolean): ProjectionState {
 }
 
 /**
+ * Zeigt irgendeine Bühne Untertitel?
+ *
+ * Danach richtet sich, ob das Zuhörerfenster offen sein muss — und damit, ob
+ * dieses Programm überhaupt ein Mikrofon hält.
+ */
+export function untertitelIrgendwo(): boolean {
+  return [...zustaende.values()].some((state) => Boolean(state.untertitel))
+}
+
+/**
  * Wann zuletzt etwas gehört wurde.
  *
  * Gebraucht für die Wache weiter unten — nicht als Zustand, den irgendwer
@@ -1134,11 +1157,25 @@ let letzteUntertitelMeldung = 0
  */
 export function meldeUntertitel(stand: ProjectionUntertitel): void {
   letzteUntertitelMeldung = Date.now()
-  const jetzt = new Date().toISOString()
   for (const [id, state] of zustaende) {
     if (!state.untertitel) continue
     if (gleicherUntertitel(state.untertitel, stand)) continue
-    setzeUndGib(id, { ...state, untertitel: stand, updatedAt: jetzt })
+    /*
+     * **`updatedAt` bleibt, wie es ist.**
+     *
+     * Der Zeitstempel bedeutet „der gezeigte Inhalt hat sich geändert" — und
+     * daran hängt mehr, als man ihm ansieht: Die Beameransicht misst danach
+     * ihren Text neu ein, damit er die Fläche füllt, und die Bedienung holt
+     * Verlauf und Netzstand nach.
+     *
+     * Beim ersten Anlauf trug jede Untertitelmeldung einen neuen Stempel.
+     * Viermal je Sekunde wurde daraufhin der ganze Inhalt neu vermessen und
+     * zweimal nachgefragt — sichtbar als Zucken bei jedem erkannten Wort.
+     *
+     * Ein Untertitel ändert den Inhalt nicht. Er steht in einem eigenen Band,
+     * das über der Fläche liegt und nichts verschiebt.
+     */
+    setzeUndGib(id, { ...state, untertitel: stand })
     broadcast(id)
   }
 }
@@ -1173,15 +1210,15 @@ function gleicherUntertitel(a: ProjectionUntertitel, b: ProjectionUntertitel): b
 let untertitelWache: ReturnType<typeof setInterval> | undefined
 
 function pruefeUntertitelWache(): void {
-  const gebraucht = [...zustaende.values()].some((state) => state.untertitel)
+  const gebraucht = untertitelIrgendwo()
   if (gebraucht && !untertitelWache) {
     untertitelWache = setInterval(() => {
       const still = Date.now() - letzteUntertitelMeldung > UNTERTITEL_STILLE_MS
       if (!still) return
-      const jetzt = new Date().toISOString()
       for (const [id, state] of zustaende) {
         if (!state.untertitel || state.untertitel.zeilen.length === 0) continue
-        setzeUndGib(id, { ...state, untertitel: { zeilen: [] }, updatedAt: jetzt })
+        /* Aus demselben Grund wie in `meldeUntertitel`: kein neuer Stempel. */
+        setzeUndGib(id, { ...state, untertitel: { zeilen: [] } })
         broadcast(id)
       }
     }, UNTERTITEL_STILLE_MS)

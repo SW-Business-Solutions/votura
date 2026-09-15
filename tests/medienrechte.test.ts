@@ -8,7 +8,7 @@
  * erst im Saal.
  */
 import { describe, expect, it } from 'vitest'
-import { darfMedium, istEigeneOberflaeche, istPult } from '../src/main/medienrechte'
+import { darfMedium, darfZuhoeren, istEigeneOberflaeche } from '../src/main/medienrechte'
 
 const PULT = 'votura-pult://pult/teleprompter.html'
 const OBERFLAECHE = 'file:///C:/Programme/Votura/resources/app.asar/out/renderer/index.html'
@@ -49,7 +49,7 @@ describe('In der Entwicklungsfassung kommt alles vom selben Server', () => {
    * ließ sich ausgerechnet dort nicht ausprobieren, wo daran gearbeitet wird.
    */
   it('erkennt das Pult am Pfad', () => {
-    expect(istPult(`${DEV}/teleprompter.html`, DEV)).toBe(true)
+    expect(darfZuhoeren(`${DEV}/teleprompter.html`, DEV)).toBe(true)
     expect(darfMedium(`${DEV}/teleprompter.html`, ['audio'], DEV)).toBe(true)
   })
 
@@ -66,7 +66,7 @@ describe('In der Entwicklungsfassung kommt alles vom selben Server', () => {
   it('erkennt den Pfad nur, wenn überhaupt entwickelt wird', () => {
     /* Ohne Entwicklungsadresse zählt allein das Schema — sonst wäre eine
        beliebige Seite namens teleprompter.html ein Pult. */
-    expect(istPult(`${DEV}/teleprompter.html`)).toBe(false)
+    expect(darfZuhoeren(`${DEV}/teleprompter.html`)).toBe(false)
     expect(darfMedium(`${DEV}/teleprompter.html`, ['audio'])).toBe(false)
   })
 })

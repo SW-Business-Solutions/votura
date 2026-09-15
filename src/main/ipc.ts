@@ -131,6 +131,7 @@ import {
   setKameraSpiegeln,
   setUntertitel,
   meldeUntertitel,
+  untertitelIrgendwo,
   setVideoSchleife,
   setVideoPlaying,
   seekVideo,
@@ -259,7 +260,9 @@ import {
   teleprompterState,
   prompterState,
   setPrompterBuehne,
-  sendToOperator
+  sendToOperator,
+  openZuhoererWindow,
+  closeZuhoererWindow
 } from './windows'
 
 /*
@@ -935,7 +938,19 @@ const api: Api = {
   },
   'untertitel.setAn': async (an, stage) => {
     requirePermission('round.manage')
-    return aufBuehnen(stage, (buehne) => setUntertitel(buehne, an))
+    const zustand = aufBuehnen(stage, (buehne) => setUntertitel(buehne, an))
+    /*
+     * Das Zuhören hängt am Schalter, nicht am Fenster.
+     *
+     * Gebraucht wird es, sobald **irgendeine** Bühne Untertitel zeigt, und
+     * nicht mehr, sobald es keine mehr tut. Das Fenster dafür auf- und
+     * zuzumachen ist die ehrlichere Form als eines, das immer läuft und
+     * manchmal nichts sendet: Solange niemand mitliest, hat dieses Programm
+     * kein offenes Mikrofon.
+     */
+    if (untertitelIrgendwo()) openZuhoererWindow()
+    else closeZuhoererWindow()
+    return zustand
   },
   /*
    * Kein `requirePermission` und keine Rückgabe.

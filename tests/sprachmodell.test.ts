@@ -14,12 +14,39 @@ import { SPRACHMODELL_PFAD } from '../src/shared/sprachmodell'
 const lies = (pfad: string): string => readFileSync(join(__dirname, '..', pfad), 'utf8')
 const haupt = lies('src/main/index.ts')
 
-describe('Die Prompterseite bekommt, was die Erkennung braucht', () => {
-  it('läuft unter eigenem Schema statt unter file://', () => {
-    /* Ohne echte Herkunft verweigert Chromium Web Worker. */
+describe('Wer zuhört, bekommt, was die Erkennung braucht', () => {
+  it('lädt unter eigenem Schema statt unter file://', () => {
+    /*
+     * Ohne echte Herkunft verweigert Chromium Web Worker — und die Erkennung
+     * läuft in einem. Das betrifft **beide** Fenster, die zuhören: das Pult
+     * und den versteckten Zuhörer der Untertitel.
+     */
     expect(lies('src/shared/speech.ts')).toContain("PULT_SCHEME = 'votura-pult'")
-    expect(lies('src/main/windows.ts')).toContain('teleprompter.html')
+    const fenster = lies('src/main/windows.ts')
+    expect(fenster).toMatch(/page === 'teleprompter' \|\| page === 'zuhoerer'/)
+    expect(fenster).toContain('${PULT_SCHEME}://pult/${page}.html')
     expect(haupt).toContain('registerPultProtocol')
+  })
+
+  it('gibt beiden zuhörenden Fenstern ein Mikrofon — und sonst keinem', () => {
+    /*
+     * Der erste Anlauf der Untertitel ließ die Erkennung in der
+     * Bedienoberfläche laufen. Sie scheiterte dort an zwei Sperren zugleich:
+     * kein Mikrofon (diese Datei) und keine Herkunft (der Test darüber).
+     * Beide Sperren sind gewollt — also bekam das Zuhören ein eigenes
+     * Fenster, statt dass eine der beiden gelockert wurde.
+     */
+    const rechte = lies('src/main/medienrechte.ts')
+    expect(rechte).toContain('zuhoerer.html')
+    expect(rechte).toMatch(/art === 'audio'\s*\?\s*darfZuhoeren/)
+  })
+
+  it('lässt die Erkennung nicht in der Bedienoberfläche laufen', () => {
+    /* Sie käme dort nicht an ein Mikrofon — und der Fehler wäre einer, den
+       man erst im Saal bemerkt. */
+    const bedienung = lies('src/renderer/src/operator/App.tsx')
+    expect(bedienung).not.toContain('Untertitelgeber')
+    expect(lies('src/renderer/src/zuhoerer-main.ts')).toContain('starteZuhoeren')
   })
 
   it('darf Worker aus Blobs starten', () => {

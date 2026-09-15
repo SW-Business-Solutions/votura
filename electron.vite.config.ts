@@ -77,7 +77,10 @@ export default defineConfig({
           saal: resolve(__dirname, 'src/preload/saal.ts'),
           /* Kamerabilder empfängt ein Gerät im Saal selbst — siehe
              src/preload/saal-kamera.ts. */
-          'saal-kamera': resolve(__dirname, 'src/preload/saal-kamera.ts')
+          'saal-kamera': resolve(__dirname, 'src/preload/saal-kamera.ts'),
+          /* Das Fenster, das für die Untertitel zuhört — die schmalste
+             Brücke im Programm, weil dieses Fenster ein Mikrofon hat. */
+          zuhoerer: resolve(__dirname, 'src/preload/zuhoerer.ts')
         },
         output: { format: 'cjs', entryFileNames: '[name].js' }
       }
@@ -95,6 +98,10 @@ export default defineConfig({
           audience: resolve(__dirname, 'src/renderer/audience.html'),
           prompter: resolve(__dirname, 'src/renderer/prompter.html'),
           teleprompter: resolve(__dirname, 'src/renderer/teleprompter.html'),
+          /* Versteckt und ohne Oberfläche: Es hält Mikrofon und Erkennung für
+             die Untertitel. Läuft wie das Pult unter eigenem Schema — unter
+             `file://` gäbe es weder Mikrofon noch Worker. */
+          zuhoerer: resolve(__dirname, 'src/renderer/zuhoerer.html'),
           einrichtung: resolve(__dirname, 'src/renderer/einrichtung.html'),
           /* Die Seite für das Telefon eines Teilnehmers. Sie wird nicht in
              einem Fenster geöffnet, sondern über das Netz ausgeliefert. */

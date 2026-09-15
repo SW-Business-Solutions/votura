@@ -52,7 +52,7 @@ let audienceStateListener: ((state: AudienceWindowState) => void) | null = null
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
-type Seite = 'index' | 'audience' | 'prompter' | 'teleprompter'
+type Seite = 'index' | 'audience' | 'prompter' | 'teleprompter' | 'zuhoerer'
 
 function rendererUrl(page: Seite): { url?: string; file?: string } {
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -65,8 +65,13 @@ function rendererUrl(page: Seite): { url?: string; file?: string } {
    * ohne Herkunft. Ein angemeldetes Schema gibt der Seite eine — für alle
    * anderen Fenster bleibt es beim Laden aus der Datei, dort wird nichts
    * gebraucht, was eine Herkunft verlangt.
+   *
+   * Dasselbe gilt seit den Untertiteln für das Zuhörerfenster: Es benutzt
+   * dieselbe Erkennung und braucht deshalb dieselbe Herkunft.
    */
-  if (page === 'teleprompter') return { url: `${PULT_SCHEME}://pult/teleprompter.html` }
+  if (page === 'teleprompter' || page === 'zuhoerer') {
+    return { url: `${PULT_SCHEME}://pult/${page}.html` }
+  }
   return { file: join(__dirname, `../renderer/${page}.html`) }
 }
 
@@ -393,6 +398,77 @@ export function openTeleprompterWindow(): PrompterWindowState {
   load(teleprompterWindow, 'teleprompter')
   emitTeleprompterState()
   return teleprompterState()
+}
+
+/* ------------------------------------------------------- Zuhörer (Untertitel) */
+
+let zuhoererWindow: BrowserWindow | null = null
+
+/**
+ * Das Fenster, das für die Untertitel zuhört.
+ *
+ * **Es wird nie gezeigt.** Es gibt daran nichts zu bedienen: Der Schalter
+ * steht in der Beamer-Ansicht, der Text erscheint an der Wand. Ein leeres
+ * Fenster in der Leiste wäre nur eine Stelle, an der jemand aus Versehen auf
+ * „Schließen" klickt.
+ *
+ * Warum es überhaupt eigens existiert, statt die Erkennung in der
+ * Bedienoberfläche laufen zu lassen: Die bekommt kein Mikrofon
+ * (`medienrechte.ts`) und hat unter `file://` keine Herkunft, ohne die
+ * Chromium den Worker der Erkennung verweigert. Beides ist gewollt — also
+ * bekommt das Zuhören ein eigenes Fenster, so wie das Pult eines hat.
+ */
+export function openZuhoererWindow(): void {
+  if (zuhoererWindow && !zuhoererWindow.isDestroyed()) return
+
+  zuhoererWindow = new BrowserWindow({
+    show: false,
+    /* Nicht nur versteckt, sondern auch nicht in der Leiste: Ein Fenster, das
+       niemand öffnen sollte, soll auch niemand finden. */
+    skipTaskbar: true,
+    width: 480,
+    height: 320,
+    title: 'Votura – Zuhörer',
+    webPreferences: {
+      preload: join(__dirname, '../preload/zuhoerer.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false,
+      /*
+       * Ein verstecktes Fenster wird sonst gedrosselt.
+       *
+       * Chromium hält Zeitgeber in unsichtbaren Fenstern an — der Takt, in
+       * dem die Untertitel gemeldet werden, käme dann ins Stocken oder zum
+       * Erliegen. Für ein Fenster ohne Oberfläche ist das gefahrlos: Es
+       * zeichnet nichts.
+       */
+      backgroundThrottling: false
+    }
+  })
+
+  zuhoererWindow.on('closed', () => {
+    zuhoererWindow = null
+  })
+  zuhoererWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error(`Zuhörerfenster abgestuerzt: ${details.reason}`)
+    zuhoererWindow = null
+  })
+
+  load(zuhoererWindow, 'zuhoerer')
+  logger.info('Zuhörerfenster geöffnet — Untertitel hören mit')
+}
+
+/** Schließt das Fenster und gibt damit das Mikrofon wieder frei. */
+export function closeZuhoererWindow(): void {
+  if (zuhoererWindow && !zuhoererWindow.isDestroyed()) zuhoererWindow.destroy()
+  if (zuhoererWindow) logger.info('Zuhörerfenster geschlossen')
+  zuhoererWindow = null
+}
+
+/** Läuft das Zuhören gerade? */
+export function zuhoererLaeuft(): boolean {
+  return Boolean(zuhoererWindow && !zuhoererWindow.isDestroyed())
 }
 
 export function closeTeleprompterWindow(): PrompterWindowState {

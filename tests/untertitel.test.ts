@@ -189,6 +189,51 @@ describe('Untertitel im Beamerzustand', () => {
     dienst.setUntertitel(HAUPTBUEHNE, false)
   })
 
+  it('rühren den Zeitstempel des Inhalts nicht an', () => {
+    /*
+     * **Der zweite Fehler, den dieser Test festhält.**
+     *
+     * `updatedAt` heißt „der gezeigte Inhalt hat sich geändert". Daran hängt
+     * mehr, als man ihm ansieht: Die Beameransicht misst danach ihren Text
+     * neu ein, damit er die Fläche füllt, und die Bedienung holt Verlauf und
+     * Netzstand nach.
+     *
+     * Trug jede Untertitelmeldung einen neuen Stempel, geschah beides
+     * viermal je Sekunde — sichtbar als Zucken des ganzen Bildes bei jedem
+     * erkannten Wort. Ein Untertitel ändert den Inhalt nicht; er steht in
+     * einem eigenen Band darüber.
+     */
+    dienst.setUntertitel(HAUPTBUEHNE, true)
+    const vorher = dienst.getProjectionState(HAUPTBUEHNE).updatedAt
+    dienst.meldeUntertitel({ zeilen: ['erstes wort'] })
+    dienst.meldeUntertitel({ zeilen: ['erstes wort zweites'] })
+    expect(dienst.getProjectionState(HAUPTBUEHNE).updatedAt).toBe(vorher)
+    /* Angekommen ist der Text trotzdem. */
+    expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel?.zeilen).toEqual(['erstes wort zweites'])
+    dienst.setUntertitel(HAUPTBUEHNE, false)
+  })
+
+  it('überleben jeden Ansichtswechsel', () => {
+    /*
+     * **Der Fehler, für den dieser Test da ist.**
+     *
+     * Untertitel hängen an keinem Modus: Gesprochen wird vor der
+     * Tagesordnung genauso wie vor einem Kamerabild. Der erste Anlauf baute
+     * den Zustand beim Moduswechsel neu auf und ließ sie dabei weg — der
+     * Schalter blieb gesetzt, das Zuhörerfenster lief weiter, an der Wand
+     * kam nichts mehr an.
+     *
+     * Es bricht nichts, es fehlt nur etwas. Genau deshalb muss ein Test
+     * danach sehen.
+     */
+    dienst.setUntertitel(HAUPTBUEHNE, true)
+    for (const modus of ['welcome', 'agenda', 'kamera', 'break', 'welcome'] as const) {
+      dienst.setProjection(HAUPTBUEHNE, { mode: modus })
+      expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel, modus).toBeDefined()
+    }
+    dienst.setUntertitel(HAUPTBUEHNE, false)
+  })
+
   it('sind nach einem Neustart aus', () => {
     /*
      * Wie der Modus: Nach einem Neustart beginnt jede Fläche bei der

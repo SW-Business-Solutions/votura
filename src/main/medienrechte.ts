@@ -7,9 +7,14 @@
  * niemandem auf — ein Fenster, das versehentlich keines bekommt, fällt erst
  * im Saal auf.
  *
- * **Das Mikrofon** bekommt allein das Pult. Damit hört der Teleprompter mit,
- * wo im Manuskript gerade gesprochen wird; aufgenommen wird nichts, der Ton
- * verlässt das Gerät nicht, und die Erkennung läuft an Ort und Stelle.
+ * **Das Mikrofon** bekommen zwei Fenster, und beide tun damit dasselbe:
+ * zuhören. Das **Pult** braucht es, damit der Teleprompter mitläuft, wo im
+ * Manuskript gerade gesprochen wird. Das **Zuhörerfenster** braucht es für die
+ * Untertitel an der Wand; es ist versteckt, hat keine Oberfläche und kann über
+ * seine Brücke genau eines — erkannten Text melden.
+ *
+ * In beiden Fällen gilt dasselbe: aufgenommen wird nichts, der Ton verlässt
+ * das Gerät nicht, und die Erkennung läuft an Ort und Stelle.
  *
  * **Die Kamera** bekommt allein die eigene Bedienoberfläche, weil dort
  * QR-Codes gescannt werden: am Einlass und an der Ausgabe.
@@ -21,18 +26,29 @@ import { PRESENTATION_SCHEME } from '@shared/presentation'
 import { PULT_SCHEME } from '@shared/speech'
 
 /**
- * Ist das die Prompterseite?
+ * Ist das eine Seite, die zuhören darf?
  *
- * Im fertigen Programm lädt sie unter eigenem Schema — sie braucht eine echte
- * Herkunft, sonst verweigert Chromium ihr den Worker der Spracherkennung.
- * **Beim Entwickeln** kommt sie wie jede andere Seite vom Vite-Server und ist
- * nur am Pfad zu erkennen. Ohne diesen zweiten Zweig hat das Pult beim
- * Entwickeln nie ein Mikrofon, und „Nach Stimme" ließe sich ausgerechnet
- * dort nicht ausprobieren, wo daran gearbeitet wird.
+ * Zwei sind es: die **Prompterseite** am Pult und das versteckte
+ * **Zuhörerfenster** der Untertitel. Beide laden im fertigen Programm unter
+ * eigenem Schema — sie brauchen eine echte Herkunft, sonst verweigert Chromium
+ * ihnen den Worker der Spracherkennung.
+ *
+ * **Beim Entwickeln** kommen sie wie jede andere Seite vom Vite-Server und
+ * sind nur am Pfad zu erkennen. Ohne diesen zweiten Zweig hätten sie beim
+ * Entwickeln nie ein Mikrofon, und „Nach Stimme" wie Untertitel ließen sich
+ * ausgerechnet dort nicht ausprobieren, wo daran gearbeitet wird.
+ *
+ * Dass das Schema allein genügt, ist Absicht und keine Nachlässigkeit: Unter
+ * `PULT_SCHEME` liegen genau diese beiden Seiten, und der Protokollbehandler
+ * in `index.ts` liefert nichts aus, was nicht im Oberflächenordner steht.
  */
-export function istPult(url: string, entwicklung?: string): boolean {
+export function darfZuhoeren(url: string, entwicklung?: string): boolean {
   if (url.startsWith(`${PULT_SCHEME}://`)) return true
-  return Boolean(entwicklung) && url.startsWith(`${entwicklung}/teleprompter.html`)
+  if (!entwicklung) return false
+  return (
+    url.startsWith(`${entwicklung}/teleprompter.html`) ||
+    url.startsWith(`${entwicklung}/zuhoerer.html`)
+  )
 }
 
 /**
@@ -42,7 +58,7 @@ export function istPult(url: string, entwicklung?: string): boolean {
  * was aus dem Paket geladen wurde.
  */
 export function istEigeneOberflaeche(url: string, entwicklung?: string): boolean {
-  if (url.startsWith(`${PRESENTATION_SCHEME}://`) || istPult(url, entwicklung)) return false
+  if (url.startsWith(`${PRESENTATION_SCHEME}://`) || darfZuhoeren(url, entwicklung)) return false
   if (entwicklung && url.startsWith(entwicklung)) return true
   return url.startsWith('file://')
 }
@@ -59,7 +75,7 @@ export function darfMedium(url: string, arten: string[], entwicklung?: string): 
   if (arten.length === 0) return false
   return arten.every((art) =>
     art === 'audio'
-      ? istPult(url, entwicklung)
+      ? darfZuhoeren(url, entwicklung)
       : art === 'video'
         ? istEigeneOberflaeche(url, entwicklung)
         : false

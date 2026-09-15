@@ -982,6 +982,31 @@ html {
   bottom: 26cqh;
 }
 
+/*
+ * Wo Untertitel stehen, wird kein Inhalt hingesetzt.
+ *
+ * Das Band liegt über der Fläche, nicht darin — ohne diesen Platzhalter
+ * schnitt es dem Begrüßungsbild den Veranstalternamen ab und stand auf einer
+ * Kandidatenliste über der letzten Zeile. Ein Streifen unten, den der
+ * Flusssatz nicht mehr benutzt, löst das für **jede** Ansicht auf einmal:
+ * Was mittig steht, rückt hoch; was unten endet, endet früher.
+ *
+ * Über Kamerabild, Film und Foliensatz gilt das ausdrücklich nicht — die
+ * füllen die Fläche, und ein Streifen daran wäre ein schwarzer Rand.
+ */
+.projection-root.mit-untertitel:not(.kamera-mode):not(.video-mode):not(.presentation-mode) {
+  /*
+   * `border-box` ist hier nicht Geschmack, sondern notwendig.
+   *
+   * Die Fläche ist `height: 100%`. Ohne diese Zeile käme der Innenabstand
+   * **oben drauf**: Die Fläche wurde 15 % höher als das Fenster, und das
+   * Band rutschte um genau diesen Betrag unter den unteren Rand — sichtbar
+   * war nur noch seine obere Kante.
+   */
+  box-sizing: border-box;
+  padding-bottom: 15cqh;
+}
+
 .projection-untertitel-zeile {
   margin: 0;
   /* Groß genug für die letzte Reihe — Untertitel, die man nur vorn lesen
