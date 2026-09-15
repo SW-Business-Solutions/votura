@@ -1511,3 +1511,43 @@ select[aria-invalid='true'] {
   gap: 4px;
   margin-left: var(--abstand-3);
 }
+
+/* ------------------------------------------------------- Die Kamerakarte */
+
+/*
+ * Gegliedert, nicht gereiht.
+ *
+ * Fünf Knöpfe nebeneinander — einer davon rechtsbündig geschoben — brachen
+ * in einen Haufen mit Lücke um. Zeilen mit einem Titel davor trennen, was
+ * verschieden ist: welche Kamera, was sie im Bild zeigt, wohin sie schaut.
+ */
+.kamera-bedienung {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-2);
+}
+
+.kamera-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--abstand-3);
+}
+
+.kamera-zeile {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/*
+ * Eine gemeinsame Breite für die Titel.
+ *
+ * Ohne sie beginnen die Knopfgruppen an verschiedenen Stellen, und die Karte
+ * sieht aus, als wäre sie zweimal gesetzt worden.
+ */
+.kamera-zeile-titel {
+  min-width: 5.5rem;
+  color: var(--text-muted);
+}

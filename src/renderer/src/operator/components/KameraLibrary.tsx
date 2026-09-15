@@ -82,11 +82,33 @@ export function KameraLibrary(): JSX.Element {
       ) : (
         <>
           {kamera && (
-            <div className="notice mb-3">
-              <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+            <div className="notice mb-3 kamera-bedienung">
+              {/*
+                Drei Zeilen statt einer Reihe.
+
+                Vorher hingen fünf Knöpfe nebeneinander, einer davon mit
+                `margin-left: auto` — beim Umbrechen riss das eine Lücke, und
+                „Vorschau" stand allein auf einer Zeile. Jetzt trennt die
+                Gliederung, was verschieden ist: **welche Kamera**, was sie
+                **im Bild** zeigt, und **wohin** sie schaut.
+              */}
+              <div className="kamera-kopf">
                 <strong>{kamera.label ?? kurzerQuellenname(kamera.quelle)}</strong>
+                <button className="ghost" onClick={() => setVorschau((an) => !an)}>
+                  {vorschau ? 'Vorschau aus' : 'Vorschau an'}
+                </button>
+              </div>
+
+              {/*
+                Alles, was der Saal zusätzlich zum Bild sieht — Beschriftung,
+                Reihe, Seitenrichtung. Drei Schalter mit derselben Wirkung auf
+                dieselbe Fläche, deshalb in einer Gruppe.
+              */}
+              <div className="kamera-zeile">
+                <span className="kamera-zeile-titel">Im Bild:</span>
                 <button
                   className={kamera.bauchbinde ? 'primary' : ''}
+                  aria-pressed={kamera.bauchbinde}
                   title={
                     kamera.bauchbinde
                       ? 'Name, Amt und Redezeit stehen im Bild, sobald jemand aufgerufen ist.'
@@ -96,6 +118,8 @@ export function KameraLibrary(): JSX.Element {
                     void api('kamera.setBauchbinde', !kamera.bauchbinde, app.ziel).catch(app.reportError)
                   }
                 >
+                  {/* Der Zustand steht im Wort, nicht nur in der Farbe: Wer im
+                      Saal kurz hinsieht, liest schneller, als er vergleicht. */}
                   {kamera.bauchbinde ? '🏷 Bauchbinde an' : '🏷 Bauchbinde aus'}
                 </button>
                 {/*
@@ -105,6 +129,7 @@ export function KameraLibrary(): JSX.Element {
                 */}
                 <button
                   className={kamera.naechste ? 'primary' : ''}
+                  aria-pressed={kamera.naechste}
                   title={
                     kamera.naechste
                       ? 'Die nächsten Redner stehen im Bild.'
@@ -123,33 +148,19 @@ export function KameraLibrary(): JSX.Element {
                 */}
                 <button
                   className={kamera.spiegeln ? 'primary' : ''}
+                  aria-pressed={kamera.spiegeln}
+                  title={
+                    kamera.spiegeln
+                      ? 'Seitenverkehrt — für den Rückblickschirm am Pult.'
+                      : 'Seitenrichtig, wie es der Saal sieht.'
+                  }
                   onClick={() =>
                     void api('kamera.setSpiegeln', !kamera.spiegeln, app.ziel).catch(app.reportError)
                   }
                 >
                   {kamera.spiegeln ? '🪞 Gespiegelt' : '🪞 Normal'}
                 </button>
-                <button style={{ marginLeft: 'auto' }} onClick={() => setVorschau((an) => !an)}>
-                  {vorschau ? 'Vorschau aus' : 'Vorschau an'}
-                </button>
               </div>
-
-              {/*
-                Was im Bild stünde, steht auch hier.
-
-                Die Vorstellung überlebt einen Ansichtswechsel — richtig so,
-                eine Redezeit gehört zur Person und nicht zur Ansicht. Für das
-                Kamerabild heißt das aber: Die Bauchbinde kann den nennen, der
-                zuletzt gesprochen hat, während längst der Saal zu sehen ist.
-                Wer das hier liest, entdeckt es nicht erst an der Wand.
-              */}
-              {(kamera.bauchbinde || kamera.naechste) && (
-                <p className="hint">
-                  {projection.speaker
-                    ? `Im Bild steht: ${projection.speaker.name}`
-                    : 'Es ist niemand aufgerufen — im Bild steht nichts.'}
-                </p>
-              )}
 
               {/*
                 Die Positionen der Kamera, die gerade läuft.
@@ -164,8 +175,8 @@ export function KameraLibrary(): JSX.Element {
                 )
                 if (!steuerung || steuerung.positionen.length === 0) return null
                 return (
-                  <div className="row mt-3" style={{ gap: 6, alignItems: 'center' }}>
-                    <span className="hint">Position:</span>
+                  <div className="kamera-zeile">
+                    <span className="kamera-zeile-titel">Position:</span>
                     {steuerung.positionen.map((position) => (
                       <button
                         key={position.nummer}
@@ -183,6 +194,23 @@ export function KameraLibrary(): JSX.Element {
                   </div>
                 )
               })()}
+
+              {/*
+                Was im Bild stünde, steht auch hier.
+
+                Die Vorstellung überlebt einen Ansichtswechsel — richtig so,
+                eine Redezeit gehört zur Person und nicht zur Ansicht. Für das
+                Kamerabild heißt das aber: Die Bauchbinde kann den nennen, der
+                zuletzt gesprochen hat, während längst der Saal zu sehen ist.
+                Wer das hier liest, entdeckt es nicht erst an der Wand.
+              */}
+              {(kamera.bauchbinde || kamera.naechste) && (
+                <p className="hint">
+                  {projection.speaker
+                    ? `Im Bild steht: ${projection.speaker.name}`
+                    : 'Es ist niemand aufgerufen — im Bild steht nichts.'}
+                </p>
+              )}
 
               {vorschau && (
                 <div className="kamera-vorschau mt-3">
