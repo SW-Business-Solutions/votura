@@ -25,6 +25,7 @@ import {
   type Antragsstatus
 } from '@shared/antrag'
 import { api } from '../../lib/api'
+import { navigate } from '../App'
 import { useApp } from '../state'
 import { Card, ConfirmDialog, EmptyState, Field, Modal } from '../components/ui'
 
@@ -104,6 +105,24 @@ export function AntraegePage(): React.JSX.Element {
       await tun()
       await laden()
       if (meldung) app.notify('ok', meldung)
+    } catch (error) {
+      app.reportError(error)
+    }
+  }
+
+  /**
+   * Aus dem Antrag eine Abstimmung machen — und gleich hingehen.
+   *
+   * Der Sprung in den Wahlgang gehört dazu: Wer diesen Knopf drückt, hat es
+   * eilig. Ihn danach auf der Antragsseite stehen zu lassen hieße, ihn den
+   * eben angelegten Wahlgang selbst suchen zu lassen.
+   */
+  const zurAbstimmung = async (antrag: Antrag): Promise<void> => {
+    try {
+      const runde = await api('motion.toRound', { id: antrag.id })
+      app.notify('ok', `Abstimmung zu ${antrag.nummer} angelegt.`)
+      await app.refreshRounds()
+      navigate(`round/${runde.id}`)
     } catch (error) {
       app.reportError(error)
     }
@@ -208,6 +227,28 @@ export function AntraegePage(): React.JSX.Element {
                 <button disabled={!darf} onClick={() => setErledigen(antrag)}>
                   Zurückziehen / erledigen
                 </button>
+                {/*
+                  Der Weg für den Fall, den jede Versammlungsleitung kennt:
+                  Das Handzeichen ist nicht eindeutig auszuzählen.
+
+                  Dann muss es schnell gehen — „Wahlgang anlegen, Titel
+                  abtippen, Antragstext einfügen, Verfahren wählen" ist in
+                  diesem Moment zu lang. Ein Klick, und der Wahlgang steht
+                  fertig da.
+                */}
+                {antrag.roundId ? (
+                  <button onClick={() => navigate(`round/${antrag.roundId}`)}>
+                    Zur Abstimmung
+                  </button>
+                ) : (
+                  <button
+                    disabled={!darf}
+                    title="Legt einen Wahlgang als Sachabstimmung an — Wortlaut samt übernommener Änderungen, Ja / Nein / Enthaltung."
+                    onClick={() => void zurAbstimmung(antrag)}
+                  >
+                    Abstimmen lassen
+                  </button>
+                )}
                 {/*
                   Auf den Beamer — zweimal, und der Unterschied ist wichtig.
 
@@ -327,6 +368,21 @@ export function AntraegePage(): React.JSX.Element {
                           >
                             Auf den Beamer
                           </button>
+                          {aenderung.roundId ? (
+                            <button onClick={() => navigate(`round/${aenderung.roundId}`)}>
+                              Zur Abstimmung
+                            </button>
+                          ) : (
+                            OFFEN.includes(aenderung.status) && (
+                              <button
+                                disabled={!darf}
+                                title="Legt einen Wahlgang als Sachabstimmung über diesen Änderungsantrag an."
+                                onClick={() => void zurAbstimmung(aenderung)}
+                              >
+                                Abstimmen lassen
+                              </button>
+                            )
+                          )}
                           <button disabled={!darf} onClick={() => setBearbeiten(aenderung)}>
                             Bearbeiten
                           </button>

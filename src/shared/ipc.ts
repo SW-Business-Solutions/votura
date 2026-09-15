@@ -644,6 +644,16 @@ export interface Api {
   'motion.text': (hauptId: UUID) => Promise<string>
   /** Verknüpft einen Antrag mit dem Wahlgang, in dem abgestimmt wurde. */
   'motion.linkRound': (input: { id: UUID; roundId: UUID }) => Promise<Antrag>
+  /**
+   * Aus dem Antrag eine Abstimmung machen.
+   *
+   * Für den Fall, den jede Versammlungsleitung kennt: Das Handzeichen ist
+   * nicht eindeutig auszuzählen. Ein Klick legt einen Wahlgang als
+   * Sachabstimmung an — Titel und Wortlaut aus dem Antrag, Ja / Nein /
+   * Enthaltung als Verfahren. Von dort läuft alles wie bei jeder anderen
+   * Abstimmung.
+   */
+  'motion.toRound': (input: { id: UUID; procedure?: ElectionProcedure }) => Promise<ElectionRound>
 
   /* ----------------------------------------------------------------- Ergebnis */
   'result.get': (roundId: UUID) => Promise<ElectionResult | null>

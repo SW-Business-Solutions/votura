@@ -265,6 +265,7 @@ const auth = await import('../src/main/services/auth')
 const events = await import('../src/main/services/events')
 const dienst = await import('../src/main/services/antraege')
 const audit = await import('../src/main/services/audit')
+const rounds = await import('../src/main/services/rounds')
 
 let eventId = ''
 let hauptId = ''
@@ -422,5 +423,80 @@ describe('Was festgehalten wird', () => {
     expect(eintraege).toContain('motion.adopted')
     expect(eintraege).toContain('motion.reordered')
     expect(eintraege).toContain('motion.status')
+  })
+})
+
+describe('Aus dem Antrag eine Abstimmung machen', () => {
+  /*
+   * Der Fall, für den es gebaut ist: Das Handzeichen im Saal ist nicht
+   * eindeutig auszuzählen. Dann muss es schnell gehen — und der Wahlgang
+   * muss ohne Abtippen dastehen.
+   */
+  it('legt einen Wahlgang als Sachabstimmung an', () => {
+    const haupt = dienst.listAntraege(eventId).find((a) => a.nummer === 'A 14')!
+    const runde = dienst.antragZurAbstimmung({ id: haupt.id })
+
+    expect(runde.purpose).toBe('motion')
+    expect(runde.procedure).toBe('yes_no_abstain')
+    expect(runde.title).toBe('A 14 — Beitragsordnung')
+    /* Der Wortlaut ist da — niemand muss ihn abtippen. */
+    expect(runde.template.motionText).toContain('Der Beitrag beträgt drei Euro.')
+  })
+
+  it('nimmt beim Hauptantrag den Beschlusstext, nicht die eingereichte Fassung', () => {
+    /*
+     * **Der Unterschied, auf den es ankommt.** Über den Hauptantrag wird in
+     * der Fassung abgestimmt, die er nach den übernommenen Änderungen hat.
+     * Stünde die eingereichte Fassung auf dem Stimmzettel, beschlösse die
+     * Versammlung etwas anderes, als sie gerade beraten hat.
+     */
+    const haupt = dienst.listAntraege(eventId).find((a) => a.nummer === 'A 14')!
+    const runde = rounds.getRound(haupt.roundId!)
+    expect(runde.template.motionText).toContain('Satz 2 entfällt.')
+    expect(runde.template.motionText).toContain('übernommen')
+  })
+
+  it('verknüpft Antrag und Wahlgang in beide Richtungen', () => {
+    const haupt = dienst.listAntraege(eventId).find((a) => a.nummer === 'A 14')!
+    expect(haupt.roundId).toBeTruthy()
+    expect(rounds.getRound(haupt.roundId!).title).toContain('A 14')
+  })
+
+  it('legt keinen zweiten Wahlgang zum selben Antrag an', () => {
+    /*
+     * Zwei Abstimmungen über denselben Antrag sind fast immer ein Versehen —
+     * und wenn nicht, ist es eine Wiederholung, die ausdrücklich als solche
+     * angelegt gehört.
+     */
+    const haupt = dienst.listAntraege(eventId).find((a) => a.nummer === 'A 14')!
+    expect(() => dienst.antragZurAbstimmung({ id: haupt.id })).toThrow(/bereits einen Wahlgang/)
+  })
+
+  it('stimmt nicht über einen übernommenen Änderungsantrag ab', () => {
+    /* Er ist Teil des Hauptantrags geworden; eine eigene Abstimmung wäre
+       dieselbe Frage zweimal. */
+    const uebernommen = dienst.listAntraege(eventId).find((a) => a.status === 'uebernommen')!
+    expect(() => dienst.antragZurAbstimmung({ id: uebernommen.id })).toThrow(/übernommen/)
+  })
+
+  it('stimmt nicht über einen erledigten Antrag ab', () => {
+    const erledigt = dienst.listAntraege(eventId).find((a) => a.status === 'erledigt')!
+    expect(() => dienst.antragZurAbstimmung({ id: erledigt.id })).toThrow(/erledigt/)
+  })
+
+  it('hält im Prüfpfad fest, über welchen Wortlaut abgestimmt wird', () => {
+    /*
+     * Der Antragstext lässt sich danach noch ändern, der Beschluss nicht
+     * mehr. Wer später fragt, worüber abgestimmt wurde, findet es hier — und
+     * nicht im vielleicht inzwischen geänderten Antrag.
+     */
+    const eintrag = audit
+      .listAudit({ eventId, limit: 200 })
+      .find((e) => e.action === 'motion.round_created')
+    expect(eintrag).toBeDefined()
+    const wert = eintrag!.newValue as { nummer: string; wortlaut: string; verfahren: string }
+    expect(wert.nummer).toBe('A 14')
+    expect(wert.verfahren).toBe('yes_no_abstain')
+    expect(wert.wortlaut).toContain('Satz 2 entfällt.')
   })
 })

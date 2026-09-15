@@ -72,6 +72,25 @@ Sie stehen untereinander, benannt und zurückverfolgbar.
 weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
 über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
 
+**Und wenn das Handzeichen nicht reicht.** Den Fall kennt jede Versammlungsleitung: Zwei Reihen
+heben, eine halb, und niemand mag das Ergebnis verkünden. Dann muss es schnell gehen — und der Weg
+„Wahlgang anlegen, Titel abtippen, Antragstext einfügen, Verfahren wählen" ist in diesem Moment zu
+lang.
+
+**Abstimmen lassen** legt mit einem Klick einen Wahlgang als Sachabstimmung an: Bezeichnung und
+Wortlaut aus dem Antrag, Ja / Nein / Enthaltung als Verfahren — und springt gleich dorthin. Von da
+an läuft alles wie bei jeder anderen Abstimmung: gedruckte Stimmzettel oder digital, Auszählung,
+Vier-Augen-Prinzip, Prüfpfad.
+
+Übernommen wird beim Hauptantrag der **Beschlusstext**, also samt übernommener Änderungen — über
+den wird abgestimmt, nicht über die eingereichte Fassung. Ein zweiter Wahlgang zum selben Antrag
+wird abgelehnt: Zwei Abstimmungen über dieselbe Sache sind fast immer ein Versehen, und wenn nicht,
+gehören sie ausdrücklich als Wiederholung angelegt. Über übernommene, zurückgezogene und erledigte
+Anträge wird gar nicht erst abgestimmt.
+
+Im Prüfpfad steht, **über welchen Wortlaut** abgestimmt wurde. Der Antragstext lässt sich danach
+noch ändern, der Beschluss nicht mehr.
+
 **Und auf den Beamer.** Ein Antragsbuch, das nicht an die Wand kommt, wäre ein halbes: Worüber
 abgestimmt wird, muss im Saal lesbar sein. Auf der Antragsseite stehen dafür zwei Knöpfe, und der
 Unterschied ist wichtig — **Wortlaut** zeigt den eingereichten Text, **mit Änderungen** den, über

@@ -171,6 +171,7 @@ import {
   antragReihenfolge,
   antragStand,
   antragUebernehmen,
+  antragZurAbstimmung,
   listAntraege
 } from './services/antraege'
 import {
@@ -811,6 +812,7 @@ const api: Api = {
   'motion.order': async (hauptId) => antragReihenfolge(hauptId),
   'motion.text': async (hauptId) => antragBeschlusstext(hauptId),
   'motion.linkRound': async (input) => antragAnWahlgang(input),
+  'motion.toRound': async (input) => antragZurAbstimmung(input),
 
   'result.get': async (roundId) => getResult(roundId),
   'result.papier': async (roundId) => getPapierergebnis(roundId),

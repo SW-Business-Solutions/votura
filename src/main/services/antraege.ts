@@ -16,6 +16,7 @@
 import { randomUUID } from 'node:crypto'
 import {
   abstimmungsreihenfolge,
+  ANTRAGSSTATUS_LABELS,
   beschlusstext,
   darfUebernehmen,
   nachNummer,
@@ -24,12 +25,14 @@ import {
   type Antragsart,
   type Antragsstatus
 } from '@shared/antrag'
-import type { UUID } from '@shared/types'
+import { defaultTemplateFor } from '@shared/election'
+import type { ElectionProcedure, ElectionRound, UUID } from '@shared/types'
 import { db } from '../db'
 import { optionalString } from '../db/driver'
 import { logger } from '../logger'
 import { appendAudit } from './audit'
-import { requirePermission } from './auth'
+import { getSession, requirePermission } from './auth'
+import { createRound } from './rounds'
 
 interface MotionRow {
   id: string
@@ -296,4 +299,90 @@ export function antragAnWahlgang(eingabe: { id: UUID; roundId: UUID }): Antrag {
   requirePermission('round.manage')
   db().prepare(`UPDATE motions SET round_id = ? WHERE id = ?`).run(eingabe.roundId, eingabe.id)
   return getAntrag(eingabe.id)
+}
+
+/**
+ * Aus einem Antrag eine Abstimmung machen.
+ *
+ * ## Wofür
+ *
+ * Für den Fall, den jede Versammlungsleitung kennt: Das Handzeichen ist
+ * **nicht eindeutig auszuzählen**. Zwei Reihen heben, eine halb, und niemand
+ * mag das Ergebnis verkünden. Dann muss es schnell gehen — und der Weg
+ * „Wahlgang anlegen, Titel abtippen, Antragstext einfügen, Verfahren wählen"
+ * ist in diesem Moment zu lang.
+ *
+ * Ein Klick legt deshalb einen Wahlgang als **Sachabstimmung** an: Titel und
+ * Wortlaut kommen aus dem Antrag, das Verfahren ist Ja / Nein / Enthaltung.
+ * Von dort aus läuft alles wie bei jeder anderen Abstimmung — gedruckte
+ * Stimmzettel oder digital, Auszählung, Vier-Augen-Prinzip, Prüfpfad.
+ *
+ * ## Welcher Text
+ *
+ * Beim **Hauptantrag** der Beschlusstext, also samt übernommener und
+ * angenommener Änderungen: Über den wird abgestimmt, nicht über die
+ * eingereichte Fassung. Beim **Änderungsantrag** sein eigener Wortlaut.
+ *
+ * ## Warum nicht zweimal
+ *
+ * Gibt es schon einen Wahlgang zu diesem Antrag, wird kein zweiter angelegt.
+ * Zwei Abstimmungen über denselben Antrag sind fast immer ein Versehen — und
+ * wenn nicht, ist es eine Wiederholung, die ausdrücklich als solche angelegt
+ * gehört.
+ */
+export function antragZurAbstimmung(eingabe: { id: UUID; procedure?: ElectionProcedure }): ElectionRound {
+  requirePermission('round.manage')
+  const antrag = getAntrag(eingabe.id)
+
+  if (antrag.roundId) {
+    throw new Error(
+      `Zu ${antrag.nummer} gibt es bereits einen Wahlgang. Eine zweite Abstimmung über denselben Antrag gehört als Wiederholung angelegt.`
+    )
+  }
+  if (antrag.status === 'zurueckgezogen' || antrag.status === 'erledigt') {
+    throw new Error(`${antrag.nummer} ist ${ANTRAGSSTATUS_LABELS[antrag.status].toLowerCase()} — darüber wird nicht abgestimmt.`)
+  }
+  if (antrag.status === 'uebernommen') {
+    throw new Error(
+      `${antrag.nummer} wurde übernommen und ist Teil des Hauptantrags — über ihn wird nicht gesondert abgestimmt.`
+    )
+  }
+
+  const alle = listAntraege(antrag.eventId)
+  const text = antrag.art === 'haupt' ? beschlusstext(antrag, alle) : antrag.text
+  const procedure = eingabe.procedure ?? 'yes_no_abstain'
+
+  const runde = createRound({
+    eventId: antrag.eventId,
+    title: `${antrag.nummer} — ${antrag.titel}`,
+    purpose: 'motion',
+    procedure,
+    seats: 1,
+    maxVotes: 1,
+    template: {
+      ...defaultTemplateFor(procedure, { seats: 1, maxVotes: 1, entryCount: 0 }),
+      motionText: text
+    },
+    orderMode: 'manual'
+  })
+
+  db().prepare(`UPDATE motions SET round_id = ? WHERE id = ?`).run(runde.id, antrag.id)
+
+  const session = getSession()
+  appendAudit({
+    action: 'motion.round_created',
+    userId: session?.user.id,
+    userName: session?.user.displayName,
+    eventId: antrag.eventId,
+    electionRoundId: runde.id,
+    newValue: {
+      nummer: antrag.nummer,
+      verfahren: procedure,
+      /* Festhalten, über welchen Wortlaut abgestimmt wird — der Antragstext
+         kann sich danach noch ändern, der Beschluss nicht mehr. */
+      wortlaut: text
+    }
+  })
+  logger.info(`Abstimmung zu ${antrag.nummer} angelegt (${procedure})`)
+  return runde
 }

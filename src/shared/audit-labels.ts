@@ -115,6 +115,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'motion.adopted': 'Änderungsantrag übernommen',
   'motion.reordered': 'Abstimmungsreihenfolge geändert',
   'motion.deleted': 'Antrag gelöscht',
+  'motion.round_created': 'Abstimmung zum Antrag angelegt',
   'result.reopened': 'Ergebnis zur Überprüfung geöffnet',
   'result.emergency_reopened': 'Notfallkorrektur: Wahlgang geöffnet',
   'result.emergency_correction': 'Notfallkorrektur am Ergebnis',

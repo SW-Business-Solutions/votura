@@ -162,6 +162,27 @@ eine falsch geratene Stelle wäre ein verfälschter Beschluss.
 weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
 über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
 
+### Wenn das Handzeichen nicht reicht
+
+Den Fall kennt jede Versammlungsleitung: Zwei Reihen heben, eine halb, und niemand mag das Ergebnis
+verkünden. Dann muss es schnell gehen.
+
+**Abstimmen lassen** legt mit einem Klick einen Wahlgang als Sachabstimmung an — Bezeichnung und
+Wortlaut aus dem Antrag, Ja / Nein / Enthaltung als Verfahren — und springt gleich dorthin. Von da
+an läuft alles wie bei jeder anderen Abstimmung: gedruckte Stimmzettel oder digital, Auszählung,
+Vier-Augen-Prinzip, Prüfpfad.
+
+Beim **Hauptantrag** kommt der Beschlusstext auf den Stimmzettel, also samt übernommener Änderungen:
+Über den wird abgestimmt, nicht über die eingereichte Fassung. Beim **Änderungsantrag** sein eigener
+Wortlaut.
+
+Nicht abgestimmt wird über übernommene, zurückgezogene und erledigte Anträge — und ein zweiter
+Wahlgang zum selben Antrag wird abgelehnt. Zwei Abstimmungen über dieselbe Sache sind fast immer ein
+Versehen; wenn nicht, gehören sie ausdrücklich als Wiederholung angelegt.
+
+Im Prüfpfad steht, **über welchen Wortlaut** abgestimmt wurde. Der Antragstext lässt sich danach
+noch ändern, der Beschluss nicht mehr.
+
 ### Auf den Beamer
 
 Worüber abgestimmt wird, muss im Saal lesbar sein. Auf der Antragsseite stehen dafür **zwei** Knöpfe:
