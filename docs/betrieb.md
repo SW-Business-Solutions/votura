@@ -490,11 +490,33 @@ auf der Seite **Akkreditierung**:
 | Gedruckter Pass | In der Teilnehmerzeile **Pass ersetzen** | Der alte Pass gilt nicht mehr — je Person gibt es genau einen gültigen. |
 | Karte oder Bändchen | In **Ausweise sperren und verwalten** → *Verloren* | Der Ausweis gilt nicht mehr; wer ihn findet, kann damit nichts anfangen. Er kommt nicht in den Stapel zurück. |
 | Zerkratzt, unlesbar, verbraucht | Dort → *Ausmustern* | Dasselbe, nur ohne Verlustverdacht — er ist am Ende seines Lebens. |
-| Die **Person** soll gar nicht mehr abstimmen | In der Teilnehmerzeile **Sperren**, mit Begründung | Weder Stimmzettel noch digitale Berechtigung, gleich welchen Ausweis sie vorzeigt. |
+| Die **Person** soll gar nicht mehr abstimmen | In der Teilnehmerzeile **Bearbeiten** → *Sperren*, mit Begründung | Weder Stimmzettel noch digitale Berechtigung, gleich welchen Ausweis sie vorzeigt. |
 
 *Verloren* und *Ausmustern* lassen sich mit **Wieder freigeben** zurücknehmen, die Sperre mit
 **Entsperren**. Jeder dieser Schritte steht mit Zeitpunkt, Begründung und handelndem Konto im
 Protokoll — die Wahlleitung muss am Ende erklären können, warum ein Ausweis nicht mehr galt.
+
+Taucht eine Karte irgendwo auf, beantwortet **Verlauf** im Ausweisbestand die Frage, zu wem sie
+gehört: ausgegeben an wen, zurückgekommen wann.
+
+### Einen Eintrag berichtigen
+
+**Bearbeiten** in der Teilnehmerzeile öffnet alles, was selten gebraucht wird: Name, Nummer,
+Stimmgewicht und die Unterscheidung stimmberechtigt/Gast, dazu die Sperre und der
+Anwesenheitsverlauf dieser Person.
+
+Hat jemand anders die Zeile zwischenzeitlich angefasst, scheitert das Speichern mit einem Hinweis,
+statt die fremde Änderung zu überschreiben — am Einlass sitzen mehrere Leute an derselben Liste.
+
+### Einen Zettel zurücknehmen
+
+Falscher Ausweis gescannt, Zettel nicht ausgehändigt: Unter der Bestätigung am Ausgabetisch steht
+**Ausgabe zurücknehmen**. Sie verlangt eine Begründung, verschwindet aus der Stimmzettelbilanz und
+gibt die Person für einen neuen Zettel frei. Nur solange der Zettel **nicht über den Tisch gegangen**
+ist — sonst liefe er als zweiter Zettel neben dem ersten.
+
+Das Recht dafür ist dasselbe wie für den Nachdruck (`print.reprint`); wer es nicht hat, sieht den
+Knopf nicht.
 
 ### Am Ende der Versammlung
 
@@ -620,9 +642,14 @@ Wahlleitung eröffnet, wird es von selbst bereit; die Seite muss nicht neu gelad
 
 ### Schließen und auszählen
 
-Beim Schließen wird der private Schlüssel gelöscht und die Urne gemischt. Sie wird als **Liste
-gedruckt**: je Zeile eine Seriennummer und die Stimme im Klartext, nachzählbar wie ein Stapel
-Zettel, von jedem im Saal.
+Beim Schließen wird der private Schlüssel gelöscht und die Urne gemischt. Sie ist danach eine
+**Liste**: je Zeile eine Seriennummer und die Stimme im Klartext, nachzählbar wie ein Stapel Zettel,
+von jedem im Saal.
+
+**Urnenverzeichnis ansehen** zeigt sie auf dem Bildschirm — zum Vorlesen, zum Vergleichen, zum
+Nachrechnen. **Urnenverzeichnis drucken** legt sie auf Papier; dafür muss ein Drucker eingerichtet
+sein. Wer sich beim Abstimmen seine Seriennummer notiert hat, findet in beiden Fassungen seine
+eigene Stimme wieder und niemand anderes die seine.
 
 ### Papier und Urne zusammenrechnen
 

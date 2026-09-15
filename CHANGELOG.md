@@ -3,6 +3,32 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
+## Unveröffentlicht
+
+### Was das Programm konnte und niemand erreichte
+
+Ein Durchgang durch alle Fähigkeiten des Systems gegen jede Stelle der
+Oberfläche hat sieben Dinge zutage gefördert, die geprüft, protokolliert und
+einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
+
+- **Ausweise ungültig machen.** „Ich habe meine Karte verloren" war am Einlass
+  nicht zu beantworten. Karten und Bändchen lassen sich jetzt als verloren
+  melden oder ausmustern, Personen mit Begründung sperren und wieder
+  entsperren, und ein gedruckter Pass wird durch einen neuen ersetzt.
+- **Teilnehmer berichtigen.** Ein Tippfehler im Namen war bisher endgültig.
+  Name, Nummer, Stimmgewicht und Gast-Eigenschaft lassen sich ändern.
+- **Kommen und Gehen nachlesen.** Der Anwesenheitsverlauf einer Person steht
+  im selben Dialog.
+- **Wer hatte diesen Ausweis?** Der Verlauf einer Karte — ausgegeben an wen,
+  zurück wann.
+- **Das Urnenverzeichnis ansehen.** Es war nur zu drucken, und der Knopf dafür
+  ist ohne eingerichteten Drucker gesperrt. Damit hing die Nachzählbarkeit der
+  digitalen Wahl an einem Stück Hardware.
+- **Einen Fehlgriff am Ausgabetisch zurücknehmen.** Wer den falschen Ausweis
+  scannte, hatte einen Zettel vergeben, der nie über den Tisch ging.
+- **Beleg über den Losentscheid.** Kein Stimmzettel, sondern ein Zettel zum
+  Unterschreiben fürs Protokoll.
+
 ## 1.4.0 — Wer da ist, und wie abgestimmt wird
 
 Die größte Erweiterung seit der ersten Fassung: Votura weiß jetzt, **wer im
