@@ -31,6 +31,29 @@ import { Card, ConfirmDialog, EmptyState, Field, Modal } from '../components/ui'
 /** Über diese Stände wird noch abgestimmt. */
 const OFFEN: Antragsstatus[] = ['eingereicht', 'zugelassen']
 
+/**
+ * Der Stand als Abzeichen — wie überall sonst im Programm.
+ *
+ * Er stand hier zuerst als graues Wort in einer Zeile mit Antragsteller und
+ * Vermerk. Das war der Grund, warum „Zulassen" wie ein toter Knopf wirkte:
+ * Der Aufruf lief, der Stand wechselte, und zu sehen war der Unterschied
+ * zwischen „Eingereicht" und „Zugelassen" in zwei grauen Wörtern nebeneinander
+ * praktisch nicht.
+ */
+function Stand({ status }: { status: Antragsstatus }): React.JSX.Element {
+  const ton =
+    status === 'beschlossen'
+      ? 'ok'
+      : status === 'abgelehnt' || status === 'zurueckgezogen'
+        ? 'danger'
+        : status === 'zugelassen'
+          ? 'accent'
+          : status === 'uebernommen' || status === 'erledigt'
+            ? 'ok'
+            : 'warn'
+  return <span className={`badge ${ton}`}>{ANTRAGSSTATUS_LABELS[status]}</span>
+}
+
 export function AntraegePage(): React.JSX.Element {
   const app = useApp()
   const eventId = app.event?.id
@@ -68,10 +91,19 @@ export function AntraegePage(): React.JSX.Element {
   const aenderungenZu = (id: string): Antrag[] =>
     antraege.filter((antrag) => antrag.bezugId === id).sort((a, b) => a.reihenfolge - b.reihenfolge)
 
-  const rufe = async (tun: () => Promise<unknown>): Promise<void> => {
+  /**
+   * Etwas tun und die Liste neu holen — auf Wunsch mit einem Wort dazu.
+   *
+   * Die Meldung ist nicht Zierde. Ein Standwechsel ändert an dieser Seite
+   * ein Abzeichen und sonst nichts; wer gerade auf die Knopfreihe geschaut
+   * hat, sieht ihn nicht. Eine kurze Rückmeldung sagt, dass etwas geschehen
+   * ist — und was.
+   */
+  const rufe = async (tun: () => Promise<unknown>, meldung?: string): Promise<void> => {
     try {
       await tun()
       await laden()
+      if (meldung) app.notify('ok', meldung)
     } catch (error) {
       app.reportError(error)
     }
@@ -127,9 +159,12 @@ export function AntraegePage(): React.JSX.Element {
           const schritte = reihenfolge[antrag.id] ?? []
           return (
             <Card key={antrag.id} title={`${antrag.nummer} — ${antrag.titel}`}>
-              <div className="hint">
-                {antrag.antragsteller} · {ANTRAGSSTATUS_LABELS[antrag.status]}
-                {antrag.vermerk ? ` · ${antrag.vermerk}` : ''}
+              <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+                <Stand status={antrag.status} />
+                <span className="hint">
+                  {antrag.antragsteller}
+                  {antrag.vermerk ? ` · ${antrag.vermerk}` : ''}
+                </span>
               </div>
               <pre className="antrag-text">{antrag.text}</pre>
               {antrag.begruendung && (
@@ -148,11 +183,23 @@ export function AntraegePage(): React.JSX.Element {
                 <button disabled={!darf} onClick={() => setNeu({ art: 'aenderung', bezugId: antrag.id })}>
                   Änderungsantrag dazu
                 </button>
-                {OFFEN.includes(antrag.status) && (
+                {/*
+                  Nur solange er etwas bewirkt.
+
+                  Der Knopf stand zuerst auch bei einem bereits zugelassenen
+                  Antrag da — und tat dann genau nichts. Ein Knopf, der nichts
+                  auslöst, ist schlimmer als keiner: Wer ihn drückt, sucht den
+                  Fehler bei sich.
+                */}
+                {antrag.status === 'eingereicht' && (
                   <button
                     disabled={!darf}
+                    title="Der Antrag ist damit zur Abstimmung zugelassen."
                     onClick={() =>
-                      void rufe(() => api('motion.setStatus', { id: antrag.id, status: 'zugelassen' }))
+                      void rufe(
+                        () => api('motion.setStatus', { id: antrag.id, status: 'zugelassen' }),
+                        `${antrag.nummer} zugelassen.`
+                      )
                     }
                   >
                     Zulassen
@@ -219,9 +266,12 @@ export function AntraegePage(): React.JSX.Element {
                           <div>
                             <strong>{aenderung.nummer}</strong> — {aenderung.titel}
                           </div>
-                          <div className="hint">
-                            {aenderung.antragsteller} · {ANTRAGSSTATUS_LABELS[aenderung.status]}
-                            {aenderung.vermerk ? ` · ${aenderung.vermerk}` : ''}
+                          <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+                            <Stand status={aenderung.status} />
+                            <span className="hint">
+                              {aenderung.antragsteller}
+                              {aenderung.vermerk ? ` · ${aenderung.vermerk}` : ''}
+                            </span>
                           </div>
                           <pre className="antrag-text">{aenderung.text}</pre>
                         </div>
@@ -252,7 +302,12 @@ export function AntraegePage(): React.JSX.Element {
                             <button
                               disabled={!darf}
                               title={`${antrag.antragsteller} übernimmt den Änderungsantrag; über ihn wird dann nicht abgestimmt.`}
-                              onClick={() => void rufe(() => api('motion.adopt', aenderung.id))}
+                              onClick={() =>
+                                void rufe(
+                                  () => api('motion.adopt', aenderung.id),
+                                  `${aenderung.nummer} übernommen — darüber wird nicht abgestimmt.`
+                                )
+                              }
                             >
                               Übernehmen
                             </button>
