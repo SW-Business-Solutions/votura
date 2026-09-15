@@ -7,6 +7,12 @@
  * Bedienoberfläche (über die Hash-Navigation) und die Beameransicht.
  *
  * Aufruf:  node tools/screenshots.mjs
+ *          node tools/screenshots.mjs --offen    (nur aufbauen, offen lassen)
+ *
+ * Mit `--offen` entstehen keine Aufnahmen. Das Werkzeug legt den Demo-Bestand
+ * an, meldet an — und lässt die Anwendung stehen, statt sie zu beenden. Das
+ * ist der kurze Weg zu einer vorzeigbaren Versammlung, ohne die Daten einer
+ * echten anzufassen: eigenes Benutzerprofil, eigener Bestand.
  */
 import { spawn } from 'node:child_process'
 import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -23,6 +29,15 @@ import { setTimeout as warte } from 'node:timers/promises'
  * Anwendung. Es baut dann seinen Demo-Bestand in einem echten Profil auf und
  * fotografiert fremde Daten.
  */
+/**
+ * Nur aufbauen und offen lassen — ohne eine einzige Aufnahme.
+ *
+ * Der Demo-Bestand ist für die Aufnahmen entstanden, taugt aber genauso zum
+ * Vorführen und Ausprobieren. Ihn dafür ein zweites Mal zu schreiben wäre ein
+ * zweiter Bestand, der irgendwann von diesem abweicht.
+ */
+const NUR_OFFEN = process.argv.includes('--offen')
+
 const PORT = Number(process.env.VOTURA_SCREENSHOT_PORT || 9333)
 const ZIEL = 'docs/screenshots'
 /* Eigenes Benutzerprofil: die Aufnahmen entstehen an einem sauberen Demo-Bestand
@@ -534,7 +549,8 @@ try {
   })
   await warte(1500)
 
-  await sitzung.aufnehmen('00-anmeldung')
+  /* Mit `--offen` wird nichts aufgenommen — auch nicht das Anmeldefenster. */
+  if (!NUR_OFFEN) await sitzung.aufnehmen('00-anmeldung')
 
   console.log('Demo-Bestand anlegen …')
   const bericht = await sitzung.auswerten(demoSkript())
@@ -546,6 +562,45 @@ try {
   await sitzung.auswerten('window.location.hash = "#/dashboard"')
   await sitzung.sende('Page.reload', { ignoreCache: true })
   await warte(3500)
+
+  if (NUR_OFFEN) {
+    /*
+     * Das Testbild gehört dazu.
+     *
+     * Beim ersten Versuch endete der `--offen`-Lauf hier — und die
+     * Kameraansicht der Demo-Umgebung fand nichts, weil das Testbild erst
+     * weiter unten gestartet wird, im Zuge der Kameraaufnahmen. Eine
+     * Vorführumgebung ohne Kamera ist seit Fassung 1.6.0 eine halbe.
+     *
+     * `detached` und ein gelöstes `unref`: Der Sender soll den Lauf hier
+     * überleben, wie die Anwendung auch.
+     */
+    console.log('Testbild „PULT" starten …')
+    const sender = spawn(
+      process.execPath,
+      ['tools/ndi-testbild.mjs', '--name', 'PULT', '--breite', '1280', '--hoehe', '720', '--fps', '30'],
+      { stdio: 'ignore', detached: true }
+    )
+    sender.unref()
+
+    /*
+     * Die Verbindung wird gelöst, die Prozesse nicht.
+     *
+     * `app.kill()` im `finally` unten würde die Anwendung mitnehmen; deshalb
+     * endet der Lauf hier mit einem eigenen `exit`. Electron hängt nicht an
+     * diesem Prozess — es wurde nur von ihm gestartet.
+     */
+    sitzung.schliessen()
+    app.unref()
+    console.log('')
+    console.log('Die Demo-Umgebung läuft und ist angemeldet.')
+    console.log(`  Anmeldung:      ${KONTO.username} / ${KONTO.password}`)
+    console.log('  Wahlleiter-PIN: 246810')
+    console.log(`  Profil:         ${PROFIL}`)
+    console.log(`  Testkamera:     „PULT" (${sender.pid}) — Beamer → Präsentation & Video`)
+    console.log('')
+    process.exit(0)
+  }
 
   const seiten = [
     ['dashboard', '01-uebersicht'],
