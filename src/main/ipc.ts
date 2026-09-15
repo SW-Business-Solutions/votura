@@ -317,6 +317,18 @@ export function suchrufQuelle(): SuchrufQuelle {
     tokenNoetig: () => Boolean(getNetworkProjection().token),
     buehnen: () => listBuehnen().map((buehne) => ({ id: buehne.id, name: buehne.name })),
     prompterBedienung: () => getNetworkProjection().allowPrompterControl,
+    /*
+     * Ist eine Netzwerkkarte fest eingestellt, gilt allein deren Adresse —
+     * dann ist die Entscheidung schon gefallen. Sonst die eigene Sortierung:
+     * echte Karten vor virtuellen Schaltern.
+     */
+    adressen: () => {
+      const gebunden = getNetworkProjection().bindAddress
+      if (gebunden && gebunden !== '0.0.0.0' && gebunden !== '127.0.0.1') return [gebunden]
+      return netzwerkkarten()
+        .filter((karte) => !karte.virtuell)
+        .map((karte) => karte.adresse)
+    },
     tls: () => getNetworkProjection().tls,
     zertifikatsName: () =>
       getNetworkProjection().tls

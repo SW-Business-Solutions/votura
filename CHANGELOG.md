@@ -31,6 +31,12 @@ einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
 
 ### Behoben
 
+- **Votura Saal fand den Hauptrechner unter einer Adresse, die es nur in ihm selbst gibt.** Gemerkt
+  wurde die Adresse, aus der die Antwort kam — auf einem Rechner mit Docker, WSL oder Hyper-V ist
+  das schnell ein virtueller Schalter wie `172.17.144.1`. Der Fund sah richtig aus, und beim
+  Übernehmen stand „fetch failed". Jetzt nennt der Hauptrechner seine brauchbaren Adressen selbst,
+  und das Gerät probiert sie aus, statt zu glauben. Und wenn doch nichts antwortet, sagt die
+  Meldung, was zu tun ist.
 - **Kein Mikrofon am Pult in der Entwicklungsfassung.** Das Mikrofon bekommt allein die
   Prompterseite, erkannt an ihrem eigenen Schema — beim Entwickeln lädt sie aber wie jede andere
   Seite vom Entwicklungsserver und war damit nicht als Pult zu erkennen. „Nach Stimme" ließ sich

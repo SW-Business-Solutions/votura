@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { AUSSCHUSS_PFAD, WAHL_PFAD } from '../src/shared/wahl'
 import {
+  adressKandidaten,
   istSaalAntwort,
   rolleBrauchtAnmeldung,
   rollenAdresse,
@@ -69,6 +70,52 @@ describe('Der Suchruf', () => {
     /* Eine Antwort per Broadcast erreichte alle — und wäre ein Werbezettel. */
     const dienst = lies('src/main/suchruf.ts')
     expect(dienst).toContain('absender.port, absender.address')
+  })
+})
+
+describe('Welche Adresse ein Gerät sich merkt', () => {
+  /*
+   * **Der Fehler, der das nötig machte.** Gemerkt wurde die Adresse, aus der
+   * die Antwort kam. Die wählt aber das Betriebssystem des Hauptrechners je
+   * Weg — auf einem Rechner mit Docker, WSL oder Hyper-V kommt sie schnell
+   * aus einem virtuellen Schalter wie `172.17.144.1`. Der Fund sah richtig
+   * aus, und beim Übernehmen stand „fetch failed": Diese Adresse gibt es nur
+   * im Inneren jenes Rechners.
+   */
+  it('probiert zuerst, was der Hauptrechner selbst nennt', () => {
+    const antwort: SaalAntwort = { ...ANTWORT, adressen: ['192.168.2.174'] }
+    expect(adressKandidaten(antwort, '172.17.144.1')).toEqual(['192.168.2.174', '172.17.144.1'])
+  })
+
+  it('behält den Absender als letzten Halt', () => {
+    /* Eine ältere Fassung nennt nichts — dann bleibt es beim bisherigen Weg. */
+    expect(adressKandidaten(ANTWORT, '10.0.0.5')).toEqual(['10.0.0.5'])
+  })
+
+  it('klopft nicht zweimal an dieselbe Tür', () => {
+    const antwort: SaalAntwort = { ...ANTWORT, adressen: ['10.0.0.5', '192.168.1.9'] }
+    expect(adressKandidaten(antwort, '10.0.0.5')).toEqual(['10.0.0.5', '192.168.1.9'])
+  })
+})
+
+describe('Der Hauptrechner nennt brauchbare Adressen', () => {
+  it('lässt virtuelle Schalter aus und nimmt eine feste Bindung wörtlich', () => {
+    /*
+     * Beides steht in derselben Quelle: Ist eine Netzwerkkarte eingestellt,
+     * ist die Entscheidung gefallen; sonst gilt die eigene Sortierung.
+     */
+    const ipc = lies('src/main/ipc.ts')
+    expect(ipc).toContain('adressen: () => {')
+    expect(ipc).toContain('filter((karte) => !karte.virtuell)')
+    expect(ipc).toContain("if (gebunden && gebunden !== '0.0.0.0'")
+  })
+
+  it('probiert die Erreichbarkeit mit einer Verbindung, nicht mit einem Abruf', () => {
+    /* Über HTTPS käme die Zertifikatsprüfung dazu — und ein Zertifikat gilt
+       für einen Namen, nie für eine Adresse. */
+    const saal = lies('src/saal/index.ts')
+    expect(saal).toContain('connect({ host: adresse, port, timeout: 900 })')
+    expect(saal).toContain('erreichbareAdresse')
   })
 })
 

@@ -51,6 +51,22 @@ export interface SaalAntwort {
   buehnen: { id: number; name: string }[]
   /** Darf ein Gerät im Netz den Prompter bedienen? */
   prompterBedienung: boolean
+  /**
+   * Unter welchen Adressen sich der Hauptrechner selbst sieht — die
+   * brauchbarste zuerst.
+   *
+   * **Warum das nötig ist.** Ein Gerät merkte sich bisher die Adresse, aus
+   * der die Antwort kam. Die wählt aber das Betriebssystem des Hauptrechners
+   * je Weg — und auf einem Rechner mit Docker, WSL oder Hyper-V ist das
+   * schnell ein virtueller Schalter wie `172.17.144.1`. Der Fund sah richtig
+   * aus, und beim Übernehmen kam „fetch failed": Diese Adresse gibt es nur
+   * im Inneren jenes Rechners.
+   *
+   * Der Hauptrechner weiß besser, wo er zu erreichen ist — er sortiert seine
+   * Netzwerkkarten ohnehin danach. Gesagt wird es hier; entschieden wird es
+   * von der Gegenseite, die es ausprobiert.
+   */
+  adressen?: string[]
   /** Liefert der Hauptrechner verschlüsselt aus? */
   tls?: boolean
   /**
@@ -126,6 +142,19 @@ export interface SaalEinstellung {
   rolle: SaalRolle
   /** Name der Versammlung beim letzten erfolgreichen Verbinden. */
   name?: string
+}
+
+/**
+ * In welcher Reihenfolge Adressen eines Fundes auszuprobieren sind.
+ *
+ * Zuerst, was der Hauptrechner selbst nennt — er kennt seine Netzwerkkarten
+ * und sortiert echte vor virtuelle. Dann die Adresse, aus der die Antwort
+ * kam: Sie ist der letzte Halt, falls eine ältere Fassung nichts nennt.
+ *
+ * Ohne Doppelte, damit niemand dieselbe Adresse zweimal anklopft.
+ */
+export function adressKandidaten(antwort: SaalAntwort, absender: string): string[] {
+  return [...new Set([...(antwort.adressen ?? []), absender].filter(Boolean))]
 }
 
 /** Prüft, ob eine Antwort aus dem Netz wirklich von Votura stammt. */

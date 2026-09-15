@@ -29,6 +29,8 @@ export interface SuchrufQuelle {
   tokenNoetig: () => boolean
   buehnen: () => { id: number; name: string }[]
   prompterBedienung: () => boolean
+  /** Eigene Adressen, die brauchbarste zuerst. */
+  adressen: () => string[]
   /** Verschlüsselung und Zertifikatsname — sonst baut die Gegenseite eine
       Adresse, in die ihr eigener Browser nicht hineinlässt. */
   tls: () => boolean
@@ -50,6 +52,7 @@ export async function starteSuchruf(quelle: SuchrufQuelle): Promise<void> {
       tokenNoetig: quelle.tokenNoetig(),
       buehnen: quelle.buehnen(),
       prompterBedienung: quelle.prompterBedienung(),
+      adressen: quelle.adressen(),
       tls: quelle.tls(),
       zertifikatsName: quelle.zertifikatsName()
     }

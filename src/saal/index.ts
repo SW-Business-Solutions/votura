@@ -29,8 +29,16 @@
  */
 import { app, BrowserWindow, ipcMain, Menu, powerSaveBlocker, screen, session } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { connect } from 'node:net'
 import { join } from 'node:path'
-import { rollenAdresse, rollenName, type SaalEinstellung, type SaalFund } from '@shared/saal'
+import {
+  adressKandidaten,
+  rollenAdresse,
+  rollenName,
+  type SaalAntwort,
+  type SaalEinstellung,
+  type SaalFund
+} from '@shared/saal'
 import { sucheHauptrechner } from '../main/suchruf'
 
 /**
@@ -251,12 +259,61 @@ function wartetext(einstellung: SaalEinstellung, meldung: string): string {
 
 /* ------------------------------------------------------------ Brücke */
 
+/**
+ * Nimmt jemand unter dieser Adresse überhaupt ab?
+ *
+ * Eine **Verbindung**, kein Abruf: Gefragt ist die Erreichbarkeit, nicht die
+ * Vertrauenswürdigkeit. Über HTTPS käme sonst die Zertifikatsprüfung dazu —
+ * und ein Zertifikat gilt für einen Namen, nie für eine Adresse; die Antwort
+ * wäre „nein" aus einem Grund, der mit der Frage nichts zu tun hat.
+ */
+function antwortet(adresse: string, port: number): Promise<boolean> {
+  return new Promise((fertig) => {
+    const verbindung = connect({ host: adresse, port, timeout: 900 })
+    const schliessen = (ergebnis: boolean): void => {
+      verbindung.destroy()
+      fertig(ergebnis)
+    }
+    verbindung.once('connect', () => schliessen(true))
+    verbindung.once('timeout', () => schliessen(false))
+    verbindung.once('error', () => schliessen(false))
+  })
+}
+
+/**
+ * Welche Adresse dieses Gerät sich merken soll.
+ *
+ * **Der Fehler, der das nötig machte.** Gemerkt wurde die Adresse, aus der
+ * die Antwort kam. Die wählt aber das Betriebssystem des Hauptrechners je
+ * Weg — auf einem Rechner mit Docker, WSL oder Hyper-V kommt sie schnell aus
+ * einem virtuellen Schalter wie `172.17.144.1`. Der Fund sah richtig aus, und
+ * beim Übernehmen stand „fetch failed": Diese Adresse gibt es nur im Inneren
+ * jenes Rechners.
+ *
+ * Deshalb wird jetzt **ausprobiert**, statt geglaubt: zuerst die Adressen,
+ * die der Hauptrechner selbst nennt (echte Netzwerkkarten vor virtuellen),
+ * dann die des Absenders. Antwortet keine, bleibt es beim Absender — dann
+ * scheitert es sichtbar an derselben Stelle wie vorher und nicht stiller.
+ */
+async function erreichbareAdresse(antwort: SaalAntwort, absender: string): Promise<string> {
+  const kandidaten = adressKandidaten(antwort, absender)
+  for (const adresse of kandidaten) {
+    if (await antwortet(adresse, antwort.port)) return adresse
+  }
+  return absender
+}
+
 function registriereBruecke(): void {
   ipcMain.handle('saal:einstellung', async () => leseEinstellung())
 
   ipcMain.handle('saal:suchen', async (): Promise<SaalFund[]> => {
     const funde = await sucheHauptrechner(1800)
-    return funde.map(({ adresse, antwort }) => ({ ...antwort, adresse }))
+    return Promise.all(
+      funde.map(async ({ adresse, antwort }) => ({
+        ...antwort,
+        adresse: await erreichbareAdresse(antwort, adresse)
+      }))
+    )
   })
 
   /**
@@ -275,7 +332,22 @@ function registriereBruecke(): void {
       await antwort.json()
       return { ok: true }
     } catch (fehler) {
-      return { ok: false, fehler: fehler instanceof Error ? fehler.message : String(fehler) }
+      /*
+       * „fetch failed" ist keine Auskunft.
+       *
+       * Genau diese Meldung stand hier, als ein Gerät die Adresse eines
+       * virtuellen Schalters gespeichert hatte — und sie sagt niemandem, was
+       * zu tun ist. Wer im Saal vor einem Bildschirm steht, braucht den
+       * nächsten Handgriff, nicht den Namen der Funktion, die aufgegeben hat.
+       */
+      const text = fehler instanceof Error ? fehler.message : String(fehler)
+      const unerreichbar = /fetch failed|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENOTFOUND|timed out/i.test(text)
+      return {
+        ok: false,
+        fehler: unerreichbar
+          ? `Unter ${master} antwortet niemand. Läuft die Netzwerkansicht am Hauptrechner, und hängen beide Geräte im selben Netz? Über „Erneut suchen" findet sich die richtige Adresse meist von selbst.`
+          : text
+      }
     }
   })
 

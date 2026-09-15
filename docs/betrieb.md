@@ -237,6 +237,11 @@ sie fragt.
 - **Zurück zur Einrichtung:** **Strg + Umschalt + E** auf dem Gerät.
 - **Der Hauptrechner läuft noch nicht?** Das Gerät sagt, worauf es wartet, und versucht es alle vier
   Sekunden erneut. Beim Aufbauen ist das der Normalfall — einfach stehen lassen.
+- **Welche Adresse gemerkt wird:** Der Hauptrechner nennt im Suchruf seine eigenen Adressen — echte
+  Netzwerkkarten zuerst, virtuelle Schalter (Docker, WSL, Hyper-V) gar nicht —, und das Gerät
+  probiert sie der Reihe nach aus. Ist unter _Einstellungen → Netzwerk_ eine Netzwerkkarte fest
+  eingestellt, gilt allein deren Adresse. Das ist der Grund, warum ein Fund im Saal auch dann
+  funktioniert, wenn auf dem Hauptrechner Docker oder WSL läuft.
 - **Mikrofon:** Nur die Rolle _Prompter_ darf eines anfragen, und nur gegenüber dem eingetragenen
   Hauptrechner. Damit läuft das Mitlaufen nach Gehör auch auf einem Gerät am Pult — im Browser geht
   es nicht.
