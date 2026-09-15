@@ -94,6 +94,32 @@ describe('Das Einrichtungsskript', () => {
   })
 })
 
+describe('Was ins Paket kommt', () => {
+  /*
+   * Eine Lehre, die einmal 6,8 Gigabyte gekostet hat.
+   *
+   * In `electron-builder.yml` **ersetzt** eine `files`-Liste im Abschnitt
+   * `win:` oder `linux:` die obige, sie ergänzt sie nicht. Stand dort nur die
+   * Ausnahme für die fremde NDI-Bindung, packte electron-builder das ganze
+   * Projekt ein — Quelltext, Tests, Dokumentation und die alten Pakete.
+   */
+  for (const datei of ['electron-builder.yml', 'electron-builder-saal.yml']) {
+    it(`nennt in ${datei} je Plattform die vollständige Liste`, () => {
+      const yaml = lies(datei)
+      for (const abschnitt of ['\nwin:', '\nlinux:']) {
+        const anfang = yaml.indexOf(abschnitt)
+        expect(anfang).toBeGreaterThan(0)
+        const ende = yaml.indexOf('\n  target:', anfang)
+        const block = yaml.slice(anfang, ende)
+        /* Nur prüfen, wo überhaupt gefiltert wird. */
+        if (!block.includes('files:')) continue
+        expect(block).toContain('out/**')
+        expect(block).toContain('package.json')
+      }
+    })
+  }
+})
+
 describe('Die NDI-Laufzeit auf dem Pi', () => {
   it('kommt nicht mit ins Abbild', () => {
     /*

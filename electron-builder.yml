@@ -48,8 +48,21 @@ publish:
     releaseType: release
 
 win:
-  # Kein Linux-Paket in der Windows-Fassung.
+  # ACHTUNG: Diese Liste **ersetzt** die obige, sie ergänzt sie nicht.
+  #
+  # Das ist einmal teuer geworden: Hier stand nur die Ausnahme für die fremde
+  # NDI-Bindung, und electron-builder packte daraufhin das **ganze Projekt**
+  # ein — Quelltext, Tests, Dokumentation und die alten Pakete unter
+  # `release-pi`. Aus 190 MB wurden 6,8 GB, und der Quelltext wäre mit
+  # ausgeliefert worden.
+  #
+  # Deshalb steht die Grundliste hier noch einmal vollständig. Wer sie oben
+  # ändert, muss sie hier mitändern — `tests/pi.test.ts` wacht darüber.
   files:
+    - out/**
+    - package.json
+    - '!**/*.map'
+    # Kein Linux-Paket in der Windows-Fassung.
     - '!node_modules/@grandi/linux-*/**'
   target:
     - target: nsis
@@ -71,10 +84,23 @@ win:
 # Paketverwaltung voraussetzt. deb und AppImage entstehen in einer
 # Linux-Bauumgebung; sie brauchen Werkzeuge, die es unter Windows nicht gibt.
 linux:
-  # Kein Windows-Paket in den Linux-Fassungen. Beide Linux-Bauarten (x64
-  # und arm64) entstehen in einem Lauf und tragen deshalb beide Bindungen;
-  # das ist der Preis dafür, sie nicht einzeln bauen zu müssen.
+  # ACHTUNG: Diese Liste **ersetzt** die obige, sie ergänzt sie nicht.
+  #
+  # Das ist einmal teuer geworden: Hier stand nur die Ausnahme für die fremde
+  # NDI-Bindung, und electron-builder packte daraufhin das **ganze Projekt**
+  # ein — Quelltext, Tests, Dokumentation und die alten Pakete unter
+  # `release-pi`. Aus 190 MB wurden 6,8 GB, und der Quelltext wäre mit
+  # ausgeliefert worden.
+  #
+  # Deshalb steht die Grundliste hier noch einmal vollständig. Wer sie oben
+  # ändert, muss sie hier mitändern — `tests/pi.test.ts` wacht darüber.
   files:
+    - out/**
+    - package.json
+    - '!**/*.map'
+    # Kein Windows-Paket in den Linux-Fassungen. Beide Linux-Bauarten (x64 und
+    # arm64) entstehen in einem Lauf und tragen deshalb beide Bindungen; das
+    # ist der Preis dafür, sie nicht einzeln bauen zu müssen.
     - '!node_modules/@grandi/win32-*/**'
   target:
     - target: tar.gz
