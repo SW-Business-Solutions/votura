@@ -233,8 +233,22 @@ export function sprecherAufgerufen(sprecher?: { name: string; until?: string; ro
   if (!rede || rede.id === state.speech?.id) return
 
   loadSpeech(rede.id)
-  setze({ until: sprecher?.until }, false)
-  logger.info(`Prompter: „${rede.title}" für ${name} aufgelegt.`)
+  /*
+   * **Und der Lauf beginnt.**
+   *
+   * Die zugestandene Redezeit läuft ab dem Aufruf — der Saal sieht sie
+   * zählen. Ein Text, der daneben stillsteht, bis jemand „Starten" drückt,
+   * wäre schon beim ersten Satz aus dem Tritt: Wer vorn steht, hat die Hände
+   * am Manuskript und nicht am Board.
+   *
+   * Nur bei gleichmäßigem Lauf. „Nach Stimme" bewegt das Sprechen selbst,
+   * und „Von Hand" ist die ausdrückliche Ansage, dass sich nichts von allein
+   * bewegen soll — die beiden umzustoßen hieße, eine Einstellung zu
+   * überfahren.
+   */
+  const laeuftLos = state.laufart === 'auto'
+  setze({ until: sprecher?.until, running: laeuftLos }, false)
+  logger.info(`Prompter: „${rede.title}" für ${name} aufgelegt${laeuftLos ? ' — der Lauf beginnt' : ''}.`)
 }
 
 /** Setzt alles zurück — nach der Versammlung und beim Start. */

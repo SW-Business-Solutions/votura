@@ -166,12 +166,17 @@ export interface PrompterViewState {
   /** Ende der zugestandenen Redezeit (ISO) — dieselbe Uhr wie auf dem Beamer. */
   until?: string
   /**
-   * Legt der Prompter die Rede des Aufgerufenen von selbst auf?
+   * Legt der Prompter die Rede des Aufgerufenen von selbst auf — und beginnt?
    *
    * Wird auf dem Beamer ein Bewerber vorgestellt, dem eine Rede zugeordnet
-   * ist, kommt sie mitsamt seiner Uhr auf den Prompter. Das ist der Regelfall
-   * einer Reihe von Vorstellungen: zwölf Bewerber, zwölf Texte, und niemand
-   * sucht zwischendurch in einer Liste.
+   * ist, kommt sie mitsamt seiner Uhr auf den Prompter, und der Lauf beginnt:
+   * Die Redezeit zählt ab dem Aufruf, ein danebenstehender Text wäre schon
+   * beim ersten Satz aus dem Tritt. Das ist der Regelfall einer Reihe von
+   * Vorstellungen: zwölf Bewerber, zwölf Texte, und niemand sucht
+   * zwischendurch in einer Liste oder greift ans Board.
+   *
+   * Gestartet wird nur bei gleichmäßigem Lauf — „Nach Stimme" und „Von Hand"
+   * bleiben unangetastet.
    *
    * Abschaltbar, weil der Prompter auch etwas anderes tragen kann — die
    * Notizen der Versammlungsleitung etwa. Die sollen nicht verschwinden, nur

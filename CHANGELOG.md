@@ -57,6 +57,9 @@ der Bewerber auf dem Beamer vorgestellt, legt der Prompter seinen Text von selbs
 Uhr, die der Saal sieht. Bei zwölf Bewerbern hintereinander sucht damit niemand mehr zwischendurch
 in einer Liste.
 
+Der Lauf beginnt dabei von selbst — die Redezeit zählt ab dem Aufruf, und wer vorn steht, hat die
+Hände am Manuskript und nicht am Board. Bei _Nach Stimme_ und _Von Hand_ wird nur aufgelegt.
+
 Weil derselbe Mensch oft mehrmals spricht — Vorstandsbericht, später Bewerbung um die Wiederwahl —,
 hängt die Zuordnung an der **Bewerbung** und nicht an der Person: Der auf dem Beamer eingestellte
 Wahlgang entscheidet, welche Rede gemeint ist. Bleibt es mehrdeutig, legt der Prompter nichts auf.

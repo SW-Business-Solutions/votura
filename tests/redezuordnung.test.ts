@@ -201,15 +201,33 @@ describe('Dieselbe Person, mehrere Reden', () => {
 })
 
 describe('Der Prompter folgt dem Aufruf', () => {
-  it('legt die Rede des Aufgerufenen mitsamt seiner Uhr auf', () => {
+  it('legt die Rede des Aufgerufenen mitsamt seiner Uhr auf und beginnt', () => {
     const bis = new Date(Date.now() + 300_000).toISOString()
     prompter.sprecherAufgerufen({ name: 'Anna Berg', until: bis })
     const stand = prompter.getPrompterView()
     expect(stand.speech?.id).toBe(redeEins)
     expect(stand.until).toBe(bis)
-    /* Von vorn und angehalten — niemand soll in einen laufenden Text fallen. */
+    /* Von vorn — aber laufend: Die Redezeit zählt ab dem Aufruf, und ein Text,
+       der daneben stillsteht, ist schon beim ersten Satz aus dem Tritt. */
     expect(stand.position).toBe(0)
+    expect(stand.running).toBe(true)
+  })
+
+  it('überfährt „Von Hand" nicht', () => {
+    /* Die ausdrückliche Ansage, dass sich nichts von allein bewegen soll. */
+    prompter.setPrompterLaufart('hand')
+    prompter.sprecherAufgerufen({ name: 'Anna Berg' })
+    const stand = prompter.getPrompterView()
+    expect(stand.speech?.id).toBe(redeEins)
     expect(stand.running).toBe(false)
+    prompter.setPrompterLaufart('auto')
+  })
+
+  it('startet nichts, wenn das Sprechen den Text bewegt', () => {
+    prompter.setPrompterLaufart('stimme')
+    prompter.sprecherAufgerufen({ name: 'Anna Berg' })
+    expect(prompter.getPrompterView().running).toBe(false)
+    prompter.setPrompterLaufart('auto')
   })
 
   it('räumt den Prompter nicht leer, wenn ein Gast spricht', () => {

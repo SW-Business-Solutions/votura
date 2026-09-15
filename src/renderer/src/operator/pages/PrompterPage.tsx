@@ -625,13 +625,15 @@ export function PrompterPage(): React.JSX.Element {
             <Checkbox
               checked={view.folgtDemAufruf}
               onChange={(an) => void rufe(() => api('prompter.folgtDemAufruf', an))}
-              label="Rede des Aufgerufenen von selbst auflegen"
+              label="Rede des Aufgerufenen auflegen und starten"
             />
             {/* Was der Schalter bewirkt, gehört unter den Schalter. */}
             <div className="hint">
               Wird auf dem Beamer ein Bewerber vorgestellt, dem in der Bibliothek eine Rede zugeordnet ist,
-              kommt sie mitsamt seiner Uhr auf den Prompter. Aus: Der Prompter behält, was von Hand
-              daraufliegt — die Notizen der Versammlungsleitung etwa.
+              kommt sie mitsamt seiner Uhr auf den Prompter — und der Lauf beginnt, denn die Redezeit zählt ab
+              dem Aufruf. Bei <em>Nach Stimme</em> und <em>Von Hand</em> wird nur aufgelegt: Dort bewegt das
+              Sprechen oder die Taste den Text. Aus: Der Prompter behält, was von Hand daraufliegt — die
+              Notizen der Versammlungsleitung etwa.
             </div>
             {view.folgtDemAufruf && bewerber.length === 0 && (
               <div className="hint mt-2">

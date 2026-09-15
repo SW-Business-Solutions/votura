@@ -146,8 +146,10 @@ _Prompter_ (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
   Uhr an das Pult — der Saal und die vortragende Person sehen dann dieselbe Zahl.
 - **Dem Aufruf folgen:** Unter jeder Rede in der Bibliothek steht ein Auswahlfeld mit den Bewerbern
   der Veranstaltung, nach Wahlgang gruppiert. Ist eine Rede zugeordnet und wird dieser Bewerber auf
-  dem Beamer vorgestellt, legt der Prompter seinen Text von selbst auf — mitsamt seiner Uhr. Bei
-  zwölf Bewerbern sucht so niemand zwischendurch in einer Liste.
+  dem Beamer vorgestellt, legt der Prompter seinen Text von selbst auf — mitsamt seiner Uhr — und
+  **beginnt zu laufen**: Die Redezeit zählt ab dem Aufruf, ein stillstehender Text wäre schon beim
+  ersten Satz aus dem Tritt. Bei zwölf Bewerbern greift so niemand zwischendurch ans Board.
+  Gestartet wird nur bei _Gleichmäßig_; bei _Nach Stimme_ und _Von Hand_ wird nur aufgelegt.
 
 ### Wenn jemand mehrmals spricht
 
