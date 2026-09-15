@@ -10,6 +10,7 @@ import {
   type SystemSettings
 } from '@shared/config'
 import { normalizeProjectionTheme, type ProjectionTheme } from '@shared/projection'
+import { ptzProfil, type PtzKamera } from '@shared/ptz'
 import type { AppConfig, PrinterConfig } from '@shared/types'
 import { db } from '../db'
 import { fromJson } from '../db/driver'
@@ -89,6 +90,47 @@ export function saveSaalnetz(config: SaalnetzConfig): SaalnetzConfig {
   return getSaalnetz()
 }
 
+/**
+ * Die eingerichteten steuerbaren Kameras.
+ *
+ * Eine Liste wie die der Drucker: Geräte, die es geben kann und meistens
+ * nicht gibt. Ohne Eintrag ist die Steuerung schlicht nicht da — und nichts
+ * fragt im Netz herum.
+ */
+export function getPtzKameras(): PtzKamera[] {
+  return read<PtzKamera[]>('ptzKameras', [])
+}
+
+export function savePtzKameras(kameras: PtzKamera[]): PtzKamera[] {
+  /*
+   * Geprüft wird beim Speichern, nicht beim Benutzen.
+   *
+   * Eine Kamera ohne Adresse oder mit unbekanntem Profil wäre ein Eintrag,
+   * der erst im Saal auffällt — dann, wenn jemand auf „Pult“ drückt und
+   * nichts geschieht.
+   */
+  const sauber = kameras
+    .filter((kamera) => kamera.host.trim().length > 0)
+    .map((kamera) => {
+      if (!ptzProfil(kamera.profil)) {
+        throw new Error(`Zu „${kamera.name}“ ist kein bekanntes Kameraprofil hinterlegt.`)
+      }
+      return {
+        ...kamera,
+        name: kamera.name.trim() || kamera.host.trim(),
+        host: kamera.host.trim(),
+        positionen: kamera.positionen
+          .filter((position) => position.name.trim().length > 0)
+          .map((position) => ({
+            nummer: Math.max(0, Math.min(254, Math.round(position.nummer))),
+            name: position.name.trim()
+          }))
+      }
+    })
+  write('ptzKameras', sauber)
+  return getPtzKameras()
+}
+
 /** Was über ein hinterlegtes echtes Zertifikat anzuzeigen ist. */
 export function getEigenesZertifikat(): EigenesZertifikat | undefined {
   return read<EigenesZertifikat | undefined>('eigenesZertifikat', undefined)
@@ -122,6 +164,7 @@ export function getSettings(): SystemSettings {
     networkProjection: getNetworkProjection(),
     projectionTheme: getProjectionTheme(),
     saalnetz: getSaalnetz(),
+    ptzKameras: getPtzKameras(),
     eigenesZertifikat: getEigenesZertifikat()
   }
 }

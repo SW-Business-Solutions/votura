@@ -5,6 +5,24 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
 ## Unveröffentlicht
 
+### Kameras steuern
+
+Eine PTZ-Kamera fährt auf Wunsch von selbst auf ihre Position, sobald ein Redner aufgerufen wird —
+zum Pult. Bei zwölf Bewerbern hintereinander führt damit niemand mehr zwischendurch eine Kamera
+nach.
+
+Gebaut als **eine Stelle für alle Hersteller**: Fast alle Netzwerkkameras sprechen VISCA, und der
+Inhalt eines Befehls ist überall derselbe. Verschieden sind Verpackung, Weg, Port und ein paar
+Eigenheiten je Modell — und die stehen in einer **Tabelle**, nicht im Programm. Eine neue Kamera
+aufzunehmen heißt im Regelfall, eine Zeile zu ergänzen.
+
+Welche Spielart eine Kamera spricht, muss niemand raten: Der Port verrät sie nicht, und Handbücher
+schweigen oft dazu. Votura klopft die Adresse mit einer Frage ab, die nichts verstellt, und nimmt
+die Form, die antwortet.
+
+Kein Joystick. Wer live schwenken will, hat ein Pult mit einem Knüppel, und das kann es besser als
+jede Maus.
+
 ### Kameras im Saal
 
 Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die

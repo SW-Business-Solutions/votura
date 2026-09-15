@@ -529,6 +529,37 @@ endet mit der Rede. Eine Ankündigung an die Versammlung bleibt trotzdem Sache d
 mit der sich die Kameraansicht ohne Kamera prüfen lässt. Für Votura ist sie von einer Kamera nicht
 zu unterscheiden.</sub>
 
+### Kameras steuern — eine Stelle für alle Hersteller
+
+Eine PTZ-Kamera lässt sich über das Netz bewegen, und das Nützlichste daran ist auf einer
+Versammlung nicht der Schwenk, sondern die **feste Position**: „Pult", „Präsidium", „Saal" einmal
+einrichten — und beim Aufruf eines Redners fährt die Kamera von selbst dorthin. Bei zwölf Bewerbern
+hintereinander führt so niemand zwischendurch eine Kamera nach.
+
+Fast alle Netzwerkkameras sprechen **VISCA**, das Protokoll aus Sonys Steuerpulten. Der Inhalt
+eines Befehls ist dabei überall gleich — „fahre auf Position 3" heißt immer
+`81 01 04 3F 02 03 FF`. Verschieden ist das Drumherum, und **genau das steht in einer Tabelle**
+([`src/shared/ptz.ts`](src/shared/ptz.ts)):
+
+| Was sich unterscheidet | Beispiel |
+| --- | --- |
+| Rahmung | roh, oder in Sonys Umschlag mit Länge und Laufnummer |
+| Weg | UDP oder TCP |
+| Port | 52381, 5678 — und der Port verrät die Rahmung **nicht** |
+| Grenzen | wie schnell geschwenkt werden darf, wie viele Positionen es gibt |
+| Eigenheiten | die OBSBOT Tail Air nimmt die Schwenkgeschwindigkeit auch fürs Neigen |
+
+Eine neue Kamera aufzunehmen heißt deshalb im Regelfall: **eine Zeile ergänzen** — kein neuer Code,
+keine Verzweigung in der Bedienung. Und weil die drei allgemeinen Einträge keine Marken sind,
+sondern die Spielarten von VISCA, läuft auch eine Kamera, die in der Tabelle gar nicht steht.
+
+Welche Spielart gilt, muss niemand raten: Votura klopft die Adresse mit einer Frage ab, die nichts
+verstellt, und nimmt die Form, die antwortet. Einzurichten unter **Einstellungen → Kameras**.
+
+Die Befehle sind **gerechnete Bytes** und als solche geprüft — 32 Tests, ohne dass eine Kamera im
+Raum steht. Was sich ohne Gerät nicht prüfen lässt, steht ehrlich aus: Ob ein bestimmtes Modell so
+antwortet, wie sein Handbuch behauptet, zeigt erst das Modell.
+
 ## Netzwerkbetrieb
 
 Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und nur für ein

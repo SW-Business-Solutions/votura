@@ -15,6 +15,7 @@ import type {
   ProjectionTheme
 } from './projection'
 import type { KameraStand } from './kamera'
+import type { PtzFund, PtzKamera, PtzRichtung } from './ptz'
 import type { Buehnenwahl } from './projection'
 import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
@@ -741,6 +742,36 @@ export interface Api {
    * wird sie mit Bereichsanfragen über ein eigenes Schema bzw. den
    * Projektionsserver.
    */
+  /**
+   * Die eingerichteten steuerbaren Kameras — meist eine leere Liste.
+   *
+   * Steuerung und Bild sind zweierlei: Das Bild kommt über NDI, die
+   * Steuerung über VISCA. Eine Kamera kann das eine ohne das andere.
+   */
+  'ptz.liste': () => Promise<PtzKamera[]>
+  'ptz.speichern': (kameras: PtzKamera[]) => Promise<PtzKamera[]>
+  /**
+   * Herausfinden, wie eine Kamera unter dieser Adresse anspricht.
+   *
+   * Der Port verrät die Spielart nicht; Votura klopft sie deshalb mit einer
+   * Frage ab, die nichts verstellt.
+   */
+  'ptz.erkennen': (eingabe: { host: string; port?: number }) => Promise<PtzFund>
+  /** Eine gespeicherte Position anfahren. */
+  'ptz.position': (eingabe: { id: string; nummer: number }) => Promise<void>
+  /** Die aktuelle Stellung als Position ablegen. */
+  'ptz.positionSpeichern': (eingabe: { id: string; nummer: number }) => Promise<void>
+  /** Schwenken, bis ein Halt kommt. */
+  'ptz.schwenken': (eingabe: {
+    id: string
+    x: PtzRichtung
+    y: PtzRichtung
+    tempo?: number
+  }) => Promise<void>
+  'ptz.halt': (id: string) => Promise<void>
+  'ptz.zoom': (eingabe: { id: string; richtung: PtzRichtung; tempo?: number }) => Promise<void>
+  'ptz.heim': (id: string) => Promise<void>
+  'ptz.scharfstellen': (id: string) => Promise<void>
   /**
    * Was der Rechner über Kameras weiß — gefundene Quellen und Störungen.
    *

@@ -2,6 +2,7 @@
 import { DEFAULT_BALLOT_LABELS } from './ballot'
 import { DEFAULT_PROJECTION_THEME, type ProjectionTheme } from './projection'
 import type { AppConfig, PrinterConfig } from './types'
+import type { PtzKamera } from './ptz'
 
 export interface NetworkProjectionConfig {
   /** Standardmäßig AUS – Freigabe ins LAN ist eine bewusste Entscheidung (§51). */
@@ -95,6 +96,8 @@ export interface SystemSettings {
   networkProjection: NetworkProjectionConfig
   projectionTheme: ProjectionTheme
   saalnetz: SaalnetzConfig
+  /** Steuerbare Kameras — meist leer. */
+  ptzKameras: PtzKamera[]
   /** Fehlt, solange nur das selbst ausgestellte Zertifikat vorliegt. */
   eigenesZertifikat?: EigenesZertifikat
 }

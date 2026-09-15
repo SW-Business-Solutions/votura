@@ -23,6 +23,7 @@ import {
 import type { UUID } from '@shared/types'
 import { logger } from '../logger'
 import { getSpeech, redeFuerBewerber } from './speeches'
+import { ptzBeiAufruf } from './ptz'
 
 type Listener = (state: PrompterViewState) => void
 
@@ -275,6 +276,17 @@ export function sprecherAufgerufen(sprecher?: Sprecheraufruf): void {
   }
   zuletztGerufen = name
   zuletztAngehalten = sprecher.pausedSecondsLeft !== undefined
+
+  /*
+   * Die Kameras folgen dem Aufruf — unabhängig davon, ob das Pult ihm folgt.
+   *
+   * Beides hängt am selben Ereignis und ist doch zweierlei: Der Prompter legt
+   * einen Text auf, die Kamera fährt auf eine Position. Wer den Prompter von
+   * Hand bedient, will deswegen noch lange nicht, dass die Kamera stehen
+   * bleibt. Absichtlich ohne `await`: Ein Redneraufruf wartet auf kein Gerät.
+   */
+  void ptzBeiAufruf()
+
   if (!state.folgtDemAufruf) return
 
   const rede = redeFuerBewerber(name, sprecher.roundId)

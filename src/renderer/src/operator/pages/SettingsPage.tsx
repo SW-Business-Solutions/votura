@@ -6,6 +6,7 @@ import { AllgemeinEinstellungen } from './AllgemeinEinstellungen'
 import { BackupEinstellungen } from './BackupEinstellungen'
 import { BenutzerEinstellungen } from './BenutzerEinstellungen'
 import { DruckerEinstellungen } from './DruckerEinstellungen'
+import { KameraEinstellungen } from './KameraEinstellungen'
 import { ProjectionDesign } from './ProjectionDesign'
 import { NetzwerkEinstellungen } from './NetzwerkEinstellungen'
 import { SaalnetzEinstellungen } from './SaalnetzEinstellungen'
@@ -30,6 +31,7 @@ const EINSTELLUNGS_REITER = [
   { id: 'printers', label: 'Drucker' },
   { id: 'beamer', label: 'Beamer' },
   { id: 'prompter', label: 'Prompter' },
+  { id: 'kameras', label: 'Kameras' },
   { id: 'netzwerk', label: 'Netzwerk' },
   { id: 'saalnetz', label: 'Saalnetz' },
   { id: 'users', label: 'Benutzer' },
@@ -59,6 +61,7 @@ export function SettingsPage(): React.JSX.Element {
       {tab === 'netzwerk' && <NetzwerkEinstellungen />}
       {tab === 'saalnetz' && <SaalnetzEinstellungen />}
       {tab === 'prompter' && <SprachmodellEinstellungen />}
+      {tab === 'kameras' && <KameraEinstellungen />}
       {tab === 'users' && <BenutzerEinstellungen />}
       {tab === 'backup' && <BackupEinstellungen />}
     </>

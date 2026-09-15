@@ -15,6 +15,16 @@ import { ALLE_BUEHNEN, EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type Buehnenwahl } f
 import { db } from './db'
 import { appPaths } from './paths'
 import type { KameraQualitaet } from '@shared/kamera'
+import {
+  ptzErkennen,
+  ptzHalt,
+  ptzHeim,
+  ptzPositionAbrufen,
+  ptzPositionSpeichern,
+  ptzScharfstellen,
+  ptzSchwenken,
+  ptzZoomen
+} from './services/ptz'
 import { logger } from './logger'
 import {
   kameraAn as kameraAnschliessen,
@@ -211,11 +221,13 @@ import {
   getProjectionTheme,
   getSaalnetz,
   getSettings,
+  getPtzKameras,
   saveConfig,
   saveEigenesZertifikat,
   saveNetworkProjection,
   savePrinters,
   saveProjectionTheme,
+  savePtzKameras,
   saveSaalnetz
 } from './services/settings'
 import {
@@ -877,6 +889,26 @@ const api: Api = {
   'presentation.report': async ({ slide, slideCount, stage }) =>
     reportPresentationState(bezugsbuehne(stage), slide, slideCount),
   /* -------------------------------------------------------------- Videos */
+  /*
+   * Die Steuerung ist vom Bild getrennt.
+   *
+   * Eine Kamera kann ein Bild liefern, ohne steuerbar zu sein, und umgekehrt.
+   * Wer beides in einen Aufruf legte, könnte das eine ohne das andere nicht
+   * mehr einrichten.
+   */
+  'ptz.liste': async () => getPtzKameras(),
+  'ptz.speichern': async (kameras) => {
+    requirePermission('system.manage')
+    return savePtzKameras(kameras)
+  },
+  'ptz.erkennen': async (eingabe) => ptzErkennen(eingabe.host, eingabe.port),
+  'ptz.position': async (eingabe) => ptzPositionAbrufen(eingabe.id, eingabe.nummer),
+  'ptz.positionSpeichern': async (eingabe) => ptzPositionSpeichern(eingabe.id, eingabe.nummer),
+  'ptz.schwenken': async (eingabe) => ptzSchwenken(eingabe.id, eingabe.x, eingabe.y, eingabe.tempo),
+  'ptz.halt': async (id) => ptzHalt(id),
+  'ptz.zoom': async (eingabe) => ptzZoomen(eingabe.id, eingabe.richtung, eingabe.tempo),
+  'ptz.heim': async (id) => ptzHeim(id),
+  'ptz.scharfstellen': async (id) => ptzScharfstellen(id),
   'kamera.stand': async () => kameraStand(),
   'kamera.suche': async (an) => {
     requirePermission('round.manage')
