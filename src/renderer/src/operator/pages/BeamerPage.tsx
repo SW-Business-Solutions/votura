@@ -33,7 +33,7 @@ const MODE_BUTTONS: { mode: ProjectionMode; label: string; needsRound?: boolean 
   { mode: 'round_closed', label: 'Wahl beendet', needsRound: true },
   { mode: 'counting', label: 'Auszählung', needsRound: true },
   { mode: 'result', label: 'Ergebnis anzeigen', needsRound: true },
-  { mode: 'runoff_announced', label: 'Stichwahl ankuendigen', needsRound: true },
+  { mode: 'runoff_announced', label: 'Stichwahl ankündigen', needsRound: true },
   { mode: 'agenda', label: 'Tagesordnung (gesamt)' },
   { mode: 'break', label: 'Pause' },
   { mode: 'session_finished', label: 'Versammlung beendet' }
@@ -428,7 +428,7 @@ export function BeamerPage(): React.JSX.Element {
                 ))}
               </select>
             </Field>
-            <div className="grid cols-2">
+            <div className="grid beamer-modi">
               {MODE_BUTTONS.map((entry) => (
                 <button
                   key={entry.mode}

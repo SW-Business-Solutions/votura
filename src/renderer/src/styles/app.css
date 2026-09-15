@@ -313,6 +313,24 @@ p {
 .grid.cols-3 {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
+
+/*
+ * Die Ansichtsknöpfe der Beamersteuerung.
+ *
+ * Sie standen in `cols-2` — einem Raster, das für **Karten** gedacht ist und
+ * deshalb 320 Pixel je Spalte verlangt. Die Karte, in der sie sitzen, ist
+ * 588 Pixel breit: zwei Spalten bräuchten 656. Also fiel das Raster auf eine
+ * Spalte zurück, und aus zwölf Knöpfen wurde eine Liste, die zweimal
+ * gescrollt werden will — ausgerechnet bei der Steuerung, die im Saal am
+ * schnellsten gehen muss.
+ *
+ * Ein Knopf braucht keine 320 Pixel. 240 ergeben hier zwei Spalten und auf
+ * einem breiten Bildschirm drei.
+ */
+.beamer-modi {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
 /* Für Kennzahlen: schmaler als cols-3, damit vier Werte nebeneinanderpassen
    und bei schmalem Fenster sauber umbrechen. */
 .grid.cols-4 {
