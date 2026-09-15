@@ -21,6 +21,7 @@ import {
   nudgePrompter,
   refreshSpeech,
   setPrompterAnsicht,
+  setPrompterFolgtDemAufruf,
   setPrompterDarstellung,
   setPrompterLaufart,
   setPrompterNetzBedienung,
@@ -64,6 +65,7 @@ import {
   addCandidates,
   applyOrderMode,
   listCandidates,
+  listEventCandidates,
   reorderCandidates,
   updateCandidate,
   withdrawCandidate
@@ -715,6 +717,7 @@ const api: Api = {
   'candidate.update': async (input) => updateCandidate(input),
   'candidate.withdraw': async (input) => withdrawCandidate(input.id, input.reason),
   'candidate.reorder': async (input) => reorderCandidates(input.roundId, input.orderedIds),
+  'candidate.listForEvent': async (eventId) => listEventCandidates(eventId),
   'candidate.applyOrderMode': async (input) => applyOrderMode(input.roundId, input.mode, input.seed),
 
   /* ----------------------------------------------------------- Stimmzettel */
@@ -935,6 +938,7 @@ const api: Api = {
   'prompter.setDarstellung': async (aenderung) => setPrompterDarstellung(aenderung),
   'prompter.setUntil': async (until) => setPrompterUntil(until),
   'prompter.setAnsicht': async (ansicht) => setPrompterAnsicht(ansicht),
+  'prompter.folgtDemAufruf': async (folgt) => setPrompterFolgtDemAufruf(folgt),
   'prompter.setLaufart': async (laufart) => setPrompterLaufart(laufart),
   'prompter.openWindow': async () => {
     requirePermission('round.manage')

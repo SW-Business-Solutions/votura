@@ -18,6 +18,7 @@ import type { UUID } from '@shared/types'
 import { appPaths } from '../paths'
 import { logger } from '../logger'
 import { appendAudit } from './audit'
+import { getCandidate } from './candidates'
 import { getSession } from './auth'
 
 /**
@@ -196,6 +197,33 @@ export function assignSpeech(id: UUID, candidateId?: UUID, candidateName?: strin
   eintrag.candidateName = candidateId ? candidateName : undefined
   schreibe(liste)
   return eintrag
+}
+
+/**
+ * Die Rede, die zu einem aufgerufenen Namen gehört.
+ *
+ * **Warum über den Namen und nicht über die Kennung?** Auf dem Beamer ist ein
+ * Sprecher ein Name — auch ein Gast, ein Bericht, ein Grußwort, für die es gar
+ * keinen Bewerber gibt. Die Zuordnung hängt trotzdem an der Kennung: Verglichen
+ * wird mit dem **heutigen** Namen des Bewerbers, nicht mit dem, der beim
+ * Zuordnen galt. Wer umbenannt wird, verliert seine Rede sonst still.
+ *
+ * Existiert der Bewerber nicht mehr, bleibt der gespeicherte Name als letzte
+ * Auskunft.
+ */
+export function redeFuerBewerber(name: string): SpeechInfo | undefined {
+  const gesucht = name.trim().toLocaleLowerCase('de-DE')
+  if (!gesucht) return undefined
+  return listSpeeches().find((rede) => {
+    if (!rede.candidateId) return false
+    let heutiger = rede.candidateName
+    try {
+      heutiger = getCandidate(rede.candidateId).displayName
+    } catch {
+      /* Der Bewerber ist fort — der gespeicherte Name muss reichen. */
+    }
+    return heutiger?.trim().toLocaleLowerCase('de-DE') === gesucht
+  })
 }
 
 export function deleteSpeech(id: UUID): void {

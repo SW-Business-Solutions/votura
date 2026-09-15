@@ -164,6 +164,19 @@ export interface PrompterViewState {
   netzBedienung: boolean
   /** Ende der zugestandenen Redezeit (ISO) — dieselbe Uhr wie auf dem Beamer. */
   until?: string
+  /**
+   * Legt der Prompter die Rede des Aufgerufenen von selbst auf?
+   *
+   * Wird auf dem Beamer ein Bewerber vorgestellt, dem eine Rede zugeordnet
+   * ist, kommt sie mitsamt seiner Uhr auf den Prompter. Das ist der Regelfall
+   * einer Reihe von Vorstellungen: zwölf Bewerber, zwölf Texte, und niemand
+   * sucht zwischendurch in einer Liste.
+   *
+   * Abschaltbar, weil der Prompter auch etwas anderes tragen kann — die
+   * Notizen der Versammlungsleitung etwa. Die sollen nicht verschwinden, nur
+   * weil vorn jemand aufgerufen wird.
+   */
+  folgtDemAufruf: boolean
   /** Zuletzt geändert (ISO). */
   updatedAt: string
   /** Kennung dieses Programmlaufs, damit eine Netzansicht einen Neustart merkt. */
@@ -184,6 +197,7 @@ export const PROMPTER_VORGABE: PrompterViewState = {
   leselinie: 40,
   zeigeUhr: true,
   netzBedienung: false,
+  folgtDemAufruf: true,
   updatedAt: new Date(0).toISOString()
 }
 

@@ -522,6 +522,14 @@ export interface Api {
   'candidate.update': (input: { id: UUID } & Partial<CandidateInput>) => Promise<Candidate>
   'candidate.withdraw': (input: { id: UUID; reason: string }) => Promise<Candidate>
   'candidate.reorder': (input: { roundId: UUID; orderedIds: UUID[] }) => Promise<Candidate[]>
+  /**
+   * Alle Bewerber der Veranstaltung, über die Wahlgänge hinweg.
+   *
+   * Eine Rede gehört zu einer Person, nicht zu einem Wahlgang — und dieselbe
+   * Person steht oft in mehreren. Wer eine Rede zuordnen will, braucht die
+   * ganze Liste und nicht je Wahlgang einen Aufruf.
+   */
+  'candidate.listForEvent': (eventId: UUID) => Promise<Candidate[]>
   'candidate.applyOrderMode': (input: {
     roundId: UUID
     mode: CandidateOrderMode
@@ -762,6 +770,14 @@ export interface Api {
   'prompter.setUntil': (until?: string) => Promise<PrompterViewState>
   /** Rede oder Vortragsansicht am Pult. */
   'prompter.setAnsicht': (ansicht: PrompterAnsicht) => Promise<PrompterViewState>
+  /**
+   * Legt der Prompter die Rede des Aufgerufenen von selbst auf?
+   *
+   * Aus: Der Prompter trägt, was jemand von Hand darauflegt — die Notizen der
+   * Versammlungsleitung etwa, die nicht verschwinden sollen, nur weil vorn
+   * jemand aufgerufen wird.
+   */
+  'prompter.folgtDemAufruf': (folgt: boolean) => Promise<PrompterViewState>
   /** Uhr, Stimme oder Handbetrieb. */
   'prompter.setLaufart': (laufart: Laufart) => Promise<PrompterViewState>
   /** Öffnet das Prompterfenster am Hauptrechner. */

@@ -127,6 +127,20 @@ describe('Der Prompter geht seinen eigenen Weg', () => {
     expect(dienst).not.toContain("from './projection'")
   })
 
+  it('folgt dem Aufruf nur auf seiner eigenen Bühne und nur in diese Richtung', () => {
+    /*
+     * Die einzige Verbindung zwischen Bühne und Pult wird im Hauptprozess
+     * geknüpft, nicht im Dienst — und sie gilt für die Bühne, die der Prompter
+     * steuert. Eine zweite Leinwand risse sonst den Text weg.
+     */
+    const start = lies('src/main/index.ts')
+    expect(start).toContain('buehne === getPrompterBuehne()')
+    expect(start).toContain('sprecherAufgerufen(state.speaker)')
+    /* Und nichts nimmt den umgekehrten Weg. */
+    const projektion = lies('src/main/services/projection.ts')
+    expect(projektion).not.toContain("from './prompter'")
+  })
+
   it('lässt am Pult nur Prompterbefehle zu', () => {
     /*
      * Die einzige schreibende Stelle des Projektionsservers. Sie darf das

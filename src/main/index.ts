@@ -11,7 +11,7 @@ import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
 import { initLogger, logger } from './logger'
 import { checkOnStartIfEnabled } from './services/updates'
-import { onPrompterViewChanged } from './services/prompter'
+import { onPrompterViewChanged, sprecherAufgerufen } from './services/prompter'
 import { sprachmodellDatei } from './services/sprachmodell'
 import { setPrompterNetzBedienung } from './services/prompter'
 import { starteSuchruf, stoppeSuchruf } from './suchruf'
@@ -40,6 +40,7 @@ import { getNetworkProjection, getEigenesZertifikat, getSaalnetz } from './servi
 import {
   createOperatorWindow,
   getOperatorWindow,
+  getPrompterBuehne,
   onAudienceStateChanged,
   onPrompterStateChanged,
   onTeleprompterStateChanged,
@@ -466,6 +467,18 @@ async function bootstrap(): Promise<void> {
     sendToPrompter(IPC.projectionState, { buehne, state })
     sendToTeleprompter(IPC.projectionState, { buehne, state })
     broadcastProjection(buehne, state)
+
+    /*
+     * **Die einzige Stelle, an der die Bühne den Prompter anfasst.**
+     *
+     * Wird vorn jemand aufgerufen, dem eine Rede zugeordnet ist, legt der
+     * Prompter sie auf. Umgekehrt gilt das nicht und soll es nie: Was am Pult
+     * steht, gehört nicht an die Wand. Nur die Bühne, die der Prompter
+     * steuert, darf es — sonst risse eine zweite Leinwand den Text weg.
+     */
+    if (buehne === getPrompterBuehne() && state.mode === 'speaker') {
+      sprecherAufgerufen(state.speaker)
+    }
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))
   onPrompterStateChanged((state) => sendToOperator(IPC.prompterState, state))

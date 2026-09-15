@@ -29,6 +29,17 @@ einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
 - **Beleg über den Losentscheid.** Kein Stimmzettel, sondern ein Zettel zum
   Unterschreiben fürs Protokoll.
 
+### Der Prompter folgt dem Aufruf
+
+Eine Rede lässt sich einem **Bewerber zuordnen** — und diese Zuordnung tut jetzt auch etwas: Wird
+der Bewerber auf dem Beamer vorgestellt, legt der Prompter seinen Text von selbst auf, mitsamt der
+Uhr, die der Saal sieht. Bei zwölf Bewerbern hintereinander sucht damit niemand mehr zwischendurch
+in einer Liste.
+
+Abschaltbar, und mit Rücksicht gebaut: Wer keine Rede zugeordnet hat, räumt das Pult nicht leer;
+eine von Hand aufgelegte Rede wird nicht wieder weggenommen; und was am Pult steht, kommt weiterhin
+unter keinen Umständen auf den Beamer.
+
 ## 1.4.0 — Wer da ist, und wie abgestimmt wird
 
 Die größte Erweiterung seit der ersten Fassung: Votura weiß jetzt, **wer im

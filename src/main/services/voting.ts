@@ -537,19 +537,13 @@ export function hatStimmrecht(roundId: UUID, participantId: UUID): boolean {
  * Rechnung des Programms. Die Bilanz zeigt sie als das, was sie ist — eine
  * ausgegebene Berechtigung, die nicht in die Urne gelangt ist.
  */
-export function berechtigungEntwerten(input: {
-  roundId: UUID
-  participantId: UUID
-  grund: string
-}): void {
+export function berechtigungEntwerten(input: { roundId: UUID; participantId: UUID; grund: string }): void {
   const sitzung = requirePermission('accounting.edit')
   const grund = input.grund.trim()
   if (!grund) throw new Error('Für die Entwertung einer Stimmberechtigung ist eine Begründung nötig.')
 
   const recht = db()
-    .prepare(
-      `SELECT id, used_at, voided_reason FROM voting_rights WHERE round_id = ? AND participant_id = ?`
-    )
+    .prepare(`SELECT id, used_at, voided_reason FROM voting_rights WHERE round_id = ? AND participant_id = ?`)
     .get<{ id: string; used_at: string | null; voided_reason: string | null }>(
       input.roundId,
       input.participantId
@@ -724,9 +718,7 @@ export function berechtigungAusgeben(input: {
   const gewicht = Number(person?.weight ?? 1)
 
   const vorhanden = db()
-    .prepare(
-      `SELECT id, used_at, voided_reason FROM voting_rights WHERE round_id = ? AND participant_id = ?`
-    )
+    .prepare(`SELECT id, used_at, voided_reason FROM voting_rights WHERE round_id = ? AND participant_id = ?`)
     .get<{ id: string; used_at: string | null; voided_reason: string | null }>(
       input.roundId,
       input.participantId

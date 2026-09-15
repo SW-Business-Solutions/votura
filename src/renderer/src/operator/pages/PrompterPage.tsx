@@ -23,6 +23,7 @@ import {
   type SpeechInfo
 } from '@shared/speech'
 import type { NetworkProjectionStatus } from '@shared/ipc'
+import type { Candidate } from '@shared/types'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
 import { Card, Checkbox, Field } from '../components/ui'
@@ -41,6 +42,8 @@ export function PrompterPage(): React.JSX.Element {
   const [entwurf, setEntwurf] = useState('')
   const [gespeichert, setGespeichert] = useState(true)
   const [netz, setNetz] = useState<NetworkProjectionStatus | null>(null)
+  /* Die Bewerber der Veranstaltung — für die Zuordnung „diese Rede gehört zu". */
+  const [bewerber, setBewerber] = useState<Candidate[]>([])
   const [fenster, setFenster] = useState(false)
   /* Die Uhr für die Anzeige „bei Zeile x von y" — der Lauf selbst hängt an
      der Uhr des Zustands, nicht an dieser. */
@@ -54,6 +57,16 @@ export function PrompterPage(): React.JSX.Element {
       app.reportError(error)
     }
   }, [app])
+
+  useEffect(() => {
+    if (!app.event) {
+      setBewerber([])
+      return
+    }
+    void api('candidate.listForEvent', app.event.id)
+      .then((liste) => setBewerber(liste.filter((eintrag) => !eintrag.withdrawn)))
+      .catch(() => setBewerber([]))
+  }, [app.event?.id, app.rounds.length])
 
   useEffect(() => {
     void laden()
@@ -191,7 +204,41 @@ export function PrompterPage(): React.JSX.Element {
                             {rede.title}
                           </button>
                           {liegtAuf && <span className="badge ok badge-nach">auf dem Prompter</span>}
-                          {rede.candidateName && <div className="hint">für {rede.candidateName}</div>}
+                          {/*
+                            Die Zuordnung steht unter dem Titel und nicht in
+                            einer eigenen Spalte: Sie gehört zur Rede wie ihr
+                            Name, und eine vierte Spalte machte die Tabelle in
+                            der schmalen Hälfte unlesbar.
+                          */}
+                          {bewerber.length > 0 ? (
+                            <select
+                              className="mini mt-1"
+                              value={rede.candidateId ?? ''}
+                              title="Wird dieser Bewerber auf dem Beamer aufgerufen, legt der Prompter diesen Text auf."
+                              onChange={(ereignis) =>
+                                void rufe(async () => {
+                                  const gewaehlt = bewerber.find(
+                                    (eintrag) => eintrag.id === ereignis.target.value
+                                  )
+                                  await api('speech.assign', {
+                                    id: rede.id,
+                                    candidateId: gewaehlt?.id,
+                                    candidateName: gewaehlt?.displayName
+                                  })
+                                  await laden()
+                                })
+                              }
+                            >
+                              <option value="">– keinem Bewerber zugeordnet –</option>
+                              {bewerber.map((eintrag) => (
+                                <option key={eintrag.id} value={eintrag.id}>
+                                  {eintrag.displayName}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            rede.candidateName && <div className="hint">für {rede.candidateName}</div>
+                          )}
                         </td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {rede.words} Wörter
@@ -528,12 +575,33 @@ export function PrompterPage(): React.JSX.Element {
             )}
           </Card>
 
-          <Card title="Redezeit übernehmen">
+          <Card title="Dem Aufruf folgen">
+            {/*
+              Die Verbindung zwischen Bühne und Pult — die einzige, und nur in
+              diese Richtung. Was am Pult steht, geht nie an die Wand.
+            */}
+            <Checkbox
+              checked={view.folgtDemAufruf}
+              onChange={(an) => void rufe(() => api('prompter.folgtDemAufruf', an))}
+              label="Rede des Aufgerufenen von selbst auflegen"
+            />
+            {/* Was der Schalter bewirkt, gehört unter den Schalter. */}
+            <div className="hint">
+              Wird auf dem Beamer ein Bewerber vorgestellt, dem in der Bibliothek eine Rede zugeordnet ist,
+              kommt sie mitsamt seiner Uhr auf den Prompter. Aus: Der Prompter behält, was von Hand
+              daraufliegt — die Notizen der Versammlungsleitung etwa.
+            </div>
+            {view.folgtDemAufruf && bewerber.length > 0 && reden.every((rede) => !rede.candidateId) && (
+              <div className="hint mt-2">
+                Noch ist keine Rede einem Bewerber zugeordnet — dafür steht unter jedem Titel in der
+                Bibliothek ein Auswahlfeld.
+              </div>
+            )}
+
             {/* Dieselbe Uhr wie auf dem Beamer: Wer vorn steht, sieht dieselbe
                 Zahl wie der Saal — und nicht zwei, die auseinanderlaufen. */}
-            <div className="hint">
-              Läuft auf einer Bühne gerade eine Vorstellung mit Redezeit, lässt sich deren Uhr auf den
-              Prompter holen.
+            <div className="hint mt-3">
+              Unabhängig davon lässt sich die Uhr einer laufenden Vorstellung jederzeit von Hand holen.
             </div>
             <div className="row mt-2">
               {app.buehnen.map((stage) => {

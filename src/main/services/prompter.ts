@@ -21,7 +21,8 @@ import {
   type PrompterViewState
 } from '@shared/speech'
 import type { UUID } from '@shared/types'
-import { getSpeech } from './speeches'
+import { logger } from '../logger'
+import { getSpeech, redeFuerBewerber } from './speeches'
 
 type Listener = (state: PrompterViewState) => void
 
@@ -193,8 +194,52 @@ export function setPrompterNetzBedienung(erlaubt: boolean): PrompterViewState {
   return setze({ netzBedienung: erlaubt }, false)
 }
 
+/**
+ * Legt der Prompter die Rede des Aufgerufenen von selbst auf?
+ *
+ * Der Schalter steht im Prompterzustand und nicht in den Einstellungen: Er
+ * wird während der Versammlung umgelegt, nicht davor.
+ */
+export function setPrompterFolgtDemAufruf(folgt: boolean): PrompterViewState {
+  if (state.folgtDemAufruf === folgt) return getPrompterView()
+  return setze({ folgtDemAufruf: folgt }, false)
+}
+
+/*
+ * Wer zuletzt aufgerufen wurde.
+ *
+ * Ohne dieses Gedächtnis legte jede Änderung am Projektionszustand — eine
+ * angehaltene Uhr, eine verlängerte Redezeit — die Rede erneut von vorn auf.
+ * Und wer während einer laufenden Vorstellung von Hand einen anderen Text
+ * auflegt, bekäme ihn beim nächsten Herzschlag wieder weggenommen.
+ */
+let zuletztGerufen: string | undefined
+
+/**
+ * Auf dem Beamer wurde jemand aufgerufen.
+ *
+ * Liegt für diesen Namen eine Rede bereit, kommt sie auf den Prompter — mit
+ * der Uhr, die der Saal sieht, damit vorn und hinten nicht zwei verschiedene
+ * Zahlen laufen. Ist keine Rede zugeordnet, bleibt alles, wie es ist: Ein
+ * Gast, ein Bericht, ein Grußwort räumen den Prompter nicht leer.
+ */
+export function sprecherAufgerufen(sprecher?: { name: string; until?: string }): void {
+  const name = sprecher?.name?.trim()
+  if (!name || name === zuletztGerufen) return
+  zuletztGerufen = name
+  if (!state.folgtDemAufruf) return
+
+  const rede = redeFuerBewerber(name)
+  if (!rede || rede.id === state.speech?.id) return
+
+  loadSpeech(rede.id)
+  setze({ until: sprecher?.until }, false)
+  logger.info(`Prompter: „${rede.title}" für ${name} aufgelegt.`)
+}
+
 /** Setzt alles zurück — nach der Versammlung und beim Start. */
 export function resetPrompter(): PrompterViewState {
+  zuletztGerufen = undefined
   state = {
     ...PROMPTER_VORGABE,
     serverInstanceId: state.serverInstanceId,

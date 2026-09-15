@@ -46,6 +46,25 @@ export function listCandidates(roundId: UUID): Candidate[] {
     .map(mapCandidate)
 }
 
+/**
+ * Alle Bewerber einer Veranstaltung, in der Reihenfolge der Tagesordnung.
+ *
+ * Eine Rede gehört zu einer Person, nicht zu einem Wahlgang. Wer sie zuordnet,
+ * sucht einen Namen und nicht eine Wahlgangsnummer — und findet ihn schneller,
+ * wenn die Liste der Tagesordnung folgt statt der Anlegereihenfolge.
+ */
+export function listEventCandidates(eventId: UUID): Candidate[] {
+  return db()
+    .prepare(
+      `SELECT c.* FROM candidates c
+         JOIN rounds r ON r.id = c.round_id
+        WHERE r.event_id = ?
+        ORDER BY r.agenda_order, r.created_at, c.sort_order, c.created_at`
+    )
+    .all<CandidateRow>(eventId)
+    .map(mapCandidate)
+}
+
 export function getCandidate(id: UUID): Candidate {
   const row = db().prepare(`SELECT * FROM candidates WHERE id = ?`).get<CandidateRow>(id)
   if (!row) throw new Error('Kandidat nicht gefunden.')

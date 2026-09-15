@@ -139,6 +139,27 @@ _Prompter_ (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
   mit `/prompter` am Endgerät öffnen. Diese Ansicht zeigt nur an; gesteuert wird vom Board.
 - **Redezeit übernehmen:** Läuft auf einer Bühne eine Vorstellung mit Uhr, holt ein Klick dieselbe
   Uhr an das Pult — der Saal und die vortragende Person sehen dann dieselbe Zahl.
+- **Dem Aufruf folgen:** Unter jeder Rede in der Bibliothek steht ein Auswahlfeld mit den Bewerbern
+  der Veranstaltung. Ist eine Rede zugeordnet und wird dieser Bewerber auf dem Beamer vorgestellt,
+  legt der Prompter seinen Text von selbst auf — mitsamt seiner Uhr. Bei zwölf Bewerbern sucht so
+  niemand zwischendurch in einer Liste.
+
+### Wann der Prompter dem Aufruf **nicht** folgt
+
+Damit er nicht wegnimmt, was jemand braucht:
+
+- Der Schalter _Rede des Aufgerufenen von selbst auflegen_ ist aus. Dann trägt der Prompter nur,
+  was von Hand daraufgelegt wird — die Notizen der Versammlungsleitung etwa.
+- Dem Aufgerufenen ist keine Rede zugeordnet. Ein Gast, ein Bericht, ein Grußwort räumen das Pult
+  nicht leer.
+- Derselbe Sprecher steht noch vorn, und jemand hat inzwischen von Hand etwas anderes aufgelegt.
+  Erst der **nächste** Aufruf greift wieder.
+- Die Vorstellung läuft auf einer anderen Bühne als der, die der Prompter steuert.
+
+Die Verbindung geht nur in diese eine Richtung: Was am Pult steht, kommt nie auf den Beamer.
+
+Eine Umbenennung des Bewerbers schadet der Zuordnung nicht — sie hängt an der Person, nicht an der
+Schreibweise seines Namens.
 
 ## Mitlaufen nach Gehör
 
