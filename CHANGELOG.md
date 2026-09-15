@@ -33,6 +33,23 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
   Ansicht statt nach dem Redner. Jetzt gelten die Griffe, solange jemand aufgerufen ist, und die
   Bedienung zeigt sie auch dann.
 
+### Die Redezeit startet, wenn sie starten soll
+
+Bisher lief die Uhr ab dem Augenblick, in dem jemand den Namen auf den Beamer legte. Das war
+falsch herum: Ein Aufruf ist keine Ansage, dass jetzt gesprochen wird. Wer aufgerufen wird, steht
+auf und geht nach vorn — und diese Zeit ging von seiner Redezeit ab.
+
+Jetzt zeigt der Beamer **Name und zugestandene Zeit**, und die Uhr wartet. Losgeschickt wird sie
+mit **Starten**. Das gilt auch für *Nächster*: Der rückt die Reihe weiter, startet aber nichts.
+
+Drei Zustände, drei Wörter in der Bedienung: **Starten** für die Uhr, die noch nie lief,
+**Anhalten** für die laufende, **Weiter** für die angehaltene. Und sichtbar unterschieden werden
+sie auch an der Wand — eine ruhende Uhr wird gedimmt, damit ein Halt zu sehen ist; eine, die noch
+gar nicht lief, nicht: Sie ist nicht unterbrochen, sondern bereit.
+
+Am Pult gilt dasselbe: Der Lauf des Manuskripts beginnt mit dem Start der Redezeit, nicht mit dem
+Aufruf.
+
 ### Kameras steuern
 
 Eine PTZ-Kamera fährt auf Wunsch von selbst auf ihre Position, sobald ein Redner aufgerufen wird —

@@ -1035,9 +1035,15 @@ describe('Rednerreihe bei der Vorstellung', () => {
     const nachher = projection.nextSpeaker(HAUPTBUEHNE).speaker
     expect(nachher?.name).toBe('Zweite Person')
     expect(nachher?.upcoming).toEqual(['Dritte Person'])
-    /* Die zugestandene Zeit bleibt, die Uhr beginnt von vorn. */
+    /*
+     * Die zugestandene Zeit bleibt — und die Uhr **wartet**. Auch „Nächster"
+     * ist ein Aufruf: Die Person muss erst nach vorn kommen, und diese Zeit
+     * gehört ihr nicht abgezogen.
+     */
     expect(nachher?.totalSeconds).toBe(180)
-    expect(new Date(nachher?.until ?? 0).getTime()).toBeGreaterThan(Date.now() + 170_000)
+    expect(nachher?.ungestartet).toBe(true)
+    expect(nachher?.pausedSecondsLeft).toBe(180)
+    expect(nachher?.until).toBeUndefined()
     /* Die Einstellung, wie viele gezeigt werden, bleibt erhalten. */
     expect(nachher?.upcomingShown).toBe(2)
     /* Der Zusatz gehörte zur vorigen Person. */
@@ -1068,6 +1074,7 @@ describe('Rednerreihe bei der Vorstellung', () => {
       mode: 'speaker',
       speaker: { name: 'Clara Fenske', note: 'Bewerbung um den Vorsitz', seconds: 180 }
     })
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
     const zuerst = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
 
     /* Auf das Kamerabild — der Redner bleibt, die Uhr läuft. */
@@ -1090,6 +1097,7 @@ describe('Rednerreihe bei der Vorstellung', () => {
       mode: 'speaker',
       speaker: { name: 'Clara Fenske', seconds: 180 }
     })
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
     projection.setSpeakerPaused(HAUPTBUEHNE, true)
     const rest = projection.getProjectionState(HAUPTBUEHNE).speaker?.pausedSecondsLeft
     expect(rest).toBeGreaterThan(0)
@@ -1114,6 +1122,7 @@ describe('Rednerreihe bei der Vorstellung', () => {
       mode: 'speaker',
       speaker: { name: 'Clara Fenske', seconds: 180 }
     })
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
     projection.setProjection(HAUPTBUEHNE, { mode: 'kamera', kamera: { quelle: 'PULT (Test)' } })
 
     projection.setSpeakerPaused(HAUPTBUEHNE, true)
@@ -1126,28 +1135,65 @@ describe('Rednerreihe bei der Vorstellung', () => {
     )
   })
 
-  it('beginnt neu, wenn die Zeit geändert wird oder jemand es verlangt', () => {
+  it('läuft erst auf Klick — und dann weiter', () => {
+    /*
+     * Der Aufruf zeigt Name und Zeit; gestartet wird ausdrücklich. Vorher lief
+     * die Uhr ab dem Augenblick, in dem jemand den Namen anzeigte — die Zeit
+     * zum Nachvornegehen ging von der Redezeit ab.
+     */
+    /* Saubere Ausgangslage: Stünde dieselbe Person mit derselben Zeit noch,
+       behielte sie ihre Uhr — und genau das soll sie ja. */
+    projection.endeVorstellung(HAUPTBUEHNE)
     projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: { name: 'Clara Fenske', seconds: 180 }
     })
-    const zuerst = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
+    const gerufen = projection.getProjectionState(HAUPTBUEHNE).speaker
+    expect(gerufen?.ungestartet).toBe(true)
+    expect(gerufen?.pausedSecondsLeft).toBe(180)
+    expect(gerufen?.until).toBeUndefined()
 
-    /* Eine andere zugestandene Zeit ist eine Entscheidung und zählt neu. */
+    /* Start. */
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
+    const laeuft = projection.getProjectionState(HAUPTBUEHNE).speaker
+    expect(laeuft?.ungestartet).toBeUndefined()
+    expect(laeuft?.pausedSecondsLeft).toBeUndefined()
+    expect(new Date(laeuft?.until ?? 0).getTime()).toBeGreaterThan(Date.now() + 170_000)
+
+    /* Derselbe Aufruf noch einmal — die laufende Uhr bleibt. */
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 180 }
+    })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).toBe(laeuft?.until)
+  })
+
+  it('stellt die Uhr zurück, wenn die Zeit geändert wird oder jemand es verlangt', () => {
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 180 }
+    })
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).toBeDefined()
+
+    /* Eine andere zugestandene Zeit ist eine Entscheidung — und stellt die Uhr
+       wieder an den Anfang, wo sie auf den Start wartet. */
     projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: { name: 'Clara Fenske', seconds: 300 }
     })
-    const laenger = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
-    expect(laenger).not.toBe(zuerst)
-    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.totalSeconds).toBe(300)
+    const neu = projection.getProjectionState(HAUPTBUEHNE).speaker
+    expect(neu?.totalSeconds).toBe(300)
+    expect(neu?.ungestartet).toBe(true)
+    expect(neu?.pausedSecondsLeft).toBe(300)
 
     /* Und der ausdrückliche Neubeginn bei gleicher Zeit. */
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
     projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: { name: 'Clara Fenske', seconds: 300, uhrNeu: true }
     })
-    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).not.toBe(laenger)
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.ungestartet).toBe(true)
   })
 
   /*
@@ -1163,6 +1209,7 @@ describe('Rednerreihe bei der Vorstellung', () => {
       mode: 'speaker',
       speaker: { name: 'Jemand', seconds: 60, upcoming: ['Danach'] }
     })
+    projection.setSpeakerPaused(HAUPTBUEHNE, false)
     const uhr = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
 
     projection.setProjection(HAUPTBUEHNE, { mode: 'agenda' })
@@ -1206,7 +1253,8 @@ describe('Rednerreihe bei der Vorstellung', () => {
     })
     const jetzt = projection.getProjectionState(HAUPTBUEHNE).speaker
     expect(jetzt?.name).toBe('Zweite')
-    /* Eine andere Person ist ein neuer Aufruf — volle Zeit. */
-    expect(new Date(jetzt?.until ?? 0).getTime()).toBeGreaterThan(Date.now() + 55_000)
+    /* Eine andere Person ist ein neuer Aufruf — volle Zeit, wartend. */
+    expect(jetzt?.pausedSecondsLeft).toBe(60)
+    expect(jetzt?.ungestartet).toBe(true)
   })
 })

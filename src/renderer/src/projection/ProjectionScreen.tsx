@@ -679,9 +679,19 @@ function Redezeit({ speaker }: { speaker: NonNullable<ProjectionState['speaker']
     <div className="projection-redezeit">
       <div
         className={`projection-countdown${vorbei ? ' vorbei' : knapp ? ' knapp' : ''}`}
-        /* Angehalten wird gedimmt statt beschriftet: Der Saal muss die Zahl
-           lesen, nicht den Zustand der Steuerung. */
-        style={speaker.pausedSecondsLeft !== undefined ? { opacity: 0.55 } : undefined}
+        /*
+         * Angehalten wird gedimmt statt beschriftet: Der Saal muss die Zahl
+         * lesen, nicht den Zustand der Steuerung.
+         *
+         * Eine Uhr, die noch nie lief, wird **nicht** gedimmt. Sie ist nicht
+         * unterbrochen, sondern bereit — und wer aufgerufen ist, soll seine
+         * volle Zeit deutlich vor sich sehen, während er nach vorn geht.
+         */
+        style={
+          speaker.pausedSecondsLeft !== undefined && !speaker.ungestartet
+            ? { opacity: 0.55 }
+            : undefined
+        }
       >
         {redezeitText(rest)}
       </div>

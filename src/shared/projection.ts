@@ -323,6 +323,19 @@ export interface ProjectionSpeaker {
    */
   pausedSecondsLeft?: number
   /**
+   * Die Uhr steht noch am Anfang — sie wurde nie gestartet.
+   *
+   * Technisch dasselbe wie angehalten, und doch etwas anderes: Ein Aufruf ist
+   * keine Ansage, dass jetzt gesprochen wird. Wer aufgerufen wird, steht auf
+   * und geht nach vorn; die Zeit dafür gehört ihm nicht abgezogen. Der Saal
+   * sieht Name und Redezeit, und **auf Klick** geht es los.
+   *
+   * Unterschieden wird beides für die Bedienung — „Starten" ist etwas anderes
+   * als „Weiter" — und für die Ansicht: Eine ruhende Uhr wird gedimmt, weil
+   * das Anhalten sichtbar sein muss; eine, die noch nie lief, nicht.
+   */
+  ungestartet?: boolean
+  /**
    * Wer danach an der Reihe ist, in Reihenfolge.
    *
    * Die Liste ist der ganze Vorrat, aus dem „Nächster" schöpft — angezeigt

@@ -754,17 +754,28 @@ function rednerFuer(
     note: eingabe?.note?.trim() || undefined,
     /* Ohne Zeitangabe wird nur der Name gezeigt — nicht jede Vorstellung ist
        begrenzt. */
-    until: weiter
-      ? bisher.until
-      : sekunden
-        ? new Date(Date.now() + sekunden * 1000).toISOString()
-        : undefined,
+    /*
+     * Ein Aufruf startet die Uhr **nicht**.
+     *
+     * Wer aufgerufen wird, steht auf und geht nach vorn — die Zeit dafür
+     * gehört ihm nicht abgezogen. Der Saal sieht Name und zugestandene Zeit,
+     * und losgeschickt wird sie mit einem Klick. Vorher zählte sie ab dem
+     * Augenblick, in dem jemand den Namen anzeigte.
+     */
+    until: weiter ? bisher.until : undefined,
     totalSeconds: sekunden,
-    /* Eine angehaltene Uhr bleibt angehalten — sonst liefe sie beim
-       Zurückschalten stillschweigend wieder los. */
-    ...(weiter && bisher.pausedSecondsLeft !== undefined
-      ? { pausedSecondsLeft: bisher.pausedSecondsLeft }
-      : {}),
+    ...(weiter
+      ? /* Eine angehaltene Uhr bleibt angehalten — sonst liefe sie beim
+           Zurückschalten stillschweigend wieder los. */
+        bisher.pausedSecondsLeft !== undefined
+        ? {
+            pausedSecondsLeft: bisher.pausedSecondsLeft,
+            ...(bisher.ungestartet ? { ungestartet: true } : {})
+          }
+        : {}
+      : sekunden
+        ? { pausedSecondsLeft: sekunden, ungestartet: true }
+        : {}),
     ...(warteliste.length ? { upcoming: warteliste } : {}),
     ...(eingabe?.upcomingShown !== undefined
       ? { upcomingShown: Math.max(0, Math.min(Math.round(eingabe.upcomingShown), REDNER_VORSCHAU_MAX)) }
@@ -796,8 +807,11 @@ export function nextSpeaker(buehne: number): ProjectionState {
       name: naechster,
       /* Der Zusatz gehörte zur vorigen Person und wird nicht mitgeschleppt. */
       note: undefined,
-      until: sekunden ? new Date(Date.now() + sekunden * 1000).toISOString() : undefined,
+      /* Auch „Nächster" ist ein Aufruf und startet die Uhr nicht — die Person
+         muss erst nach vorn kommen. */
+      until: undefined,
       totalSeconds: sekunden,
+      ...(sekunden ? { pausedSecondsLeft: sekunden, ungestartet: true } : {}),
       upcomingShown: state.speaker.upcomingShown,
       ...(rest.length ? { upcoming: rest } : {})
     },
@@ -853,7 +867,8 @@ export function setSpeakerPaused(buehne: number, paused: boolean): ProjectionSta
     })
   } else {
     const rest = redner.pausedSecondsLeft ?? 0
-    const { pausedSecondsLeft: _weg, ...ohnePause } = redner
+    /* Mit dem Start ist die Uhr gestartet — auch begrifflich. */
+    const { pausedSecondsLeft: _weg, ungestartet: _nie, ...ohnePause } = redner
     state = setzeUndGib(buehne, {
       ...state,
       speaker: { ...ohnePause, until: new Date(Date.now() + rest * 1000).toISOString() },

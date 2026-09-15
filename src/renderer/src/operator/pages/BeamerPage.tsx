@@ -717,13 +717,17 @@ export function BeamerPage(): React.JSX.Element {
                 {projection.speaker && (
                   <div className="redezeit-lauf">
                     <div className="redezeit-wer">
-                      Läuft: <strong>{projection.speaker.name}</strong>
+                      {projection.speaker.ungestartet ? 'Aufgerufen: ' : 'Läuft: '}
+                      <strong>{projection.speaker.name}</strong>
+                      {projection.speaker.ungestartet && ' — die Uhr wartet auf den Start'}
                       {projection.mode !== 'speaker' && ' — im Bild'}
                     </div>
 
                     <div className="row">
                       <button
-                        className="primary"
+                        /* Solange die Uhr noch nicht läuft, ist „Starten" der
+                           Hauptgriff und nicht „Nächster". */
+                        className={projection.speaker.ungestartet ? '' : 'primary'}
                         disabled={(projection.speaker.upcoming ?? []).length === 0}
                         title={
                           (projection.speaker.upcoming ?? [])[0]
@@ -738,6 +742,7 @@ export function BeamerPage(): React.JSX.Element {
                           : ''}
                       </button>
                       <button
+                        className={projection.speaker.ungestartet ? 'primary' : ''}
                         onClick={() =>
                           void api(
                             'projection.setSpeakerPaused',
@@ -750,7 +755,17 @@ export function BeamerPage(): React.JSX.Element {
                           projection.speaker.pausedSecondsLeft === undefined
                         }
                       >
-                        {projection.speaker.pausedSecondsLeft === undefined ? 'Anhalten' : 'Weiter'}
+                        {/*
+                          Drei Zustände, drei Wörter. „Starten" ist etwas
+                          anderes als „Weiter": Das eine schickt die Uhr zum
+                          ersten Mal los, das andere nimmt eine Zwischenfrage
+                          zurück.
+                        */}
+                        {projection.speaker.ungestartet
+                          ? '▶ Starten'
+                          : projection.speaker.pausedSecondsLeft === undefined
+                            ? 'Anhalten'
+                            : 'Weiter'}
                       </button>
                     </div>
 

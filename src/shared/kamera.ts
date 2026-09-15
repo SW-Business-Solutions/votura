@@ -121,7 +121,9 @@ export function bauchbinde(
     zusatz: speaker.note?.trim() || undefined,
     restSekunden: redezeitRest(speaker, jetzt),
     gesamtSekunden: speaker.totalSeconds,
-    angehalten: speaker.pausedSecondsLeft !== undefined
+    /* Eine Uhr, die noch nie lief, ruht nicht — sie wartet. Der Unterschied
+       ist sichtbar: Ruhen wird gedimmt, Warten nicht. */
+    angehalten: speaker.pausedSecondsLeft !== undefined && speaker.ungestartet !== true
   }
 }
 
