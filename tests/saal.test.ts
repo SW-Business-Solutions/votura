@@ -366,16 +366,17 @@ describe('Mit echtem Zertifikat', () => {
   })
 })
 
-describe('Das Fenster sagt, was dieses Gerät ist', () => {
-  it('behält seinen Titel, auch wenn die Seite einen eigenen mitbringt', () => {
+describe('Das Gerät sagt, was es ist', () => {
+  it('nennt Rolle und Rückweg im Fenstertitel und auf dem Wartetext', () => {
     /*
-     * Die Prompterseite heißt „Votura – Teleprompter" — und überschrieb den
-     * Fenstertitel. Damit standen dort weder die Rolle noch der Weg zurück in
-     * die Einrichtung. Genau die beiden braucht, wer im Saal vor einem
-     * fremden Gerät steht.
+     * Im Titel nur, solange die geladene Seite keinen eigenen mitbringt — die
+     * Prompterseite tut es, und unter Windows ist er dann nicht
+     * zurückzuholen. Deshalb steht beides zusätzlich auf dem Wartetext, den
+     * jedes Gerät beim Aufbauen zeigt.
      */
     const saal = lies('src/saal/index.ts')
-    expect(saal).toContain("fenster.on('page-title-updated'")
     expect(saal).toContain('Strg+Umschalt+E für die Einrichtung')
+    expect(saal).toContain('Strg + Umschalt + E öffnet die Einrichtung')
+    expect(saal).toContain('rollenName(einstellung.rolle)')
   })
 })

@@ -176,15 +176,17 @@ function oeffneEinrichtung(): void {
   })
   fenster.setMenuBarVisibility(false)
   /*
-   * **Der Titel bleibt, was wir gesetzt haben.**
+   * **Der Titel gilt nur, solange die Seite keinen eigenen mitbringt.**
    *
-   * Sonst übernimmt das Fenster den Titel der geladenen Seite — die
-   * Prompterseite heißt „Votura – Teleprompter", und schon steht dort weder
-   * die Rolle noch der Weg zurück in die Einrichtung. Genau die beiden
-   * Angaben braucht aber, wer im Saal vor einem fremden Gerät steht und
-   * wissen will, was es ist und wie er es umstellt.
+   * Die Wahlseite bringt keinen mit — dort steht in der Taskleiste, was
+   * dieses Gerät ist und wie man es umstellt. Die Prompterseite bringt einen
+   * mit („Votura – Teleprompter"), und dann gewinnt sie: Weder
+   * `page-title-updated` mit `preventDefault` noch ein nachgesetztes
+   * `setTitle` holt den Titel unter Windows zurück — ausprobiert, beides.
+   *
+   * Deshalb steht die Rolle zusätzlich dort, wo sie ohnehin gebraucht wird:
+   * auf dem Wartetext und in der Einrichtung.
    */
-  fenster.on('page-title-updated', (ereignis) => ereignis.preventDefault())
   fenster.once('ready-to-show', () => fenster?.show())
   fenster.on('closed', () => {
     fenster = null
@@ -200,6 +202,10 @@ function oeffneAnzeige(einstellung: SaalEinstellung): void {
      sich noch etwas bedienen lässt. */
   const nurEiner = bildschirme.length <= 1
 
+  /* Der Kurzbefehl steht im Titel: Er ist in der Fensterleiste und in der
+     Taskleiste zu sehen, ohne das Bild an der Wand zu stören. */
+  const titel = `Votura Saal — ${rollenName(einstellung.rolle)} · Strg+Umschalt+E für die Einrichtung`
+
   fenster = new BrowserWindow({
     width: 1280,
     height: 720,
@@ -208,9 +214,7 @@ function oeffneAnzeige(einstellung: SaalEinstellung): void {
     fullscreen: nurEiner,
     autoHideMenuBar: true,
     backgroundColor: '#000000',
-    /* Der Kurzbefehl steht im Titel: Er ist in der Fensterleiste und in der
-       Taskleiste zu sehen, ohne das Bild an der Wand zu stören. */
-    title: `Votura Saal — ${rollenName(einstellung.rolle)} · Strg+Umschalt+E für die Einrichtung`,
+    title: titel,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
