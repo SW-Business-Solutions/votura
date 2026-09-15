@@ -471,7 +471,10 @@ async function bootstrap(): Promise<void> {
      * steht, gehört nicht an die Wand. Nur die Bühne, die der Prompter
      * steuert, darf es — sonst risse eine zweite Leinwand den Text weg.
      */
-    if (buehne === getPrompterBuehne() && state.mode === 'speaker') {
+    /* Nach dem Redner fragen, nicht nach der Ansicht: Die Redezeit läuft
+       weiter, auch wenn kurz die Tagesordnung oder das Kamerabild an der
+       Wand steht — und das Pult muss sie weiter spiegeln. */
+    if (buehne === getPrompterBuehne()) {
       sprecherAufgerufen(state.speaker && { ...state.speaker, roundId: state.round?.id })
     }
   })

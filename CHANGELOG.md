@@ -7,12 +7,16 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
 ### Behoben
 
-- **Der Weg über die Kamera und zurück ließ die Redezeit von vorn beginnen.** Wer während einer
-  laufenden Vorstellung auf das Kamerabild schaltete und danach zurück auf die Anzeige mit Namen,
-  hatte denselben Menschen vor sich — und schenkte ihm mit dem Rückweg stillschweigend seine volle
-  Zeit noch einmal. Dieselbe Person mit derselben zugestandenen Zeit behält jetzt ihre Uhr, eine
-  angehaltene bleibt angehalten. Wer wirklich neu beginnen will, sagt es mit **Zeit neu**; eine
-  geänderte Redezeit zählt ohnehin als Entscheidung und beginnt neu.
+- **Jeder Wechsel der Ansicht setzte die Redezeit zurück.** Wer während einer
+  laufenden Redezeit kurz die Tagesordnung, die Kandidatenliste oder das Kamerabild zeigte und
+  danach zurückschaltete, hatte denselben Menschen vor sich — und schenkte ihm mit dem Rückweg
+  stillschweigend seine volle Zeit noch einmal. Der Grund stand als Absicht im Programm: Die
+  Vorstellung überlebte einen Ansichtswechsel nicht. Das war falsch. **Dass da vorne jemand steht
+  und spricht, hat nichts damit zu tun, was gerade an der Wand hängt** — die Uhr gehört zu der
+  Person. Sie läuft jetzt weiter, eine angehaltene bleibt angehalten, und die Reihe der nächsten
+  Redner bleibt stehen. Beendet wird eine Vorstellung ausdrücklich (**Beenden**) oder dadurch, dass
+  jemand anderes aufgerufen wird; ein Neustart räumt ohnehin auf. Wer dieselbe Person neu beginnen
+  lassen will, sagt es mit **Zeit neu**; eine geänderte Redezeit zählt ohnehin als Entscheidung.
 - **Im Kameramodus ließ sich die Redezeit nicht mehr anfassen.** Die Bauchbinde zeigte eine
   laufende Uhr, aber Anhalten, Zeit geben und „Nächster“ waren gesperrt — sie fragten nach der
   Ansicht statt nach dem Redner. Jetzt gelten die Griffe, solange jemand aufgerufen ist, und die

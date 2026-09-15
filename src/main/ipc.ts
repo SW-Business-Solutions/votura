@@ -124,6 +124,7 @@ import {
   setProjection,
   setPresentationSlide,
   setVideoMuted,
+  endeVorstellung,
   setKameraBauchbinde,
   setKameraSpiegeln,
   setVideoSchleife,
@@ -852,6 +853,7 @@ const api: Api = {
     aufBuehnen(stage, (buehne) => addSpeakerSeconds(buehne, seconds)),
   'projection.nextSpeaker': async (stage) => aufBuehnen(stage, (buehne) => nextSpeaker(buehne)),
 
+  'projection.endSpeaker': async (stage) => aufBuehnen(stage, (buehne) => endeVorstellung(buehne)),
   /* --------------------------------------------------------- Präsentationen */
   'presentation.list': async () => listPresentations(),
   'presentation.import': async () => {

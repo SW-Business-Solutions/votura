@@ -788,6 +788,20 @@ export function BeamerPage(): React.JSX.Element {
                     >
                       Zeit neu
                     </button>
+                    {/*
+                      Seit die Vorstellung einen Ansichtswechsel überlebt, muss
+                      sie sich abräumen lassen — sonst stünde Stunden später ein
+                      Name in der Bauchbinde über einem Blick in den Saal.
+                    */}
+                    <button
+                      className="danger"
+                      title="Die laufende Vorstellung beenden. Die Uhr ist damit weg."
+                      onClick={() =>
+                        void api('projection.endSpeaker', ziel).catch(app.reportError)
+                      }
+                    >
+                      Beenden
+                    </button>
                   </div>
                 )}
               </Card>

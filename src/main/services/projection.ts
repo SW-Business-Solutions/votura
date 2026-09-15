@@ -563,17 +563,22 @@ export function setProjection(
      * beim Rest des vorigen Redners.
      */
     /*
-     * Eine Ausnahme von der Regel darüber: Im Kameramodus **bleibt** der
-     * Redner stehen. Er ist dort kein eigener Inhalt, sondern die Bauchbinde
-     * über dem Bild — wer von der Vorstellung auf die Kamera schaltet, will
-     * denselben Menschen sehen, nur größer.
+     * Die Vorstellung überlebt den Wechsel der Ansicht — anders als
+     * Präsentation und Video.
+     *
+     * Das war einmal umgekehrt, und es war falsch: Wer während einer
+     * laufenden Redezeit kurz die Tagesordnung, die Kandidatenliste oder das
+     * Kamerabild zeigt, ändert nichts daran, **dass da vorne jemand steht und
+     * spricht**. Die Uhr gehört zu dieser Person, nicht zu dem, was gerade an
+     * der Wand hängt. Beim Zurückschalten begann sie von vorn und schenkte
+     * heimlich Redezeit.
+     *
+     * Beendet wird eine Vorstellung deshalb ausdrücklich (`endeVorstellung`)
+     * oder dadurch, dass jemand anderes aufgerufen wird. Ein Neustart des
+     * Programms räumt ohnehin auf: Dort beginnt jede Fläche bei der
+     * Begrüßung.
      */
-    speaker:
-      input.mode === 'speaker'
-        ? rednerFuer(input.speaker, state.speaker)
-        : input.mode === 'kamera'
-          ? (rednerFuer(input.speaker, state.speaker) ?? state.speaker)
-          : undefined,
+    speaker: rednerFuer(input.speaker, state.speaker) ?? state.speaker,
     updatedAt: new Date().toISOString()
   })
 
@@ -809,6 +814,26 @@ export function nextSpeaker(buehne: number): ProjectionState {
  * währenddessen weiterlaufen lassen. **Ohne Prüfeintrag**: eine Anzeige, keine
  * Wahlhandlung.
  */
+/**
+ * Die Vorstellung beenden.
+ *
+ * Nötig, seit sie einen Ansichtswechsel überlebt: Was nicht mehr von selbst
+ * verschwindet, muss sich abräumen lassen. Sonst stünde Stunden später ein
+ * Name in der Bauchbinde über einem Blick in den Saal.
+ */
+export function endeVorstellung(buehne: number): ProjectionState {
+  const state = buehneVon(buehne)
+  if (!state.speaker) return state
+  const neu = setzeUndGib(buehne, {
+    ...state,
+    speaker: undefined,
+    updatedAt: new Date().toISOString()
+  })
+  persist()
+  broadcast(buehne)
+  return neu
+}
+
 export function setSpeakerPaused(buehne: number, paused: boolean): ProjectionState {
   let state = buehneVon(buehne)
   /* Es zählt, ob jemand aufgerufen ist — nicht, welche Ansicht gerade an der

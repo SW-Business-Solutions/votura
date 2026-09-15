@@ -1150,14 +1150,63 @@ describe('Rednerreihe bei der Vorstellung', () => {
     expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).not.toBe(laenger)
   })
 
-  /* Ein Moduswechsel beendet die Vorstellung — beim nächsten Aufruf soll die
-     Uhr von vorn laufen, nicht beim Rest der vorigen Person. */
-  it('vergisst die Reihe beim Wechsel der Ansicht', () => {
+  /*
+   * Das war einmal umgekehrt — und es war falsch.
+   *
+   * Wer während einer laufenden Redezeit kurz die Tagesordnung zeigt, ändert
+   * nichts daran, dass da vorne jemand steht und spricht. Früher löschte jeder
+   * Ansichtswechsel den Redner; beim Zurückschalten begann die Uhr von vorn
+   * und schenkte ihm heimlich seine volle Zeit noch einmal.
+   */
+  it('lässt die Vorstellung einen Wechsel der Ansicht überleben', async () => {
     projection.setProjection(HAUPTBUEHNE, {
       mode: 'speaker',
       speaker: { name: 'Jemand', seconds: 60, upcoming: ['Danach'] }
     })
+    const uhr = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
+
+    projection.setProjection(HAUPTBUEHNE, { mode: 'agenda' })
+    /* Der Redner bleibt — sichtbar ist er dort nicht, aber seine Uhr läuft. */
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.name).toBe('Jemand')
+
+    await new Promise((fertig) => setTimeout(fertig, 20))
+
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Jemand', seconds: 60, upcoming: ['Danach'] }
+    })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).toBe(uhr)
+    /* Und die Reihe steht auch noch. */
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.upcoming).toEqual(['Danach'])
+  })
+
+  it('beendet die Vorstellung auf Verlangen', () => {
+    /* Was nicht mehr von selbst verschwindet, muss sich abräumen lassen —
+       sonst stünde Stunden später ein Name in der Bauchbinde über einem Blick
+       in den Saal. */
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Jemand', seconds: 60 }
+    })
     projection.setProjection(HAUPTBUEHNE, { mode: 'welcome' })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.name).toBe('Jemand')
+
+    projection.endeVorstellung(HAUPTBUEHNE)
     expect(projection.getProjectionState(HAUPTBUEHNE).speaker).toBeUndefined()
+  })
+
+  it('löst die vorige Vorstellung ab, wenn jemand anderes aufgerufen wird', () => {
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Erste', seconds: 60 }
+    })
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Zweite', seconds: 60 }
+    })
+    const jetzt = projection.getProjectionState(HAUPTBUEHNE).speaker
+    expect(jetzt?.name).toBe('Zweite')
+    /* Eine andere Person ist ein neuer Aufruf — volle Zeit. */
+    expect(new Date(jetzt?.until ?? 0).getTime()).toBeGreaterThan(Date.now() + 55_000)
   })
 })

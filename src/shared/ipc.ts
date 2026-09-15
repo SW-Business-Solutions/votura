@@ -685,6 +685,14 @@ export interface Api {
   'projection.addSpeakerSeconds': (seconds: number, stage?: Buehnenwahl) => Promise<ProjectionState>
   /** Ruft die nächste Person der Reihe auf; die Uhr beginnt von vorn. */
   'projection.nextSpeaker': (stage?: Buehnenwahl) => Promise<ProjectionState>
+  /**
+   * Die Vorstellung beenden.
+   *
+   * Nötig, seit sie einen Ansichtswechsel überlebt: Die Uhr gehört zu der
+   * Person, die spricht, und nicht zu dem, was gerade an der Wand hängt —
+   * also muss sie sich ausdrücklich abräumen lassen.
+   */
+  'projection.endSpeaker': (stage?: Buehnenwahl) => Promise<ProjectionState>
   'projection.setLocked': (locked: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
   'projection.history': () => Promise<ProjectionHistoryEntry[]>
   'projection.displays': (stage?: Buehnenwahl) => Promise<DisplayInfo[]>
