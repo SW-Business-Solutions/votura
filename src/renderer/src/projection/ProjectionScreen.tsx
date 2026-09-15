@@ -318,7 +318,7 @@ export function ProjectionScreen({
 
   return (
     <div
-      className={`projection-root${preview ? ' preview' : ''}${theme.transitions ? '' : ' no-transitions'}${state.untertitel ? ' mit-untertitel' : ''}`}
+      className={`projection-root${preview ? ' preview' : ''}${theme.transitions ? '' : ' no-transitions'}`}
       style={style}
     >
       {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
@@ -368,6 +368,14 @@ export function ProjectionScreen({
           {showRoundContext && state.round && theme.showRoundCode ? `WG: ${state.round.roundCode}` : ''}
         </span>
       </footer>
+
+      {/*
+        Der Streifen, auf dem das Untertitelband liegt.
+        Leer und ohne Inhalt — er hält nur den Platz frei, damit das Band
+        nichts verdeckt. Warum als Element und nicht als Innenabstand an der
+        Fläche: siehe `.projection-untertitel-platz` in projection.css.
+      */}
+      {state.untertitel && <div className="projection-untertitel-platz" />}
     </div>
   )
 }

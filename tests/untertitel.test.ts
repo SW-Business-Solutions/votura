@@ -103,12 +103,14 @@ describe('Der Puffer', () => {
  * was jemand sagt — das entscheidet das Modell, nicht dieser Code. Geprüft
  * wird, **wohin** der erkannte Text geht und wohin nicht.
  */
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeAll, vi } from 'vitest'
 
 const root = mkdtempSync(join(tmpdir(), 'wahlzettel-untertitel-'))
+
+const lies = (pfad: string): string => readFileSync(join(__dirname, '..', pfad), 'utf8')
 
 vi.mock('electron', () => ({
   app: {
@@ -137,6 +139,32 @@ beforeAll(() => {
     { id: HAUPTBUEHNE, name: 'Saalwand', followsRound: true },
     { id: 2, name: 'Rückblick am Pult', followsRound: false }
   ])
+})
+
+describe('Der Platz, auf dem das Band liegt', () => {
+  /*
+   * Ein Maß, kein Verhalten — und trotzdem ein Test.
+   *
+   * `15cqh` **auf** `.projection-root` sah im Beamerfenster richtig aus und
+   * war in der Vorschau der Bedienung grob falsch: Ein `cq`-Maß am Container
+   * selbst löst sich nicht gegen dessen eigene Höhe auf, sondern gegen den
+   * nächsten Container darüber. Aus 15 % wurden 150 Pixel auf einer 329 Pixel
+   * hohen Fläche.
+   *
+   * Der Fehler ist unsichtbar, solange man nur eine der beiden Flächen
+   * ansieht. Deshalb hält ihn hier eine Zeile fest.
+   */
+  const css = lies('src/renderer/src/styles/projection.css')
+
+  it('ist ein eigenes Element, kein Innenabstand an der Fläche', () => {
+    expect(css).toContain('.projection-untertitel-platz')
+    expect(css).toMatch(/\.projection-untertitel-platz \{[^}]*height: 15cqh/)
+  })
+
+  it('setzt kein cq-Maß auf die Fläche selbst', () => {
+    const flaeche = css.match(/\.projection-root \{[^}]*\}/s)?.[0] ?? ''
+    expect(flaeche).not.toMatch(/padding[^;]*cq/)
+  })
 })
 
 describe('Untertitel im Beamerzustand', () => {

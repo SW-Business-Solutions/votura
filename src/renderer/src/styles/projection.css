@@ -991,20 +991,24 @@ html {
  * Flusssatz nicht mehr benutzt, löst das für **jede** Ansicht auf einmal:
  * Was mittig steht, rückt hoch; was unten endet, endet früher.
  *
- * Über Kamerabild, Film und Foliensatz gilt das ausdrücklich nicht — die
- * füllen die Fläche, und ein Streifen daran wäre ein schwarzer Rand.
+ * **Warum ein eigenes Element und kein Innenabstand an der Fläche.**
+ *
+ * Zuerst stand hier `padding-bottom: 15cqh` an `.projection-root`. Das ging
+ * im Beamerfenster gut und in der Vorschau der Bedienung gar nicht: Ein
+ * `cq`-Maß **auf dem Container selbst** löst sich nicht gegen dessen eigene
+ * Höhe auf — das wäre ein Zirkelschluss —, sondern gegen den nächsten
+ * Container darüber. Aus 15 % wurden in der Vorschau 150 Pixel auf einer 329
+ * Pixel hohen Fläche, und der Inhalt klebte oben.
+ *
+ * Als **Kind** der Fläche rechnet dasselbe Maß richtig. Deshalb ein leerer
+ * Streifen im Flusssatz statt eines Abstands am Rahmen.
+ *
+ * Über Kamerabild, Film und Foliensatz gibt es ihn nicht — die füllen die
+ * Fläche, und ein Streifen daran wäre ein schwarzer Rand.
  */
-.projection-root.mit-untertitel:not(.kamera-mode):not(.video-mode):not(.presentation-mode) {
-  /*
-   * `border-box` ist hier nicht Geschmack, sondern notwendig.
-   *
-   * Die Fläche ist `height: 100%`. Ohne diese Zeile käme der Innenabstand
-   * **oben drauf**: Die Fläche wurde 15 % höher als das Fenster, und das
-   * Band rutschte um genau diesen Betrag unter den unteren Rand — sichtbar
-   * war nur noch seine obere Kante.
-   */
-  box-sizing: border-box;
-  padding-bottom: 15cqh;
+.projection-untertitel-platz {
+  flex: 0 0 auto;
+  height: 15cqh;
 }
 
 .projection-untertitel-zeile {
