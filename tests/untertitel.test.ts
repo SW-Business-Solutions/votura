@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  namenGrossschreiben,
   UNTERTITEL_ZEICHEN_JE_ZEILE,
   UNTERTITEL_ZEILEN,
   untertitelBilden,
@@ -95,6 +96,63 @@ describe('Der Puffer', () => {
   })
 })
 
+describe('Großschreibung in den Untertiteln', () => {
+  const bekannt = ['Clara Fenske', 'Musterverband Beispielstadt', 'Ruben Thiele']
+
+  it('schreibt den ersten Buchstaben groß', () => {
+    expect(namenGrossschreiben(['ich beantrage die abstimmung'], [])).toEqual([
+      'Ich beantrage die abstimmung'
+    ])
+  })
+
+  it('schreibt bekannte Namen richtig', () => {
+    /*
+     * Kein Raten: Votura kennt diese Person, weil sie auf der
+     * Kandidatenliste steht.
+     */
+    const zeilen = namenGrossschreiben(['danke an clara fenske für den bericht'], bekannt)
+    expect(zeilen[0]).toContain('Clara Fenske')
+  })
+
+  it('findet einen Namen auch über den Zeilenumbruch hinweg', () => {
+    const zeilen = namenGrossschreiben(['wir danken clara', 'fenske für den bericht'], bekannt)
+    expect(zeilen[0]).toContain('Clara')
+    expect(zeilen[1]).toContain('Fenske')
+  })
+
+  it('ändert nie die Länge einer Zeile', () => {
+    /*
+     * **Der Grund, warum hier nur Buchstaben getauscht werden.** Umbrochen
+     * ist der Text schon — in Zeilen, die auf die Wand passen. Würde ein
+     * Wort länger, liefe die letzte Zeile über den Rand, und niemand sähe,
+     * warum.
+     */
+    const vorher = ['danke an clara fenske vom musterverband', 'beispielstadt für den bericht']
+    const nachher = namenGrossschreiben(vorher, bekannt)
+    expect(nachher.map((z) => z.length)).toEqual(vorher.map((z) => z.length))
+  })
+
+  it('erfindet keine Großschreibung bei Wörtern, die es nicht kennt', () => {
+    /*
+     * Deutsche Substantive zu erkennen hieße raten. Ein Programm, das an der
+     * Wand Wörter groß schreibt, die klein gehören, sieht schlechter aus als
+     * durchgehende Kleinschreibung — weil es nach Absicht aussieht.
+     */
+    const zeilen = namenGrossschreiben(['der antrag zur beitragsordnung liegt vor'], bekannt)
+    expect(zeilen[0]).toBe('Der antrag zur beitragsordnung liegt vor')
+  })
+
+  it('lässt kurze Wörter in Ruhe', () => {
+    /* „Am", „im", „an" als Namensbestandteil wären mehr Schaden als Nutzen. */
+    const zeilen = namenGrossschreiben(['wir gehen an den see'], ['An der Ruhr'])
+    expect(zeilen[0]).toBe('Wir gehen an den see')
+  })
+
+  it('kommt mit leerem Stand zurecht', () => {
+    expect(namenGrossschreiben([], bekannt)).toEqual([])
+  })
+})
+
 /*
  * Ab hier der Weg durch den Hauptprozess.
  *
@@ -184,8 +242,10 @@ describe('Untertitel im Beamerzustand', () => {
 
   it('bekommen Text nur dort, wo sie eingeschaltet sind', () => {
     dienst.meldeUntertitel({ zeilen: ['ich beantrage die abstimmung'] })
+    /* Groß am Anfang: Die Erkennung liefert alles klein, der Dienst hebt den
+       ersten Buchstaben — siehe `namenGrossschreiben`. */
     expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel?.zeilen).toEqual([
-      'ich beantrage die abstimmung'
+      'Ich beantrage die abstimmung'
     ])
     expect(dienst.getProjectionState(2).untertitel).toBeUndefined()
   })
@@ -237,7 +297,7 @@ describe('Untertitel im Beamerzustand', () => {
     dienst.meldeUntertitel({ zeilen: ['erstes wort zweites'] })
     expect(dienst.getProjectionState(HAUPTBUEHNE).updatedAt).toBe(vorher)
     /* Angekommen ist der Text trotzdem. */
-    expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel?.zeilen).toEqual(['erstes wort zweites'])
+    expect(dienst.getProjectionState(HAUPTBUEHNE).untertitel?.zeilen).toEqual(['Erstes wort zweites'])
     dienst.setUntertitel(HAUPTBUEHNE, false)
   })
 

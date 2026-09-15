@@ -169,6 +169,11 @@ Was dabei zu wissen ist:
   eine Wache im Hauptprozess die Wand. Ein leeres Band sagt „nichts verstanden"; ein
   stehengebliebenes behauptet etwas Falsches.
 
+**Kleinschreibung, mit zwei Ausnahmen.** Die Erkennung liefert alles klein und ohne Satzzeichen;
+deutsche Rechtschreibung daraus zurückzugewinnen hieße, Substantive zu erraten, und das ginge
+daneben. Groß werden deshalb nur der Satzanfang und die Namen, die Votura **kennt** — aufgerufene
+Person, Bewerber, Verband. Das ist Nachschlagen, kein Raten.
+
 **Ehrlich zur Güte:** Der Prompter braucht nur ein paar halbwegs erkannte Wörter, um sich in einem
 Text wiederzufinden, der schon dasteht. Untertitel haben diesen Text nicht — sie zeigen jeden
 Irrtum der Erkennung. Das kleine mitgelieferte Modell reicht für den Prompter; für Untertitel lohnt

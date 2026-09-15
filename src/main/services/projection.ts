@@ -40,7 +40,9 @@ import {
   type ProjectionAntrag
 } from '@shared/antrag'
 import { getAntrag, listAntraege } from './antraege'
+import { listEventCandidates } from './candidates'
 import {
+  namenGrossschreiben,
   UNTERTITEL_STILLE_MS,
   type ProjectionUntertitel
 } from '@shared/untertitel'
@@ -1227,6 +1229,29 @@ export function setUntertitel(buehne: number, an: boolean): ProjectionState {
 }
 
 /**
+ * Die Namen, die Votura kennt — für die Schreibweise der Untertitel.
+ *
+ * Aufgerufene Person, Bewerber der laufenden Veranstaltung, Verband und
+ * Veranstaltungstitel. Mehr nicht: Ein Verzeichnis, das über die Versammlung
+ * hinausgeht, schriebe irgendwann ein Alltagswort groß, weil es zufällig wie
+ * ein Nachname aussieht.
+ */
+function bekannteNamen(): string[] {
+  const namen = new Set<string>()
+  const event = activeEvent()
+  if (event) {
+    namen.add(event.organization)
+    namen.add(event.title)
+    for (const kandidat of listEventCandidates(event.id)) namen.add(kandidat.displayName)
+  }
+  for (const state of zustaende.values()) {
+    if (state.speaker?.name) namen.add(state.speaker.name)
+    for (const kommend of state.speaker?.upcoming ?? []) namen.add(kommend)
+  }
+  return [...namen].filter(Boolean)
+}
+
+/**
  * Zeigt irgendeine Bühne Untertitel?
  *
  * Danach richtet sich, ob das Zuhörerfenster offen sein muss — und damit, ob
@@ -1256,8 +1281,20 @@ let letzteUntertitelMeldung = 0
  * Wortprotokoll wäre etwas anderes — und etwas, das eine Versammlung
  * ausdrücklich beschließen müsste.
  */
-export function meldeUntertitel(stand: ProjectionUntertitel): void {
+export function meldeUntertitel(roh: ProjectionUntertitel): void {
   letzteUntertitelMeldung = Date.now()
+  /*
+   * Namen richtig schreiben, bevor sie an die Wand gehen.
+   *
+   * Die Erkennung liefert alles klein. Deutsche Rechtschreibung lässt sich
+   * daraus nicht zurückgewinnen — wohl aber die Namen, die Votura ohnehin
+   * kennt: wer da vorne steht, wer auf der Kandidatenliste steht, wie der
+   * Verband heißt. Das ist kein Raten, sondern Nachschlagen.
+   */
+  const stand: ProjectionUntertitel = {
+    ...roh,
+    zeilen: namenGrossschreiben(roh.zeilen, bekannteNamen())
+  }
   for (const [id, state] of zustaende) {
     if (!state.untertitel) continue
     if (gleicherUntertitel(state.untertitel, stand)) continue

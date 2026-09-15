@@ -157,3 +157,72 @@ export function untertitelKuerzen(
 ): string {
   return untertitelZeilen(sicher, zeichenJeZeile, zeilen).join(' ')
 }
+
+/* ------------------------------------------------------- Großschreibung */
+
+/**
+ * Die Erkennung schreibt alles klein — und daran lässt sich nur begrenzt
+ * etwas ändern.
+ *
+ * ## Was nicht geht
+ *
+ * Deutsche Rechtschreibung aus einem Erkennungsergebnis zurückzugewinnen,
+ * hieße Substantive zu erkennen. Dafür bräuchte es eine Wortartenanalyse, und
+ * die läge daneben: „Das **Essen** war gut" gegen „wir wollen gleich
+ * **essen**" ist ohne Satzbau nicht zu trennen. Eine Regel, die rät, schriebe
+ * an der Wand Wörter groß, die klein gehören — und das sähe schlimmer aus als
+ * durchgehende Kleinschreibung, weil es nach Absicht aussieht.
+ *
+ * ## Was geht
+ *
+ * **Namen, die Votura ohnehin kennt.** Wer da vorne steht, wer auf der
+ * Kandidatenliste steht, wie der Verband heißt — das steht in der Datenbank
+ * und muss nicht geraten werden. „clara fenske" wird zu „Clara Fenske", weil
+ * Votura diese Person kennt, nicht weil eine Regel es vermutet.
+ *
+ * Und der **Anfang**: Der erste Buchstabe des Sichtbaren wird groß.
+ *
+ * ## Warum nur die Schreibweise, nie die Länge
+ *
+ * Umbrochen ist der Text zu diesem Zeitpunkt bereits — in Zeilen, die auf die
+ * Wand passen. Würde hier ein Wort länger, stimmte der Umbruch nicht mehr,
+ * und die letzte Zeile liefe über den Rand. Deshalb werden ausschließlich
+ * Groß- und Kleinbuchstaben getauscht; ein Ersatz mit abweichender Länge wird
+ * verworfen.
+ */
+export function namenGrossschreiben(zeilen: string[], bekannt: string[]): string[] {
+  if (zeilen.length === 0) return zeilen
+
+  /*
+   * Ein Verzeichnis von klein nach richtig, Wort für Wort.
+   *
+   * Auch mehrteilige Namen zerfallen hier in einzelne Wörter: „Clara" und
+   * „Fenske" werden getrennt erkannt, weil die Erkennung sie getrennt
+   * ausgibt — und weil zwischen ihnen ein Zeilenumbruch liegen kann.
+   */
+  const verzeichnis = new Map<string, string>()
+  for (const eintrag of bekannt) {
+    for (const wort of eintrag.split(/\s+/)) {
+      const sauber = wort.replace(/[^\p{L}\p{N}-]/gu, '')
+      if (sauber.length < 3) continue
+      verzeichnis.set(sauber.toLocaleLowerCase('de'), sauber)
+    }
+  }
+
+  const ersetzt = zeilen.map((zeile) =>
+    zeile.replace(/\p{L}[\p{L}\p{N}-]*/gu, (wort) => {
+      const treffer = verzeichnis.get(wort.toLocaleLowerCase('de'))
+      /* Nur wenn sich die Länge nicht ändert — sonst bräche der Umbruch. */
+      return treffer && treffer.length === wort.length ? treffer : wort
+    })
+  )
+
+  /* Der erste Buchstabe des Sichtbaren. */
+  const erste = ersetzt.findIndex((zeile) => /\p{L}/u.test(zeile))
+  if (erste >= 0) {
+    ersetzt[erste] = ersetzt[erste].replace(/\p{L}/u, (buchstabe) =>
+      buchstabe.toLocaleUpperCase('de')
+    )
+  }
+  return ersetzt
+}

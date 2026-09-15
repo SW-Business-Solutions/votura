@@ -786,6 +786,25 @@ Der Zwischenstand steht blasser als der fertige Satz. Die Erkennung meldet erst,
 glaubt, und berichtigt sich danach — beides gleich auszuzeichnen hieße, eine Sicherheit zu
 behaupten, die noch nicht da ist.
 
+### Warum alles klein geschrieben ist
+
+Weil die Erkennung es so liefert: durchgehend klein, ohne Satzzeichen. Deutsche Rechtschreibung
+daraus zurückzugewinnen hieße, **Substantive zu erkennen** — und das ginge ohne Satzbau daneben:
+„Das Essen war gut" gegen „wir wollen gleich essen" ist nicht zu trennen. Eine Regel, die rät,
+schriebe an der Wand Wörter groß, die klein gehören, und das sähe schlechter aus als
+Kleinschreibung — weil es nach Absicht aussieht.
+
+Zwei Dinge macht Votura trotzdem:
+
+- **Der Anfang wird groß.**
+- **Namen werden richtig geschrieben** — aber nur die, die Votura ohnehin kennt: die aufgerufene
+  Person, die Bewerber der Veranstaltung, der Verband. „clara fenske" wird zu „Clara Fenske", weil
+  es diese Person kennt, nicht weil eine Regel es vermutet.
+
+Geändert wird dabei ausschließlich die Schreibweise, nie die Länge: Der Text ist zu diesem Zeitpunkt
+schon in Zeilen umbrochen, die auf die Wand passen. Würde ein Wort länger, liefe die letzte Zeile
+über den Rand.
+
 ## Die Versammlung übertragen
 
 Votura ist keine Streaming-Software und will keine werden. Es macht aber beides möglich, was eine
