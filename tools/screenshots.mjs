@@ -754,6 +754,80 @@ try {
   await sitzung.aufnehmen('20-videosteuerung')
 
   /*
+   * **Die Kamera.**
+   *
+   * Es hängt keine Kamera an diesem Rechner — und es muss auch keine hängen.
+   * `tools/ndi-testbild.mjs` sendet ein erzeugtes Bild als ganz normale
+   * NDI-Quelle; für Votura ist es von einer Kamera nicht zu unterscheiden.
+   * Die Aufnahme zeigt also den echten Weg: Quelle gefunden, Verbindung
+   * aufgebaut, Bild gezeichnet, Bauchbinde darüber.
+   */
+  console.log('Kamera …')
+  const testbild = spawn(process.execPath, ['tools/ndi-testbild.mjs', '--name', 'PULT', '--breite', '1280', '--hoehe', '720', '--fps', '30'], {
+    stdio: 'inherit',
+    detached: false
+  })
+  try {
+    /* Die Suche läuft nur, solange jemand hinschaut — hier also ausdrücklich
+       anstellen und der Quelle Zeit lassen, sich im Netz anzumelden. */
+    const quelle = await sitzung.auswerten(`(async () => {
+      const ruf = (m, ...a) => window.votura.invoke(m, ...a)
+      await ruf('kamera.suche', true)
+      let letzter = null
+      for (let i = 0; i < 25; i++) {
+        letzter = await ruf('kamera.stand')
+        const treffer = (letzter.quellen || []).find((q) => q.name.includes('PULT'))
+        if (treffer) return treffer.name
+        await new Promise((f) => setTimeout(f, 800))
+      }
+      return { fehlschlag: letzter }
+    })()`)
+
+    if (!quelle || typeof quelle !== 'string') {
+      console.log('  keine NDI-Quelle gefunden — Kameraaufnahmen übersprungen')
+      console.log('  Stand:', JSON.stringify(quelle?.fehlschlag ?? null))
+    } else {
+      await sitzung.auswerten(`(async () => {
+        await window.votura.invoke('projection.setMode', {
+          mode: 'kamera',
+          kamera: { quelle: ${JSON.stringify(quelle)} },
+          speaker: {
+            name: 'Clara Fenske',
+            note: 'Bewerbung um den Vorsitz',
+            seconds: 180
+          }
+        })
+        return true
+      })()`)
+      await warte(3000)
+
+      const beamerKamera = (await ziele()).find((z) => z.url.includes('audience'))
+      if (beamerKamera) {
+        const wand = await Sitzung.verbinde(beamerKamera.webSocketDebuggerUrl)
+        await wand.sende('Page.enable')
+        await wand.sende('Emulation.setDeviceMetricsOverride', {
+          width: 1600, height: 900, deviceScaleFactor: 1, mobile: false
+        })
+        await warte(2000)
+        await wand.aufnehmen('31-beamer-kamera')
+        wand.schliessen()
+      }
+
+      await sitzung.auswerten("window.location.hash = '#/beamer'")
+      await warte(1500)
+      await reiterOeffnen(sitzung, 'Präsentation & Video')
+      await warte(2500)
+      await sitzung.auswerten(
+        "(() => { const k = Array.from(document.querySelectorAll('h2, h3')).find((x) => (x.textContent || '').trim() === 'Kameras'); if (k) k.scrollIntoView({ block: 'start' }); return true })()"
+      )
+      await warte(1500)
+      await sitzung.aufnehmen('32-kamerasteuerung')
+    }
+  } finally {
+    testbild.kill()
+  }
+
+  /*
    * **Der Einlass, die Ausgabe und die digitale Wahl.**
    *
    * Drei Seiten, die es bei den ersten Aufnahmen noch nicht gab — und genau
