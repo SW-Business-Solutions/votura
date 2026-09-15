@@ -40,6 +40,16 @@ einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
   Der Knopf öffnete `window.prompt`, das es in Electron nicht gibt: Es erschien nur die Meldung
   „prompt() is not supported". Jetzt fragt ein richtiger Dialog nach dem Namen.
 
+### Hinweise im Manuskript
+
+Eine Zeile in eckigen Klammern — `[Zum Publikum schauen]` — ist ab jetzt kein Satz zum Vorlesen,
+sondern ein Hinweis an die vortragende Person. Am Pult steht er in Großbuchstaben und in anderer
+Farbe, er zählt nicht zur Redezeit, und das Mitlaufen nach Gehör übergeht ihn — es suchte sonst
+nach Wörtern, die niemand spricht.
+
+Dabei ist noch eine alte Ungenauigkeit mitgegangen: Der Lauf hielt um so viele Schritte zu früh an,
+wie die Rede Atempausen hat — der letzte Satz kam nie ganz bis zur Lesezeile.
+
 ### Der Prompter folgt dem Aufruf
 
 Eine Rede lässt sich einem **Bewerber zuordnen** — und diese Zuordnung tut jetzt auch etwas: Wird

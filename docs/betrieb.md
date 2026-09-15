@@ -128,6 +128,11 @@ _Prompter_ (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
 - **Rede ablegen:** _Rede einspeisen_ holt eine Markdown-Datei (.md/.txt); _Neu anlegen_ öffnet ein
   leeres Blatt. Der Editor darunter speichert mit **Strg+S**; liegt die Rede gerade am Pult,
   bekommt sie den neuen Text, ohne an den Anfang zu springen.
+- **Hinweise an sich selbst:** Eine Zeile in eckigen Klammern — `[Zum Publikum schauen]` — ist keine
+  Zeile zum Vorlesen. Sie steht am Pult in Großbuchstaben und in anderer Farbe, wird **nicht
+  mitgesprochen**, zählt **nicht zur Redezeit** und wird beim Mitlaufen nach Gehör übergangen. Im
+  Lauf behält sie trotzdem einen Moment, sonst wäre sie vorbei, bevor jemand sie liest. Eine
+  Klammer mitten im Satz bleibt Text: Nur eine ganze Zeile ist ein Hinweis.
 - **Auflegen:** Die Rede steht dann am Pult, angehalten und am Anfang.
 - **Starten/Anhalten:** in der Bedienung, am Prompterfenster oder mit der **Leertaste** am Pult.
   Pfeile springen zeilenweise, Bild auf/ab in Achterschritten, **Pos1** zurück an den Anfang.

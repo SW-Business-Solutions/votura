@@ -12,9 +12,12 @@ import {
   prompterPosition,
   PROMPTER_PFAD,
   PROMPTER_VORGABE,
+  blockGewicht,
   redeBloecke,
   redeDauer,
+  redeLaenge,
   redeWoerter,
+  redeWortfolge,
   WOERTER_JE_MINUTE,
   type PrompterViewState
 } from '../src/shared/speech'
@@ -170,5 +173,72 @@ describe('Der Prompter geht seinen eigenen Weg', () => {
     const dienst = lies('src/main/services/prompter.ts')
     expect(dienst).toContain('export function setPrompterTempo')
     expect(dienst).toContain('return setze({ tempo: Math.round(tempo) })')
+  })
+})
+
+describe('Hinweise an die vortragende Person', () => {
+  /*
+   * „[Zum Publikum schauen]" — eine Regieanweisung, keine Zeile zum Vorlesen.
+   * Sie muss deshalb an drei Stellen anders behandelt werden als Text: beim
+   * Zählen, beim Lauf und beim Mithören. Jede dieser drei Stellen wäre für
+   * sich still falsch geworden.
+   */
+  const REDE = [
+    '# Begrüßung',
+    '',
+    '[Zum Publikum schauen und kurz warten]',
+    '',
+    'Liebe Mitglieder, ich freue mich sehr.',
+    '',
+    '---',
+    '',
+    'Damit komme ich zum Bericht.'
+  ].join('\n')
+
+  it('erkennt die eckige Klammer auf einer eigenen Zeile', () => {
+    const bloecke = redeBloecke(REDE)
+    expect(bloecke.map((block) => block.art)).toEqual([
+      'ueberschrift',
+      'hinweis',
+      'absatz',
+      'pause',
+      'absatz'
+    ])
+    expect(bloecke[1].text).toBe('Zum Publikum schauen und kurz warten')
+  })
+
+  it('lässt eine Klammer im Satz in Ruhe', () => {
+    /* Ein eingeklammerter Einschub mitten im Text will vorgelesen werden —
+       nur eine ganze Zeile ist ein Hinweis. */
+    const bloecke = redeBloecke('Wir haben [wie angekündigt] beschlossen.')
+    expect(bloecke[0].art).toBe('absatz')
+    expect(bloecke[0].text).toBe('Wir haben [wie angekündigt] beschlossen.')
+  })
+
+  it('zählt den Hinweis nicht zur Redezeit', () => {
+    /* Sonst wäre die Rede länger geschätzt, als sie dauert — und der Hinweis
+       ist sechs Wörter lang. */
+    expect(redeWoerter(REDE)).toBe(redeWoerter(REDE.replace(/^\[.*\]$/m, '')))
+  })
+
+  it('gibt ihm im Lauf trotzdem einen Moment', () => {
+    /* Ohne Gewicht huschte er vorbei, bevor ihn jemand liest. Aber nur einen:
+       Gesprochen wird er nicht, also kostet er nicht die Zeit seiner Wörter. */
+    expect(blockGewicht({ art: 'hinweis', text: 'Zum Publikum schauen und kurz warten' })).toBe(1)
+  })
+
+  it('hält Lauflänge und Wortfolge auf derselben Zählung', () => {
+    /*
+     * Der Lauf rechnet in Blockgewichten, das Mithören in Wörtern. Laufen
+     * beide auseinander, zeigt die Lesezeile beim Mithören auf die falsche
+     * Stelle — und der Lauf hält vor dem letzten Satz an.
+     */
+    expect(redeWortfolge(REDE)).toHaveLength(redeLaenge(REDE))
+  })
+
+  it('sucht nicht nach Wörtern, die niemand spricht', () => {
+    const folge = redeWortfolge(REDE)
+    expect(folge).not.toContain('publikum')
+    expect(folge).toContain('mitglieder')
   })
 })

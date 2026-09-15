@@ -203,6 +203,18 @@ function Block({ block }: { block: RedeBlock }): React.JSX.Element {
       return <p className="tp-zitat">{block.text}</p>
     case 'pause':
       return <p className="tp-pause" aria-hidden="true" />
+    /*
+     * Ein Hinweis ist kein Satz zum Vorlesen, sondern eine Anweisung an die
+     * vortragende Person. Er muss auf den ersten Blick anders aussehen als
+     * der Text — wer abliest, darf ihn nicht versehentlich mitsprechen.
+     */
+    case 'hinweis':
+      return (
+        <p className="tp-hinweis">
+          <span aria-hidden="true">▸ </span>
+          {block.text}
+        </p>
+      )
     default:
       return <p className="tp-absatz">{block.text}</p>
   }

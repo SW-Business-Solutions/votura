@@ -23,6 +23,7 @@
  * stocken, wenn es darauf ankommt.
  */
 import { mitlaufStelle, wortfolge } from '@shared/mitlauf'
+import { redeWortfolge } from '@shared/speech'
 import { SPRACHMODELL_PFAD } from '@shared/sprachmodell'
 
 /** Wie viele zuletzt gehörte Wörter für den Abgleich herangezogen werden. */
@@ -59,7 +60,9 @@ export interface Mithoeren {
 export async function starteMithoeren(optionen: MithoerenOptionen): Promise<Mithoeren> {
   optionen.aufStand({ art: 'startet' })
 
-  const manuskript = wortfolge(optionen.manuskript)
+  /* Hinweise in eckigen Klammern stehen nicht darin: Die Erkennung suchte
+     sonst nach Wörtern, die niemand spricht. */
+  const manuskript = redeWortfolge(optionen.manuskript)
   /* Die zuletzt gehörten Wörter — mehr braucht der Abgleich nicht, und mehr
      machte ihn nur träge. */
   let gehoert: string[] = []

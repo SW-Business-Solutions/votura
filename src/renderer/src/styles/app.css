@@ -1123,11 +1123,46 @@ button.linkartig:hover {
   flex-wrap: wrap;
 }
 
+/*
+ * Die Zuordnung „für wen" unter dem Titel einer Rede.
+ *
+ * Als volles Eingabefeld zog sie den Blick auf sich und stand fetter da als
+ * der Titel darüber — dabei ist sie die seltenste Handlung der Zeile: einmal
+ * gesetzt, nie wieder angefasst. Deshalb ein stilles Feld, das erst beim
+ * Zeigen Kontur bekommt, und die Zeile bleibt so hoch wie vorher.
+ */
+.rede-zuordnung {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rede-zuordnung select {
+  width: auto;
+  max-width: 220px;
+  min-height: 0;
+  padding: 1px 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.rede-zuordnung select:hover,
+.rede-zuordnung select:focus {
+  border-color: var(--border);
+  color: var(--text);
+}
+
 /* Die Knöpfe einer Redenzeile bleiben zusammen und rechtsbündig. */
 td.rede-knoepfe {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+  align-items: center;
   white-space: nowrap;
 }
 

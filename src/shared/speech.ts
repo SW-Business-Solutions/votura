@@ -31,6 +31,7 @@
  * Gerät sie melden müsste. Der Lauf kann am Ende halten, statt ins Leere zu
  * scrollen, und „Starten" nach dem Ende beginnt wieder von vorn.
  */
+import { wortfolge } from './mitlauf'
 import type { UUID } from './types'
 
 /** Ein Eintrag der Redenbibliothek. */
@@ -241,11 +242,28 @@ export function prompterAmEnde(state: PrompterViewState, jetzt: number): boolean
  * erhalten und werden nicht zu einer Textwand verschmolzen.
  */
 export interface RedeBlock {
-  art: 'ueberschrift' | 'absatz' | 'punkt' | 'zitat' | 'pause'
+  art: 'ueberschrift' | 'absatz' | 'punkt' | 'zitat' | 'pause' | 'hinweis'
   /** Bei Überschriften die Ebene (1–3). */
   ebene?: number
   text: string
 }
+
+/**
+ * Ein Hinweis an die vortragende Person, kein gesprochener Satz.
+ *
+ * `[Zum Publikum schauen]` — in eckigen Klammern auf einer eigenen Zeile.
+ * Die Klammern sind die Schreibweise, die Drehbücher und Prompter seit jeher
+ * für Regieanweisungen benutzen, und sie kommen am Anfang einer Zeile in
+ * keiner Rede vor. Runde Klammern wären mehrdeutig: Ein ganzer Satz kann
+ * eingeklammert sein und will trotzdem vorgelesen werden.
+ *
+ * Ein Hinweis wird **nicht mitgezählt** (er kostet keine Redezeit), **nicht
+ * mitgehört** (er wird nie gesprochen — die Erkennung suchte sonst nach
+ * Wörtern, die niemand sagt) und am Pult deutlich anders dargestellt als der
+ * Text. Er behält trotzdem einen Moment im Lauf, sonst huschte er vorbei,
+ * bevor ihn jemand liest.
+ */
+const HINWEIS = /^\[\s*(.+?)\s*\]$/
 
 /**
  * Markdown in Blöcke zerlegen — bewusst nur das, was in einer Rede vorkommt.
@@ -290,6 +308,12 @@ export function redeBloecke(markdown: string): RedeBlock[] {
       bloecke.push({ art: 'punkt', text: punkt[1].trim() })
       continue
     }
+    const hinweis = HINWEIS.exec(roh)
+    if (hinweis) {
+      absatzAbschliessen()
+      bloecke.push({ art: 'hinweis', text: hinweis[1] })
+      continue
+    }
     const zitat = /^>\s?(.*)$/.exec(roh)
     if (zitat) {
       absatzAbschliessen()
@@ -307,9 +331,60 @@ export function zaehleWoerter(text: string): number {
   return text.split(/\s+/).filter((wort) => /[\p{L}\p{N}]/u.test(wort)).length
 }
 
-/** Zählt die Wörter einer Rede — für die Schätzung der Redezeit. */
+/**
+ * Zählt die gesprochenen Wörter einer Rede — für die Schätzung der Redezeit.
+ *
+ * Hinweise zählen nicht mit: Sie werden gelesen, nicht gesagt, und eine Rede
+ * würde sonst länger geschätzt, als sie dauert.
+ */
 export function redeWoerter(markdown: string): number {
-  return redeBloecke(markdown).reduce((summe, block) => summe + zaehleWoerter(block.text), 0)
+  return redeBloecke(markdown)
+    .filter((block) => block.art !== 'hinweis')
+    .reduce((summe, block) => summe + zaehleWoerter(block.text), 0)
+}
+
+/**
+ * Wie weit der Lauf reicht.
+ *
+ * **Nicht dasselbe wie die Wortzahl.** Atempausen und Hinweise haben kein
+ * gesprochenes Wort, brauchen im Lauf aber ihren Moment — und die Ansicht
+ * rechnet mit genau diesen Gewichten, wenn sie den Wortindex in Bildpunkte
+ * umsetzt. Nähme das Ende die bloße Wortzahl, hielte der Lauf um so viele
+ * Schritte zu früh an, wie die Rede Pausen und Hinweise hat: Der letzte Satz
+ * käme nie bis zur Lesezeile.
+ */
+export function redeLaenge(markdown: string): number {
+  return redeBloecke(markdown).reduce((summe, block) => summe + blockGewicht(block), 0)
+}
+
+/**
+ * Ein Platzhalter für alles, was dasteht, ohne gesprochen zu werden.
+ *
+ * Er zählt im Lauf mit — eine Pause und ein Hinweis brauchen ihren Moment —,
+ * kann aber von keinem gehörten Wort getroffen werden: Die Vergleichsform
+ * eines Wortes besteht nur aus Buchstaben und Ziffern.
+ */
+const NICHT_GESPROCHEN = '\u0000'
+
+/**
+ * Die Rede als Folge vergleichbarer Wörter — in **derselben Zählung**, in der
+ * auch der Lauf rechnet.
+ *
+ * Für das Mitlaufen nach Gehör. Zwei Dinge müssen dafür zusammenpassen, und
+ * vorher taten sie es nicht ganz: Die Erkennung darf nicht nach Wörtern
+ * suchen, die niemand spricht (ein Hinweis in eckigen Klammern), und die
+ * Stelle, die sie meldet, muss dieselbe sein, die die Ansicht in Bildpunkte
+ * umsetzt. Jeder ungesprochene Block bekommt deshalb genau einen Platz —
+ * nicht null, sonst liefen beide Zählungen um eins je Pause auseinander.
+ */
+export function redeWortfolge(markdown: string): string[] {
+  const folge: string[] = []
+  for (const block of redeBloecke(markdown)) {
+    const woerter = block.art === 'hinweis' || block.art === 'pause' ? [] : wortfolge(block.text)
+    if (woerter.length === 0) folge.push(NICHT_GESPROCHEN)
+    else folge.push(...woerter)
+  }
+  return folge
 }
 
 /**
@@ -320,6 +395,9 @@ export function redeWoerter(markdown: string): number {
  * dort wollte jemand Luft holen.
  */
 export function blockGewicht(block: RedeBlock): number {
+  /* Ein Hinweis wird gelesen, nicht gesprochen: ein Moment wie bei der Pause,
+     nicht die Zeit seiner Wörter. */
+  if (block.art === 'hinweis') return 1
   return Math.max(1, zaehleWoerter(block.text))
 }
 

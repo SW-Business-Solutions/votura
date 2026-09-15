@@ -248,35 +248,37 @@ export function PrompterPage(): React.JSX.Element {
                             der schmalen Hälfte unlesbar.
                           */}
                           {bewerber.length > 0 ? (
-                            <select
-                              className="mini mt-1"
-                              value={rede.candidateId ?? ''}
-                              title="Wird dieser Bewerber auf dem Beamer aufgerufen, legt der Prompter diesen Text auf."
-                              onChange={(ereignis) =>
-                                void rufe(async () => {
-                                  const gewaehlt = bewerber.find(
-                                    (eintrag) => eintrag.id === ereignis.target.value
-                                  )
-                                  await api('speech.assign', {
-                                    id: rede.id,
-                                    candidateId: gewaehlt?.id,
-                                    candidateName: gewaehlt?.displayName
+                            <div className="rede-zuordnung">
+                              <span>für</span>
+                              <select
+                                value={rede.candidateId ?? ''}
+                                title="Wird dieser Bewerber auf dem Beamer aufgerufen, legt der Prompter diesen Text auf."
+                                onChange={(ereignis) =>
+                                  void rufe(async () => {
+                                    const gewaehlt = bewerber.find(
+                                      (eintrag) => eintrag.id === ereignis.target.value
+                                    )
+                                    await api('speech.assign', {
+                                      id: rede.id,
+                                      candidateId: gewaehlt?.id,
+                                      candidateName: gewaehlt?.displayName
+                                    })
+                                    await laden()
                                   })
-                                  await laden()
-                                })
-                              }
-                            >
-                              <option value="">– keinem Bewerber zugeordnet –</option>
-                              {bewerberGruppen.map((gruppe) => (
-                                <optgroup key={gruppe.titel} label={gruppe.titel}>
-                                  {gruppe.leute.map((eintrag) => (
-                                    <option key={eintrag.id} value={eintrag.id}>
-                                      {eintrag.displayName}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
+                                }
+                              >
+                                <option value="">niemanden</option>
+                                {bewerberGruppen.map((gruppe) => (
+                                  <optgroup key={gruppe.titel} label={gruppe.titel}>
+                                    {gruppe.leute.map((eintrag) => (
+                                      <option key={eintrag.id} value={eintrag.id}>
+                                        {eintrag.displayName}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </div>
                           ) : (
                             rede.candidateName && <div className="hint">für {rede.candidateName}</div>
                           )}
@@ -296,7 +298,7 @@ export function PrompterPage(): React.JSX.Element {
                             Umbenennen
                           </button>
                           <button
-                            className="mini danger"
+                            className="mini ghost danger"
                             onClick={() =>
                               void rufe(async () => {
                                 if (!window.confirm(`„${rede.title}" entfernen?`)) return
@@ -328,6 +330,13 @@ export function PrompterPage(): React.JSX.Element {
               <div className="hint">
                 <code>#</code> Überschrift · <code>-</code> Aufzählung · <code>&gt;</code> Zitat ·{' '}
                 <code>---</code> Atempause. Leerzeile trennt Absätze.
+              </div>
+              {/* Der Hinweis steht in einer eigenen Zeile, weil er etwas anderes
+                  ist als Gestaltung: Er wird nicht vorgelesen. */}
+              <div className="hint">
+                <code>[Zum Publikum schauen]</code> — ein Hinweis an Sie selbst. Er steht am Pult in
+                Großbuchstaben und in anderer Farbe, wird <strong>nicht mitgesprochen</strong>, zählt nicht
+                zur Redezeit und wird beim Mitlaufen nach Gehör übergangen.
               </div>
               <textarea
                 ref={textfeld}

@@ -79,6 +79,24 @@
   font-style: italic;
 }
 
+/*
+ * Ein Hinweis an die vortragende Person — „[Zum Publikum schauen]".
+ *
+ * Er soll auffallen und trotzdem nicht wie Text aussehen: kleiner, in Versal,
+ * in einem warmen Ton, den die Rede sonst nirgends hat. Wer abliest, darf ihn
+ * nicht versehentlich mitsprechen.
+ */
+.tp-hinweis {
+  font-size: 0.6em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f0b45a;
+  border-left: 0.12em solid #f0b45a;
+  padding-left: 0.8em;
+  margin-top: 0.5em;
+}
+
 /* Drei Striche im Text: eine Stelle zum Durchatmen. */
 .tp-pause {
   height: 1.2em;

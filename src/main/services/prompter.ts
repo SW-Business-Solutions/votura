@@ -15,7 +15,7 @@ import { randomUUID } from 'node:crypto'
 import {
   prompterPosition,
   PROMPTER_VORGABE,
-  redeWoerter,
+  redeLaenge,
   type Laufart,
   type PrompterAnsicht,
   type PrompterViewState
@@ -92,7 +92,7 @@ export function loadSpeech(id: UUID | undefined): PrompterViewState {
   if (!rede) throw new Error('Diese Rede gibt es nicht.')
   return setze({
     speech: { id: rede.id, title: rede.title, markdown: rede.markdown },
-    laenge: redeWoerter(rede.markdown),
+    laenge: redeLaenge(rede.markdown),
     position: 0,
     running: false
   })
@@ -111,7 +111,7 @@ export function refreshSpeech(id: UUID): PrompterViewState {
   if (!rede) return getPrompterView()
   return setze({
     speech: { id: rede.id, title: rede.title, markdown: rede.markdown },
-    laenge: redeWoerter(rede.markdown)
+    laenge: redeLaenge(rede.markdown)
   })
 }
 
@@ -223,11 +223,7 @@ let zuletztGerufen: string | undefined
  * Zahlen laufen. Ist keine Rede zugeordnet, bleibt alles, wie es ist: Ein
  * Gast, ein Bericht, ein Grußwort räumen den Prompter nicht leer.
  */
-export function sprecherAufgerufen(sprecher?: {
-  name: string
-  until?: string
-  roundId?: UUID
-}): void {
+export function sprecherAufgerufen(sprecher?: { name: string; until?: string; roundId?: UUID }): void {
   const name = sprecher?.name?.trim()
   if (!name || name === zuletztGerufen) return
   zuletztGerufen = name
