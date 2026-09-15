@@ -95,6 +95,47 @@ ausdrücklicher Bestätigung durch die Wahlleitung.
 </tr>
 </table>
 
+## Akkreditierung und Einlass
+
+Wer da ist, entscheidet über jede Mehrheit — deshalb führt Votura die Anwesenheit selbst, wenn man
+es will. **Es ist eine Möglichkeit, keine Pflicht:** Wer keine Teilnehmerliste führt, arbeitet
+weiter mit der Zahl, die an der Versammlung eingetragen ist.
+
+Wird sie geführt, ändert sich das Entscheidende: Die Zahl der stimmberechtigten Anwesenden wird
+**beim Eröffnen jedes Wahlgangs festgehalten**. Wer danach geht, hat trotzdem mitgewählt, und die
+nötige Mehrheit ändert sich nicht mitten im Verfahren.
+
+Drei Formen von Ausweis, je nach Haus: **Stimmkarten** aus Plastik kommen am Ausgang zurück in den
+Stapel, **Einlassbändchen** aus Papier werden abgerissen, und der **gedruckte Voting Pass** kommt
+aus dem Bondrucker. Gespeichert wird nur die Prüfsumme des Codes — aus der Datenbank lässt sich
+kein Ausweis nachbauen.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/26-akkreditierung.png" alt="Akkreditierung"><br><sub><b>Einlass</b> — Teilnehmer, Anwesenheit und Ausweise an einer Stelle; gescannt wird mit Handscanner, Kamera oder Tastatur.</sub></td>
+<td width="50%"><img src="docs/screenshots/27-ausgabe.png" alt="Ausgabe der Stimmzettel"><br><sub><b>Ausgabe</b> — ein Zettel gegen einen Ausweis, je Wahlgang genau einer. Die Menge geht gezählt in die Bilanz ein, nicht getippt.</sub></td>
+</tr>
+</table>
+
+## Digitale Abstimmung
+
+Papier bleibt der Regelfall — aber wenn die Versammlung es beschließt, kann dieselbe Abstimmung
+über die Geräte der Teilnehmer laufen: **offen**, **namentlich** oder **geheim**. Beides im selben
+Wahlgang ist möglich; niemand bekommt beides, und die Zählungen werden addiert statt überschrieben.
+
+Bei der geheimen Wahl unterschreibt der Rechner eine Berechtigung, **ohne zu sehen, was er
+unterschreibt** (Blindsignatur nach Chaum). In der Urne steht deshalb keine Person. Nachgezählt
+wird ein Urnenverzeichnis: je Zeile eine Seriennummer und die Stimme im Klartext — nachzählbar wie
+ein Stapel Zettel, von jedem im Saal.
+
+> **Die digitale geheime Wahl ist nicht für den produktiven Einsatz freigegeben.** Sie ist
+> vollständig umgesetzt und geprüft, aber noch nicht extern kryptografisch begutachtet. Was sie
+> leistet und was nicht, steht im [Bedrohungsmodell](docs/bedrohungsmodell-digitale-wahl.md).
+
+![Digitale Abstimmung führen](docs/screenshots/28-digitale-wahl.png)
+
+<sub><b>Vier Schritte in fester Folge</b> — vorbereiten, eröffnen, schließen, übernehmen. Der Schlüssel des Wahlgangs gehört <b>vor</b> der Eröffnung auf die Leinwand; danach lässt er sich nicht mehr unbemerkt austauschen.</sub>
+
 ## Wahlverfahren
 
 Wahlzweck (`purpose`) und Wahlverfahren (`procedure`) sind strikt getrennt: Aus „Delegiertenwahl"

@@ -262,18 +262,154 @@ function demoSkript() {
     })
     await ruf('result.confirm', { roundId: akzeptanz.id, pin: '246810' })
 
+    /*
+     * **Der Einlass braucht Menschen, nicht nur Wahlgänge.**
+     *
+     * Eine Akkreditierungsseite ohne Teilnehmer zeigt eine leere Liste und
+     * ein Scanfeld — und erklärt damit nichts. Deshalb ein kleiner Bestand
+     * mit Anwesenden, Gästen und ausgegebenen Karten: genau das Bild, das am
+     * Einlass auf dem Schirm steht.
+     */
+    const namen = [
+      ['Beckmann', 'Anna'], ['Ehlers', 'Tobias'], ['Fenske', 'Clara'], ['Kröger', 'Jonas'],
+      ['Lorenz', 'Nina'], ['Marquardt', 'Paul'], ['Ohlsen', 'David'], ['Sander', 'Miriam'],
+      ['Thiele', 'Ruben'], ['Vogt', 'Sophie'], ['Wendt', 'Lennart'], ['Ziegler', 'Katharina']
+    ]
+    const leute = []
+    for (const [nachname, vorname] of namen) {
+      leute.push(await ruf('participant.add', {
+        eventId: veranstaltung.id,
+        lastName: nachname,
+        firstName: vorname,
+        number: String(100 + leute.length + 1),
+        weight: 1
+      }))
+    }
+    /* Zwei Gäste ohne Stimmrecht — der Unterschied soll sichtbar sein. */
+    for (const [nachname, vorname] of [['Petersen', 'Hanna'], ['Roth', 'Gregor']]) {
+      leute.push(await ruf('participant.add', {
+        eventId: veranstaltung.id, lastName: nachname, firstName: vorname, eligible: false
+      }))
+    }
+
+    /* Karten und Bändchen: die Nummern stehen aufgedruckt, der Code darunter. */
+    await ruf('card.import', {
+      kind: 'card',
+      entries: Array.from({ length: 40 }, (_, i) => ({
+        serial: 'K-' + String(i + 1).padStart(3, '0'),
+        code: 'DEMO-KARTE-' + String(i + 1).padStart(3, '0')
+      }))
+    })
+
+    /* Neun sind da, einer davon mit Karte in der Hand. */
+    for (const person of leute.slice(0, 9)) await ruf('participant.attendance', { id: person.id, kind: 'in' })
+    for (let i = 0; i < 6; i++) {
+      await ruf('card.assign', { participantId: leute[i].id, code: 'DEMO-KARTE-' + String(i + 1).padStart(3, '0') })
+    }
+
+    /*
+     * **Ein eigener Wahlgang, der gerade läuft.**
+     *
+     * Nicht der Delegiertenwahlgang: Der steht auf den Aufnahmen von
+     * Kandidatenliste, Stimmzettel, Druck und Ergebnis, und ein eröffneter
+     * Wahlgang zeigte dort überall etwas anderes. Der Schriftführer passt
+     * ohnehin zur Tagesordnung.
+     */
+    const schriftfuehrer = await anlegen(
+      { title: 'Wahl des Schriftführers', purpose: 'secretary', procedure: 'single_multiple_candidates', seats: 1, maxVotes: 1 },
+      ['Nina Lorenz', 'Ruben Thiele'],
+      'freigegeben'
+    )
+    await ruf('round.start', schriftfuehrer.id)
+    await ruf('round.setStatus', { roundId: schriftfuehrer.id, status: 'open' })
+    /* Erst die Zettel, dann die digitale Wahl: Wer eine digitale Berechtigung
+       hat, bekommt keinen Zettel mehr — und genau so soll es sein. */
+    for (const person of leute.slice(0, 4)) {
+      await ruf('handout.issue', { roundId: schriftfuehrer.id, participantId: person.id })
+    }
+    await ruf('voting.prepare', {
+      roundId: schriftfuehrer.id, geheimnis: 'secret', geraete: 'both', signer: 'hub'
+    })
+    await ruf('voting.open', schriftfuehrer.id)
+
+    /* Eine Rede, einem Bewerber zugeordnet — dafür ist der Prompter da. */
+    const rede = await ruf('speech.create', 'Bewerbung um den Vorsitz')
+    await ruf('speech.save', {
+      id: rede.id,
+      markdown: [
+        '# Bewerbung um den Vorsitz',
+        '',
+        '[Zum Publikum schauen und kurz warten]',
+        '',
+        'Liebe Mitglieder, ich danke Ihnen für das Vertrauen der vergangenen Jahre.',
+        '',
+        '---',
+        '',
+        'Drei Dinge nehme ich mir für die kommende Wahlperiode vor.',
+        '',
+        '- die Mitgliederwerbung in den Ortsverbänden',
+        '- verlässliche Termine für die Vorstandssitzungen',
+        '- ein offenes Ohr für die Arbeitsgemeinschaften',
+        '',
+        '[Langsamer sprechen]',
+        '',
+        'Deshalb bitte ich Sie um Ihre Stimme.'
+      ].join('\\n')
+    })
+    const vorsitzBewerber = (await ruf('round.detail', vorsitz.id)).candidates[0]
+    await ruf('speech.assign', {
+      id: rede.id, candidateId: vorsitzBewerber.id, candidateName: vorsitzBewerber.displayName
+    })
+    await ruf('prompter.load', rede.id)
+
     await ruf('projection.setMode', { mode: 'result', roundId: akzeptanz.id, showAll: true })
     await ruf('projection.openAudience')
 
     return {
-      zusammenfassung: 'Veranstaltung, 7 Tagesordnungspunkte, 4 Wahlgänge, 2 bestätigte Ergebnisse',
+      zusammenfassung:
+        'Veranstaltung, 11 Tagesordnungspunkte, 4 Wahlgänge, 2 bestätigte Ergebnisse, ' +
+        leute.length + ' Teilnehmer, 40 Karten, 1 Rede',
       wahlgangDelegierte: delegierte.id,
-      wahlgangAkzeptanz: akzeptanz.id
+      wahlgangAkzeptanz: akzeptanz.id,
+      wahlgangVorsitz: vorsitz.id,
+      wahlgangLaufend: schriftfuehrer.id
     }
   } catch (fehler) {
     return { fehler: String(fehler && fehler.message ? fehler.message : fehler) }
   }
 })()`
+}
+
+/**
+ * Einen Knopf über seine Beschriftung anklicken.
+ *
+ * Seiten, die mehrere Wahlgänge zur Auswahl stellen, zeigen ohne Klick nur
+ * diese Auswahl — ein Bildschirmfoto davon erklärt nichts. Hier wird also
+ * genau das getan, was auch ein Mensch täte: den richtigen anklicken.
+ */
+async function klickeKnopf(sitzung, beschriftung) {
+  /*
+   * **Nur im Inhaltsbereich.** Dieselbe Beschriftung steht auch in der
+   * Navigation links — und der erste Versuch traf genau die: Statt den
+   * Wahlgang auf der Seite auszuwählen, sprang das Werkzeug auf dessen
+   * Detailseite und fotografierte die Kandidatenliste.
+   */
+  const ergebnis = await sitzung.auswerten(`(() => {
+    const bereich = document.querySelector('main') || document
+    const b = Array.from(bereich.querySelectorAll('button')).find((x) =>
+      (x.textContent || '').includes(${JSON.stringify(beschriftung)})
+    )
+    if (!b) return 'nicht gefunden'
+    b.click()
+    return 'ok'
+  })()`)
+  if (ergebnis !== 'ok') console.log(`  Hinweis: Knopf "${beschriftung}" nicht gefunden.`)
+}
+
+/** Nach oben — sonst zeigt die Aufnahme die Mitte einer Seite. */
+async function nachOben(sitzung) {
+  await sitzung.auswerten('window.scrollTo(0, 0); true')
+  await warte(400)
 }
 
 /**
@@ -423,6 +559,7 @@ try {
   for (const [pfad, datei] of seiten) {
     await sitzung.auswerten(`window.location.hash = '#/${pfad}'`)
     await warte(1200)
+    await nachOben(sitzung)
     await sitzung.aufnehmen(datei)
   }
 
@@ -615,6 +752,78 @@ try {
   )
   await warte(900)
   await sitzung.aufnehmen('20-videosteuerung')
+
+  /*
+   * **Der Einlass, die Ausgabe und die digitale Wahl.**
+   *
+   * Drei Seiten, die es bei den ersten Aufnahmen noch nicht gab — und genau
+   * die drei, nach denen jemand sucht, der wissen will, ob Votura auch die
+   * Anwesenheit führt. Ein Bildschirmfoto, das eine Fassung zurückliegt, ist
+   * schlimmer als keines: Es zeigt eine Anwendung, die es nicht mehr gibt.
+   */
+  console.log('Einlass und Ausgabe …')
+  await sitzung.auswerten("window.location.hash = '#/akkreditierung'")
+  await warte(1800)
+  await nachOben(sitzung)
+  await sitzung.aufnehmen('26-akkreditierung')
+
+  /* Ausgabe und digitale Wahl stellen erst den Wahlgang zur Wahl. Ohne Klick
+     fotografierte das Werkzeug eine leere Seite mit vier Knöpfen. */
+  for (const [pfad, datei] of [
+    ['ausgabe', '27-ausgabe'],
+    ['digitalewahl', '28-digitale-wahl']
+  ]) {
+    await sitzung.auswerten(`window.location.hash = '#/${pfad}'`)
+    await warte(1600)
+    await klickeKnopf(sitzung, 'Wahl des Schriftführers')
+    await warte(1600)
+    await nachOben(sitzung)
+    await sitzung.aufnehmen(datei)
+  }
+
+  /* Das Saalnetz: Namensdienst, Adressvergabe, Zertifikat. */
+  await sitzung.auswerten("window.location.hash = '#/settings'")
+  await warte(1000)
+  await reiterOeffnen(sitzung, 'Saalnetz')
+  await warte(1200)
+  await sitzung.aufnehmen('29-saalnetz')
+
+  /* Die Bühnen — mehr als eine Leinwand ist der Grund für diese Ansicht. */
+  console.log('Bühnen und Prompter …')
+  await sitzung.auswerten("window.location.hash = '#/beamer'")
+  await warte(1400)
+  await reiterOeffnen(sitzung, 'Ausgabe & Netz')
+  await warte(1200)
+  await sitzung.aufnehmen('23-buehnen')
+
+  /* Die Bedienung des Prompters — mit aufgelegter Rede und Zuordnung. */
+  await sitzung.auswerten("window.location.hash = '#/prompter'")
+  await warte(1600)
+  await sitzung.aufnehmen('25-prompter-bedienung')
+
+  /*
+   * Das Pult selbst.
+   *
+   * Es ist ein eigenes Fenster; geöffnet wird es über denselben Weg wie in
+   * der Bedienung. Der Lauf wird dabei angehalten — ein Text, der während der
+   * Aufnahme weiterrollt, steht auf jedem Foto woanders.
+   */
+  await sitzung.auswerten("window.votura.invoke('prompter.openWindow')")
+  await warte(2500)
+  await sitzung.auswerten("window.votura.invoke('prompter.setRunning', false)")
+  const pultZiel = (await ziele()).find((z) => z.url.includes('teleprompter'))
+  if (pultZiel) {
+    const pult = await Sitzung.verbinde(pultZiel.webSocketDebuggerUrl)
+    await pult.sende('Page.enable')
+    await pult.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1280, height: 720, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(1500)
+    await pult.aufnehmen('24-teleprompter')
+    pult.schliessen()
+  } else {
+    console.log('  Hinweis: Prompterfenster nicht gefunden – 24-teleprompter übersprungen.')
+  }
 
   sitzung.schliessen()
   console.log('Fertig.')

@@ -482,6 +482,13 @@ Die folgenden Aufnahmen stammen aus einem Demo-Bestand und lassen sich mit
 | ![Systemcheck](screenshots/05-systemcheck.png)                           | Prüfung vor der Versammlung                                                |
 | ![Einstellungen](screenshots/06-einstellungen.png)                       | Drucker, Sicherheit, Konten, Beamer-Erscheinungsbild                       |
 | ![Beameransicht](screenshots/11-beameransicht.png)                       | Öffentliche Anzeige des Ergebnisses                                        |
+| ![Akkreditierung](screenshots/26-akkreditierung.png)                     | Einlass: Teilnehmer, Anwesenheit, Ausweise                                 |
+| ![Ausgabe](screenshots/27-ausgabe.png)                                   | Ein Zettel gegen einen Ausweis, je Wahlgang genau einer                    |
+| ![Digitale Abstimmung](screenshots/28-digitale-wahl.png)                 | Vorbereiten, eröffnen, schließen, übernehmen                               |
+| ![Saalnetz](screenshots/29-saalnetz.png)                                 | Namensdienst, Adressvergabe und Zertifikat für das Veranstaltungsnetz      |
+| ![Bühnen](screenshots/23-buehnen.png)                                    | Mehrere Anzeigeflächen, jede mit eigenem Bild                              |
+| ![Prompter](screenshots/25-prompter-bedienung.png)                       | Reden ablegen, auflegen und Bewerbern zuordnen                             |
+| ![Pult](screenshots/24-teleprompter.png)                                 | Was am Pult zu sehen ist — Text, Lesezeile, Restzeit                       |
 
 ## Akkreditierung, Ausweise und Ausgabe
 
