@@ -76,11 +76,14 @@ describe('Die Prompterseite bekommt, was die Erkennung braucht', () => {
      */
     expect(haupt).toContain('setPermissionRequestHandler')
     expect(haupt).toContain("permission !== 'media'")
-    /* Ton nur vom Pult, Bild nur aus der eigenen Oberfläche. */
-    expect(haupt).toContain("art === 'audio'")
-    expect(haupt).toContain('istEigeneOberflaeche')
-    /* Eine eingebettete Präsentation bekommt beides nicht. */
-    expect(haupt).toContain('PRESENTATION_SCHEME')
+    /*
+     * Welches Fenster was bekommt, entscheidet `darfMedium` — und das wird in
+     * `medienrechte.test.ts` an seinem Verhalten geprüft, nicht an
+     * Textstellen. Hier bleibt nur die Frage, ob der Hauptprozess überhaupt
+     * dort nachfragt, statt selbst zu entscheiden.
+     */
+    expect(haupt).toContain('darfMedium(contents.getURL()')
+    expect(haupt).not.toContain('callback(true)')
   })
 })
 

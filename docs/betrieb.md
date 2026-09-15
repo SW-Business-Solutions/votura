@@ -198,6 +198,11 @@ gesprochen wird. Unter _Prompter → Lauf_ die Laufart **Nach Stimme** wählen.
 Passt es einmal nicht, hilft **Von Hand**: Der Text bewegt sich dann nur auf Tastendruck — bei
 einer Rede mit vielen Zwischenrufen oft die ruhigere Wahl.
 
+Meldet das Pult **„Kein Zugriff auf das Mikrofon"**, hat Windows oder macOS den Zugriff für Votura
+gesperrt — in den Systemeinstellungen unter _Datenschutz → Mikrofon_ freigeben. Innerhalb der
+Anwendung gibt es dafür keinen Schalter: Das Mikrofon bekommt allein das Prompterfenster, und zwar
+immer.
+
 ## Geräte im Saal: Votura Saal
 
 Für Bühnen und das Pult gibt es eine eigene kleine Anwendung. Sie muss nicht eingerichtet werden —

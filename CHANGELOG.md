@@ -31,6 +31,11 @@ einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
 
 ### Behoben
 
+- **Kein Mikrofon am Pult in der Entwicklungsfassung.** Das Mikrofon bekommt allein die
+  Prompterseite, erkannt an ihrem eigenen Schema — beim Entwickeln lädt sie aber wie jede andere
+  Seite vom Entwicklungsserver und war damit nicht als Pult zu erkennen. „Nach Stimme" ließ sich
+  ausgerechnet dort nicht ausprobieren, wo daran gearbeitet wird. Betrifft die fertige Anwendung
+  nicht.
 - **Umbenennen ging nicht** — in der Redenbibliothek, bei den Präsentationen und bei den Videos.
   Der Knopf öffnete `window.prompt`, das es in Electron nicht gibt: Es erschien nur die Meldung
   „prompt() is not supported". Jetzt fragt ein richtiger Dialog nach dem Namen.

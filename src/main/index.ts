@@ -6,6 +6,7 @@ import { extname, join, resolve } from 'node:path'
 import { PRESENTATION_SCHEME, presentationKind } from '@shared/presentation'
 import { VIDEO_SCHEME } from '@shared/video'
 import { PULT_SCHEME } from '@shared/speech'
+import { darfMedium } from './medienrechte'
 import { IPC } from '@shared/ipc'
 import { initDatabase, closeDatabase } from './db'
 import { callApi, registerIpc } from './ipc'
@@ -283,49 +284,30 @@ function hardenSecurity(): void {
   /*
    * Rechte: grundsätzlich nichts — mit zwei genau umrissenen Ausnahmen.
    *
-   * **Das Mikrofon** bekommt allein der Teleprompter. Damit hört er mit, wo im
-   * Manuskript gerade gesprochen wird; aufgenommen wird nichts, der Ton
-   * verlässt das Gerät nicht, und die Erkennung läuft an Ort und Stelle.
-   * Erkennbar ist das Fenster an seinem eigenen Schema — kein anderes lädt von
-   * dort, und eine Präsentation im Rahmen erst recht nicht.
+   * Welche das sind und warum, steht in `medienrechte.ts`. Dort steht es
+   * prüfbar: Ein Fenster, das versehentlich ein Mikrofon bekommt, fällt
+   * niemandem auf — eines, das versehentlich keines bekommt, erst im Saal.
    *
-   * **Die Kamera** bekommt die eigene Bedienoberfläche, weil dort QR-Codes
-   * gescannt werden: am Einlass und an der Ausgabe. Das fehlte, und der
-   * Browser meldete es als verweigerte Erlaubnis — gesucht wurde der Fehler
-   * dann in den Einstellungen des Rechners, wo nichts zu finden war.
-   *
-   * Die Trennung ist keine Feinheit: Ein Mikrofon in der Bedienoberfläche
-   * hätte nichts zu suchen, eine Kamera im Prompter ebenso wenig. Welche Art
-   * gemeint ist, steht in den Einzelheiten der Anfrage.
+   * Gefragt wird nach der **Adresse des Fensters**, nicht nach seiner
+   * Herkunft: Beim Entwickeln kommen alle Seiten vom selben Vite-Server, und
+   * erst der Pfad sagt, welche davon das Pult ist.
    */
-  const istEigeneOberflaeche = (url: string): boolean => {
-    if (url.startsWith(`${PRESENTATION_SCHEME}://`) || url.startsWith(`${PULT_SCHEME}://`)) return false
-    const entwicklung = process.env.ELECTRON_RENDERER_URL
-    return (entwicklung && url.startsWith(entwicklung)) || url.startsWith('file://')
-  }
-
-  const artErlaubt = (url: string, arten: string[]): boolean => {
-    if (arten.length === 0) return false
-    return arten.every((art) =>
-      art === 'audio'
-        ? url.startsWith(`${PULT_SCHEME}://`)
-        : art === 'video'
-          ? istEigeneOberflaeche(url)
-          : false
-    )
-  }
+  const entwicklungsUrl = process.env.ELECTRON_RENDERER_URL
 
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback, einzelheiten) => {
     if (permission !== 'media') {
       callback(false)
       return
     }
-    callback(artErlaubt(contents.getURL(), (einzelheiten as { mediaTypes?: string[] }).mediaTypes ?? []))
+    const arten = (einzelheiten as { mediaTypes?: string[] }).mediaTypes ?? []
+    callback(darfMedium(contents.getURL(), arten, entwicklungsUrl))
   })
-  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft, einzelheiten) => {
+  session.defaultSession.setPermissionCheckHandler((contents, permission, herkunft, einzelheiten) => {
     if (permission !== 'media') return false
     const art = (einzelheiten as { mediaType?: string }).mediaType ?? 'unknown'
-    return artErlaubt(herkunft, [art])
+    /* Die Herkunft trägt keinen Pfad — beim Entwickeln sähen alle Seiten
+       gleich aus. Wo es das Fenster gibt, zählt seine Adresse. */
+    return darfMedium(contents?.getURL() || herkunft, [art], entwicklungsUrl)
   })
 
   // Strenge CSP: alles aus dem Paket, nichts aus dem Netz.
@@ -364,9 +346,21 @@ function hardenSecurity(): void {
     }
 
     const policy = isDev
-      ? "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:* " +
+      ? /*
+         * Beim Entwickeln gilt dieselbe Regel auch für das Pult.
+         *
+         * Dort lädt die Prompterseite nicht unter ihrem eigenen Schema,
+         * sondern vom Vite-Server — und fällt damit unter diese Richtlinie.
+         * Ohne `wasm-unsafe-eval` verweigert Chromium der Spracherkennung die
+         * Übersetzung ihres Rechenteils, und zwar ohne Fehlermeldung, die
+         * irgendwo ankäme: Der Worker stirbt still, am Pult steht für immer
+         * „wird geladen". Genau dieselbe Erlaubnis steht in `PULT_CSP`.
+         */
+        "default-src 'self' 'unsafe-inline' data: blob: ws: http://localhost:* " +
         PRESENTATION_SCHEME +
-        ":; img-src 'self' data: blob:; frame-src " +
+        ":; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: " +
+        "http://localhost:*; worker-src 'self' blob:; child-src 'self' blob:; " +
+        "img-src 'self' data: blob:; frame-src " +
         PRESENTATION_SCHEME +
         ": ; media-src 'self' " +
         VIDEO_SCHEME +

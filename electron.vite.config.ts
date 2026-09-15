@@ -1,6 +1,49 @@
-import { resolve } from 'node:path'
+import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs'
+import type { ServerResponse } from 'node:http'
+import { extname, join, resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import type { Plugin, ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
+import { SPRACHMODELL_PFAD } from './src/shared/sprachmodell'
+
+/**
+ * Das Sprachmodell in der Entwicklungsfassung.
+ *
+ * Im fertigen Programm liefert der Hauptprozess es unter dem Pultschema aus —
+ * mit der vollen Suchreihenfolge: erst das selbst hinterlegte Modell, dann das
+ * mitgelieferte. Beim Entwickeln kommt die Prompterseite aber vom
+ * Vite-Server, der von alledem nichts weiß: Die Erkennung lief ins Leere, und
+ * am Pult stand „Kein Sprachmodell hinterlegt", obwohl eines danebenlag.
+ *
+ * Der Server reicht deshalb das mitgelieferte Archiv durch. Nur dieses eine —
+ * ein selbst hinterlegtes liegt im Benutzerordner des Betriebssystems, und
+ * dessen Pfad hier nachzubauen hieße, eine Regel an zwei Stellen zu pflegen.
+ */
+function sprachmodellImEntwurf(): Plugin {
+  const ordner = resolve(__dirname, 'resources', 'sprachmodell')
+  return {
+    name: 'votura-sprachmodell-entwurf',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(SPRACHMODELL_PFAD, (_anfrage, antwort: ServerResponse) => {
+        const archiv = existsSync(ordner)
+          ? readdirSync(ordner)
+              .filter((name) => /^\.(zip|gz|tgz)$/i.test(extname(name)))
+              .sort()[0]
+          : undefined
+        if (!archiv) {
+          antwort.statusCode = 404
+          antwort.end('Kein Sprachmodell in resources/sprachmodell.')
+          return
+        }
+        const datei = join(ordner, archiv)
+        antwort.setHeader('Content-Type', 'application/octet-stream')
+        antwort.setHeader('Content-Length', String(statSync(datei).size))
+        antwort.setHeader('Cache-Control', 'no-store')
+        createReadStream(datei).pipe(antwort)
+      })
+    }
+  }
+}
 
 export default defineConfig({
   main: {
@@ -61,6 +104,6 @@ export default defineConfig({
         '@': resolve(__dirname, 'src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react(), sprachmodellImEntwurf()]
   }
 })
