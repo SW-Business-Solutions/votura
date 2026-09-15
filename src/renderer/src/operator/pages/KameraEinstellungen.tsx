@@ -35,15 +35,31 @@ import { api } from '../../lib/api'
 import { useApp } from '../state'
 import { Card, Checkbox, Field } from '../components/ui'
 
-function neueKamera(): PtzKamera {
+function neueKamera(vorlage?: { name: string; adresse?: string }): PtzKamera {
   return {
-    id: `ptz-${Date.now().toString(36)}`,
-    name: 'Kamera',
-    host: '',
+    id: `ptz-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    name: vorlage ? kurzerQuellenname(vorlage.name) : 'Kamera',
+    /*
+     * Die Adresse kommt aus der NDI-Suche.
+     *
+     * Das ist der eigentliche Gewinn daran, beides auf einer Seite zu haben:
+     * Eine Kamera, die ihr Bild ins Netz sendet, verrät dabei, wo sie steht —
+     * und genau diese Adresse braucht die Steuerung. Niemand muss sie
+     * abtippen oder im Router suchen.
+     */
+    host: vorlage ? hostAus(vorlage.adresse) : '',
     profil: 'visca-roh-udp',
+    quelle: vorlage?.name,
     positionen: PTZ_POSITIONEN_VORSCHLAG.map((position) => ({ ...position })),
     enabled: true
   }
+}
+
+/** Aus „192.168.1.60:5961" wird „192.168.1.60". */
+function hostAus(adresse?: string): string {
+  if (!adresse) return ''
+  const doppelpunkt = adresse.lastIndexOf(':')
+  return doppelpunkt > 0 ? adresse.slice(0, doppelpunkt) : adresse
 }
 
 export function KameraEinstellungen(): JSX.Element {
@@ -110,6 +126,57 @@ export function KameraEinstellungen(): JSX.Element {
 
   return (
     <>
+      {/*
+        Was im Saal steht, bevor es um Einstellungen geht.
+
+        Ein Reiter namens „Kameras", der von den Kameras im Raum nichts zeigt,
+        ist eine Falle: Man sucht sie hier und findet eine leere Liste. Dabei
+        liefert die NDI-Suche genau die Adresse, die die Steuerung braucht.
+      */}
+      <Card title="Im Netz gefunden">
+        {stand.untauglich ? (
+          <p className="hint">
+            Auf diesem Rechner lässt sich nicht nach Kameras suchen. {stand.untauglich} Eine
+            Steuerung von Hand einzurichten geht trotzdem — dafür genügt die Adresse der Kamera.
+          </p>
+        ) : stand.quellen.length === 0 ? (
+          <p className="hint">
+            {stand.sucht ? 'Es meldet sich keine Kamera.' : 'Die Suche läuft an …'} Gefunden werden
+            nur Geräte im <strong>selben Netz</strong>, die ihr Bild über NDI senden. Eine Kamera,
+            die nur gesteuert werden soll, steht hier nicht — die wird unten von Hand eingetragen.
+          </p>
+        ) : (
+          <table className="liste">
+            <tbody>
+              {stand.quellen.map((quelle) => {
+                const schon = kameras.find((kamera) => kamera.quelle === quelle.name)
+                return (
+                  <tr key={quelle.name}>
+                    <td>
+                      <div>{kurzerQuellenname(quelle.name)}</div>
+                      <div className="hint mono">{quelle.adresse ?? quelle.name}</div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {schon ? (
+                        <span className="hint">
+                          Steuerung eingerichtet: {schon.name}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setKameras([...kameras, neueKamera(quelle)])}
+                        >
+                          Steuerung einrichten
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
       <Card title="Steuerbare Kameras">
         <p className="hint">
           Eine Kamera, die sich über das Netz bewegen lässt, fährt auf Wunsch von selbst auf ihre
@@ -119,7 +186,10 @@ export function KameraEinstellungen(): JSX.Element {
         </p>
 
         {kameras.length === 0 && (
-          <p className="hint">Es ist keine Kamera eingerichtet. Ohne Eintrag fragt nichts im Netz herum.</p>
+          <p className="hint">
+            Es ist keine Kamera zum Steuern eingerichtet. Das ist der Regelfall: Ein Bild braucht
+            keine Steuerung, und eine Kamera, die niemand bewegt, auch nicht.
+          </p>
         )}
 
         {kameras.map((kamera) => {
