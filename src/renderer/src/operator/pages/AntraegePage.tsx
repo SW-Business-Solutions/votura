@@ -154,6 +154,41 @@ export function AntraegePage(): React.JSX.Element {
                 <button disabled={!darf} onClick={() => setErledigen(antrag)}>
                   Zurückziehen / erledigen
                 </button>
+                {/*
+                  Auf den Beamer — zweimal, und der Unterschied ist wichtig.
+
+                  „Wortlaut" zeigt den eingereichten Text; „mit Änderungen"
+                  den, über den am Ende abgestimmt wird. Während der Debatte
+                  gilt der erste, bei der Schlussabstimmung der zweite. Ein
+                  einziger Knopf müsste raten, welcher gemeint ist.
+                */}
+                <button
+                  className="primary"
+                  disabled={!darf}
+                  title="Den eingereichten Wortlaut zeigen."
+                  onClick={() =>
+                    void rufe(() =>
+                      api('projection.setMode', { mode: 'antrag', antrag: { id: antrag.id } }, app.ziel)
+                    )
+                  }
+                >
+                  📽 Wortlaut
+                </button>
+                <button
+                  disabled={!darf}
+                  title="Den Text zeigen, über den abgestimmt wird — samt übernommener Änderungen."
+                  onClick={() =>
+                    void rufe(() =>
+                      api(
+                        'projection.setMode',
+                        { mode: 'antrag', antrag: { id: antrag.id, mitAenderungen: true } },
+                        app.ziel
+                      )
+                    )
+                  }
+                >
+                  📽 Mit Änderungen
+                </button>
                 {!antrag.roundId && (
                   <button className="ghost" disabled={!darf} onClick={() => setLoeschen(antrag)}>
                     Löschen
@@ -209,6 +244,22 @@ export function AntraegePage(): React.JSX.Element {
                                 Übernehmen
                               </button>
                             )}
+                            <button
+                              className="primary"
+                              disabled={!darf}
+                              title="Diesen Änderungsantrag auf den Beamer."
+                              onClick={() =>
+                                void rufe(() =>
+                                  api(
+                                    'projection.setMode',
+                                    { mode: 'antrag', antrag: { id: aenderung.id } },
+                                    app.ziel
+                                  )
+                                )
+                              }
+                            >
+                              📽
+                            </button>
                             <button disabled={!darf} onClick={() => setBearbeiten(aenderung)}>
                               Bearbeiten
                             </button>

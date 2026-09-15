@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   abstimmungsreihenfolge,
+  antragSeiten,
   beschlusstext,
   darfUebernehmen,
   nachNummer,
@@ -170,6 +171,52 @@ describe('Die Übernahme', () => {
   it('gilt nicht für Hauptanträge', () => {
     const zweiter = antrag({ nummer: 'A 15' })
     expect(darfUebernehmen(zweiter, haupt).erlaubt).toBe(false)
+  })
+})
+
+describe('Der Antrag auf dem Beamer', () => {
+  it('bündelt Absätze auf einer Seite, solange sie passen — und zerreißt keinen', () => {
+    /*
+     * Ein Antragstext ist gegliedert: Absätze, Aufzählungen, Spiegelstriche.
+     * Ein Umbruch mitten in einer Aufzählung liest sich wie ein anderer
+     * Antrag. Solange ein Absatz ganz auf die laufende Seite passt, kommt er
+     * dorthin; sonst beginnt eine neue.
+     *
+     * Bei drei Zeilen je Seite heißt das: zwei einzeilige Absätze mit der
+     * Leerzeile dazwischen füllen die Seite, der dritte beginnt die nächste.
+     */
+    const text = ['Erster Absatz.', 'Zweiter Absatz.', 'Dritter Absatz.'].join('\n\n')
+    expect(antragSeiten(text, 3, 64)).toEqual([
+      'Erster Absatz.\n\nZweiter Absatz.',
+      'Dritter Absatz.'
+    ])
+  })
+
+  it('teilt einen Absatz, der für sich zu groß ist', () => {
+    /* Daran führt kein Weg vorbei — aber es bleibt die Ausnahme. */
+    const lang = Array.from({ length: 8 }, (_, i) => `Zeile ${i + 1}`).join('\n')
+    const seiten = antragSeiten(lang, 3, 64)
+    expect(seiten).toHaveLength(3)
+    expect(seiten[0].split('\n')).toHaveLength(3)
+  })
+
+  it('bricht lange Zeilen an Wortgrenzen', () => {
+    const seiten = antragSeiten('ein ziemlich langer satz der umbrechen muss', 5, 12)
+    expect(seiten[0].split('\n').every((zeile) => zeile.length <= 12)).toBe(true)
+  })
+
+  it('gibt bei leerem Text eine leere Seite zurück, nicht null Seiten', () => {
+    /* Sonst stünde „Seite 1 von 0" an der Wand. */
+    expect(antragSeiten('')).toEqual([''])
+  })
+
+  it('verliert kein Wort', () => {
+    const text =
+      'Der Verband möge beschließen:\n\nDer Beitrag beträgt fünf Euro.\n\nDie Änderung gilt ab 2027.'
+    const zurueck = antragSeiten(text, 2, 30).join(' ').replace(/\s+/g, ' ')
+    for (const wort of ['Verband', 'beschließen:', 'Beitrag', 'fünf', 'Euro.', '2027.']) {
+      expect(zurueck).toContain(wort)
+    }
   })
 })
 

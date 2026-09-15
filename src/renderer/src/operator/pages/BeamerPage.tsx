@@ -356,6 +356,54 @@ export function BeamerPage(): React.JSX.Element {
               Hält alles an: den Wechsel der Ansicht aus dem Wahlgangstatus <strong>und</strong> das
               Weiterblättern. Von Hand geht beides weiter.
             </div>
+            {/*
+              Ein Antrag blättert über seine eigenen Seiten.
+
+              Er hat keine Kandidatenliste, sondern einen Text — die
+              Seitenzahl hängt am Wortlaut und steht deshalb im Antrag selbst.
+              Zwei Seitenzähler nebeneinander zeigten irgendwann Verschiedenes;
+              deshalb eine eigene Zeile statt eines gemeinsamen Knopfs.
+            */}
+            {projection.mode === 'antrag' && (projection.antrag?.seiten.length ?? 0) > 1 && (
+              <div className="beamer-blaettern">
+                <span className="beamer-blaettern-marke">
+                  Seite {(projection.antrag?.seite ?? 0) + 1} von {projection.antrag?.seiten.length}
+                </span>
+                <div className="row" style={{ gap: 6 }}>
+                  <button
+                    className="mini"
+                    aria-label="Vorige Seite des Antrags"
+                    disabled={(projection.antrag?.seite ?? 0) === 0}
+                    onClick={() =>
+                      void api(
+                        'projection.setMode',
+                        { mode: 'antrag', antrag: { seite: (projection.antrag?.seite ?? 0) - 1 } },
+                        ziel
+                      ).catch(app.reportError)
+                    }
+                  >
+                    ‹
+                  </button>
+                  <button
+                    className="mini"
+                    aria-label="Nächste Seite des Antrags"
+                    disabled={
+                      (projection.antrag?.seite ?? 0) >= (projection.antrag?.seiten.length ?? 1) - 1
+                    }
+                    onClick={() =>
+                      void api(
+                        'projection.setMode',
+                        { mode: 'antrag', antrag: { seite: (projection.antrag?.seite ?? 0) + 1 } },
+                        ziel
+                      ).catch(app.reportError)
+                    }
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+            )}
+
             {projection.candidatePageCount > 1 && (
               /*
                * Eine Zeile, eine Fluchtlinie.

@@ -1033,3 +1033,67 @@ html {
 .projection-untertitel .vorlaeufig {
   opacity: 0.6;
 }
+
+/*
+ * Der Antrag an der Wand.
+ *
+ * Kopf, Text, Fuß — und der Text bekommt den ganzen Platz dazwischen. Die
+ * Maße hängen an `cqh`, wie alles in dieser Ansicht: Dieselbe Fläche trägt
+ * eine Vorschau von 300 Pixeln und einen Beamer von vier Metern.
+ */
+.projection-root.antrag-mode {
+  padding: 4cqh 5cqw;
+  gap: 2cqh;
+}
+
+.projection-antrag-kopf {
+  flex: 0 0 auto;
+  border-bottom: 0.4cqh solid var(--projection-primary, #4a9eff);
+  padding-bottom: 1.5cqh;
+}
+
+.projection-antrag-nummer {
+  font-size: 3.2cqh;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--projection-primary, #4a9eff);
+}
+
+.projection-antrag-titel {
+  font-size: 5cqh;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.projection-antrag-steller {
+  margin-top: 0.6cqh;
+  font-size: 2.6cqh;
+  color: var(--projection-muted, #9fb0bf);
+}
+
+/*
+ * Der Antragstext.
+ *
+ * `pre-wrap`, weil der Wortlaut zählt: Absätze, Einrückungen und
+ * Aufzählungen sind Teil dessen, worüber abgestimmt wird. Umbrochen ist er
+ * bereits in `@shared/antrag` — hier wird nur gezeichnet, damit jede Wand
+ * dieselbe Seite zeigt.
+ */
+.projection-antrag-text {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  font-size: 3.6cqh;
+  line-height: 1.45;
+}
+
+.projection-antrag-fuss {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  font-size: 2.4cqh;
+  color: var(--projection-muted, #9fb0bf);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

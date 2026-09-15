@@ -33,6 +33,13 @@ import {
 import type { ProjectionPresentation } from '@shared/presentation'
 import type { ProjectionCamera } from '@shared/kamera'
 import {
+  abstimmungsreihenfolge,
+  antragSeiten,
+  beschlusstext,
+  type ProjectionAntrag
+} from '@shared/antrag'
+import { getAntrag, listAntraege } from './antraege'
+import {
   UNTERTITEL_STILLE_MS,
   type ProjectionUntertitel
 } from '@shared/untertitel'
@@ -431,6 +438,19 @@ export interface SetModeInput {
   videoId?: UUID
   /** Welche Kamera gezeigt wird (nur im Modus 'kamera'). */
   kamera?: { quelle: string; label?: string }
+  /**
+   * Welcher Antrag gezeigt wird (nur im Modus 'antrag').
+   *
+   * `mitAenderungen` entscheidet, welcher Text erscheint: der eingereichte
+   * oder der um übernommene Änderungen ergänzte. Beim Abstimmen über den
+   * Hauptantrag ist der zweite der richtige — über ihn wird abgestimmt.
+   *
+   * **Ohne `id` wird nur geblättert.** Beim Umblättern soll der Antrag
+   * derselbe bleiben; die Kennung noch einmal mitzuschicken hieße, ihn neu
+   * zu laden — und dabei ginge `mitAenderungen` verloren, wenn es der
+   * Aufrufer nicht wiederholt.
+   */
+  antrag?: { id?: UUID; seite?: number; mitAenderungen?: boolean }
   /** Wer sich vorstellt und wie lange (nur im Modus 'speaker'). */
   speaker?: {
     name: string
@@ -596,6 +616,13 @@ export function setProjection(
      * schwer zu finden: Es bricht nichts, es fehlt nur etwas.
      */
     untertitel: state.untertitel,
+    /*
+     * Der Antrag überlebt den Ansichtswechsel nicht — wie Film und
+     * Foliensatz. Wer zurück auf den Wahlgang schaltet, will den Wahlgang
+     * sehen; bliebe der Antrag stehen, zeigte die Netzansicht beim nächsten
+     * Wechsel wieder einen Text, über den längst entschieden ist.
+     */
+    antrag: input.mode === 'antrag' ? antragFuer(input.antrag, state.antrag) : undefined,
     updatedAt: new Date().toISOString()
   })
 
@@ -717,6 +744,56 @@ function seitenZahlFuer(
  * die Kamera schaltet, hat sie eben erst gewählt und soll sie nicht noch
  * einmal wählen müssen. Erst ein Wechsel des Modus lässt sie los.
  */
+/**
+ * Den Antrag für die Wand zusammenstellen.
+ *
+ * Geladen wird hier und nicht in der Ansicht: Der Beamer bekommt fertigen
+ * Text, keine Kennung zum Nachschlagen — dieselbe Regel wie beim Wahlgang.
+ *
+ * Mitgegeben wird auch, der **wievielte** Schritt das ist. „Änderungsantrag 1
+ * von 2" sagt dem Saal, wo er sich befindet; ohne diese Zeile ist ein Antrag
+ * an der Wand nur ein Text.
+ */
+function antragFuer(
+  eingabe: SetModeInput['antrag'],
+  bisher: ProjectionAntrag | undefined
+): ProjectionAntrag | undefined {
+  if (!eingabe?.id) {
+    /* Nur die Seite blättern: Der Antrag bleibt, die Seite wechselt. */
+    if (bisher && eingabe?.seite !== undefined) {
+      return { ...bisher, seite: Math.max(0, Math.min(eingabe.seite, bisher.seiten.length - 1)) }
+    }
+    return bisher
+  }
+
+  const antrag = getAntrag(eingabe.id)
+  const alle = listAntraege(antrag.eventId)
+  const mitAenderungen = eingabe.mitAenderungen ?? false
+  const text =
+    mitAenderungen && antrag.art === 'haupt' ? beschlusstext(antrag, alle) : antrag.text
+
+  /*
+   * Der Schritt zählt in der Reihenfolge des Hauptantrags — auch dann, wenn
+   * gerade ein Änderungsantrag gezeigt wird.
+   */
+  const hauptId = antrag.art === 'haupt' ? antrag.id : antrag.bezugId
+  const folge = hauptId
+    ? abstimmungsreihenfolge(alle.find((eintrag) => eintrag.id === hauptId) ?? antrag, alle)
+    : []
+  const stelle = folge.findIndex((schritt) => schritt.antrag.id === antrag.id)
+
+  const seiten = antragSeiten(text)
+  return {
+    nummer: antrag.nummer,
+    titel: antrag.titel,
+    antragsteller: antrag.antragsteller,
+    seiten,
+    seite: Math.max(0, Math.min(eingabe.seite ?? 0, seiten.length - 1)),
+    schritt: stelle >= 0 ? { nummer: stelle + 1, von: folge.length } : undefined,
+    mitAenderungen
+  }
+}
+
 function kameraFuer(
   eingabe: SetModeInput['kamera'],
   bisher: ProjectionCamera | undefined

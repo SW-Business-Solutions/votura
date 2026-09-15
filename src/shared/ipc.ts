@@ -734,6 +734,8 @@ export interface Api {
       videoId?: UUID
       /** Welche Kamera gezeigt wird (nur im Modus 'kamera'). */
       kamera?: { quelle: string; label?: string }
+      /** Welcher Antrag gezeigt wird (nur im Modus 'antrag'). */
+      antrag?: { id?: UUID; seite?: number; mitAenderungen?: boolean }
     },
     stage?: Buehnenwahl
   ) => Promise<ProjectionState>

@@ -72,6 +72,20 @@ Sie stehen untereinander, benannt und zurückverfolgbar.
 weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
 über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
 
+**Und auf den Beamer.** Ein Antragsbuch, das nicht an die Wand kommt, wäre ein halbes: Worüber
+abgestimmt wird, muss im Saal lesbar sein. Auf der Antragsseite stehen dafür zwei Knöpfe, und der
+Unterschied ist wichtig — **Wortlaut** zeigt den eingereichten Text, **mit Änderungen** den, über
+den am Ende abgestimmt wird. Während der Debatte gilt der erste, bei der Schlussabstimmung der
+zweite; ein einziger Knopf müsste raten, welcher gemeint ist.
+
+An der Wand stehen Nummer, Titel und Antragsteller über dem Text — ein Wortlaut ohne Nummer ist für
+jeden, der den Saal betritt, ein Zettel ohne Absender. Darunter: **„Abstimmung 1 von 2"**. Das sagt
+dem Saal, wo er sich befindet, und der Versammlungsleitung, was noch kommt.
+
+Lange Anträge werden in **Seiten** umbrochen — an Absatzgrenzen, solange der Absatz auf eine Seite
+passt. Ein Umbruch mitten in einer Aufzählung liest sich wie ein anderer Antrag. Umbrochen wird
+zentral und nicht in der Ansicht: Sonst hieße „Seite 2 von 3" auf jeder Wand etwas anderes.
+
 Jeder Schritt — eingereicht, geändert, übernommen, umgeordnet, erledigt — geht in den Prüfpfad. Ein
 Antrag ist kein Datensatz, sondern ein Vorgang; wer später fragt, was beschlossen wurde, fragt nach
 diesem Weg und nicht nach dem Endstand.

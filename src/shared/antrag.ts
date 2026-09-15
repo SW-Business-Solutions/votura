@@ -220,3 +220,122 @@ export function darfUebernehmen(aenderung: Antrag, haupt: Antrag): { erlaubt: bo
 export function nachNummer(a: Antrag, b: Antrag): number {
   return a.nummer.localeCompare(b.nummer, 'de', { numeric: true, sensitivity: 'base' })
 }
+
+/* ------------------------------------------------------- Auf dem Beamer */
+
+/**
+ * Was vom Antrag an der Wand steht.
+ *
+ * Bewusst **flach und fertig**: Der Beamer bekommt Text, keine Kennungen zum
+ * Nachschlagen. Er hat keinen Zugriff auf das Antragsbuch und soll auch
+ * keinen haben — dieselbe Regel wie beim Wahlgang.
+ */
+export interface ProjectionAntrag {
+  nummer: string
+  titel: string
+  antragsteller: string
+  /** Der Text, Seite für Seite — umbrochen in `antragSeiten`. */
+  seiten: string[]
+  /** Welche Seite gezeigt wird, bei 0 beginnend. */
+  seite: number
+  /**
+   * Der Schritt in der Abstimmungsreihenfolge, wenn es einen gibt.
+   *
+   * „Änderungsantrag 1 von 2" sagt dem Saal, wo er sich befindet — und der
+   * Versammlungsleitung, was noch kommt. Ohne diese Zeile ist ein Antrag an
+   * der Wand nur ein Text.
+   */
+  schritt?: { nummer: number; von: number }
+  /** Steht der Text schon samt übernommener Änderungen da? */
+  mitAenderungen: boolean
+}
+
+/**
+ * Wie viele Zeilen auf eine Beamerseite passen.
+ *
+ * Nicht aus dem Layout gerechnet, sondern aus der Leseentfernung: Ein
+ * Antragstext an der Wand muss aus der letzten Reihe lesbar sein, und dann
+ * bleiben ungefähr so viele Zeilen. Lieber eine Seite mehr als eine Schrift,
+ * die keiner entziffert.
+ */
+export const ANTRAG_ZEILEN_JE_SEITE = 14
+
+/** Wie viele Zeichen eine Zeile an der Wand fasst. */
+export const ANTRAG_ZEICHEN_JE_ZEILE = 64
+
+/**
+ * Bricht einen Antragstext in Beamerseiten.
+ *
+ * ## Warum hier und nicht in der Ansicht
+ *
+ * Weil sonst jede Wand nach ihrer eigenen Breite umbräche — und „Seite 2 von
+ * 3" auf der einen etwas anderes hieße als auf der anderen. Der Seitenzähler
+ * muss überall dasselbe bedeuten, auch in der Vorschau der Bedienung.
+ *
+ * ## Warum Absätze nicht zerrissen werden, wo es sich vermeiden lässt
+ *
+ * Ein Antragstext ist gegliedert: Absätze, Aufzählungen, Spiegelstriche. Ein
+ * Umbruch mitten in einer Aufzählung liest sich wie ein anderer Antrag.
+ * Deshalb wird an Absatzgrenzen umbrochen, solange der Absatz auf eine Seite
+ * passt — und erst darin an Zeilengrenzen, wenn er es nicht tut.
+ */
+export function antragSeiten(
+  text: string,
+  zeilenJeSeite = ANTRAG_ZEILEN_JE_SEITE,
+  zeichenJeZeile = ANTRAG_ZEICHEN_JE_ZEILE
+): string[] {
+  /* Erst jeden Absatz in Zeilen brechen, dann Zeilen zu Seiten bündeln. */
+  const absaetze = text.replace(/\r\n/g, '\n').split(/\n{2,}/)
+  const bloecke: string[][] = absaetze.map((absatz) => umbrechen(absatz, zeichenJeZeile))
+
+  const seiten: string[] = []
+  let laufend: string[] = []
+  const abschliessen = (): void => {
+    if (laufend.length > 0) seiten.push(laufend.join('\n').trimEnd())
+    laufend = []
+  }
+
+  for (const block of bloecke) {
+    /* Ein Absatz, der für sich genommen zu groß ist, wird aufgeteilt —
+       daran führt kein Weg vorbei. */
+    if (block.length > zeilenJeSeite) {
+      abschliessen()
+      for (let i = 0; i < block.length; i += zeilenJeSeite) {
+        seiten.push(block.slice(i, i + zeilenJeSeite).join('\n').trimEnd())
+      }
+      continue
+    }
+    /* +1 für die Leerzeile zwischen zwei Absätzen. */
+    const braucht = block.length + (laufend.length > 0 ? 1 : 0)
+    if (laufend.length + braucht > zeilenJeSeite) abschliessen()
+    if (laufend.length > 0) laufend.push('')
+    laufend.push(...block)
+  }
+  abschliessen()
+
+  return seiten.length > 0 ? seiten : ['']
+}
+
+/** Gierig an Wortgrenzen; ein zu langes Wort bekommt seine Zeile. */
+function umbrechen(absatz: string, zeichenJeZeile: number): string[] {
+  const zeilen: string[] = []
+  for (const roh of absatz.split('\n')) {
+    const woerter = roh.trim().split(/\s+/).filter(Boolean)
+    if (woerter.length === 0) {
+      zeilen.push('')
+      continue
+    }
+    let laufend = ''
+    for (const wort of woerter) {
+      const versuch = laufend ? `${laufend} ${wort}` : wort
+      if (versuch.length <= zeichenJeZeile || laufend === '') {
+        laufend = versuch
+      } else {
+        zeilen.push(laufend)
+        laufend = wort
+      }
+    }
+    if (laufend) zeilen.push(laufend)
+  }
+  return zeilen
+}

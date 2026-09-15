@@ -281,6 +281,57 @@ export function ProjectionScreen({
     )
   }
 
+  /*
+   * Der Antrag bekommt die ganze Fläche — aber mit Kopf.
+   *
+   * Anders als Bild, Film und Foliensatz: Nummer, Titel und Antragsteller
+   * gehören zum Text. Ein Antragswortlaut ohne Nummer an der Wand ist für
+   * jeden, der den Saal betritt, ein Zettel ohne Absender.
+   */
+  if (state.mode === 'antrag') {
+    return (
+      <div
+        className={`projection-root antrag-mode${preview ? ' preview' : ''}`}
+        style={style}
+      >
+        {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.untertitel && <Untertitelband untertitel={state.untertitel} />}
+        {state.antrag ? (
+          <>
+            <header className="projection-antrag-kopf">
+              <div className="projection-antrag-nummer">{state.antrag.nummer}</div>
+              <div className="projection-antrag-titel">{state.antrag.titel}</div>
+              <div className="projection-antrag-steller">
+                {state.antrag.antragsteller}
+                {state.antrag.mitAenderungen ? ' · mit übernommenen Änderungen' : ''}
+              </div>
+            </header>
+            <div className="projection-antrag-text">
+              {state.antrag.seiten[state.antrag.seite] ?? ''}
+            </div>
+            <footer className="projection-antrag-fuss">
+              <span>
+                {state.antrag.schritt
+                  ? `Abstimmung ${state.antrag.schritt.nummer} von ${state.antrag.schritt.von}`
+                  : ''}
+              </span>
+              <span>
+                {state.antrag.seiten.length > 1
+                  ? `Seite ${state.antrag.seite + 1} von ${state.antrag.seiten.length}`
+                  : ''}
+              </span>
+            </footer>
+          </>
+        ) : (
+          <div className="projection-presentation-empty">
+            <div className="projection-status">ANTRAG</div>
+            <div className="projection-note">Es ist kein Antrag ausgewählt.</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (state.mode === 'presentation') {
     return (
       <div className={`projection-root presentation-mode${preview ? ' preview' : ''}`} style={style}>

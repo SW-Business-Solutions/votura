@@ -178,6 +178,16 @@ describe('Seitenzahl je Ansicht', () => {
       'video',
       /* Ein Kamerabild hat keine Liste, durch die sich blättern ließe. */
       'kamera',
+      /*
+       * Ein Antrag blättert — aber nicht über `candidatePage`.
+       *
+       * Die Seitenzahl hängt am Text und nicht an einer Kandidatenliste; sie
+       * steht deshalb im Antrag selbst (`seiten`, `seite`), umbrochen in
+       * `@shared/antrag`. Über `candidatePageCount` zu blättern hieße, zwei
+       * Seitenzähler nebeneinander zu führen — und irgendwann zeigen sie
+       * Verschiedenes.
+       */
+      'antrag',
       'session_finished'
     ])
   })

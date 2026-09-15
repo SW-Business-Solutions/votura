@@ -7,6 +7,7 @@
  * Schreib-API.
  */
 import type { ProjectionPresentation } from './presentation'
+import type { ProjectionAntrag } from './antrag'
 import type { ProjectionUntertitel } from './untertitel'
 import type { ProjectionCamera } from './kamera'
 import type { ProjectionVideo } from './video'
@@ -29,6 +30,7 @@ export const PROJECTION_MODES = [
   'presentation',
   'video',
   'kamera',
+  'antrag',
   'session_finished'
 ] as const
 export type ProjectionMode = (typeof PROJECTION_MODES)[number]
@@ -50,6 +52,7 @@ export const PROJECTION_MODE_LABELS: Record<ProjectionMode, string> = {
   presentation: 'Präsentation',
   video: 'Video',
   kamera: 'Kamera',
+  antrag: 'Antrag',
   session_finished: 'Versammlung beendet'
 }
 
@@ -224,6 +227,7 @@ export function normalizeProjectionTheme(stored: Partial<ProjectionTheme> | unde
 }
 
 export type { ProjectionUntertitel } from './untertitel'
+export type { ProjectionAntrag } from './antrag'
 
 export interface ProjectionState {
   mode: ProjectionMode
@@ -316,6 +320,15 @@ export interface ProjectionState {
    * genug ist, um mitzureisen.
    */
   untertitel?: ProjectionUntertitel
+  /**
+   * Der Antrag, über den gerade gesprochen oder abgestimmt wird.
+   *
+   * Der Text steht hier — anders als bei Bild, Film und Foliensatz. Er ist
+   * ein paar hundert Zeichen lang, schon in Seiten umbrochen, und es gibt
+   * nichts, was die Ansicht nachschlagen könnte: Der Beamer kennt das
+   * Antragsbuch nicht und soll es nicht kennen.
+   */
+  antrag?: ProjectionAntrag
   updatedAt: IsoDateTime
 }
 

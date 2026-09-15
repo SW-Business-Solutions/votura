@@ -162,6 +162,26 @@ eine falsch geratene Stelle wäre ein verfälschter Beschluss.
 weitergehender Änderungsantrag wurde angenommen. Ohne diesen Satz stünde im Protokoll ein Antrag,
 über den nie abgestimmt wurde, und niemand wüsste mehr, warum.
 
+### Auf den Beamer
+
+Worüber abgestimmt wird, muss im Saal lesbar sein. Auf der Antragsseite stehen dafür **zwei** Knöpfe:
+
+| Knopf | Zeigt |
+| --- | --- |
+| **Wortlaut** | den eingereichten Text — während der Debatte |
+| **Mit Änderungen** | den Text, über den abgestimmt wird, samt übernommener Änderungen — bei der Schlussabstimmung |
+
+Ein einziger Knopf müsste raten, welcher gemeint ist.
+
+An der Wand stehen **Nummer, Titel und Antragsteller** über dem Text; ein Wortlaut ohne Nummer ist
+für jeden, der den Saal betritt, ein Zettel ohne Absender. In der Fußzeile steht **„Abstimmung 1 von
+2"** — das sagt dem Saal, wo er sich befindet, und der Versammlungsleitung, was noch kommt.
+
+Lange Anträge werden in **Seiten** umbrochen, an Absatzgrenzen: Ein Umbruch mitten in einer
+Aufzählung liest sich wie ein anderer Antrag. Geblättert wird in der Beamersteuerung. Der Umbruch
+passiert zentral und nicht in der Ansicht — sonst hieße „Seite 2 von 3" auf jeder Wand etwas
+anderes.
+
 Im Archiv der Veranstaltung liegt das Antragsbuch als `antraege.json` bei, samt fertigem
 Beschlusstext je Hauptantrag.
 
