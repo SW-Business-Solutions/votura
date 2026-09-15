@@ -22,14 +22,14 @@
  * SHA-256 sind deshalb vorab festgeschrieben — nachgesehen an dem, was der
  * Server heute ausliefert, nicht abgeschrieben.
  *
- * Für das große deutsche Modell stand hier zunächst keine — zwei Gigabyte
- * einmal zu laden, nur um eine Zeile zu schreiben, schien zu viel. Sie wurde
- * nachgetragen, als das Modell ohnehin einmal durch die Leitung ging.
+ * Das Feld bleibt **freiwillig**, und die Oberfläche zeigt an, was geprüft
+ * wird. Käme je ein Eintrag ohne Prüfsumme dazu, soll das zu sehen sein statt
+ * verborgen: Eine erfundene wäre schlimmer als keine — sie behauptete eine
+ * Sicherheit, die es nicht gibt.
  *
- * Das Feld bleibt trotzdem **freiwillig**, und die Oberfläche zeigt weiter
- * an, was geprüft wird. Käme je ein Eintrag ohne Prüfsumme dazu, soll das zu
- * sehen sein statt verborgen: Eine erfundene wäre schlimmer als keine — sie
- * behauptete eine Sicherheit, die es nicht gibt.
+ * ## Warum hier kein großes Modell steht
+ *
+ * Siehe `MODELL_HOECHSTGROESSE`. Kurz: Die Erkennung kann es nicht laden.
  */
 
 export interface Modellangebot {
@@ -50,6 +50,29 @@ export interface Modellangebot {
   hinweis: string
 }
 
+/**
+ * Wie groß ein Modell höchstens sein darf.
+ *
+ * **Das ist keine Sparsamkeit, sondern eine harte Grenze der Erkennung.**
+ *
+ * Hier stand einmal das große deutsche Modell mit 1,9 GB, empfohlen für
+ * Untertitel. Es lädt sauber herunter, es wird geprüft, es wird hinterlegt —
+ * und dann bleibt die Wand leer. In der Konsole des Zuhörerfensters steht
+ * `RangeError: Array buffer allocation failed`: Die Erkennung läuft in
+ * WebAssembly und packt das Archiv in **einen** Puffer aus. So groß wird der
+ * dort nicht.
+ *
+ * Ein Knopf, der zwei Gigabyte lädt und danach zuverlässig nichts tut, ist
+ * schlimmer als kein Knopf. Der Eintrag ist deshalb wieder verschwunden.
+ *
+ * Wo genau die Grenze liegt, ist **nicht gemessen** — 51 MB laufen, 1,9 GB
+ * scheitern. Die Schranke hier ist daher bewusst weit unter dem, was
+ * nachweislich scheitert, und weit über dem, was nachweislich läuft. Wer sie
+ * anhebt, um ein größeres Modell aufzunehmen, muss es vorher ausprobiert
+ * haben — nicht überschlagen.
+ */
+export const MODELL_HOECHSTGROESSE = 400 * 1024 * 1024
+
 /** Woher die Modelle kommen. */
 export const MODELL_QUELLE = 'https://alphacephei.com/vosk/models/'
 
@@ -63,7 +86,8 @@ export function modellAdresse(angebot: Modellangebot): string {
  *
  * Vosk führt Modelle für vier Dutzend Sprachen. Votura führt Versammlungen
  * auf Deutsch; eine vollständige Liste wäre eine Suchaufgabe, keine Hilfe.
- * Hier stehen die drei deutschen Stufen und ein englisches für Gäste.
+ * Hier stehen die beiden kleinen deutschen und ein englisches für Gäste —
+ * und nichts Größeres, siehe `MODELL_HOECHSTGROESSE`.
  */
 export const BEKANNTE_MODELLE: Modellangebot[] = [
   {
@@ -83,15 +107,6 @@ export const BEKANNTE_MODELLE: Modellangebot[] = [
     sha256: 'f8b080a69799bfb59402537d981edfcc59e9860e56b507c538d6eb8ac41dd4a6',
     hinweis:
       'Ein zweites kleines deutsches Modell, anders trainiert. Einen Versuch wert, wenn das mitgelieferte an einer Stimme scheitert.'
-  },
-  {
-    datei: 'vosk-model-de-0.21.zip',
-    name: 'Deutsch, groß',
-    sprache: 'Deutsch',
-    bytes: 2_031_717_803,
-    sha256: '245060756f8d8394fc5b13639cf220b7620205795f30f37b6823878d4f603b2a',
-    hinweis:
-      'Das große deutsche Modell — die eigentliche Verbesserung für Untertitel. Zwei Gigabyte, und es braucht beim ersten Start spürbar länger.'
   },
   {
     datei: 'vosk-model-small-en-us-0.15.zip',

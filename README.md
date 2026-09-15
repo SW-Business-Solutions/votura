@@ -636,15 +636,22 @@ Erkannt wird mit demselben Sprachmodell, mit dem der Prompter dem Redner nach Ge
 genügt ein kleines: Er muss nicht diktieren, sondern in einem Text, der schon dasteht, die Stelle
 **wiederfinden** — ein paar halbwegs erkannte Wörter reichen dafür.
 
-Untertitel haben diesen Text nicht. Sie zeigen jeden Irrtum. Für sie lohnt deshalb ein größeres
-Modell — unter **Einstellungen → Prompter** steht eine Liste bekannter Modelle mit einem Knopf
-daneben; das eigene schlägt immer das mitgelieferte. Was noch hilft: ein Mikrofon am Pult statt
-eines im Raum.
+Untertitel haben diesen Text nicht. Sie zeigen jeden Irrtum.
+
+**Und ein größeres Modell ist keine Lösung — jedenfalls nicht hier.** Die Erkennung läuft in
+WebAssembly und packt das Modellarchiv in einen einzigen Speicherblock aus; bei den zwei Gigabyte
+des großen deutschen Modells bricht das mit „Array buffer allocation failed" ab, und die Wand
+bleibt leer. Ausprobiert, nicht vermutet. In der Liste unter **Einstellungen → Prompter** stehen
+deshalb nur Modelle, die auch laufen.
+
+Was bleibt: das zweite kleine deutsche Modell versuchen, wenn eine Stimme schlecht erkannt wird —
+und vor allem ein **Mikrofon am Pult statt eines im Raum**. Das bringt mehr als jeder
+Modellwechsel.
 
 **Nachladen und offline bleiben ist kein Widerspruch.** Geladen wird nur auf Klick, nur aus der
 festen Liste, und die Adresse wird aus dem Dateinamen gebaut statt entgegengenommen — sonst wäre
-dieser Weg eine offene Tür. Geprüft wird vor dem Tausch: Größe **und** SHA-256, bei allen vier
-Einträgen. Die Liste zeigt an, was geprüft wird; stünde dort einmal „nur Größe", wäre das ehrlich
+dieser Weg eine offene Tür. Geprüft wird vor dem Tausch: Größe **und** SHA-256, bei jedem
+Eintrag. Die Liste zeigt an, was geprüft wird; stünde dort einmal „nur Größe", wäre das ehrlich
 gemeint und keine Formalie — eine erfundene Prüfsumme wäre schlimmer als keine. Im Prüfpfad steht
 hinterher, woher das Modell kam und welche Prüfsumme die Datei tatsächlich hatte.
 

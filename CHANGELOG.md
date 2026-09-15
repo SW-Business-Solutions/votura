@@ -12,8 +12,7 @@ des Anbieters, suchen Sie das richtige Archiv heraus, laden Sie es herunter, kom
 hinterlegen Sie es. Drei dieser vier Schritte kann ein Programm selbst tun.
 
 Unter **Einstellungen → Prompter** steht deshalb jetzt eine Liste bekannter Modelle mit einem
-Knopf daneben. Vier Einträge, keine Suchaufgabe: zwei kleine deutsche, das große deutsche und ein
-englisches für Gäste.
+Knopf daneben. Drei Einträge, keine Suchaufgabe: zwei kleine deutsche und ein englisches für Gäste.
 
 Das bricht **nicht** mit dem Grundsatz, dass Votura offline läuft:
 
@@ -25,14 +24,21 @@ Das bricht **nicht** mit dem Grundsatz, dass Votura offline läuft:
 - Im **Prüfpfad** steht hinterher, woher das Modell kam und welche Prüfsumme die Datei tatsächlich
   hatte.
 
-Alle vier Einträge tragen eine **Prüfsumme**, auch das große deutsche Modell mit zwei Gigabyte —
-nachgerechnet an dem, was der Server ausliefert, nicht abgeschrieben. Die Liste zeigt bei jedem
-Eintrag an, was geprüft wird; käme je einer ohne Prüfsumme dazu, stünde dort „nur Größe". Eine
-erfundene wäre schlimmer als keine: Sie behauptete eine Sicherheit, die es nicht gibt.
+Jeder Eintrag trägt eine **Prüfsumme** — nachgerechnet an dem, was der Server ausliefert, nicht
+abgeschrieben. Die Liste zeigt an, was geprüft wird; käme je einer ohne Prüfsumme dazu, stünde dort
+„nur Größe". Eine erfundene wäre schlimmer als keine: Sie behauptete eine Sicherheit, die es nicht
+gibt.
 
-**Welches nehmen?** Für den Prompter genügt das kleine — er muss nicht diktieren, sondern im
-bekannten Text die Stelle wiederfinden. Für Untertitel lohnt das große: Dort gibt es keinen Text
-zum Wiederfinden, und jeder Irrtum steht an der Wand.
+**Kein großes Modell — und das ist die unangenehme Erkenntnis dieser Fassung.** Das große deutsche
+Modell mit zwei Gigabyte stand kurz auf der Liste, empfohlen für Untertitel. Es lädt sauber
+herunter, es wird geprüft, es wird hinterlegt — und dann bleibt die Wand leer: Die Erkennung läuft
+in WebAssembly und packt das Archiv in einen einzigen Speicherblock aus, der so groß nicht wird
+(„Array buffer allocation failed"). Ein Knopf, der zwei Gigabyte lädt und danach zuverlässig nichts
+tut, ist schlimmer als kein Knopf. Der Eintrag ist wieder verschwunden, und eine Schranke im
+Quelltext hält fest, dass dort nichts Größeres hineingehört, ohne dass es jemand ausprobiert hat.
+
+Für Untertitel heißt das: Es bleibt bei dem, was ein kleines Modell hergibt — verständlich, aber
+nicht wörtlich. Mehr als jeder Modellwechsel bringt ein **Mikrofon am Pult statt eines im Raum**.
 
 ### Untertitel im Saal
 

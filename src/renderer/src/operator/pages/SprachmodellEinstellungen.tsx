@@ -147,10 +147,11 @@ export function SprachmodellEinstellungen(): React.JSX.Element {
                   <td>{megabyte(angebot.bytes)}</td>
                   <td>
                     {/*
-                      Beim großen Modell fehlt die Prüfsumme, und das steht
-                      hier statt im Kleingedruckten. Eine erfundene wäre
-                      schlimmer als keine: Sie behauptete eine Sicherheit,
-                      die es nicht gibt.
+                      Zurzeit trägt jeder Eintrag eine Prüfsumme. Die Spalte
+                      bleibt trotzdem: Käme je einer ohne dazu, gehört das
+                      hierhin und nicht ins Kleingedruckte. Eine erfundene
+                      Prüfsumme wäre schlimmer als keine — sie behauptete
+                      eine Sicherheit, die es nicht gibt.
                     */}
                     {angebot.sha256 ? (
                       <span title={angebot.sha256}>Größe und Prüfsumme</span>
@@ -186,9 +187,16 @@ export function SprachmodellEinstellungen(): React.JSX.Element {
           unangetastet.
         </div>
         <div className="hint">
-          <strong>Welches?</strong> Für den Prompter genügt das kleine deutsche — er muss nicht diktieren,
-          sondern im bekannten Text die Stelle wiederfinden. Für <strong>Untertitel</strong> lohnt das große:
-          Dort gibt es keinen Text zum Wiederfinden, und jeder Irrtum steht an der Wand.
+          <strong>Warum kein großes Modell?</strong> Weil die Erkennung es nicht laden kann. Sie läuft in
+          WebAssembly und packt das Archiv in einen einzigen Speicherblock aus; bei zwei Gigabyte bricht das
+          ab, und die Wand bliebe leer. Ausprobiert — der Knopf hätte zwei Gigabyte geladen und danach
+          zuverlässig nichts getan.
+        </div>
+        <div className="hint">
+          Für den <strong>Prompter</strong> genügt das Kleine ohnehin: Er muss nicht diktieren, sondern im
+          bekannten Text die Stelle wiederfinden. Für <strong>Untertitel</strong> bleibt es damit bei dem,
+          was ein kleines Modell hergibt — verständlich, aber nicht wörtlich. Wenn eine Stimme schlecht
+          erkannt wird, ist das zweite kleine Modell der Versuch, der hier möglich ist.
         </div>
       </Card>
     </>

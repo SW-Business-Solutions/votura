@@ -62,12 +62,36 @@ function paketOrdner(): string[] {
   ]
 }
 
+/**
+ * Das Modell, das in diesem Ordner gilt — das **jüngste**.
+ *
+ * Eigentlich liegt dort immer nur eines. „Eigentlich" ist hier das Problem
+ * gewesen: Bis zu einer Fassung wurde alphabetisch sortiert und das erste
+ * genommen. Solange das Aufräumen klappt, macht das keinen Unterschied —
+ * klappt es einmal nicht, entscheidet der Anfangsbuchstabe, welches Modell
+ * die Anwendung benutzt.
+ *
+ * Genau das ist passiert: Ein altes Archiv ließ sich nicht löschen, weil die
+ * Erkennung es noch offen hielt. Übrig blieben zwei Dateien, und
+ * `vosk-model-de-…` steht nun einmal vor `vosk-model-small-de-…`. Die
+ * Anwendung benutzte hartnäckig das alte, während die Oberfläche das neue
+ * meldete.
+ *
+ * Nach Zeit zu wählen ist die Antwort, die auch dann noch stimmt, wenn das
+ * Aufräumen scheitert: Was zuletzt hinterlegt wurde, gilt.
+ */
 function ersteDateiIn(ordner: string): string | undefined {
   if (!existsSync(ordner)) return undefined
   const treffer = readdirSync(ordner)
     .filter((name) => ENDUNGEN.test(extname(name)))
-    .sort()
-  return treffer[0] ? join(ordner, treffer[0]) : undefined
+    .map((name) => join(ordner, name))
+    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)
+  if (treffer.length > 1) {
+    logger.warn(
+      `Im Sprachmodellordner liegen ${treffer.length} Archive; es gilt das jüngste: ${basename(treffer[0])}`
+    )
+  }
+  return treffer[0]
 }
 
 /** Der Pfad des Modells, das gelten soll — eigenes vor mitgeliefertem. */
@@ -258,12 +282,29 @@ export async function sprachmodellLaden(
       logger.info(`Sprachmodell ${angebot.datei}: SHA-256 der geladenen Datei ${gerechnet}`)
     }
 
-    /* Erst jetzt das alte weg: Nur eines gleichzeitig, wie beim Hinterlegen
-       von Hand. */
-    for (const alt of readdirSync(ordner)) {
-      if (alt !== basename(arbeitsdatei)) rmSync(join(ordner, alt), { force: true })
-    }
+    /*
+     * Erst jetzt das alte weg — und ein Scheitern dabei nicht verschweigen.
+     *
+     * Unter Windows lässt sich eine Datei nicht löschen, die noch jemand
+     * offen hält, und die Erkennung hält das laufende Modell offen. Das
+     * schlug hier still fehl: Zwei Archive blieben liegen, und die Anwendung
+     * benutzte weiter das alte, während die Oberfläche das neue meldete.
+     *
+     * Bleiben kann es trotzdem — `ersteDateiIn` wählt nach Zeit, das neue
+     * gewinnt also. Aber im Protokoll soll stehen, dass aufgeräumt werden
+     * muss.
+     */
     renameSync(arbeitsdatei, join(ordner, angebot.datei))
+    for (const alt of readdirSync(ordner)) {
+      if (alt === angebot.datei) continue
+      try {
+        rmSync(join(ordner, alt), { force: true })
+      } catch (nichtLoeschbar) {
+        logger.warn(
+          `Altes Sprachmodell ${alt} ließ sich nicht entfernen (${grund(nichtLoeschbar)}) — es gilt trotzdem das neue.`
+        )
+      }
+    }
 
     const session = getSession()
     appendAudit({

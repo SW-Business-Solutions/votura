@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   BEKANNTE_MODELLE,
+  MODELL_HOECHSTGROESSE,
   MODELL_QUELLE,
   modellAdresse
 } from '../src/shared/sprachmodell-angebot'
@@ -26,12 +27,33 @@ describe('Die Angaben in der Liste', () => {
   it('nennt eine Größe, die keine Schätzung ist', () => {
     /*
      * Runde Zahlen wären ein Zeichen dafür, dass jemand „ungefähr 45 MB"
-     * eingetragen hat. Die Größe ist aber das Einzige, was beim großen Modell
-     * überhaupt geprüft wird — sie muss auf das Byte stimmen.
+     * eingetragen hat. Die Größe wird aber vor dem Tausch geprüft — und bei
+     * einem Eintrag ohne Prüfsumme wäre sie das Einzige. Sie muss auf das
+     * Byte stimmen.
      */
     for (const angebot of BEKANNTE_MODELLE) {
       expect(angebot.bytes, angebot.datei).toBeGreaterThan(1_000_000)
       expect(angebot.bytes % 1_000_000, angebot.datei).not.toBe(0)
+    }
+  })
+
+  it('bietet nichts an, was die Erkennung nicht laden kann', () => {
+    /*
+     * **Der teuerste Fehler dieser Liste, und er stand schon drin.**
+     *
+     * Das große deutsche Modell mit 1,9 GB war hier eingetragen und in der
+     * Oberfläche für Untertitel empfohlen. Es lädt sauber herunter, es wird
+     * geprüft, es wird hinterlegt — und dann bleibt die Wand leer: Die
+     * Erkennung läuft in WebAssembly und packt das Archiv in **einen**
+     * Speicherblock aus, der so groß nicht wird („Array buffer allocation
+     * failed").
+     *
+     * Ein Knopf, der zwei Gigabyte lädt und danach zuverlässig nichts tut,
+     * ist schlimmer als kein Knopf. Wer die Schranke anhebt, muss das größere
+     * Modell vorher ausprobiert haben — nicht überschlagen.
+     */
+    for (const angebot of BEKANNTE_MODELLE) {
+      expect(angebot.bytes, angebot.datei).toBeLessThanOrEqual(MODELL_HOECHSTGROESSE)
     }
   })
 
@@ -127,6 +149,29 @@ describe('Was beim Laden schiefgehen kann', () => {
     expect(dienst).toContain('renameSync(arbeitsdatei')
     /* Und im Fehlerfall bleibt nichts liegen. */
     expect(dienst).toMatch(/catch[\s\S]{0,200}rmSync\(arbeitsdatei/)
+  })
+
+  it('lässt das jüngste Modell gelten, nicht das alphabetisch erste', () => {
+    /*
+     * **Ein Fehler, der sich als ein anderer tarnte.**
+     *
+     * Ein altes Archiv ließ sich nicht löschen — die Erkennung hielt es
+     * offen. Übrig blieben zwei Dateien, und die Auswahl sortierte
+     * alphabetisch: `vosk-model-de-…` steht vor `vosk-model-small-de-…`.
+     * Die Anwendung benutzte hartnäckig das alte, während die Oberfläche
+     * das neue meldete.
+     *
+     * Nach Zeit zu wählen stimmt auch dann noch, wenn das Aufräumen
+     * scheitert: Was zuletzt hinterlegt wurde, gilt.
+     */
+    expect(dienst).toContain('statSync(b).mtimeMs - statSync(a).mtimeMs')
+  })
+
+  it('verschweigt nicht, wenn das Aufräumen scheitert', () => {
+    /* Unter Windows lässt sich keine Datei löschen, die noch jemand offen
+       hält. Still durchgehen darf das nicht. */
+    expect(dienst).toMatch(/catch \(nichtLoeschbar\)/)
+    expect(dienst).toContain('ließ sich nicht entfernen')
   })
 
   it('hält den Vorgang im Prüfpfad fest', () => {
