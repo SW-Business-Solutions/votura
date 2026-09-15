@@ -175,6 +175,16 @@ function oeffneEinrichtung(): void {
     }
   })
   fenster.setMenuBarVisibility(false)
+  /*
+   * **Der Titel bleibt, was wir gesetzt haben.**
+   *
+   * Sonst übernimmt das Fenster den Titel der geladenen Seite — die
+   * Prompterseite heißt „Votura – Teleprompter", und schon steht dort weder
+   * die Rolle noch der Weg zurück in die Einrichtung. Genau die beiden
+   * Angaben braucht aber, wer im Saal vor einem fremden Gerät steht und
+   * wissen will, was es ist und wie er es umstellt.
+   */
+  fenster.on('page-title-updated', (ereignis) => ereignis.preventDefault())
   fenster.once('ready-to-show', () => fenster?.show())
   fenster.on('closed', () => {
     fenster = null

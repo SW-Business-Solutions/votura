@@ -365,3 +365,17 @@ describe('Mit echtem Zertifikat', () => {
     expect(saalApp).toContain('masterAdresse')
   })
 })
+
+describe('Das Fenster sagt, was dieses Gerät ist', () => {
+  it('behält seinen Titel, auch wenn die Seite einen eigenen mitbringt', () => {
+    /*
+     * Die Prompterseite heißt „Votura – Teleprompter" — und überschrieb den
+     * Fenstertitel. Damit standen dort weder die Rolle noch der Weg zurück in
+     * die Einrichtung. Genau die beiden braucht, wer im Saal vor einem
+     * fremden Gerät steht.
+     */
+    const saal = lies('src/saal/index.ts')
+    expect(saal).toContain("fenster.on('page-title-updated'")
+    expect(saal).toContain('Strg+Umschalt+E für die Einrichtung')
+  })
+})
