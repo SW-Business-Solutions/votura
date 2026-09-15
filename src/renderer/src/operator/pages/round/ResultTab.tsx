@@ -49,9 +49,7 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
    * dass ihre Zahlen nicht alles sind.
    */
   const digitalerAnteil =
-    detail.papierergebnis && detail.result
-      ? detail.result.ballotsCast - detail.papierergebnis.ballotsCast
-      : 0
+    detail.papierergebnis && detail.result ? detail.result.ballotsCast - detail.papierergebnis.ballotsCast : 0
 
   const activeCandidates = detail.candidates.filter((candidate) => !candidate.withdrawn)
 
@@ -92,6 +90,39 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     setLotDecision((detail.papierergebnis ?? detail.result)?.lotDecision ?? '')
     setRankOrder((detail.papierergebnis ?? detail.result)?.rankOrder ?? [])
   }, [detail.result, detail.papierergebnis, detail.candidates, kind])
+
+  /**
+   * Der Beleg über den Losentscheid (Wahlformen §32).
+   *
+   * Ausdrücklich kein Stimmzettel: ein Zettel, den die Wahlleitung
+   * unterschreibt und der zum Protokoll genommen wird. Gedruckt wird der
+   * gespeicherte Stand — was nur im Feld steht, steht nirgends.
+   */
+  const losbelegDrucken = async (): Promise<void> => {
+    const printerId = app.settings?.config.printing.defaultPrinterId
+    if (!printerId) {
+      app.notify('warning', 'Es ist kein Standarddrucker eingestellt (Einstellungen → Allgemein).')
+      return
+    }
+    setBonLaeuft(true)
+    try {
+      const start = await api('print.protocolSlip', {
+        roundId: round.id,
+        printerId,
+        kind: 'lot_decision',
+        text: existing?.lotDecision ?? ''
+      })
+      if (start.failedCopies > 0) {
+        app.notify('warning', 'Der Beleg konnte nicht gedruckt werden. Bitte Drucker prüfen.')
+      } else {
+        app.notify('ok', 'Beleg gedruckt — er gehört unterschrieben zum Protokoll.')
+      }
+    } catch (error) {
+      app.reportError(error)
+    } finally {
+      setBonLaeuft(false)
+    }
+  }
 
   /**
    * Ergebnisbeleg auf dem Bondrucker. Gedruckt wird der gespeicherte Stand —
@@ -303,10 +334,9 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
           {digitalerAnteil > 0 && (
             <div className="notice">
               Zu diesem Wahlgang liegt eine <strong>geschlossene digitale Urne</strong> mit{' '}
-              <strong>{digitalerAnteil}</strong>{' '}
-              {digitalerAnteil === 1 ? 'Stimme' : 'Stimmen'} vor. Tragen Sie hier nur ein, was{' '}
-              <strong>von Hand ausgezählt</strong> wurde — die digitalen Stimmen kommen hinzu. Im Ergebnis,
-              auf dem Beleg und im Protokoll steht die Summe.
+              <strong>{digitalerAnteil}</strong> {digitalerAnteil === 1 ? 'Stimme' : 'Stimmen'} vor. Tragen
+              Sie hier nur ein, was <strong>von Hand ausgezählt</strong> wurde — die digitalen Stimmen kommen
+              hinzu. Im Ergebnis, auf dem Beleg und im Protokoll steht die Summe.
             </div>
           )}
           {confirmed && (
@@ -684,11 +714,26 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             label="Losentscheid dokumentieren (optional)"
             hint="Ein Losentscheid ist kein Wahlgang mit Stimmzettel. Hier gehört auch hinein, wenn ein Gleichstand anders aufgelöst wurde — etwa durch Verzicht auf den höheren Platz."
           >
-            <input
-              value={lotDecision}
-              disabled={confirmed}
-              onChange={(e) => setLotDecision(e.target.value)}
-            />
+            <div className="row">
+              <div className="col">
+                <input
+                  value={lotDecision}
+                  disabled={confirmed}
+                  onChange={(e) => setLotDecision(e.target.value)}
+                />
+              </div>
+              {/* Der Beleg trägt den gespeicherten Text — deshalb erscheint der
+                  Knopf erst, wenn etwas gespeichert ist. */}
+              {existing?.lotDecision && (
+                <button
+                  disabled={bonLaeuft}
+                  title="Druckt einen Beleg über den Losentscheid — kein Stimmzettel, sondern ein Zettel zum Unterschreiben fürs Protokoll."
+                  onClick={losbelegDrucken}
+                >
+                  Beleg drucken
+                </button>
+              )}
+            </div>
           </Field>
 
           {/* Die Feststellung wird hier geändert, gespeichert wird sie mit den

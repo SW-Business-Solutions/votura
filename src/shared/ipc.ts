@@ -34,6 +34,7 @@ import type {
   BallotTemplateConfig,
   BallotVersionRecord,
   Card,
+  CardAssignment,
   CardStock,
   Candidate,
   CandidateOrderMode,
@@ -494,6 +495,13 @@ export interface Api {
   }) => Promise<{ card: Card; participant: Participant }>
   'card.return': (code: string) => Promise<{ card: Card; participant: Participant | null }>
   'card.setStatus': (input: { id: UUID; status: Card['status']; note?: string }) => Promise<Card>
+  /**
+   * Wer diesen Ausweis wann hatte.
+   *
+   * Die Frage stellt sich, wenn eine Karte irgendwo auftaucht: Gehört sie zu
+   * jemandem, der noch da ist? Der jüngste Eintrag steht oben.
+   */
+  'card.history': (cardId: UUID) => Promise<CardAssignment[]>
   /**
    * Ein Scan am Einlass — was auch immer da gescannt wurde.
    *

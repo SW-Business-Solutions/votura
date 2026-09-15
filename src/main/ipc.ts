@@ -153,6 +153,7 @@ import {
 } from './services/participants'
 import {
   assignCard,
+  cardHistory,
   cardStock,
   importCards,
   listCards,
@@ -683,6 +684,7 @@ const api: Api = {
   'card.assign': async (input) => assignCard(input.participantId, input.code),
   'card.return': async (code) => returnCard(code),
   'card.setStatus': async (input) => setCardStatus(input.id, input.status, input.note),
+  'card.history': async (cardId) => cardHistory(cardId),
   'card.resolve': async (input) => resolveScan(input.eventId, input.code),
 
   /* ------------------------------------------------------- Akkreditierung */

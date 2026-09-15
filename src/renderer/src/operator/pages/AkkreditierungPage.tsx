@@ -12,7 +12,14 @@
  * kann vortreten, ohne dass jemand die Maus anfasst.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AttendanceEntry, Card as Ausweis, CardStock, Participant, PresenceSummary } from '@shared/types'
+import type {
+  AttendanceEntry,
+  Card as Ausweis,
+  CardAssignment,
+  CardStock,
+  Participant,
+  PresenceSummary
+} from '@shared/types'
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
@@ -73,6 +80,11 @@ export function AkkreditierungPage(): React.JSX.Element {
   const [verlauf, setVerlauf] = useState<AttendanceEntry[] | null>(null)
   /* Der Ausweisbestand, wenn jemand ihn sehen will. */
   const [ausweise, setAusweise] = useState<Ausweis[] | null>(null)
+  /* Wer diesen Ausweis vorher hatte — die Frage, wenn eine Karte auftaucht. */
+  const [ausweisVerlauf, setAusweisVerlauf] = useState<{
+    karte: Ausweis
+    eintraege: CardAssignment[]
+  } | null>(null)
   const sucheFeld = useRef<HTMLInputElement | null>(null)
 
   /* Im Bestand steht nur die Teilnehmer-Kennung — der Name kommt aus der Liste,
@@ -239,6 +251,14 @@ export function AkkreditierungPage(): React.JSX.Element {
             ? `${karte.serial} ist ausgemustert.`
             : `${karte.serial} ist wieder im Bestand.`
       )
+    } catch (fehler) {
+      app.reportError(fehler)
+    }
+  }
+
+  const ausweisVerlaufZeigen = async (karte: Ausweis): Promise<void> => {
+    try {
+      setAusweisVerlauf({ karte, eintraege: await api('card.history', karte.id) })
     } catch (fehler) {
       app.reportError(fehler)
     }
@@ -643,6 +663,9 @@ export function AkkreditierungPage(): React.JSX.Element {
                       </td>
                       <td>{karte.heldBy ? (namen.get(karte.heldBy) ?? 'unbekannt') : '—'}</td>
                       <td className="row">
+                        <button className="ghost" onClick={() => void ausweisVerlaufZeigen(karte)}>
+                          Verlauf
+                        </button>
                         {karte.status === 'available' ? (
                           <>
                             <button
@@ -825,6 +848,35 @@ export function AkkreditierungPage(): React.JSX.Element {
           )}
         </Card>
       </div>
+      {ausweisVerlauf && (
+        <Modal title={`Verlauf von ${ausweisVerlauf.karte.serial}`} onClose={() => setAusweisVerlauf(null)}>
+          {ausweisVerlauf.eintraege.length === 0 ? (
+            <p className="hint">Dieser Ausweis war noch bei niemandem.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Ausgegeben</th>
+                  <th>An</th>
+                  <th>Zurück</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ausweisVerlauf.eintraege.map((eintrag) => (
+                  <tr key={eintrag.id}>
+                    <td className="mono">{uhrzeit(eintrag.assignedAt)}</td>
+                    <td>{namen.get(eintrag.participantId) ?? 'aus einer anderen Versammlung'}</td>
+                    <td className="mono">
+                      {eintrag.returnedAt ? uhrzeit(eintrag.returnedAt) : 'noch draußen'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Modal>
+      )}
+
       {bearbeiten && (
         <Modal
           title={`${bearbeiten.person.lastName}, ${bearbeiten.person.firstName}`}
