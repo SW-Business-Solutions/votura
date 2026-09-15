@@ -123,7 +123,7 @@ export function SprachmodellEinstellungen(): React.JSX.Element {
           Internet; im Saal danach nie wieder.
         </p>
 
-        <table className="table mt-3">
+        <table className="mt-3 modell-tabelle">
           <thead>
             <tr>
               <th>Modell</th>

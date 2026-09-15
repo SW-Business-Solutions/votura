@@ -1589,3 +1589,49 @@ select[aria-invalid='true'] {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/*
+ * Eine Antragszeile.
+ *
+ * Sie baut auf `drag-item` auf — demselben Zeilenmuster wie die
+ * Tagesordnung — und ändert nur, was ein Antrag anders braucht: Der Text
+ * steht unter dem Titel statt daneben, also oben ausrichten statt mittig.
+ */
+.antrag-zeile {
+  align-items: flex-start;
+}
+.antrag-zeile-inhalt {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * Die Liste der nachladbaren Sprachmodelle.
+ *
+ * Hier stand `className="table"` — eine Klasse, die es im Stylesheet nicht
+ * gibt. Die Zeilen hatten weder Abstand noch Trennlinie. Eine eigene Regel
+ * ist ehrlicher als eine erfundene allgemeine: Diese Tabelle ist die einzige
+ * im Programm.
+ */
+.modell-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+}
+.modell-tabelle th {
+  text-align: left;
+  padding: 6px 10px 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.modell-tabelle td {
+  padding: 10px 10px 10px 0;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.modell-tabelle tr:last-child td {
+  border-bottom: none;
+}

@@ -98,18 +98,25 @@ export function AntraegePage(): React.JSX.Element {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Anträge</h1>
-        <p className="hint">
-          Das Antragsbuch dieser Versammlung. Über Änderungsanträge wird <strong>vor</strong> dem
-          Hauptantrag abgestimmt — in der Reihenfolge, die hier gesetzt ist.
-        </p>
-      </div>
-
-      <div className="row mb-3">
-        <button className="primary" disabled={!darf} onClick={() => setNeu({ art: 'haupt' })}>
-          Antrag einreichen
-        </button>
+      {/*
+        Seitenkopf wie überall: Titel und Untertitel links, die Handlung
+        rechts. Hier stand zuerst `page-head` — eine Klasse, die es im
+        Stylesheet gar nicht gibt. Die Seite sah dadurch aus wie aus einem
+        anderen Programm, und zwar ohne dass etwas kaputt war.
+      */}
+      <div className="page-header">
+        <div>
+          <h1>Anträge</h1>
+          <div className="subtitle">
+            Das Antragsbuch dieser Versammlung. Über Änderungsanträge wird <strong>vor</strong> dem
+            Hauptantrag abgestimmt — in der Reihenfolge, die hier gesetzt ist.
+          </div>
+        </div>
+        <div className="row">
+          <button className="primary" disabled={!darf} onClick={() => setNeu({ art: 'haupt' })}>
+            + Antrag einreichen
+          </button>
+        </div>
       </div>
 
       {haupt.length === 0 ? (
@@ -172,7 +179,7 @@ export function AntraegePage(): React.JSX.Element {
                     )
                   }
                 >
-                  📽 Wortlaut
+                  Wortlaut auf den Beamer
                 </button>
                 <button
                   disabled={!darf}
@@ -187,7 +194,7 @@ export function AntraegePage(): React.JSX.Element {
                     )
                   }
                 >
-                  📽 Mit Änderungen
+                  Mit Änderungen auf den Beamer
                 </button>
                 {!antrag.roundId && (
                   <button className="ghost" disabled={!darf} onClick={() => setLoeschen(antrag)}>
@@ -199,75 +206,79 @@ export function AntraegePage(): React.JSX.Element {
               {aenderungen.length > 0 && (
                 <div className="mt-3">
                   <h3>Änderungsanträge</h3>
-                  <table className="table">
-                    <tbody>
-                      {aenderungen.map((aenderung, i) => (
-                        <tr key={aenderung.id}>
-                          <td style={{ width: '6rem' }}>
-                            <strong>{aenderung.nummer}</strong>
-                          </td>
-                          <td>
-                            {aenderung.titel}
-                            <div className="hint">
-                              {aenderung.antragsteller} · {ANTRAGSSTATUS_LABELS[aenderung.status]}
-                              {aenderung.vermerk ? ` · ${aenderung.vermerk}` : ''}
-                            </div>
-                            <pre className="antrag-text">{aenderung.text}</pre>
-                          </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>
-                            {/* Hoch und runter statt Ziehen: Auf einer
-                                Versammlung wird mit der Maus gezielt, nicht
-                                gezogen — und oft von jemandem, der das Gerät
-                                zum ersten Mal bedient. */}
+                  {/*
+                    Eine Liste aus `drag-item`-Zeilen wie die Tagesordnung —
+                    nicht eine Tabelle. Hier stand zuerst `className="table"`,
+                    und diese Klasse gibt es im Stylesheet nicht: Die Zeilen
+                    hatten weder Rahmen noch Abstand noch Hintergrund.
+                  */}
+                  <ul className="list-reset">
+                    {aenderungen.map((aenderung, i) => (
+                      <li key={aenderung.id} className="drag-item antrag-zeile">
+                        <div className="antrag-zeile-inhalt">
+                          <div>
+                            <strong>{aenderung.nummer}</strong> — {aenderung.titel}
+                          </div>
+                          <div className="hint">
+                            {aenderung.antragsteller} · {ANTRAGSSTATUS_LABELS[aenderung.status]}
+                            {aenderung.vermerk ? ` · ${aenderung.vermerk}` : ''}
+                          </div>
+                          <pre className="antrag-text">{aenderung.text}</pre>
+                        </div>
+                        <div className="row">
+                          {/* Hoch und runter statt Ziehen: Auf einer
+                              Versammlung wird mit der Maus gezielt, nicht
+                              gezogen — und oft von jemandem, der das Gerät
+                              zum ersten Mal bedient. */}
+                          <button
+                            className="mini"
+                            aria-label="Früher abstimmen"
+                            disabled={!darf || i === 0}
+                            title="Früher abstimmen"
+                            onClick={() => void verschieben(aenderung, -1)}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            className="mini"
+                            aria-label="Später abstimmen"
+                            disabled={!darf || i === aenderungen.length - 1}
+                            title="Später abstimmen"
+                            onClick={() => void verschieben(aenderung, 1)}
+                          >
+                            ↓
+                          </button>
+                          {OFFEN.includes(aenderung.status) && (
                             <button
-                              disabled={!darf || i === 0}
-                              title="Früher abstimmen"
-                              onClick={() => void verschieben(aenderung, -1)}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              disabled={!darf || i === aenderungen.length - 1}
-                              title="Später abstimmen"
-                              onClick={() => void verschieben(aenderung, 1)}
-                            >
-                              ↓
-                            </button>
-                          </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>
-                            {OFFEN.includes(aenderung.status) && (
-                              <button
-                                disabled={!darf}
-                                title={`${antrag.antragsteller} übernimmt den Änderungsantrag; über ihn wird dann nicht abgestimmt.`}
-                                onClick={() => void rufe(() => api('motion.adopt', aenderung.id))}
-                              >
-                                Übernehmen
-                              </button>
-                            )}
-                            <button
-                              className="primary"
                               disabled={!darf}
-                              title="Diesen Änderungsantrag auf den Beamer."
-                              onClick={() =>
-                                void rufe(() =>
-                                  api(
-                                    'projection.setMode',
-                                    { mode: 'antrag', antrag: { id: aenderung.id } },
-                                    app.ziel
-                                  )
-                                )
-                              }
+                              title={`${antrag.antragsteller} übernimmt den Änderungsantrag; über ihn wird dann nicht abgestimmt.`}
+                              onClick={() => void rufe(() => api('motion.adopt', aenderung.id))}
                             >
-                              📽
+                              Übernehmen
                             </button>
-                            <button disabled={!darf} onClick={() => setBearbeiten(aenderung)}>
-                              Bearbeiten
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          )}
+                          <button
+                            disabled={!darf}
+                            title="Diesen Änderungsantrag auf den Beamer."
+                            onClick={() =>
+                              void rufe(() =>
+                                api(
+                                  'projection.setMode',
+                                  { mode: 'antrag', antrag: { id: aenderung.id } },
+                                  app.ziel
+                                )
+                              )
+                            }
+                          >
+                            Auf den Beamer
+                          </button>
+                          <button disabled={!darf} onClick={() => setBearbeiten(aenderung)}>
+                            Bearbeiten
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
