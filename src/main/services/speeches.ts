@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { redeWoerter, type SpeechContent, type SpeechInfo } from '@shared/speech'
-import type { UUID } from '@shared/types'
+import type { Candidate, UUID } from '@shared/types'
 import { appPaths } from '../paths'
 import { logger } from '../logger'
 import { appendAudit } from './audit'
@@ -208,22 +208,43 @@ export function assignSpeech(id: UUID, candidateId?: UUID, candidateName?: strin
  * wird mit dem **heutigen** Namen des Bewerbers, nicht mit dem, der beim
  * Zuordnen galt. Wer umbenannt wird, verliert seine Rede sonst still.
  *
- * Existiert der Bewerber nicht mehr, bleibt der gespeicherte Name als letzte
- * Auskunft.
+ * **Dieselbe Person hält oft mehr als eine Rede.** Ein Vorsitzender gibt den
+ * Vorstandsbericht und bewirbt sich später um die Wiederwahl. Deshalb zählt
+ * nicht die Person, sondern die **Bewerbung**: Ein Bewerbereintrag gehört zu
+ * genau einem Wahlgang, und der aufgerufene Wahlgang entscheidet, welche Rede
+ * gemeint ist.
+ *
+ * **Im Zweifel gar nichts.** Bleiben mehrere übrig — zwei Reden für dieselbe
+ * Bewerbung, oder ein Aufruf ohne Wahlgangbezug bei mehreren Bewerbungen —,
+ * legt der Prompter nichts auf. Eine geratene Rede am Pult ist schlimmer als
+ * gar keine: Wer vorn steht, liest den falschen Text vor.
  */
-export function redeFuerBewerber(name: string): SpeechInfo | undefined {
+export function redeFuerBewerber(name: string, roundId?: UUID): SpeechInfo | undefined {
   const gesucht = name.trim().toLocaleLowerCase('de-DE')
   if (!gesucht) return undefined
-  return listSpeeches().find((rede) => {
+
+  const treffer = listSpeeches().filter((rede) => {
     if (!rede.candidateId) return false
-    let heutiger = rede.candidateName
-    try {
-      heutiger = getCandidate(rede.candidateId).displayName
-    } catch {
-      /* Der Bewerber ist fort — der gespeicherte Name muss reichen. */
-    }
+    const bewerber = bewerberOderUndefined(rede.candidateId)
+    const heutiger = bewerber?.displayName ?? rede.candidateName
     return heutiger?.trim().toLocaleLowerCase('de-DE') === gesucht
   })
+  if (treffer.length <= 1) return treffer[0]
+
+  /* Mehrere Bewerbungen derselben Person: Der Wahlgang entscheidet. */
+  const imWahlgang = roundId
+    ? treffer.filter((rede) => bewerberOderUndefined(rede.candidateId!)?.electionRoundId === roundId)
+    : []
+  return imWahlgang.length === 1 ? imWahlgang[0] : undefined
+}
+
+/** Wie `getCandidate`, nur ohne Ausnahme — der Bewerber kann fort sein. */
+function bewerberOderUndefined(id: UUID): Candidate | undefined {
+  try {
+    return getCandidate(id)
+  } catch {
+    return undefined
+  }
 }
 
 export function deleteSpeech(id: UUID): void {

@@ -135,7 +135,10 @@ describe('Der Prompter geht seinen eigenen Weg', () => {
      */
     const start = lies('src/main/index.ts')
     expect(start).toContain('buehne === getPrompterBuehne()')
-    expect(start).toContain('sprecherAufgerufen(state.speaker)')
+    expect(start).toContain('sprecherAufgerufen(state.speaker')
+    /* Der Wahlgang reist mit — er entscheidet, welche Rede gemeint ist, wenn
+       dieselbe Person sich mehrfach bewirbt. */
+    expect(start).toContain('roundId: state.round?.id')
     /* Und nichts nimmt den umgekehrten Weg. */
     const projektion = lies('src/main/services/projection.ts')
     expect(projektion).not.toContain("from './prompter'")

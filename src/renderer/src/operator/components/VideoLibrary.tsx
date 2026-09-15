@@ -17,7 +17,7 @@ import { Fragment, useEffect, useRef, useState, type JSX } from 'react'
 import type { VideoInfo } from '@shared/video'
 import { api } from '../../lib/api'
 import { useApp } from '../state'
-import { Card } from './ui'
+import { Card, RenameDialog } from './ui'
 
 function groesse(bytes: number): string {
   return bytes >= 1024 * 1024 * 1024
@@ -40,6 +40,8 @@ export function VideoLibrary(): JSX.Element {
   const projection = app.projection
   const [liste, setListe] = useState<VideoInfo[]>([])
   const [laeuft, setLaeuft] = useState(false)
+  /* Welcher Eintrag gerade umbenannt wird. */
+  const [umbenannt, setUmbenannt] = useState<VideoInfo | null>(null)
   /*
    * Die Sollposition tickt hier mit, statt auf den nächsten Zustand zu warten.
    *
@@ -95,9 +97,9 @@ export function VideoLibrary(): JSX.Element {
     }
   }
 
-  const umbenennen = async (eintrag: VideoInfo): Promise<void> => {
-    const name = window.prompt('Neuer Name des Videos', eintrag.title)
-    if (name === null) return
+  const umbenennen = async (eintrag: VideoInfo, name: string): Promise<void> => {
+    setUmbenannt(null)
+    if (name === eintrag.title) return
     try {
       await api('video.rename', { id: eintrag.id, title: name })
       laden()
@@ -125,117 +127,131 @@ export function VideoLibrary(): JSX.Element {
   }
 
   return (
-    <Card title="Videos">
-      <div className="row mb-3">
-        <button onClick={einspeisen} disabled={laeuft}>
-          {laeuft ? 'Wird eingespeist …' : 'Video einspeisen'}
-        </button>
-      </div>
-
-      {video && (
-        <div className="notice mb-3">
-          <div className="row" style={{ alignItems: 'center', gap: 10 }}>
-            <button
-              className="primary"
-              onClick={() => void api('video.setPlaying', !video.playing, app.ziel).catch(app.reportError)}
-            >
-              {video.playing ? '⏸ Anhalten' : '▶ Abspielen'}
-            </button>
-            <button onClick={() => void springen(Math.max(0, position - 10))}>− 10 s</button>
-            <button onClick={() => void springen(position + 10)}>+ 10 s</button>
-            <button onClick={() => void api('video.setMuted', !video.muted, app.ziel).catch(app.reportError)}>
-              {video.muted ? '🔇 Ton aus' : '🔊 Ton an'}
-            </button>
-            <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
-              {zeit(position)} / {zeit(video.durationSeconds)}
-            </span>
-          </div>
-
-          <input
-            ref={schieber}
-            type="range"
-            min={0}
-            max={video.durationSeconds ?? 0}
-            step={0.1}
-            value={ziehtGerade ? undefined : Math.min(position, video.durationSeconds ?? position)}
-            disabled={video.durationSeconds === undefined}
-            className="wide mt-3"
-            onMouseDown={() => setZiehtGerade(true)}
-            onChange={(event) => {
-              /* Während des Ziehens nur die Marke bewegen: Jede Zwischenstufe
-                 an alle Geräte zu schicken, ließe das Bild zappeln. */
-              if (!ziehtGerade) void springen(Number(event.target.value))
-            }}
-            onMouseUp={(event) => {
-              setZiehtGerade(false)
-              void springen(Number(event.currentTarget.value))
-            }}
-          />
-
-          <div className="hint mt-2">
-            <strong>{video.title}</strong> — alle Bildschirme richten sich nach dieser Zeit.
-            {video.readyCount > 0 && ` Der Beamer hat genug gepuffert.`}
-            {video.durationSeconds === undefined &&
-              ' Die Laufzeit steht fest, sobald der Beamer die Datei angefasst hat.'}
-          </div>
+    <>
+      <Card title="Videos">
+        <div className="row mb-3">
+          <button onClick={einspeisen} disabled={laeuft}>
+            {laeuft ? 'Wird eingespeist …' : 'Video einspeisen'}
+          </button>
         </div>
-      )}
 
-      {liste.length === 0 ? (
-        <div className="hint">Noch kein Video eingespeist.</div>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Video</th>
-              <th>Länge</th>
-              <th>Größe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {liste.map((eintrag) => (
-              /* Wie bei den Präsentationen: Die Knöpfe stehen unter dem
+        {video && (
+          <div className="notice mb-3">
+            <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+              <button
+                className="primary"
+                onClick={() => void api('video.setPlaying', !video.playing, app.ziel).catch(app.reportError)}
+              >
+                {video.playing ? '⏸ Anhalten' : '▶ Abspielen'}
+              </button>
+              <button onClick={() => void springen(Math.max(0, position - 10))}>− 10 s</button>
+              <button onClick={() => void springen(position + 10)}>+ 10 s</button>
+              <button
+                onClick={() => void api('video.setMuted', !video.muted, app.ziel).catch(app.reportError)}
+              >
+                {video.muted ? '🔇 Ton aus' : '🔊 Ton an'}
+              </button>
+              <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                {zeit(position)} / {zeit(video.durationSeconds)}
+              </span>
+            </div>
+
+            <input
+              ref={schieber}
+              type="range"
+              min={0}
+              max={video.durationSeconds ?? 0}
+              step={0.1}
+              value={ziehtGerade ? undefined : Math.min(position, video.durationSeconds ?? position)}
+              disabled={video.durationSeconds === undefined}
+              className="wide mt-3"
+              onMouseDown={() => setZiehtGerade(true)}
+              onChange={(event) => {
+                /* Während des Ziehens nur die Marke bewegen: Jede Zwischenstufe
+                 an alle Geräte zu schicken, ließe das Bild zappeln. */
+                if (!ziehtGerade) void springen(Number(event.target.value))
+              }}
+              onMouseUp={(event) => {
+                setZiehtGerade(false)
+                void springen(Number(event.currentTarget.value))
+              }}
+            />
+
+            <div className="hint mt-2">
+              <strong>{video.title}</strong> — alle Bildschirme richten sich nach dieser Zeit.
+              {video.readyCount > 0 && ` Der Beamer hat genug gepuffert.`}
+              {video.durationSeconds === undefined &&
+                ' Die Laufzeit steht fest, sobald der Beamer die Datei angefasst hat.'}
+            </div>
+          </div>
+        )}
+
+        {liste.length === 0 ? (
+          <div className="hint">Noch kein Video eingespeist.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Video</th>
+                <th>Länge</th>
+                <th>Größe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liste.map((eintrag) => (
+                /* Wie bei den Präsentationen: Die Knöpfe stehen unter dem
                  Eintrag, nicht in einer schmalen Spalte daneben. */
-              <Fragment key={eintrag.id}>
-                <tr className={video?.id === eintrag.id ? 'active' : undefined}>
-                  <td>
-                    <strong>{eintrag.title}</strong>
-                    {video?.id === eintrag.id && (
-                      <span className="badge accent badge-nach">auf dem Beamer</span>
-                    )}
-                    <div className="hint">{eintrag.fileName}</div>
-                  </td>
-                  <td>{zeit(eintrag.durationSeconds)}</td>
-                  <td>{groesse(eintrag.size)}</td>
-                </tr>
-                <tr className={`aktionen${video?.id === eintrag.id ? ' active' : ''}`}>
-                  <td colSpan={3}>
-                    <div className="row">
-                      <button onClick={() => void zeigen(eintrag.id)} disabled={video?.id === eintrag.id}>
-                        Auf den Beamer
-                      </button>
-                      <button className="ghost" onClick={() => void umbenennen(eintrag)}>
-                        Umbenennen
-                      </button>
-                      <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
-                        Entfernen
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      )}
+                <Fragment key={eintrag.id}>
+                  <tr className={video?.id === eintrag.id ? 'active' : undefined}>
+                    <td>
+                      <strong>{eintrag.title}</strong>
+                      {video?.id === eintrag.id && (
+                        <span className="badge accent badge-nach">auf dem Beamer</span>
+                      )}
+                      <div className="hint">{eintrag.fileName}</div>
+                    </td>
+                    <td>{zeit(eintrag.durationSeconds)}</td>
+                    <td>{groesse(eintrag.size)}</td>
+                  </tr>
+                  <tr className={`aktionen${video?.id === eintrag.id ? ' active' : ''}`}>
+                    <td colSpan={3}>
+                      <div className="row">
+                        <button onClick={() => void zeigen(eintrag.id)} disabled={video?.id === eintrag.id}>
+                          Auf den Beamer
+                        </button>
+                        <button className="ghost" onClick={() => setUmbenannt(eintrag)}>
+                          Umbenennen
+                        </button>
+                        <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
+                          Entfernen
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-      <div className="hint mt-3">
-        Alle Bildschirme laufen nach derselben Uhr: Der Zustand nennt die Position zu einem Zeitpunkt, jedes
-        Gerät rechnet sich daraus seinen Stand aus — auch eines, das erst mitten im Film dazukommt. Kleine
-        Abweichungen werden über die Abspielgeschwindigkeit ausgeglichen, größere durch einen Sprung.{' '}
-        <strong>Den Ton gibt nur der Beamer aus</strong>; Geräte im Netz laufen stumm mit, sonst entstünde ein
-        Echo im Saal.
-      </div>
-    </Card>
+        <div className="hint mt-3">
+          Alle Bildschirme laufen nach derselben Uhr: Der Zustand nennt die Position zu einem Zeitpunkt, jedes
+          Gerät rechnet sich daraus seinen Stand aus — auch eines, das erst mitten im Film dazukommt. Kleine
+          Abweichungen werden über die Abspielgeschwindigkeit ausgeglichen, größere durch einen Sprung.{' '}
+          <strong>Den Ton gibt nur der Beamer aus</strong>; Geräte im Netz laufen stumm mit, sonst entstünde
+          ein Echo im Saal.
+        </div>
+      </Card>
+
+      {umbenannt && (
+        <RenameDialog
+          title="Video umbenennen"
+          label="Name"
+          value={umbenannt.title}
+          onCancel={() => setUmbenannt(null)}
+          onConfirm={(name) => void umbenennen(umbenannt, name)}
+        />
+      )}
+    </>
   )
 }

@@ -193,6 +193,62 @@ export function ConfirmDialog({
   )
 }
 
+/**
+ * Nach einem Namen fragen.
+ *
+ * **Warum nicht `window.prompt`?** Weil es das in Electron nicht gibt: Der
+ * Aufruf schreibt „prompt() is not supported" in die Ecke und tut nichts.
+ * Umbenennen war damit in jeder Bibliothek ein toter Knopf — in der
+ * Entwicklungsfassung im Browser funktionierte es, im fertigen Programm nie.
+ */
+export function RenameDialog({
+  title,
+  label,
+  value,
+  confirmLabel = 'Umbenennen',
+  onConfirm,
+  onCancel
+}: {
+  title: string
+  label: string
+  value: string
+  confirmLabel?: string
+  onConfirm: (name: string) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [name, setName] = useState(value)
+  const fertig = (): void => {
+    if (name.trim()) onConfirm(name.trim())
+  }
+  return (
+    <Modal
+      title={title}
+      onClose={onCancel}
+      actions={
+        <>
+          <button onClick={onCancel}>Abbrechen</button>
+          <button className="primary" disabled={!name.trim()} onClick={fertig}>
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <Field label={label}>
+        <input
+          autoFocus
+          value={name}
+          onChange={(ereignis) => setName(ereignis.target.value)}
+          onKeyDown={(ereignis) => {
+            if (ereignis.key === 'Enter') fertig()
+          }}
+          /* Wer umbenennt, will meistens den ganzen Namen ersetzen. */
+          onFocus={(ereignis) => ereignis.target.select()}
+        />
+      </Field>
+    </Modal>
+  )
+}
+
 export function EmptyState({ text, action }: { text: string; action?: ReactNode }): React.JSX.Element {
   return (
     <div style={{ textAlign: 'center', padding: '28px 12px', color: 'var(--text-muted)' }}>
@@ -305,7 +361,8 @@ export function NumberInput({
   }, [value, tippt])
 
   const zahl = Number.parseInt(text, 10)
-  const unzulaessig = text.trim() !== '' && (!Number.isFinite(zahl) || zahl < min || (max !== undefined && zahl > max))
+  const unzulaessig =
+    text.trim() !== '' && (!Number.isFinite(zahl) || zahl < min || (max !== undefined && zahl > max))
 
   return (
     <input
@@ -316,7 +373,9 @@ export function NumberInput({
       max={max}
       disabled={disabled}
       aria-invalid={unzulaessig || undefined}
-      title={unzulaessig ? `Zulässig ist ${min}${max !== undefined ? ` bis ${max}` : ' oder mehr'}.` : undefined}
+      title={
+        unzulaessig ? `Zulässig ist ${min}${max !== undefined ? ` bis ${max}` : ' oder mehr'}.` : undefined
+      }
       onFocus={() => setTippt(true)}
       onChange={(ereignis) => {
         setText(ereignis.target.value)

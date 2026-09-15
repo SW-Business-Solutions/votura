@@ -477,7 +477,7 @@ async function bootstrap(): Promise<void> {
      * steuert, darf es — sonst risse eine zweite Leinwand den Text weg.
      */
     if (buehne === getPrompterBuehne() && state.mode === 'speaker') {
-      sprecherAufgerufen(state.speaker)
+      sprecherAufgerufen(state.speaker && { ...state.speaker, roundId: state.round?.id })
     }
   })
   onAudienceStateChanged((state) => sendToOperator(IPC.audienceState, state))

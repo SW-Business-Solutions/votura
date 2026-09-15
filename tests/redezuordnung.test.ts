@@ -48,6 +48,9 @@ let ersterBewerber = ''
 let zweiterBewerber = ''
 let redeEins = ''
 let redeZwei = ''
+let zweiterWahlgang = ''
+let annaZweiteBewerbung = ''
+let redeDrei = ''
 
 beforeAll(() => {
   initLogger(join(root, 'logs'))
@@ -87,8 +90,28 @@ beforeAll(() => {
   ersterBewerber = angelegt[0].id
   zweiterBewerber = angelegt[1].id
 
+  /*
+   * Derselbe Mensch, zwei Bewerbungen: Ein Vorsitzender gibt den
+   * Vorstandsbericht und bewirbt sich später um die Wiederwahl.
+   */
+  zweiterWahlgang = rundenDienst.createRound({
+    eventId,
+    title: 'Beisitzer',
+    purpose: 'board_member',
+    procedure: 'single_candidate',
+    seats: 1,
+    maxVotes: 1,
+    template: defaultTemplateFor('single_candidate', { seats: 1, maxVotes: 1, entryCount: 1 }),
+    orderMode: 'manual'
+  }).id
+  annaZweiteBewerbung = bewerberDienst.addCandidates(zweiterWahlgang, [
+    { firstName: 'Anna', lastName: 'Berg', displayName: 'Anna Berg' }
+  ])[0].id
+
   redeEins = reden.createSpeech('Bewerbung Anna').id
   reden.saveSpeech(redeEins, '# Bewerbung\n\nGuten Abend.')
+  redeDrei = reden.createSpeech('Anna als Beisitzerin').id
+  reden.saveSpeech(redeDrei, '# Beisitz')
   redeZwei = reden.createSpeech('Notizen der Leitung').id
   reden.saveSpeech(redeZwei, '# Notizen\n\nTagesordnungspunkt 4.')
 })
@@ -131,6 +154,49 @@ describe('Welche Rede zu einem Namen gehört', () => {
     reden.assignSpeech(redeEins, undefined)
     expect(reden.redeFuerBewerber('Anna Berg')).toBeUndefined()
     reden.assignSpeech(redeEins, ersterBewerber, 'Anna Berg')
+  })
+})
+
+describe('Dieselbe Person, mehrere Reden', () => {
+  /*
+   * Der Fall aus dem Saal: Ein Vorsitzender hält den Vorstandsbericht und
+   * bewirbt sich danach um die Wiederwahl. Die Zuordnung hängt deshalb nicht
+   * an der Person, sondern an der Bewerbung — und die gehört zu genau einem
+   * Wahlgang.
+   */
+  beforeAll(() => {
+    reden.assignSpeech(redeEins, ersterBewerber, 'Anna Berg')
+    reden.assignSpeech(redeDrei, annaZweiteBewerbung, 'Anna Berg')
+  })
+
+  afterAll(() => {
+    reden.assignSpeech(redeDrei, undefined)
+  })
+
+  it('wählt die Rede des aufgerufenen Wahlgangs', () => {
+    expect(reden.redeFuerBewerber('Anna Berg', roundId)?.id).toBe(redeEins)
+    expect(reden.redeFuerBewerber('Anna Berg', zweiterWahlgang)?.id).toBe(redeDrei)
+  })
+
+  it('rät nicht, wenn der Aufruf keinen Wahlgang nennt', () => {
+    /* Eine geratene Rede am Pult ist schlimmer als gar keine: Wer vorn steht,
+       liest den falschen Text vor. */
+    expect(reden.redeFuerBewerber('Anna Berg')).toBeUndefined()
+  })
+
+  it('rät auch dann nicht, wenn der Wahlgang keine Rede hat', () => {
+    expect(reden.redeFuerBewerber('Anna Berg', 'ein-fremder-wahlgang')).toBeUndefined()
+  })
+
+  it('legt am Pult nichts auf, solange es mehrdeutig ist', () => {
+    prompter.loadSpeech(redeZwei)
+    prompter.sprecherAufgerufen({ name: 'Anna Berg' })
+    expect(prompter.getPrompterView().speech?.id).toBe(redeZwei)
+  })
+
+  it('legt die richtige auf, sobald der Wahlgang mitkommt', () => {
+    prompter.sprecherAufgerufen({ name: 'Anna Berg', roundId: zweiterWahlgang })
+    expect(prompter.getPrompterView().speech?.id).toBe(redeDrei)
   })
 })
 

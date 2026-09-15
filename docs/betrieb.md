@@ -140,9 +140,25 @@ _Prompter_ (Strg+P). Links die Reden, rechts der Lauf und die Darstellung.
 - **Redezeit übernehmen:** Läuft auf einer Bühne eine Vorstellung mit Uhr, holt ein Klick dieselbe
   Uhr an das Pult — der Saal und die vortragende Person sehen dann dieselbe Zahl.
 - **Dem Aufruf folgen:** Unter jeder Rede in der Bibliothek steht ein Auswahlfeld mit den Bewerbern
-  der Veranstaltung. Ist eine Rede zugeordnet und wird dieser Bewerber auf dem Beamer vorgestellt,
-  legt der Prompter seinen Text von selbst auf — mitsamt seiner Uhr. Bei zwölf Bewerbern sucht so
-  niemand zwischendurch in einer Liste.
+  der Veranstaltung, nach Wahlgang gruppiert. Ist eine Rede zugeordnet und wird dieser Bewerber auf
+  dem Beamer vorgestellt, legt der Prompter seinen Text von selbst auf — mitsamt seiner Uhr. Bei
+  zwölf Bewerbern sucht so niemand zwischendurch in einer Liste.
+
+### Wenn jemand mehrmals spricht
+
+Ein Vorsitzender gibt den Vorstandsbericht und bewirbt sich danach um die Wiederwahl — dieselbe
+Person, zwei Reden. Deshalb hängt die Zuordnung nicht an der Person, sondern an ihrer **Bewerbung**:
+Ein Bewerbereintrag gehört zu genau einem Wahlgang, und der auf dem Beamer eingestellte Wahlgang
+entscheidet, welche Rede gemeint ist. Zwei Bewerbungen derselben Person in zwei Wahlgängen bekommen
+so je ihren eigenen Text.
+
+Bleibt es mehrdeutig — zwei Reden auf derselben Bewerbung, oder ein Aufruf ohne eingestellten
+Wahlgang bei mehreren Bewerbungen —, **legt der Prompter nichts auf**. Eine geratene Rede am Pult
+ist schlimmer als gar keine: Wer vorn steht, liest den falschen Text vor. Die Prompterseite weist
+auf solche Fälle hin.
+
+Ein Redebeitrag, der zu gar keinem Wahlgang gehört — Vorstandsbericht, Grußwort, Kassenbericht —,
+lässt sich nicht zuordnen; er wird wie bisher von Hand aufgelegt.
 
 ### Wann der Prompter dem Aufruf **nicht** folgt
 

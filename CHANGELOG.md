@@ -29,12 +29,22 @@ einsatzbereit im Programm standen — ohne dass es einen Knopf dafür gab:
 - **Beleg über den Losentscheid.** Kein Stimmzettel, sondern ein Zettel zum
   Unterschreiben fürs Protokoll.
 
+### Behoben
+
+- **Umbenennen ging nicht** — in der Redenbibliothek, bei den Präsentationen und bei den Videos.
+  Der Knopf öffnete `window.prompt`, das es in Electron nicht gibt: Es erschien nur die Meldung
+  „prompt() is not supported". Jetzt fragt ein richtiger Dialog nach dem Namen.
+
 ### Der Prompter folgt dem Aufruf
 
 Eine Rede lässt sich einem **Bewerber zuordnen** — und diese Zuordnung tut jetzt auch etwas: Wird
 der Bewerber auf dem Beamer vorgestellt, legt der Prompter seinen Text von selbst auf, mitsamt der
 Uhr, die der Saal sieht. Bei zwölf Bewerbern hintereinander sucht damit niemand mehr zwischendurch
 in einer Liste.
+
+Weil derselbe Mensch oft mehrmals spricht — Vorstandsbericht, später Bewerbung um die Wiederwahl —,
+hängt die Zuordnung an der **Bewerbung** und nicht an der Person: Der auf dem Beamer eingestellte
+Wahlgang entscheidet, welche Rede gemeint ist. Bleibt es mehrdeutig, legt der Prompter nichts auf.
 
 Abschaltbar, und mit Rücksicht gebaut: Wer keine Rede zugeordnet hat, räumt das Pult nicht leer;
 eine von Hand aufgelegte Rede wird nicht wieder weggenommen; und was am Pult steht, kommt weiterhin

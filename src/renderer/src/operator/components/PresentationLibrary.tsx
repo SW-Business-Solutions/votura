@@ -9,7 +9,7 @@ import { Fragment, useEffect, useState, type JSX } from 'react'
 import { presentationKind, type PresentationInfo, type PrompterWindowState } from '@shared/presentation'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
-import { Card } from './ui'
+import { Card, RenameDialog } from './ui'
 
 function groesse(bytes: number): string {
   return bytes >= 1024 * 1024
@@ -23,6 +23,8 @@ export function PresentationLibrary(): JSX.Element {
   const [liste, setListe] = useState<PresentationInfo[]>([])
   const [prompter, setPrompter] = useState<PrompterWindowState>({ open: false })
   const [laeuft, setLaeuft] = useState(false)
+  /* Welcher Eintrag gerade umbenannt wird. */
+  const [umbenannt, setUmbenannt] = useState<PresentationInfo | null>(null)
 
   const laden = (): void => {
     void api('presentation.list').then(setListe).catch(app.reportError)
@@ -71,9 +73,9 @@ export function PresentationLibrary(): JSX.Element {
     }
   }
 
-  const umbenennen = async (eintrag: PresentationInfo): Promise<void> => {
-    const name = window.prompt('Neuer Name der Präsentation', eintrag.title)
-    if (name === null || name.trim() === eintrag.title) return
+  const umbenennen = async (eintrag: PresentationInfo, name: string): Promise<void> => {
+    setUmbenannt(null)
+    if (name === eintrag.title) return
     try {
       await api('presentation.rename', { id: eintrag.id, title: name })
       laden()
@@ -105,87 +107,99 @@ export function PresentationLibrary(): JSX.Element {
   const laufendeId = projection.presentation?.id
 
   return (
-    <Card title="Präsentationen">
-      <div className="row mb-3">
-        <button onClick={() => void einspeisen()} disabled={laeuft}>
-          {laeuft ? 'Wird eingespeist …' : 'Präsentation einspeisen (HTML oder PDF)'}
-        </button>
-        <button onClick={() => void prompterUmschalten()}>
-          {prompter.open ? 'Vortragssteuerung schließen' : 'Vortragssteuerung öffnen'}
-        </button>
-      </div>
+    <>
+      <Card title="Präsentationen">
+        <div className="row mb-3">
+          <button onClick={() => void einspeisen()} disabled={laeuft}>
+            {laeuft ? 'Wird eingespeist …' : 'Präsentation einspeisen (HTML oder PDF)'}
+          </button>
+          <button onClick={() => void prompterUmschalten()}>
+            {prompter.open ? 'Vortragssteuerung schließen' : 'Vortragssteuerung öffnen'}
+          </button>
+        </div>
 
-      {liste.length === 0 ? (
-        <p className="hint">
-          Noch nichts eingespeist. Erwartet wird eine <strong>einzelne HTML-Datei</strong>, die alles
-          mitbringt — Schriften, Bilder und Steuerung darin. Sie läuft dann ohne Netz und ohne zweites
-          Programm.
+        {liste.length === 0 ? (
+          <p className="hint">
+            Noch nichts eingespeist. Erwartet wird eine <strong>einzelne HTML-Datei</strong>, die alles
+            mitbringt — Schriften, Bilder und Steuerung darin. Sie läuft dann ohne Netz und ohne zweites
+            Programm.
+          </p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Präsentation</th>
+                <th>Art</th>
+                <th>Folien</th>
+                <th>Größe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liste.map((eintrag) => {
+                const laufend = eintrag.id === laufendeId && projection.mode === 'presentation'
+                return (
+                  /*
+                   * Die Knöpfe stehen unter dem Eintrag, nicht daneben.
+                   *
+                   * Neben vier Spalten gedrängt wurden sie schmal und rückten
+                   * an den Rand; darunter haben sie ihre Breite und liegen dort,
+                   * wo der Blick nach dem Lesen des Namens ohnehin ankommt.
+                   */
+                  <Fragment key={eintrag.id}>
+                    <tr className={laufend ? 'active' : undefined}>
+                      <td>
+                        <strong>{eintrag.title}</strong>
+                        {laufend && <span className="badge accent badge-nach">auf dem Beamer</span>}
+                        <div className="hint">{eintrag.fileName}</div>
+                      </td>
+                      <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
+                      <td>{eintrag.slideCount ?? '–'}</td>
+                      <td>{groesse(eintrag.size)}</td>
+                    </tr>
+                    <tr className={`aktionen${laufend ? ' active' : ''}`}>
+                      <td colSpan={4}>
+                        <div className="row">
+                          <button onClick={() => void zeigen(eintrag.id)} disabled={laufend}>
+                            Auf den Beamer
+                          </button>
+                          <button className="ghost" onClick={() => setUmbenannt(eintrag)}>
+                            Umbenennen
+                          </button>
+                          <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
+                            Entfernen
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+
+        <p className="muted small mt-3">
+          Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder Wahldaten
+          noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet Votura selbst —
+          ohne Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der Netzwerkansicht erscheint in
+          beiden Fällen dieselbe Folie.
         </p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Präsentation</th>
-              <th>Art</th>
-              <th>Folien</th>
-              <th>Größe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {liste.map((eintrag) => {
-              const laufend = eintrag.id === laufendeId && projection.mode === 'presentation'
-              return (
-                /*
-                 * Die Knöpfe stehen unter dem Eintrag, nicht daneben.
-                 *
-                 * Neben vier Spalten gedrängt wurden sie schmal und rückten
-                 * an den Rand; darunter haben sie ihre Breite und liegen dort,
-                 * wo der Blick nach dem Lesen des Namens ohnehin ankommt.
-                 */
-                <Fragment key={eintrag.id}>
-                  <tr className={laufend ? 'active' : undefined}>
-                    <td>
-                      <strong>{eintrag.title}</strong>
-                      {laufend && <span className="badge accent badge-nach">auf dem Beamer</span>}
-                      <div className="hint">{eintrag.fileName}</div>
-                    </td>
-                    <td>{presentationKind(eintrag) === 'pdf' ? 'PDF' : 'HTML'}</td>
-                    <td>{eintrag.slideCount ?? '–'}</td>
-                    <td>{groesse(eintrag.size)}</td>
-                  </tr>
-                  <tr className={`aktionen${laufend ? ' active' : ''}`}>
-                    <td colSpan={4}>
-                      <div className="row">
-                        <button onClick={() => void zeigen(eintrag.id)} disabled={laufend}>
-                          Auf den Beamer
-                        </button>
-                        <button className="ghost" onClick={() => void umbenennen(eintrag)}>
-                          Umbenennen
-                        </button>
-                        <button className="ghost danger" onClick={() => void entfernen(eintrag)}>
-                          Entfernen
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
+        <p className="hint">
+          <strong>PowerPoint:</strong> dort über <em>Datei → Exportieren → PDF/XPS erstellen</em>
+          speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu;
+          Animationen und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
+        </p>
+      </Card>
 
-      <p className="muted small mt-3">
-        Ein <strong>HTML-Foliensatz</strong> läuft in einem abgeschotteten Rahmen: Er sieht weder Wahldaten
-        noch die Oberfläche und kann nichts nachladen. Ein <strong>PDF</strong> zeichnet Votura selbst — ohne
-        Werkzeugleiste, ohne Blätterleiste. Auf dem Beamer und in der Netzwerkansicht erscheint in beiden
-        Fällen dieselbe Folie.
-      </p>
-      <p className="hint">
-        <strong>PowerPoint:</strong> dort über <em>Datei → Exportieren → PDF/XPS erstellen</em>
-        speichern und die PDF-Datei hier einspeisen. Schriften und Layout bleiben originalgetreu; Animationen
-        und Folienübergänge gehen verloren — die überstehen keine Umwandlung.
-      </p>
-    </Card>
+      {umbenannt && (
+        <RenameDialog
+          title="Präsentation umbenennen"
+          label="Name"
+          value={umbenannt.title}
+          onCancel={() => setUmbenannt(null)}
+          onConfirm={(name) => void umbenennen(umbenannt, name)}
+        />
+      )}
+    </>
   )
 }

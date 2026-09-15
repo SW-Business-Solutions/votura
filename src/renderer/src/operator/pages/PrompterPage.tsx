@@ -26,7 +26,7 @@ import type { NetworkProjectionStatus } from '@shared/ipc'
 import type { Candidate } from '@shared/types'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
-import { Card, Checkbox, Field } from '../components/ui'
+import { Card, Checkbox, Field, RenameDialog } from '../components/ui'
 
 /** m:ss — dieselbe Darstellung wie überall sonst. */
 function mss(sekunden: number): string {
@@ -44,6 +44,8 @@ export function PrompterPage(): React.JSX.Element {
   const [netz, setNetz] = useState<NetworkProjectionStatus | null>(null)
   /* Die Bewerber der Veranstaltung — für die Zuordnung „diese Rede gehört zu". */
   const [bewerber, setBewerber] = useState<Candidate[]>([])
+  /* Welche Rede gerade umbenannt wird. */
+  const [umbenennen, setUmbenennen] = useState<SpeechInfo | null>(null)
   const [fenster, setFenster] = useState(false)
   /* Die Uhr für die Anzeige „bei Zeile x von y" — der Lauf selbst hängt an
      der Uhr des Zustands, nicht an dieser. */
@@ -119,6 +121,41 @@ export function PrompterPage(): React.JSX.Element {
       await laden()
     })
   }
+
+  /*
+   * Bewerber nach Wahlgang gruppiert.
+   *
+   * Dieselbe Person steht oft in mehreren Wahlgängen, und eine flache Liste
+   * zeigte ihren Namen dann zweimal ohne Unterschied. Die Zuordnung gilt
+   * deshalb nicht der Person, sondern ihrer **Bewerbung**.
+   */
+  const bewerberGruppen = useMemo(() => {
+    const gruppen = new Map<string, { titel: string; leute: Candidate[] }>()
+    for (const eintrag of bewerber) {
+      const runde = app.rounds.find((r) => r.id === eintrag.electionRoundId)
+      const titel = runde ? `${runde.roundLabel} — ${runde.title}` : 'Ohne Wahlgang'
+      const gruppe = gruppen.get(eintrag.electionRoundId) ?? { titel, leute: [] }
+      gruppe.leute.push(eintrag)
+      gruppen.set(eintrag.electionRoundId, gruppe)
+    }
+    return [...gruppen.values()]
+  }, [bewerber, app.rounds])
+
+  /*
+   * Zwei Reden auf derselben Bewerbung — dann weiß der Prompter beim Aufruf
+   * nicht, welche gemeint ist, und legt keine auf. Das muss man sehen, bevor
+   * man im Saal darauf wartet.
+   */
+  const doppelt = useMemo(() => {
+    const gezaehlt = new Map<string, number>()
+    for (const rede of reden) {
+      if (rede.candidateId) gezaehlt.set(rede.candidateId, (gezaehlt.get(rede.candidateId) ?? 0) + 1)
+    }
+    return [...gezaehlt.entries()]
+      .filter(([, anzahl]) => anzahl > 1)
+      .map(([id]) => bewerber.find((eintrag) => eintrag.id === id)?.displayName)
+      .filter((name): name is string => Boolean(name))
+  }, [reden, bewerber])
 
   /* Was im Editor steht, zählt — nicht, was zuletzt gespeichert wurde. */
   const woerterImEntwurf = useMemo(() => redeWoerter(entwurf), [entwurf])
@@ -230,10 +267,14 @@ export function PrompterPage(): React.JSX.Element {
                               }
                             >
                               <option value="">– keinem Bewerber zugeordnet –</option>
-                              {bewerber.map((eintrag) => (
-                                <option key={eintrag.id} value={eintrag.id}>
-                                  {eintrag.displayName}
-                                </option>
+                              {bewerberGruppen.map((gruppe) => (
+                                <optgroup key={gruppe.titel} label={gruppe.titel}>
+                                  {gruppe.leute.map((eintrag) => (
+                                    <option key={eintrag.id} value={eintrag.id}>
+                                      {eintrag.displayName}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               ))}
                             </select>
                           ) : (
@@ -251,17 +292,7 @@ export function PrompterPage(): React.JSX.Element {
                           >
                             Auflegen
                           </button>
-                          <button
-                            className="mini"
-                            onClick={() =>
-                              void rufe(async () => {
-                                const name = window.prompt('Neuer Name', rede.title)
-                                if (!name) return
-                                await api('speech.rename', { id: rede.id, title: name })
-                                await laden()
-                              })
-                            }
-                          >
+                          <button className="mini" onClick={() => setUmbenennen(rede)}>
                             Umbenennen
                           </button>
                           <button
@@ -591,10 +622,23 @@ export function PrompterPage(): React.JSX.Element {
               kommt sie mitsamt seiner Uhr auf den Prompter. Aus: Der Prompter behält, was von Hand
               daraufliegt — die Notizen der Versammlungsleitung etwa.
             </div>
+            {view.folgtDemAufruf && bewerber.length === 0 && (
+              <div className="hint mt-2">
+                In dieser Veranstaltung sind noch keine Bewerber erfasst. Sobald ein Wahlgang welche hat,
+                steht unter jeder Rede ein Auswahlfeld.
+              </div>
+            )}
             {view.folgtDemAufruf && bewerber.length > 0 && reden.every((rede) => !rede.candidateId) && (
               <div className="hint mt-2">
-                Noch ist keine Rede einem Bewerber zugeordnet — dafür steht unter jedem Titel in der
+                Noch ist keine Rede einer Bewerbung zugeordnet — dafür steht unter jedem Titel in der
                 Bibliothek ein Auswahlfeld.
+              </div>
+            )}
+            {doppelt.length > 0 && (
+              <div className="notice warn mt-2">
+                Mehrere Reden gehören zur selben Bewerbung ({doppelt.join(', ')}). Beim Aufruf legt der
+                Prompter deshalb keine auf — eine geratene Rede wäre schlimmer als gar keine. Gehören sie zu
+                verschiedenen Wahlgängen, ordnen Sie jede dem Bewerbereintrag ihres Wahlgangs zu.
               </div>
             )}
 
@@ -626,6 +670,22 @@ export function PrompterPage(): React.JSX.Element {
           </Card>
         </div>
       </div>
+
+      {umbenennen && (
+        <RenameDialog
+          title="Rede umbenennen"
+          label="Name"
+          value={umbenennen.title}
+          onCancel={() => setUmbenennen(null)}
+          onConfirm={(name) =>
+            void rufe(async () => {
+              await api('speech.rename', { id: umbenennen.id, title: name })
+              setUmbenennen(null)
+              await laden()
+            })
+          }
+        />
+      )}
     </>
   )
 }

@@ -223,13 +223,17 @@ let zuletztGerufen: string | undefined
  * Zahlen laufen. Ist keine Rede zugeordnet, bleibt alles, wie es ist: Ein
  * Gast, ein Bericht, ein Grußwort räumen den Prompter nicht leer.
  */
-export function sprecherAufgerufen(sprecher?: { name: string; until?: string }): void {
+export function sprecherAufgerufen(sprecher?: {
+  name: string
+  until?: string
+  roundId?: UUID
+}): void {
   const name = sprecher?.name?.trim()
   if (!name || name === zuletztGerufen) return
   zuletztGerufen = name
   if (!state.folgtDemAufruf) return
 
-  const rede = redeFuerBewerber(name)
+  const rede = redeFuerBewerber(name, sprecher?.roundId)
   if (!rede || rede.id === state.speech?.id) return
 
   loadSpeech(rede.id)
