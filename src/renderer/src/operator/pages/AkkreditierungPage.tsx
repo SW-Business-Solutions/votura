@@ -274,8 +274,8 @@ export function AkkreditierungPage(): React.JSX.Element {
   }
 
   return (
-    <>
-      <div className="page-header">
+    <div className="seite-sortiert">
+      <div className="page-header" style={{ order: 0 }}>
         <div>
           <h1>Akkreditierung</h1>
           <div className="subtitle">
@@ -284,6 +284,47 @@ export function AkkreditierungPage(): React.JSX.Element {
           </div>
         </div>
       </div>
+
+      {/*
+        **Die Erklärung steht vor der Bedienung.**
+
+        Diese Seite hatte drei Begriffe, die niemand von außen kennt —
+        Akkreditierung, Ausweis, Voting Pass — und erklärte keinen davon. Sie
+        zeigte stattdessen sofort ein Scanfeld für etwas, das es noch gar
+        nicht gab. Wer hier zum ersten Mal steht, liest zuerst, worum es geht.
+      */}
+      <Card title="Wie das hier zusammenhängt">
+        <div className="grid cols-3">
+          <div>
+            <strong>1. Teilnehmer erfassen</strong>
+            <p className="hint">
+              Wer zur Versammlung gehört und wer davon stimmberechtigt ist. Ohne diese Liste geht nichts
+              Weiteres — sie ist die Grundlage für jede Zahl auf dieser Seite.
+            </p>
+          </div>
+          <div>
+            <strong>2. Ausweise vorbereiten</strong>
+            <p className="hint">
+              Jeder Anwesende bekommt am Einlass einen Ausweis: eine <strong>Stimmkarte</strong> oder ein{' '}
+              <strong>Bändchen</strong> aus einer eingelesenen Lieferung — oder einen{' '}
+              <strong>Voting Pass</strong>, den dieser Rechner selbst auf dem Bondrucker ausgibt. Alle drei
+              tragen einen QR-Code und tun dasselbe.
+            </p>
+          </div>
+          <div>
+            <strong>3. Einlass</strong>
+            <p className="hint">
+              Ausweis scannen — das <em>ist</em> die Akkreditierung: Die Person gilt damit als anwesend und
+              darf abstimmen. Wer geht, gibt den Ausweis zurück; nur wer im Saal ist, stimmt ab.
+            </p>
+          </div>
+        </div>
+        <div className="hint mt-2">
+          Die Akkreditierung ist <strong>eine Möglichkeit, keine Pflicht</strong>. Wer keine Teilnehmerliste
+          führt, arbeitet wie bisher: Die Zahl der Stimmberechtigten bleibt die, die an der Veranstaltung
+          eingetragen ist.
+        </div>
+      </Card>
 
       {stand && (
         <Card tight>
@@ -320,207 +361,227 @@ export function AkkreditierungPage(): React.JSX.Element {
         </div>
       )}
 
-      <Card title="Einlass">
-        <div className="hint">
-          Pass scannen oder Namen tippen. Ein Scanner gibt den Pass als Tastatureingabe ein und schließt mit
-          der Eingabetaste ab — es muss niemand die Maus anfassen.
-        </div>
-        <div className="row mt-2">
-          <div className="col">
-            <input
-              ref={sucheFeld}
-              autoFocus
-              placeholder="Voting Pass scannen oder Namen suchen …"
-              value={suche}
-              onChange={(ereignis) => setSuche(ereignis.target.value)}
-              onKeyDown={(ereignis) => {
-                if (ereignis.key === 'Enter') void scannen()
+      {/*
+        **Die Reihenfolge richtet sich danach, was gerade dran ist.**
+
+        Ohne Teilnehmer steht das Aufnehmen oben und der Einlass unten — ein
+        Scanfeld für eine leere Liste ist eine Einladung, etwas auszuprobieren,
+        das nicht gehen kann. Sobald die Liste steht, rückt der Einlass nach
+        oben: Er ist an dem Abend das einzige, was noch benutzt wird.
+
+        Gelöst über die Anzeigereihenfolge, nicht über zwei Kopien desselben
+        Abschnitts — zwei Kopien laufen bei der ersten Änderung auseinander.
+      */}
+      <div className="reihenfolge" style={{ order: liste.length > 0 ? 1 : 3 }}>
+        <Card title="3. Einlass — Ausweis scannen">
+          <div className="hint">
+            Ein Scan genügt, und er entscheidet selbst, was er ist: Ein freier Ausweis wird ausgegeben und die
+            Person gilt als anwesend; ein ausgegebener wird zurückgenommen und die Person gilt als gegangen.
+            Es geht in beiden Richtungen — erst die Person antippen und dann scannen, oder umgekehrt.
+          </div>
+          <div className="hint">
+            Ein Handscanner gibt den Code als Tastatureingabe ein und schließt mit der Eingabetaste ab; es
+            muss niemand die Maus anfassen. Ohne Scanner hilft die Kamera oder das Tippen des Namens.
+          </div>
+          <div className="row mt-2">
+            <div className="col">
+              <input
+                ref={sucheFeld}
+                autoFocus
+                placeholder="Voting Pass scannen oder Namen suchen …"
+                value={suche}
+                onChange={(ereignis) => setSuche(ereignis.target.value)}
+                onKeyDown={(ereignis) => {
+                  if (ereignis.key === 'Enter') void scannen()
+                }}
+              />
+            </div>
+            {kameraVerfuegbar() && <button onClick={() => setKamera(true)}>Mit der Kamera</button>}
+          </div>
+          {kamera && (
+            <QrScanner
+              titel="Ausweis scannen"
+              aufSchliessen={() => setKamera(false)}
+              aufCode={(gelesen) => {
+                setKamera(false)
+                setSuche(gelesen)
+                void scannen(gelesen)
               }}
             />
-          </div>
-          {kameraVerfuegbar() && <button onClick={() => setKamera(true)}>Mit der Kamera</button>}
-        </div>
-        {kamera && (
-          <QrScanner
-            titel="Ausweis scannen"
-            aufSchliessen={() => setKamera(false)}
-            aufCode={(gelesen) => {
-              setKamera(false)
-              setSuche(gelesen)
-              void scannen(gelesen)
-            }}
-          />
+          )}
+          {(ausgewaehlt || wartendeKarte) && (
+            <div className="notice mt-2">
+              {wartendeKarte
+                ? `${bezeichnung(wartendeKarte.card)} wartet — Person in der Liste antippen.`
+                : `${ausgewaehlt?.firstName} ${ausgewaehlt?.lastName} ist vorgemerkt — jetzt Ausweis scannen.`}{' '}
+              <button
+                className="ghost"
+                onClick={() => {
+                  setAusgewaehlt(null)
+                  setWartendeKarte(null)
+                }}
+              >
+                Abbrechen
+              </button>
+            </div>
+          )}
+          {meldung && <div className="notice mt-2">{meldung}</div>}
+        </Card>
+
+        {passAnzeige && (
+          <Card title={`Voting Pass für ${passAnzeige.name}`}>
+            {/*
+             * Der Pass steht hier genau einmal. Gespeichert ist nur sein Hash;
+             * wer das Fenster schließt, ohne ihn zu drucken, muss einen neuen
+             * ausgeben — und der alte verfällt dabei.
+             */}
+            <p className="mono" style={{ fontSize: '28px', letterSpacing: '3px' }}>
+              {passAnzeige.token}
+            </p>
+            <div className="hint">
+              Dieser Wert erscheint <strong>nur jetzt</strong>. Gespeichert wird nur seine Prüfsumme — er
+              lässt sich später nicht nachschlagen, sondern nur neu ausgeben, wobei der alte verfällt.
+            </div>
+            <button className="mt-2" onClick={() => setPassAnzeige(null)}>
+              Schließen
+            </button>
+          </Card>
         )}
-        {(ausgewaehlt || wartendeKarte) && (
-          <div className="notice mt-2">
-            {wartendeKarte
-              ? `${bezeichnung(wartendeKarte.card)} wartet — Person in der Liste antippen.`
-              : `${ausgewaehlt?.firstName} ${ausgewaehlt?.lastName} ist vorgemerkt — jetzt Ausweis scannen.`}{' '}
-            <button
-              className="ghost"
-              onClick={() => {
-                setAusgewaehlt(null)
-                setWartendeKarte(null)
-              }}
-            >
-              Abbrechen
+      </div>
+
+      <div className="reihenfolge" style={{ order: 2 }}>
+        <Card title="2. Ausweise vorbereiten — Karten und Bändchen einlesen">
+          <div className="hint">
+            Die Liste kommt vom Hersteller — je Zeile die aufgedruckte Nummer und der Code, getrennt durch
+            Semikolon. Gespeichert wird nur die Prüfsumme des Codes; die Liste gehört danach vernichtet, denn
+            sie ist ein Stapel gültiger Ausweise in Textform.
+          </div>
+          <div className="row mt-2">
+            {/* Breit genug, dass beide Wahlmöglichkeiten in einer Zeile stehen —
+              in einer Reihe schrumpft ein Feld sonst auf seinen Inhalt. */}
+            <div style={{ minWidth: '320px' }}>
+              <Field label="Art des Ausweises">
+                <select
+                  value={importArt}
+                  onChange={(ereignis) => setImportArt(ereignis.target.value as Ausweis['kind'])}
+                >
+                  <option value="card">Karten — kommen am Ausgang zurück</option>
+                  <option value="band">Bändchen — werden abgerissen</option>
+                </select>
+              </Field>
+            </div>
+            <div className="hint" style={{ flex: 1, minWidth: '240px' }}>
+              {importArt === 'card'
+                ? 'Eine zurückgegebene Karte geht wieder in den Stapel — sie lässt sich an diesem Abend erneut ausgeben.'
+                : 'Ein abgerissenes Bändchen ist verbraucht. Wer den Saal verlässt und wiederkommt, bekommt ein neues.'}
+            </div>
+          </div>
+          <textarea
+            className="mt-2"
+            rows={4}
+            placeholder={`0001;A7F2-9K3M-XQ81-2BVR
+0002;L4D8-3PZ1-9WTC-6HNE`}
+            value={importText}
+            onChange={(ereignis) => setImportText(ereignis.target.value)}
+          />
+          <div className="row mt-2">
+            <button className="primary" disabled={!importText.trim()} onClick={() => void kartenEinlesen()}>
+              Einlesen
+            </button>
+            <div className="hint">
+              {importText.trim() ? `${zeilenZahl(importText)} Zeilen` : 'Noch keine Liste eingefügt.'}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="reihenfolge" style={{ order: liste.length > 0 ? 3 : 1 }}>
+        <Card title="1. Teilnehmer aufnehmen">
+          <div className="row">
+            <Field label="Nachname">
+              <input
+                value={neu.lastName}
+                onChange={(ereignis) => setNeu({ ...neu, lastName: ereignis.target.value })}
+              />
+            </Field>
+            <Field label="Vorname">
+              <input
+                value={neu.firstName}
+                onChange={(ereignis) => setNeu({ ...neu, firstName: ereignis.target.value })}
+              />
+            </Field>
+            <Field label="Nummer">
+              <input
+                value={neu.number}
+                onChange={(ereignis) => setNeu({ ...neu, number: ereignis.target.value })}
+              />
+            </Field>
+            <Field label="Stimmgewicht">
+              {/* Kein rohes Zahlenfeld: Eine 0 oder eine −1 nahm es bisher an,
+                und eine Stimme, die nichts wiegt, gibt es nicht. */}
+              <NumberInput
+                value={Number.parseInt(neu.weight, 10) || 1}
+                min={1}
+                max={999}
+                onChange={(wert) => setNeu({ ...neu, weight: String(wert) })}
+              />
+            </Field>
+            <button className="primary" onClick={() => void aufnehmen()}>
+              Aufnehmen
             </button>
           </div>
-        )}
-        {meldung && <div className="notice mt-2">{meldung}</div>}
-      </Card>
-
-      {passAnzeige && (
-        <Card title={`Voting Pass für ${passAnzeige.name}`}>
-          {/*
-           * Der Pass steht hier genau einmal. Gespeichert ist nur sein Hash;
-           * wer das Fenster schließt, ohne ihn zu drucken, muss einen neuen
-           * ausgeben — und der alte verfällt dabei.
-           */}
-          <p className="mono" style={{ fontSize: '28px', letterSpacing: '3px' }}>
-            {passAnzeige.token}
-          </p>
-          <div className="hint">
-            Dieser Wert erscheint <strong>nur jetzt</strong>. Gespeichert wird nur seine Prüfsumme — er lässt
-            sich später nicht nachschlagen, sondern nur neu ausgeben, wobei der alte verfällt.
-          </div>
-          <button className="mt-2" onClick={() => setPassAnzeige(null)}>
-            Schließen
-          </button>
         </Card>
-      )}
 
-      <Card title="Karten und Bändchen einlesen">
-        <div className="hint">
-          Die Liste kommt vom Hersteller — je Zeile die aufgedruckte Nummer und der Code, getrennt durch
-          Semikolon. Gespeichert wird nur die Prüfsumme des Codes; die Liste gehört danach vernichtet, denn
-          sie ist ein Stapel gültiger Ausweise in Textform.
-        </div>
-        <div className="row mt-2">
-          {/* Breit genug, dass beide Wahlmöglichkeiten in einer Zeile stehen —
-              in einer Reihe schrumpft ein Feld sonst auf seinen Inhalt. */}
-          <div style={{ minWidth: '320px' }}>
-            <Field label="Art des Ausweises">
-              <select
-                value={importArt}
-                onChange={(ereignis) => setImportArt(ereignis.target.value as Ausweis['kind'])}
-              >
-                <option value="card">Karten — kommen am Ausgang zurück</option>
-                <option value="band">Bändchen — werden abgerissen</option>
-              </select>
-            </Field>
-          </div>
-          <div className="hint" style={{ flex: 1, minWidth: '240px' }}>
-            {importArt === 'card'
-              ? 'Eine zurückgegebene Karte geht wieder in den Stapel — sie lässt sich an diesem Abend erneut ausgeben.'
-              : 'Ein abgerissenes Bändchen ist verbraucht. Wer den Saal verlässt und wiederkommt, bekommt ein neues.'}
-          </div>
-        </div>
-        <textarea
-          className="mt-2"
-          rows={4}
-          placeholder={`0001;A7F2-9K3M-XQ81-2BVR
-0002;L4D8-3PZ1-9WTC-6HNE`}
-          value={importText}
-          onChange={(ereignis) => setImportText(ereignis.target.value)}
-        />
-        <div className="row mt-2">
-          <button className="primary" disabled={!importText.trim()} onClick={() => void kartenEinlesen()}>
-            Einlesen
-          </button>
-          <div className="hint">
-            {importText.trim()
-              ? `${zeilenZahl(importText)} Zeilen`
-              : 'Noch keine Liste eingefügt.'}
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Teilnehmer aufnehmen">
-        <div className="row">
-          <Field label="Nachname">
-            <input
-              value={neu.lastName}
-              onChange={(ereignis) => setNeu({ ...neu, lastName: ereignis.target.value })}
-            />
-          </Field>
-          <Field label="Vorname">
-            <input
-              value={neu.firstName}
-              onChange={(ereignis) => setNeu({ ...neu, firstName: ereignis.target.value })}
-            />
-          </Field>
-          <Field label="Nummer">
-            <input
-              value={neu.number}
-              onChange={(ereignis) => setNeu({ ...neu, number: ereignis.target.value })}
-            />
-          </Field>
-          <Field label="Stimmgewicht">
-            {/* Kein rohes Zahlenfeld: Eine 0 oder eine −1 nahm es bisher an,
-                und eine Stimme, die nichts wiegt, gibt es nicht. */}
-            <NumberInput
-              value={Number.parseInt(neu.weight, 10) || 1}
-              min={1}
-              max={999}
-              onChange={(wert) => setNeu({ ...neu, weight: String(wert) })}
-            />
-          </Field>
-          <button className="primary" onClick={() => void aufnehmen()}>
-            Aufnehmen
-          </button>
-        </div>
-      </Card>
-
-      <Card title={`Teilnehmer (${gefiltert.length} von ${liste.length})`}>
-        {liste.length === 0 ? (
-          <EmptyState text="Noch niemand erfasst. Teilnehmer oben aufnehmen." />
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Nummer</th>
-                <th>Stimmrecht</th>
-                <th>Seit</th>
-                <th>Pass</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {gefiltert.map((person) => (
-                <tr
-                  key={person.id}
-                  className={ausgewaehlt?.id === person.id ? 'ausgewaehlt' : undefined}
-                  onClick={() => void antippen(person)}
-                >
-                  <td>
-                    {person.lastName}, {person.firstName}
-                    {person.blockedAt && <span className="badge">gesperrt</span>}
-                  </td>
-                  <td>{person.number ?? '—'}</td>
-                  <td>
-                    {person.eligible ? (person.weight > 1 ? `${person.weight} Stimmen` : 'ja') : 'Gast'}
-                  </td>
-                  <td>{person.present ? uhrzeit(person.lastSeenAt) : '—'}</td>
-                  <td>{person.passIssued ? 'Pass' : '—'}</td>
-                  <td className="row" onClick={(ereignis) => ereignis.stopPropagation()}>
-                    <button onClick={() => void anwesenheit(person, person.present ? 'out' : 'in')}>
-                      {person.present ? 'Gegangen' : 'Da'}
-                    </button>
-                    {person.eligible && !person.blockedAt && (
-                      <button onClick={() => void passAusgeben(person)}>
-                        {person.passIssued ? 'Pass neu' : 'Pass'}
-                      </button>
-                    )}
-                  </td>
+        <Card title={`Teilnehmer (${gefiltert.length} von ${liste.length})`}>
+          {liste.length === 0 ? (
+            <EmptyState text="Noch niemand erfasst. Teilnehmer oben aufnehmen." />
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Nummer</th>
+                  <th>Stimmrecht</th>
+                  <th>Seit</th>
+                  <th>Pass</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </>
+              </thead>
+              <tbody>
+                {gefiltert.map((person) => (
+                  <tr
+                    key={person.id}
+                    className={ausgewaehlt?.id === person.id ? 'ausgewaehlt' : undefined}
+                    onClick={() => void antippen(person)}
+                  >
+                    <td>
+                      {person.lastName}, {person.firstName}
+                      {person.blockedAt && <span className="badge">gesperrt</span>}
+                    </td>
+                    <td>{person.number ?? '—'}</td>
+                    <td>
+                      {person.eligible ? (person.weight > 1 ? `${person.weight} Stimmen` : 'ja') : 'Gast'}
+                    </td>
+                    <td>{person.present ? uhrzeit(person.lastSeenAt) : '—'}</td>
+                    <td>{person.passIssued ? 'Pass' : '—'}</td>
+                    <td className="row" onClick={(ereignis) => ereignis.stopPropagation()}>
+                      <button onClick={() => void anwesenheit(person, person.present ? 'out' : 'in')}>
+                        {person.present ? 'Gegangen' : 'Da'}
+                      </button>
+                      {person.eligible && !person.blockedAt && (
+                        <button onClick={() => void passAusgeben(person)}>
+                          {person.passIssued ? 'Pass neu' : 'Pass'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
+    </div>
   )
 }
 

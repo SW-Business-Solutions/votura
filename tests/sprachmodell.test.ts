@@ -67,9 +67,20 @@ describe('Die Prompterseite bekommt, was die Erkennung braucht', () => {
     expect(mithoeren).toContain('Prompterfenster am Hauptrechner')
   })
 
-  it('fragt das Mikrofon nur für die Prompterseite an', () => {
+  it('gibt das Mikrofon nur der Prompterseite — die Kamera niemals', () => {
+    /*
+     * **Die Trennung ist keine Feinheit.** Chromium fasst Kamera und Mikrofon
+     * unter „media" zusammen. Seit die Bedienoberfläche QR-Codes scannt,
+     * braucht sie die Kamera — das Mikrofon darf sie deshalb nicht
+     * gleich mitbekommen, und der Prompter umgekehrt keine Kamera.
+     */
     expect(haupt).toContain('setPermissionRequestHandler')
-    expect(haupt).toContain("permission === 'media'")
+    expect(haupt).toContain("permission !== 'media'")
+    /* Ton nur vom Pult, Bild nur aus der eigenen Oberfläche. */
+    expect(haupt).toContain("art === 'audio'")
+    expect(haupt).toContain('istEigeneOberflaeche')
+    /* Eine eingebettete Präsentation bekommt beides nicht. */
+    expect(haupt).toContain('PRESENTATION_SCHEME')
   })
 })
 

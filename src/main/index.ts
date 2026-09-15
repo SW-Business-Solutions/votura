@@ -280,20 +280,51 @@ function hardenSecurity(): void {
   })
 
   /*
-   * Rechte: grundsätzlich nichts — mit **einer** Ausnahme.
+   * Rechte: grundsätzlich nichts — mit zwei genau umrissenen Ausnahmen.
    *
-   * Der Teleprompter darf das Mikrofon anfragen, und nur er: Damit hört er
-   * mit, wo im Manuskript gerade gesprochen wird. Aufgenommen wird nichts,
-   * der Ton verlässt das Gerät nicht, und die Erkennung läuft an Ort und
-   * Stelle. Erkennbar ist das Fenster an seinem eigenen Schema — kein anderes
-   * lädt von dort, und eine Präsentation im Rahmen erst recht nicht.
+   * **Das Mikrofon** bekommt allein der Teleprompter. Damit hört er mit, wo im
+   * Manuskript gerade gesprochen wird; aufgenommen wird nichts, der Ton
+   * verlässt das Gerät nicht, und die Erkennung läuft an Ort und Stelle.
+   * Erkennbar ist das Fenster an seinem eigenen Schema — kein anderes lädt von
+   * dort, und eine Präsentation im Rahmen erst recht nicht.
+   *
+   * **Die Kamera** bekommt die eigene Bedienoberfläche, weil dort QR-Codes
+   * gescannt werden: am Einlass und an der Ausgabe. Das fehlte, und der
+   * Browser meldete es als verweigerte Erlaubnis — gesucht wurde der Fehler
+   * dann in den Einstellungen des Rechners, wo nichts zu finden war.
+   *
+   * Die Trennung ist keine Feinheit: Ein Mikrofon in der Bedienoberfläche
+   * hätte nichts zu suchen, eine Kamera im Prompter ebenso wenig. Welche Art
+   * gemeint ist, steht in den Einzelheiten der Anfrage.
    */
-  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
-    const vomPult = contents.getURL().startsWith(`${PULT_SCHEME}://`)
-    callback(vomPult && permission === 'media')
+  const istEigeneOberflaeche = (url: string): boolean => {
+    if (url.startsWith(`${PRESENTATION_SCHEME}://`) || url.startsWith(`${PULT_SCHEME}://`)) return false
+    const entwicklung = process.env.ELECTRON_RENDERER_URL
+    return (entwicklung && url.startsWith(entwicklung)) || url.startsWith('file://')
+  }
+
+  const artErlaubt = (url: string, arten: string[]): boolean => {
+    if (arten.length === 0) return false
+    return arten.every((art) =>
+      art === 'audio'
+        ? url.startsWith(`${PULT_SCHEME}://`)
+        : art === 'video'
+          ? istEigeneOberflaeche(url)
+          : false
+    )
+  }
+
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback, einzelheiten) => {
+    if (permission !== 'media') {
+      callback(false)
+      return
+    }
+    callback(artErlaubt(contents.getURL(), (einzelheiten as { mediaTypes?: string[] }).mediaTypes ?? []))
   })
-  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft) => {
-    return herkunft.startsWith(`${PULT_SCHEME}://`) && permission === 'media'
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, herkunft, einzelheiten) => {
+    if (permission !== 'media') return false
+    const art = (einzelheiten as { mediaType?: string }).mediaType ?? 'unknown'
+    return artErlaubt(herkunft, [art])
   })
 
   // Strenge CSP: alles aus dem Paket, nichts aus dem Netz.
