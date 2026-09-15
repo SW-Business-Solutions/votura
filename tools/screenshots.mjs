@@ -781,6 +781,18 @@ try {
     await sitzung.aufnehmen(datei)
   }
 
+  /*
+   * Der Wahlgang-Assistent.
+   *
+   * Der erste Schritt, den jemand tut, der einen Wahlgang anlegt — und auf
+   * der Anleitungsseite der einzige Schritt ohne Bild. Eine halb leere Seite
+   * neben dem Text sieht aus, als fehle etwas. Es fehlte auch.
+   */
+  await sitzung.auswerten("window.location.hash = '#/round/new'")
+  await warte(1800)
+  await nachOben(sitzung)
+  await sitzung.aufnehmen('30-wahlgang-anlegen')
+
   /* Das Saalnetz: Namensdienst, Adressvergabe, Zertifikat. */
   await sitzung.auswerten("window.location.hash = '#/settings'")
   await warte(1000)

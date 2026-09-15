@@ -487,6 +487,7 @@ Die folgenden Aufnahmen stammen aus einem Demo-Bestand und lassen sich mit
 | ![Systemcheck](screenshots/05-systemcheck.png)                           | Prüfung vor der Versammlung                                                |
 | ![Einstellungen](screenshots/06-einstellungen.png)                       | Drucker, Sicherheit, Konten, Beamer-Erscheinungsbild                       |
 | ![Beameransicht](screenshots/11-beameransicht.png)                       | Öffentliche Anzeige des Ergebnisses                                        |
+| ![Wahlgang anlegen](screenshots/30-wahlgang-anlegen.png)                 | Der Assistent: Zweck und Verfahren getrennt, Positionen und Stimmen        |
 | ![Akkreditierung](screenshots/26-akkreditierung.png)                     | Einlass: Teilnehmer, Anwesenheit, Ausweise                                 |
 | ![Ausgabe](screenshots/27-ausgabe.png)                                   | Ein Zettel gegen einen Ausweis, je Wahlgang genau einer                    |
 | ![Digitale Abstimmung](screenshots/28-digitale-wahl.png)                 | Vorbereiten, eröffnen, schließen, übernehmen                               |
