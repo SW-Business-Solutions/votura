@@ -11,6 +11,7 @@ import { presentationKind } from '@shared/presentation'
 import { PdfFrame } from './PdfFrame'
 import { PresentationFrame } from './PresentationFrame'
 import { KameraBild } from './KameraBild'
+import { Untertitelband } from './Untertitelband'
 import { VideoFrame } from './VideoFrame'
 import {
   DEFAULT_PROJECTION_THEME,
@@ -224,6 +225,9 @@ export function ProjectionScreen({
     return (
       <div className={`projection-root video-mode${preview ? ' preview' : ''}`} style={style}>
         {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.untertitel && (
+          <Untertitelband untertitel={state.untertitel} />
+        )}
         {state.video && videoSrc ? (
           <VideoFrame
             key={state.video.id}
@@ -256,6 +260,9 @@ export function ProjectionScreen({
     return (
       <div className={`projection-root kamera-mode${preview ? ' preview' : ''}`} style={style}>
         {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.untertitel && (
+          <Untertitelband untertitel={state.untertitel} hoch={Boolean(state.camera?.bauchbinde || state.camera?.naechste)} />
+        )}
         {state.camera ? (
           <KameraBild
             key={state.camera.quelle}
@@ -278,6 +285,9 @@ export function ProjectionScreen({
     return (
       <div className={`projection-root presentation-mode${preview ? ' preview' : ''}`} style={style}>
         {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+        {state.untertitel && (
+          <Untertitelband untertitel={state.untertitel} />
+        )}
         {state.presentation && presentationSrc ? (
           presentationKind(state.presentation) === 'pdf' ? (
             /* Ein PDF steuert sich nicht selbst — Votura zeichnet die Seite. */
@@ -312,6 +322,7 @@ export function ProjectionScreen({
       style={style}
     >
       {disconnected && <div className="projection-offline">Verbindung unterbrochen</div>}
+      {state.untertitel && <Untertitelband untertitel={state.untertitel} />}
 
       {showLogo && theme.logoPosition === 'watermark' && (
         <img className="projection-logo watermark" src={theme.logo} alt="" />

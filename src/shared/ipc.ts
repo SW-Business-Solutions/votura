@@ -12,6 +12,7 @@ import type {
   ProjectionHistoryEntry,
   ProjectionMode,
   ProjectionState,
+  ProjectionUntertitel,
   ProjectionTheme
 } from './projection'
 import type { KameraStand } from './kamera'
@@ -814,6 +815,24 @@ export interface Api {
   'kamera.setNaechste': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
   /** Bild spiegeln — für den Rückblickschirm am Pult. */
   'kamera.setSpiegeln': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
+  /**
+   * Untertitel ein- oder ausschalten.
+   *
+   * Je Bühne, wie die Einblendungen über dem Kamerabild — die Saalwand zeigt
+   * sie, der Rückblickschirm am Pult nicht.
+   */
+  'untertitel.setAn': (an: boolean, stage?: Buehnenwahl) => Promise<ProjectionState>
+  /**
+   * Neu erkannten Text melden.
+   *
+   * Kommt aus dem Fenster des Hauptrechners — dort läuft die Erkennung, weil
+   * nur dort ein Mikrofon zu haben ist. Ohne Bühnenangabe: Gesprochen wird
+   * einmal im Saal, und der Text geht an jede Bühne, die ihn zeigen soll.
+   *
+   * Gibt nichts zurück. Der Weg ist heiß — viermal je Sekunde —, und eine
+   * Antwort, auf die niemand wartet, wäre nur Verkehr.
+   */
+  'untertitel.melde': (stand: ProjectionUntertitel) => Promise<void>
   'video.list': () => Promise<VideoInfo[]>
   /** Öffnet den Dateidialog und übernimmt die gewählte Videodatei. */
   'video.import': () => Promise<VideoInfo | null>

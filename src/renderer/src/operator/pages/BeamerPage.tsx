@@ -474,6 +474,29 @@ export function BeamerPage(): React.JSX.Element {
                 label="Vollständig anzeigen – auch nicht gewählte Bewerber mit Stimmenzahl"
               />
             </div>
+            {/*
+             * Untertitel hängen an keiner Ansicht.
+             *
+             * Gesprochen wird vor der Tagesordnung genauso wie vor einem
+             * Kamerabild — deshalb steht der Schalter hier unter der
+             * Ansichtsreihe und nicht bei den Kameras. Erkannt wird dabei am
+             * Hauptrechner; die Wände bekommen nur den fertigen Text.
+             */}
+            <div className="beamer-nebenschalter">
+              <span className="beamer-nebenschalter-marke">Im Saal</span>
+              <Checkbox
+                checked={Boolean(projection.untertitel)}
+                onChange={(value) => void api('untertitel.setAn', value, app.ziel).catch(app.reportError)}
+                label="Untertitel – was gesprochen wird, mitlesbar an der Wand"
+              />
+              {projection.untertitel && (
+                <p className="hint">
+                  Das Mikrofon dieses Rechners hört mit. Aufgezeichnet wird nichts — der Text steht
+                  an der Wand und sonst nirgends. Wie gut er stimmt, hängt am hinterlegten
+                  Sprachmodell.
+                </p>
+              )}
+            </div>
           </Card>
         </div>
 

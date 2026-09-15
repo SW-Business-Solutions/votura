@@ -129,6 +129,8 @@ import {
   setKameraBauchbinde,
   setKameraNaechste,
   setKameraSpiegeln,
+  setUntertitel,
+  meldeUntertitel,
   setVideoSchleife,
   setVideoPlaying,
   seekVideo,
@@ -930,6 +932,22 @@ const api: Api = {
   'kamera.setSpiegeln': async (an, stage) => {
     requirePermission('round.manage')
     return aufBuehnen(stage, (buehne) => setKameraSpiegeln(buehne, an))
+  },
+  'untertitel.setAn': async (an, stage) => {
+    requirePermission('round.manage')
+    return aufBuehnen(stage, (buehne) => setUntertitel(buehne, an))
+  },
+  /*
+   * Kein `requirePermission` und keine Rückgabe.
+   *
+   * Der Weg wird viermal je Sekunde benutzt, solange jemand spricht. Eine
+   * Rechteprüfung je Silbe brächte nichts hinzu: Eingeschaltet hat die
+   * Untertitel bereits jemand mit `round.manage`, und ohne diesen Schalter
+   * landet der Text nirgends — `meldeUntertitel` schreibt nur auf Bühnen, die
+   * ihn zeigen sollen.
+   */
+  'untertitel.melde': async (stand) => {
+    meldeUntertitel(stand)
   },
   'video.list': async () => listVideos(),
   'video.import': async () => {

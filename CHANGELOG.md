@@ -3,6 +3,48 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
+## Unveröffentlicht
+
+### Untertitel im Saal
+
+Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge
+Untertitel sucht.
+
+**Zuerst für die, die schlecht hören.** Eine Mitgliederversammlung ist der Ort, an dem über Ämter
+und Anträge entschieden wird; wer den Wortbeitrag nicht versteht, kann nicht mitentscheiden. Das
+ist kein Komfort, sondern die Bedingung dafür, dass Teilhabe nicht am Gehör scheitert. Und dann
+für alle anderen: In einem halligen Saal mit einer mäßigen Anlage liest jeder mit.
+
+Erkannt wird mit **demselben Sprachmodell**, mit dem der Prompter schon bisher dem Redner nach
+Gehör folgt — dieselbe Aufnahme, dieselbe Rechnung, nur ein anderes Ergebnis. Neue Technik kommt
+dafür kaum hinzu; der heikle Teil, der beides trägt, steht seither an **einer** Stelle statt an
+zwei.
+
+Was dabei zu wissen ist:
+
+- **Aufgezeichnet wird nichts.** Der Ton geht in die Erkennung und ist danach weg. Der Text steht
+  an der Wand, solange er dort steht — er wird nicht abgelegt, nicht protokolliert, nicht
+  exportiert. Ein Wortprotokoll wäre etwas anderes, und etwas, das eine Versammlung ausdrücklich
+  beschließen müsste.
+- **Je Bühne schaltbar.** Die Saalwand liest mit, der Rückblickschirm am Pult nicht — der Redner
+  braucht nicht zu lesen, was er gerade selbst sagt.
+- **In jeder Ansicht.** Untertitel hängen an keinem Modus: Gesprochen wird vor der Tagesordnung
+  genauso wie vor einem Kamerabild. Über dem Kamerabild rücken sie nach oben, damit sie Bauchbinde
+  und Rednerreihe nicht überdecken.
+- **Der Zwischenstand ist blasser.** Die Erkennung meldet erst, was sie zu hören glaubt, und
+  berichtigt sich danach. Beides gleich auszuzeichnen hieße, eine Sicherheit zu behaupten, die noch
+  nicht da ist.
+- **Nach einem Neustart aus.** Wie der Modus: Ein Mikrofon, das sich nach einem Absturz von selbst
+  wieder einschaltet, wäre eine Entscheidung, die der Rechner nicht zu treffen hat.
+- **Bleibt nicht stehen.** Wird das Fenster am Hauptrechner geschlossen oder neu geladen, räumt
+  eine Wache im Hauptprozess die Wand. Ein leeres Band sagt „nichts verstanden"; ein
+  stehengebliebenes behauptet etwas Falsches.
+
+**Ehrlich zur Güte:** Der Prompter braucht nur ein paar halbwegs erkannte Wörter, um sich in einem
+Text wiederzufinden, der schon dasteht. Untertitel haben diesen Text nicht — sie zeigen jeden
+Irrtum der Erkennung. Das kleine mitgelieferte Modell reicht für den Prompter; für Untertitel lohnt
+ein größeres, und genau dafür lässt sich in den Einstellungen eines hinterlegen.
+
 ## 1.6.0 — Das Bild aus dem Saal
 
 Diese Fassung bringt eine Fähigkeit, die Votura bisher nicht hatte und die kein Bildmischer

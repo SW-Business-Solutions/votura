@@ -941,3 +941,66 @@ html {
 .kamera-vorschau .kamera-naechste {
   display: none;
 }
+
+/*
+ * Das Untertitelband.
+ *
+ * Unten, mittig, zwei Zeilen — dort sucht das Auge Untertitel seit sechzig
+ * Jahren. Der Grund ist so deckend wie der der Bauchbinde: Über einem hellen
+ * Bildteil war der durchsichtigere nicht mehr zu lesen.
+ *
+ * Die Maße hängen an `cqh`/`cqw` wie alles in dieser Ansicht — dieselbe Wand
+ * trägt eine Vorschau von 300 Pixeln und einen Beamer von vier Metern, und
+ * beides soll gleich aussehen.
+ */
+.projection-untertitel {
+  position: absolute;
+  left: 50%;
+  bottom: 5cqh;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6cqh;
+  max-width: 82cqw;
+  padding: 1.6cqh 2.4cqw;
+  border-radius: 0.6rem;
+  background: rgba(8, 12, 20, 0.86);
+  backdrop-filter: blur(4px);
+  text-align: center;
+}
+
+/*
+ * Über dem Kamerabild sitzt es höher.
+ *
+ * Unten links steht dort die Bauchbinde, unten rechts die Rednerreihe. Beide
+ * enden bei rund 6cqh plus Höhe; darüber bleibt der Streifen, der hier
+ * gemeint ist.
+ */
+.projection-untertitel.hoch {
+  bottom: 26cqh;
+}
+
+.projection-untertitel-zeile {
+  margin: 0;
+  /* Groß genug für die letzte Reihe — Untertitel, die man nur vorn lesen
+     kann, helfen genau denen nicht, für die sie da sind. */
+  font-size: 4.4cqh;
+  line-height: 1.25;
+  font-weight: 600;
+  color: #fff;
+  /* Ein zarter Schatten hält die Schrift auch über einem hellen Bildteil
+     zusammen, falls der Grund einmal durchscheint. */
+  text-shadow: 0 0.2cqh 0.6cqh rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * Was die Erkennung noch nicht berichtigt hat.
+ *
+ * Blasser, nicht kursiv: Kursive Schrift liest sich auf Entfernung schlechter,
+ * und es geht nicht um Betonung, sondern um Vorbehalt.
+ */
+.projection-untertitel .vorlaeufig {
+  opacity: 0.6;
+}

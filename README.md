@@ -591,6 +591,59 @@ Die Befehle sind **gerechnete Bytes** und als solche geprüft — 41 Tests, ohne
 Raum steht. Was sich ohne Gerät nicht prüfen lässt, steht ehrlich aus: Ob ein bestimmtes Modell so
 antwortet, wie sein Handbuch behauptet, zeigt erst das Modell.
 
+## Untertitel im Saal
+
+Was gesprochen wird, mitlesbar an der Wand: zwei Zeilen, unten, dort, wo das Auge Untertitel seit
+sechzig Jahren sucht.
+
+**Zuerst für die, die schlecht hören.** Eine Mitgliederversammlung ist der Ort, an dem über Ämter
+und Anträge entschieden wird. Wer den Wortbeitrag nicht versteht, kann nicht mitentscheiden — und
+kein Nachfragen der Welt holt eine Debatte zurück, die weitergelaufen ist. Und dann für alle
+anderen: In einem halligen Saal mit einer mäßigen Anlage liest jeder mit.
+
+Eingeschaltet wird in der **Beamer**-Ansicht unter „Im Saal", je Bühne. Die Saalwand liest mit, der
+Rückblickschirm am Pult nicht: Wer vorne steht, braucht nicht zu lesen, was er selbst gerade sagt.
+
+**Untertitel hängen an keiner Ansicht.** Gesprochen wird vor der Tagesordnung genauso wie vor einem
+Kamerabild oder einer leeren Fläche; das Band bleibt, wenn die Ansicht wechselt. Über einem
+Kamerabild rückt es nach oben, damit Bauchbinde und Rednerreihe frei bleiben.
+
+### Erkannt wird am Hauptrechner
+
+Ein Mikrofon gibt es nur in einem sicheren Kontext — die Saalgeräte hängen über einfaches HTTP am
+Netz und bekommen keines. Zugehört wird deshalb an dem Rechner, an dem die Versammlung geführt
+wird; an die Wände geht nur der fertige Text. Das ist auch die sparsamere Richtung: Ein Modell,
+zehn Bildschirme.
+
+Gemeldet wird viermal je Sekunde, nicht im Silbentakt. Der Beamerzustand geht über dieselben
+Leitungen wie alles andere, und ein Text, den ohnehin niemand schneller liest, muss sie nicht
+belegen.
+
+### Aufgezeichnet wird nichts
+
+Derselbe Satz wie bei Kamera und Prompter, und er ist hier genauso wörtlich gemeint: Der Ton geht
+in die Erkennung und ist danach weg. Der erkannte Text steht an der Wand, solange er dort steht —
+er wird **nicht abgelegt, nicht protokolliert, nicht exportiert**, und er überlebt keinen Neustart.
+Der Puffer fasst zwei Zeilen; mehr zu behalten hieße, nebenbei ein Wortprotokoll anzulegen, und das
+ist etwas, das eine Versammlung ausdrücklich beschließen müsste.
+
+Dass zugehört wird, ist trotzdem eine Ansage wert. Ein Mikrofon, von dem niemand weiß, ist auch
+dann ein Mikrofon, wenn es nichts aufhebt.
+
+### Was die Erkennung leistet — und was nicht
+
+Erkannt wird mit demselben Sprachmodell, mit dem der Prompter dem Redner nach Gehör folgt. Für den
+genügt ein kleines: Er muss nicht diktieren, sondern in einem Text, der schon dasteht, die Stelle
+**wiederfinden** — ein paar halbwegs erkannte Wörter reichen dafür.
+
+Untertitel haben diesen Text nicht. Sie zeigen jeden Irrtum. Für sie lohnt deshalb ein größeres
+Modell, und genau dafür lässt sich unter **Einstellungen → Sprachmodell** eines hinterlegen; das
+eigene schlägt immer das mitgelieferte. Was noch hilft: ein Mikrofon am Pult statt eines im Raum.
+
+Der Zwischenstand steht blasser als der fertige Satz. Die Erkennung meldet erst, was sie zu hören
+glaubt, und berichtigt sich danach — beides gleich auszuzeichnen hieße, eine Sicherheit zu
+behaupten, die noch nicht da ist.
+
 ## Netzwerkbetrieb
 
 Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und nur für ein

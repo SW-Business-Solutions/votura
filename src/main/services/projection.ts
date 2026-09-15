@@ -32,6 +32,10 @@ import {
 } from '@shared/projection'
 import type { ProjectionPresentation } from '@shared/presentation'
 import type { ProjectionCamera } from '@shared/kamera'
+import {
+  UNTERTITEL_STILLE_MS,
+  type ProjectionUntertitel
+} from '@shared/untertitel'
 import type { ProjectionVideo } from '@shared/video'
 import { rankCandidates } from '@shared/result'
 import { profileFor } from '@shared/election'
@@ -1047,12 +1051,6 @@ export function setKameraBauchbinde(buehne: number, an: boolean): ProjectionStat
 }
 
 /**
- * Bild spiegeln.
- *
- * Für den Bildschirm, den die vortragende Person selbst ansieht — dort ist
- * ein seitenverkehrtes Bild verwirrend, an der Saalwand wäre es falsch.
- */
-/**
  * Die nächsten Redner über dem Kamerabild ein- oder ausblenden.
  *
  * Getrennt von der Bauchbinde schaltbar: Der Name dessen, der spricht, gehört
@@ -1085,6 +1083,114 @@ export function setKameraSpiegeln(buehne: number, an: boolean): ProjectionState 
   persist()
   broadcast(buehne)
   return neu
+}
+
+
+/* ------------------------------------------------------------ Untertitel */
+
+/**
+ * Untertitel ein- oder ausschalten.
+ *
+ * Je Bühne, wie die Einblendungen über dem Kamerabild: Die Saalwand zeigt
+ * sie, der Rückblickschirm am Pult nicht — der Redner braucht nicht zu lesen,
+ * was er selbst gerade sagt.
+ *
+ * Anders als die Kameraschalter hängen sie an **keiner** Ansicht: Gesprochen
+ * wird auch vor einer Tagesordnung und vor einem leeren Bild.
+ */
+export function setUntertitel(buehne: number, an: boolean): ProjectionState {
+  const state = buehneVon(buehne)
+  if (Boolean(state.untertitel) === an) return state
+  const neu = setzeUndGib(buehne, {
+    ...state,
+    untertitel: an ? { zeilen: [] } : undefined,
+    updatedAt: new Date().toISOString()
+  })
+  pruefeUntertitelWache()
+  persist()
+  broadcast(buehne)
+  return neu
+}
+
+/**
+ * Wann zuletzt etwas gehört wurde.
+ *
+ * Gebraucht für die Wache weiter unten — nicht als Zustand, den irgendwer
+ * sieht.
+ */
+let letzteUntertitelMeldung = 0
+
+/**
+ * Neuen Untertiteltext melden.
+ *
+ * Ohne Bühnenangabe: Gesprochen wird einmal im Saal. Der Text geht an jede
+ * Bühne, die Untertitel eingeschaltet hat — welche das sind, entscheidet der
+ * Schalter, nicht der Meldeweg.
+ *
+ * Geschrieben wird **nichts**. Weder `persist()` noch ein Protokolleintrag:
+ * Der Text steht an der Wand, solange er dort steht, und sonst nirgends. Ein
+ * Wortprotokoll wäre etwas anderes — und etwas, das eine Versammlung
+ * ausdrücklich beschließen müsste.
+ */
+export function meldeUntertitel(stand: ProjectionUntertitel): void {
+  letzteUntertitelMeldung = Date.now()
+  const jetzt = new Date().toISOString()
+  for (const [id, state] of zustaende) {
+    if (!state.untertitel) continue
+    if (gleicherUntertitel(state.untertitel, stand)) continue
+    setzeUndGib(id, { ...state, untertitel: stand, updatedAt: jetzt })
+    broadcast(id)
+  }
+}
+
+/**
+ * Zwei Stände vergleichen, um unnötige Meldungen zu sparen.
+ *
+ * Die Erkennung meldet im Takt der Silben, und oft ändert sich dabei nichts
+ * am angezeigten Text. Jede unveränderte Meldung durchzureichen hieße, jede
+ * SSE-Leitung im Saal ohne Anlass zu beschäftigen.
+ */
+function gleicherUntertitel(a: ProjectionUntertitel, b: ProjectionUntertitel): boolean {
+  return (
+    a.vorlaeufigAbWort === b.vorlaeufigAbWort &&
+    a.zeilen.length === b.zeilen.length &&
+    a.zeilen.every((zeile, i) => zeile === b.zeilen[i])
+  )
+}
+
+/**
+ * Die Wache gegen eingefrorene Untertitel.
+ *
+ * Erkannt wird im Fenster des Hauptrechners. Wird es geschlossen, neu geladen
+ * oder stürzt es ab, hört das Melden auf — und an der Saalwand stünde der
+ * letzte halbe Satz weiter, womöglich stundenlang, unter einem Bild, zu dem
+ * er längst nicht mehr gehört. Das ist schlimmer als gar kein Untertitel:
+ * Ein leeres Band sagt „nichts verstanden", ein stehengebliebenes behauptet
+ * etwas Falsches.
+ *
+ * Läuft mit, solange irgendeine Bühne Untertitel zeigt, und räumt auf.
+ */
+let untertitelWache: ReturnType<typeof setInterval> | undefined
+
+function pruefeUntertitelWache(): void {
+  const gebraucht = [...zustaende.values()].some((state) => state.untertitel)
+  if (gebraucht && !untertitelWache) {
+    untertitelWache = setInterval(() => {
+      const still = Date.now() - letzteUntertitelMeldung > UNTERTITEL_STILLE_MS
+      if (!still) return
+      const jetzt = new Date().toISOString()
+      for (const [id, state] of zustaende) {
+        if (!state.untertitel || state.untertitel.zeilen.length === 0) continue
+        setzeUndGib(id, { ...state, untertitel: { zeilen: [] }, updatedAt: jetzt })
+        broadcast(id)
+      }
+    }, UNTERTITEL_STILLE_MS)
+    /* Der Zeitgeber darf das Beenden des Programms nicht aufhalten. */
+    untertitelWache.unref?.()
+  } else if (!gebraucht && untertitelWache) {
+    clearInterval(untertitelWache)
+    untertitelWache = undefined
+  }
 }
 
 export function setVideoMuted(buehne: number, muted: boolean): ProjectionState {

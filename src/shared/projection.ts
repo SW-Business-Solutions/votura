@@ -7,6 +7,7 @@
  * Schreib-API.
  */
 import type { ProjectionPresentation } from './presentation'
+import type { ProjectionUntertitel } from './untertitel'
 import type { ProjectionCamera } from './kamera'
 import type { ProjectionVideo } from './video'
 import type { ElectionProcedure, IsoDate, IsoDateTime, UUID } from './types'
@@ -222,6 +223,8 @@ export function normalizeProjectionTheme(stored: Partial<ProjectionTheme> | unde
   return { ...DEFAULT_PROJECTION_THEME, ...stored, logoPosition }
 }
 
+export type { ProjectionUntertitel } from './untertitel'
+
 export interface ProjectionState {
   mode: ProjectionMode
   /**
@@ -300,6 +303,19 @@ export interface ProjectionState {
    * im Zustand müsste dagegen mehrmals je Sekunde durch alle Leitungen.
    */
   speaker?: ProjectionSpeaker
+  /**
+   * Untertitel — was gesprochen wird, mitlesbar.
+   *
+   * Steht das Feld hier, sind sie eingeschaltet; eine leere Zeilenliste heißt
+   * dann „eingeschaltet, aber gerade still". Beides zu unterscheiden ist
+   * nötig, weil nur das Erste eine Entscheidung der Bedienung ist: Bei Stille
+   * verschwindet das Band, eingeschaltet bleibt es trotzdem.
+   *
+   * Der Text selbst steht hier, anders als Bild und Video — er ist ein paar
+   * Dutzend Zeichen lang und damit das Einzige an dieser Stelle, das klein
+   * genug ist, um mitzureisen.
+   */
+  untertitel?: ProjectionUntertitel
   updatedAt: IsoDateTime
 }
 

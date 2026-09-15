@@ -42,29 +42,50 @@ describe('Die Prompterseite bekommt, was die Erkennung braucht', () => {
     expect(zeile).toContain("'wasm-unsafe-eval'")
   })
 
+  /*
+   * Geprüft wird `zuhoeren.ts` und nicht mehr `mithoeren.ts`.
+   *
+   * Der Aufbau — Mikrofon, Modell, Worklet — steht seit den Untertiteln an
+   * einer Stelle für beide Nutzer: Der Prompter sucht damit die Stelle im
+   * Manuskript, die Untertitel nehmen den Text. Die Zusagen hier gelten für
+   * das Zuhören selbst, also für beide.
+   */
   it('lädt das Worklet aus einer Datei, nicht aus einem Blob', () => {
     /* Ein Worklet fällt unter `script-src`; `blob:` dort hieße, beliebig
        erzeugte Skripte zuzulassen. */
-    const mithoeren = lies('src/renderer/src/prompter/mithoeren.ts')
-    expect(mithoeren).toContain("SAMMLER = 'pult-sammler.js'")
-    expect(mithoeren).not.toContain('new Blob([WORKLET]')
+    const zuhoeren = lies('src/renderer/src/sprache/zuhoeren.ts')
+    expect(zuhoeren).toContain("SAMMLER = 'pult-sammler.js'")
+    expect(zuhoeren).not.toContain('new Blob([WORKLET]')
     expect(lies('src/renderer/public/pult-sammler.js')).toContain('votura-sammler')
   })
 
   it('holt das Modell unter vollständiger Adresse', () => {
     /* Ein Blob-Worker hat keine Basis, gegen die ein relativer Pfad
        aufgelöst werden könnte. */
-    const mithoeren = lies('src/renderer/src/prompter/mithoeren.ts')
+    const zuhoeren = lies('src/renderer/src/sprache/zuhoeren.ts')
     expect(SPRACHMODELL_PFAD).toBe('/sprachmodell')
-    expect(mithoeren).toContain('location.origin')
+    expect(zuhoeren).toContain('location.origin')
   })
 
   it('sagt es, wenn im Netz kein Mikrofon zu haben ist', () => {
     /* `getUserMedia` gibt es nur in einer sicheren Herkunft; die Netzansicht
        läuft über einfaches HTTP. */
+    const zuhoeren = lies('src/renderer/src/sprache/zuhoeren.ts')
+    expect(zuhoeren).toContain('navigator.mediaDevices?.getUserMedia')
+    expect(zuhoeren).toContain('nur am Hauptrechner')
+  })
+
+  it('schreibt den heiklen Aufbau nur einmal', () => {
+    /*
+     * Prompter und Untertitel brauchen dasselbe: Abtastrate, Worklet statt
+     * ScriptProcessor, vollständige Modelladresse, sicherer Kontext. Jede
+     * dieser Stellen hat einen Grund — und eine zweite Fassung davon wäre
+     * eine, in der einer der Gründe irgendwann fehlt.
+     */
     const mithoeren = lies('src/renderer/src/prompter/mithoeren.ts')
-    expect(mithoeren).toContain('navigator.mediaDevices?.getUserMedia')
-    expect(mithoeren).toContain('Prompterfenster am Hauptrechner')
+    expect(mithoeren).toContain("from '../sprache/zuhoeren'")
+    expect(mithoeren).not.toContain('getUserMedia')
+    expect(mithoeren).not.toContain('AudioContext')
   })
 
   it('gibt das Mikrofon nur der Prompterseite — die Kamera niemals', () => {
