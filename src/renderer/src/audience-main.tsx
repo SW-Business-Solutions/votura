@@ -13,6 +13,7 @@ import { presentationKind, presentationPath, presentationUrl } from '@shared/pre
 import { videoPath, videoUrl } from '@shared/video'
 import { EMPTY_PROJECTION_STATE, HAUPTBUEHNE, type ProjectionState } from '@shared/projection'
 import { ProjectionScreen } from './projection/ProjectionScreen'
+import { Ueberlagerung } from './projection/Ueberlagerung'
 import './styles/projection.css'
 
 interface AudienceBridge {
@@ -121,6 +122,27 @@ function AudienceApp(): React.JSX.Element {
 
   const { state, disconnected } = useProjectionState(buehne)
 
+  /*
+   * `?ueberlagerung=1` macht aus der Beameransicht eine Einblendung.
+   *
+   * Für einen Livestream: Die Bildmischung nimmt das Kamerabild direkt über
+   * NDI und legt diese Seite darüber. Alles andere — Tagesordnung, Ergebnis,
+   * Kandidatenliste — gibt es im Stream schon, indem dieselbe Adresse **ohne**
+   * diesen Zusatz eingebunden wird.
+   */
+  const ueberlagerung = new URLSearchParams(window.location.search).get('ueberlagerung') === '1'
+  useEffect(() => {
+    /* Ohne Hintergrund heißt: auch der des Dokuments muss weg. Sonst steht
+       ein schwarzer Kasten über dem Kamerabild. */
+    if (!ueberlagerung) return
+    document.documentElement.classList.add('ueberlagerung-seite')
+    document.body.classList.add('ueberlagerung-seite')
+    return () => {
+      document.documentElement.classList.remove('ueberlagerung-seite')
+      document.body.classList.remove('ueberlagerung-seite')
+    }
+  }, [ueberlagerung])
+
   // Automatischer Seitenwechsel bei langen Kandidatenlisten (Beamer §8).
   const [page, setPage] = useState(0)
   useEffect(() => setPage(state.candidatePage), [state.candidatePage, state.round?.id, state.mode])
@@ -174,6 +196,8 @@ function AudienceApp(): React.JSX.Element {
   const melde = (meldung: { durationSeconds?: number; ready?: boolean; ended?: boolean }): void => {
     window.projection?.reportVideo?.(meldung)
   }
+
+  if (ueberlagerung) return <Ueberlagerung state={state} />
 
   return (
     <ProjectionScreen

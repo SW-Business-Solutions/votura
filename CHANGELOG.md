@@ -114,6 +114,26 @@ Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihr
 Einrichten davor — dafür in die Einstellungen zu wechseln, wäre einer zu viel. Sie erscheinen nur,
 wenn zu dem laufenden Bild eine Steuerung eingerichtet ist.
 
+### Einblendungen für einen Livestream
+
+Wer die Versammlung überträgt, nimmt das Kamerabild direkt: NDI bedient mehrere Empfänger
+gleichzeitig, die Bildmischung holt sich dieselbe Quelle wie der Saal. Was dabei bisher fehlte,
+waren die **Einblendungen** — Votura zeichnet Bauchbinde, Rednerreihe und Untertitel auf seine
+eigene Fläche und nicht in den NDI-Strom hinein.
+
+Die Netzansicht trägt jetzt einen Zusatz: **`?ueberlagerung=1`** zeigt genau diese drei Dinge auf
+**durchsichtigem** Grund, sonst nichts. In OBS oder vMix kommt sie als Browser-Quelle über das
+Kamerabild, und der Stream trägt dieselben Einblendungen wie die Wand — aus derselben Quelle, ohne
+dass jemand etwas zweimal tippt. Die Adresse steht in der Beamersteuerung unter **Ausgabe & Netz**.
+
+Sie hält sich dabei an die Schalter der Bedienung: Wer im Saal die Bauchbinde ausschaltet, weil
+gerade niemand aufgerufen ist, hat sie auch im Stream nicht. Sonst behauptete die Übertragung etwas,
+das der Saal nicht sieht.
+
+**Alles andere ging schon vorher** — Tagesordnung, Ergebnis, Kandidatenliste, Pause: Dieselbe
+Netzadresse **ohne** den Zusatz zeigt sie vollständig und lässt sich genauso einbinden. Nur das
+Kamerabild fehlt dort, und das holt die Bildmischung ohnehin direkt.
+
 ### Untertitel im Saal
 
 Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge

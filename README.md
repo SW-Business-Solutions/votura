@@ -786,6 +786,38 @@ Der Zwischenstand steht blasser als der fertige Satz. Die Erkennung meldet erst,
 glaubt, und berichtigt sich danach — beides gleich auszuzeichnen hieße, eine Sicherheit zu
 behaupten, die noch nicht da ist.
 
+## Die Versammlung übertragen
+
+Votura ist keine Streaming-Software und will keine werden. Es macht aber beides möglich, was eine
+Übertragung von ihm braucht.
+
+**Das Kamerabild** holt die Bildmischung direkt: NDI bedient **mehrere Empfänger gleichzeitig** —
+gemessen sechs an einer Quelle. OBS oder vMix nimmt dieselbe Kamera, die im Saal an der Wand
+hängt. Der Preis ist Bandbreite: Jeder Empfänger bekommt seinen eigenen Strom mit über hundert
+Megabit je Sekunde. Bei einer Übertragung gilt doppelt, was ohnehin gilt — **Kameras gehören ans
+Kabel**.
+
+**Die Einblendungen** liefert die Netzansicht mit dem Zusatz `?ueberlagerung=1`:
+
+```
+http://<Adresse>:8477/?buehne=1&ueberlagerung=1
+```
+
+Sie zeigt Bauchbinde, Rednerreihe und Untertitel auf **durchsichtigem** Grund — sonst nichts. Als
+Browser-Quelle über das Kamerabild gelegt, trägt der Stream dieselben Einblendungen wie der Saal.
+Die Adresse steht in der Beamersteuerung unter **Ausgabe & Netz**.
+
+Sie hält sich an die Schalter der Bedienung: Ist die Bauchbinde im Saal aus, ist sie im Stream aus.
+
+**Alles Übrige braucht keinen Zusatz.** Tagesordnung, Ergebnis, Kandidatenliste, Pausenuhr — die
+gewöhnliche Netzadresse zeigt sie vollständig und lässt sich genauso einbinden. Nur das Kamerabild
+fehlt dort: Ein Browser hat keine NDI-Anbindung, und die Ansicht sagt das auch.
+
+**Und die Kameras lassen sich weiter von einem Pult steuern.** Votura öffnet je Befehl eine
+Verbindung und schließt sie sofort wieder — zwischen zwei Positionsaufrufen belegt es die Kamera
+nicht. VISCA kennt keine Sperre; ein Pult am selben Netz kann jederzeit übernehmen. Nur gleichzeitig
+senden sollten beide nicht: Dann fährt die Kamera nacheinander an zwei Ziele.
+
 ## Netzwerkbetrieb
 
 Zwei getrennt schaltbare Funktionen, beide standardmäßig **deaktiviert** und nur für ein

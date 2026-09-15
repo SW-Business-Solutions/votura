@@ -1044,6 +1044,24 @@ export function BeamerPage(): React.JSX.Element {
                       ))}
                     </>
                   )}
+                  {/*
+                    Die Überlagerung für einen Livestream.
+
+                    Sie steht hier und nicht in den Einstellungen, weil sie
+                    eine Adresse ist wie die anderen auch — und weil sie nur
+                    dort etwas nützt, wo jemand die Adressen abschreibt.
+                  */}
+                  <label className="mt-3">Überlagerung für OBS / vMix</label>
+                  <div className="mono">
+                    {netzBasis(network)}/?buehne={buehne === ALLE_BUEHNEN ? HAUPTBUEHNE : buehne}&amp;ueberlagerung=1
+                    {network.token ? `&t=${network.token}` : ''}
+                  </div>
+                  <div className="hint">
+                    Nur Bauchbinde, Rednerreihe und Untertitel auf durchsichtigem Grund — als
+                    Browser-Quelle über das Kamerabild gelegt. Das Kamerabild selbst holt die
+                    Bildmischung direkt über NDI; diese Seite zeigt es nicht.
+                  </div>
+
                   <label className="mt-3">Prompter am Pult</label>
                   <div className="mono">
                     {netzBasis(network)}/prompter{network.token ? `?t=${network.token}` : ''}

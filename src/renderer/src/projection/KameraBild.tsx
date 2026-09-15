@@ -284,7 +284,7 @@ export function KameraBild({ camera, speaker, logo, klein }: Props): JSX.Element
  * Kamerabild. Bewusst auf der **anderen Seite** als die Bauchbinde und
  * kleiner: Sie ist eine Auskunft am Rand, kein Titel.
  */
-function Naechste({ speaker }: { speaker?: ProjectionSpeaker }): JSX.Element | null {
+export function Naechste({ speaker }: { speaker?: ProjectionSpeaker }): JSX.Element | null {
   const anzahl = speaker?.upcomingShown ?? REDNER_VORSCHAU
   const reihe = (speaker?.upcoming ?? []).slice(0, Math.max(0, anzahl))
   if (reihe.length === 0) return null
@@ -310,7 +310,7 @@ function Naechste({ speaker }: { speaker?: ProjectionSpeaker }): JSX.Element | n
  * an der Wand liest sie ohnehin niemand ab, aber jeder sieht, wie viel noch
  * übrig ist.
  */
-function Bauchbinde({
+export function Bauchbinde({
   inhalt,
   logo,
   speaker

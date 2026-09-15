@@ -1176,3 +1176,31 @@ html {
   margin-top: 0;
   font-size: 2.9cqh;
 }
+
+/*
+ * Die Überlagerung für einen Livestream.
+ *
+ * Durchsichtig bis auf die Einblendungen selbst — was hier keinen eigenen
+ * Grund hat, lässt das Kamerabild der Bildmischung durch.
+ *
+ * `container-type: size` ist nicht Zierde: Bauchbinde, Rednerreihe und
+ * Untertitelband rechnen ihre Maße in `cqh`/`cqw`. Ohne einen Container
+ * beziehen sie sich auf den nächsten darüber — und in OBS ist das der
+ * Ansichtsbereich in einer Größe, die niemand vorhersagt. Mit Container
+ * sitzen sie dort, wo sie an der Wand sitzen: im selben Verhältnis zum Bild.
+ */
+html.ueberlagerung-seite,
+body.ueberlagerung-seite {
+  background: transparent !important;
+  margin: 0;
+}
+
+.ueberlagerung {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  container-type: size;
+  /* Nichts hier nimmt Mausklicks an — in OBS liegt darunter das Bild, und
+     eine Seite, die Klicks schluckt, wäre nur im Weg. */
+  pointer-events: none;
+}
