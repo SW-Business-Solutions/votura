@@ -1055,6 +1055,101 @@ describe('Rednerreihe bei der Vorstellung', () => {
     expect(projection.getProjectionState(HAUPTBUEHNE).updatedAt).toBe(vorher)
   })
 
+  /*
+   * Der Weg über die Kamera und zurück.
+   *
+   * Mit der Kameraansicht ist ein Fall entstanden, den es vorher nicht gab:
+   * Man schaltet während einer laufenden Vorstellung auf das Bild und danach
+   * zurück auf die Anzeige mit Namen — derselbe Mensch, dieselbe Rede. Eine
+   * Uhr, die dabei von vorn beginnt, schenkt ihm heimlich Redezeit.
+   */
+  it('lässt die Uhr weiterlaufen, wenn dieselbe Person zurückkehrt', async () => {
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', note: 'Bewerbung um den Vorsitz', seconds: 180 }
+    })
+    const zuerst = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
+
+    /* Auf das Kamerabild — der Redner bleibt, die Uhr läuft. */
+    projection.setProjection(HAUPTBUEHNE, { mode: 'kamera', kamera: { quelle: 'PULT (Test)' } })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.name).toBe('Clara Fenske')
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).toBe(zuerst)
+
+    await new Promise((fertig) => setTimeout(fertig, 20))
+
+    /* Und zurück. Dieselbe Person, dieselbe zugestandene Zeit — dieselbe Uhr. */
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', note: 'Bewerbung um den Vorsitz', seconds: 180 }
+    })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).toBe(zuerst)
+  })
+
+  it('hält eine angehaltene Uhr auch über den Umweg angehalten', () => {
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 180 }
+    })
+    projection.setSpeakerPaused(HAUPTBUEHNE, true)
+    const rest = projection.getProjectionState(HAUPTBUEHNE).speaker?.pausedSecondsLeft
+    expect(rest).toBeGreaterThan(0)
+
+    projection.setProjection(HAUPTBUEHNE, { mode: 'kamera', kamera: { quelle: 'PULT (Test)' } })
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 180 }
+    })
+    /* Liefe sie beim Zurückschalten still wieder los, wäre die Zwischenfrage
+       auf Kosten der vortragenden Person gegangen. */
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.pausedSecondsLeft).toBe(rest)
+  })
+
+  it('lässt sich die Uhr auch im Kameramodus anhalten und verlängern', () => {
+    /*
+     * Der schlimmere der beiden Fehler: Die Bauchbinde zeigte eine laufende
+     * Uhr, und die Bedienung ließ sie nicht mehr anfassen — die Griffe
+     * prüften auf den Modus statt auf den Redner.
+     */
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 180 }
+    })
+    projection.setProjection(HAUPTBUEHNE, { mode: 'kamera', kamera: { quelle: 'PULT (Test)' } })
+
+    projection.setSpeakerPaused(HAUPTBUEHNE, true)
+    const angehalten = projection.getProjectionState(HAUPTBUEHNE).speaker?.pausedSecondsLeft
+    expect(angehalten).toBeGreaterThan(0)
+
+    projection.addSpeakerSeconds(HAUPTBUEHNE, 60)
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.pausedSecondsLeft).toBe(
+      (angehalten ?? 0) + 60
+    )
+  })
+
+  it('beginnt neu, wenn die Zeit geändert wird oder jemand es verlangt', () => {
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 180 }
+    })
+    const zuerst = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
+
+    /* Eine andere zugestandene Zeit ist eine Entscheidung und zählt neu. */
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 300 }
+    })
+    const laenger = projection.getProjectionState(HAUPTBUEHNE).speaker?.until
+    expect(laenger).not.toBe(zuerst)
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.totalSeconds).toBe(300)
+
+    /* Und der ausdrückliche Neubeginn bei gleicher Zeit. */
+    projection.setProjection(HAUPTBUEHNE, {
+      mode: 'speaker',
+      speaker: { name: 'Clara Fenske', seconds: 300, uhrNeu: true }
+    })
+    expect(projection.getProjectionState(HAUPTBUEHNE).speaker?.until).not.toBe(laenger)
+  })
+
   /* Ein Moduswechsel beendet die Vorstellung — beim nächsten Aufruf soll die
      Uhr von vorn laufen, nicht beim Rest der vorigen Person. */
   it('vergisst die Reihe beim Wechsel der Ansicht', () => {

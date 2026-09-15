@@ -657,6 +657,13 @@ export interface Api {
         name: string
         note?: string
         seconds?: number
+        /**
+         * Die Uhr ausdrücklich neu beginnen.
+         *
+         * Ohne diese Angabe behält dieselbe Person mit derselben zugestandenen
+         * Zeit ihre laufende Uhr.
+         */
+        uhrNeu?: boolean
         /** Wer danach an der Reihe ist, in Reihenfolge. */
         upcoming?: string[]
         /** Wie viele davon der Beamer zeigt; 0 blendet die Vorschau aus. */

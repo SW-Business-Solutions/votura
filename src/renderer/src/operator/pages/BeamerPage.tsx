@@ -703,9 +703,18 @@ export function BeamerPage(): React.JSX.Element {
                     Vorstellung anzeigen
                   </button>
                 </div>
-                {projection.mode === 'speaker' && projection.speaker && (
+                {/*
+                  Die Griffe gehören zum **Redner**, nicht zur Ansicht.
+                  Vorher standen sie nur im Modus „Vorstellung“ — wer auf das
+                  Kamerabild schaltete, sah die Uhr in der Bauchbinde laufen
+                  und konnte sie nicht mehr anhalten.
+                */}
+                {projection.speaker && (
                   <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 8 }}>
-                    <span className="hint">Läuft: {projection.speaker.name}</span>
+                    <span className="hint">
+                      Läuft: {projection.speaker.name}
+                      {projection.mode !== 'speaker' && ' (im Bild)'}
+                    </span>
                     <button
                       className="primary"
                       disabled={(projection.speaker.upcoming ?? []).length === 0}
@@ -754,6 +763,31 @@ export function BeamerPage(): React.JSX.Element {
                         {beschriftung}
                       </button>
                     ))}
+                    {/*
+                      Der ausdrückliche Neubeginn. Er wird selten gebraucht —
+                      und genau deshalb steht er hier und nicht als stille Folge
+                      eines Ansichtswechsels: Dieselbe Person behält sonst ihre
+                      Uhr, was beim Hin- und Herschalten zur Kamera das
+                      Richtige ist.
+                    */}
+                    <button
+                      title="Die Redezeit dieser Person von vorn beginnen lassen."
+                      onClick={() =>
+                        void setMode('speaker', {
+                          speaker: {
+                            name: projection.speaker?.name ?? '',
+                            note: projection.speaker?.note,
+                            seconds: projection.speaker?.totalSeconds,
+                            upcoming: projection.speaker?.upcoming,
+                            upcomingShown: projection.speaker?.upcomingShown,
+                            uhrNeu: true
+                          }
+                        })
+                      }
+                      disabled={!projection.speaker.totalSeconds}
+                    >
+                      Zeit neu
+                    </button>
                   </div>
                 )}
               </Card>

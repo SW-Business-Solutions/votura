@@ -5,6 +5,19 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
 ## Unveröffentlicht
 
+### Behoben
+
+- **Der Weg über die Kamera und zurück ließ die Redezeit von vorn beginnen.** Wer während einer
+  laufenden Vorstellung auf das Kamerabild schaltete und danach zurück auf die Anzeige mit Namen,
+  hatte denselben Menschen vor sich — und schenkte ihm mit dem Rückweg stillschweigend seine volle
+  Zeit noch einmal. Dieselbe Person mit derselben zugestandenen Zeit behält jetzt ihre Uhr, eine
+  angehaltene bleibt angehalten. Wer wirklich neu beginnen will, sagt es mit **Zeit neu**; eine
+  geänderte Redezeit zählt ohnehin als Entscheidung und beginnt neu.
+- **Im Kameramodus ließ sich die Redezeit nicht mehr anfassen.** Die Bauchbinde zeigte eine
+  laufende Uhr, aber Anhalten, Zeit geben und „Nächster“ waren gesperrt — sie fragten nach der
+  Ansicht statt nach dem Redner. Jetzt gelten die Griffe, solange jemand aufgerufen ist, und die
+  Bedienung zeigt sie auch dann.
+
 ### Kameras steuern
 
 Eine PTZ-Kamera fährt auf Wunsch von selbst auf ihre Position, sobald ein Redner aufgerufen wird —

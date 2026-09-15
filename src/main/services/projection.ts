@@ -432,6 +432,14 @@ export interface SetModeInput {
     name: string
     note?: string
     seconds?: number
+    /**
+     * Die Uhr ausdrücklich neu beginnen.
+     *
+     * Ohne diese Angabe behält dieselbe Person mit derselben zugestandenen
+     * Zeit ihre laufende Uhr — sonst schänkte ein Wechsel zur Kameraansicht
+     * und zurück ihr heimlich Redezeit.
+     */
+    uhrNeu?: boolean
     /** Wer danach an der Reihe ist, in Reihenfolge. */
     upcoming?: string[]
     /** Wie viele davon der Beamer zeigt; 0 blendet die Vorschau aus. */
@@ -562,9 +570,9 @@ export function setProjection(
      */
     speaker:
       input.mode === 'speaker'
-        ? rednerFuer(input.speaker)
+        ? rednerFuer(input.speaker, state.speaker)
         : input.mode === 'kamera'
-          ? (rednerFuer(input.speaker) ?? state.speaker)
+          ? (rednerFuer(input.speaker, state.speaker) ?? state.speaker)
           : undefined,
     updatedAt: new Date().toISOString()
   })
@@ -704,18 +712,54 @@ function kameraFuer(
   }
 }
 
-function rednerFuer(eingabe?: SetModeInput['speaker']): ProjectionSpeaker | undefined {
+/**
+ * Wer sich vorstellt — und ob seine Uhr weiterläuft.
+ *
+ * Der Regelfall beim Aufruf ist eine **neue** Uhr: Wer ans Pult tritt, bekommt
+ * seine volle Zeit. Es gibt aber einen Fall, in dem das falsch wäre — und er
+ * ist mit der Kameraansicht entstanden: Wer während einer laufenden
+ * Vorstellung auf das Kamerabild schaltet und danach zurück auf die Anzeige
+ * mit Namen, hat **denselben Menschen** vor sich. Eine Uhr, die dabei von vorn
+ * begiänne, schänkte ihm heimlich Redezeit.
+ *
+ * Deshalb: Gleiche Person **und** gleiche zugestandene Zeit heißt, die Uhr
+ * läuft weiter — auch eine angehaltene bleibt angehalten. Wird die Zeit
+ * geändert, ist das eine Entscheidung und zählt neu. Und `uhrNeu` sagt es
+ * ausdrücklich, für den Fall, dass jemand denselben Redner wirklich noch
+ * einmal von vorn beginnen lassen will.
+ */
+function rednerFuer(
+  eingabe?: SetModeInput['speaker'],
+  bisher?: ProjectionSpeaker
+): ProjectionSpeaker | undefined {
   const name = eingabe?.name?.trim()
   if (!name) return undefined
   const sekunden = eingabe?.seconds && eingabe.seconds > 0 ? Math.round(eingabe.seconds) : undefined
   const warteliste = (eingabe?.upcoming ?? []).map((eintrag) => eintrag.trim()).filter(Boolean)
+
+  /* Siehe oben: dieselbe Person mit derselben Zeit behält ihre Uhr. */
+  const weiter =
+    bisher !== undefined &&
+    bisher.name === name &&
+    bisher.totalSeconds === sekunden &&
+    eingabe?.uhrNeu !== true
+
   return {
     name,
     note: eingabe?.note?.trim() || undefined,
     /* Ohne Zeitangabe wird nur der Name gezeigt — nicht jede Vorstellung ist
        begrenzt. */
-    until: sekunden ? new Date(Date.now() + sekunden * 1000).toISOString() : undefined,
+    until: weiter
+      ? bisher.until
+      : sekunden
+        ? new Date(Date.now() + sekunden * 1000).toISOString()
+        : undefined,
     totalSeconds: sekunden,
+    /* Eine angehaltene Uhr bleibt angehalten — sonst liefe sie beim
+       Zurückschalten stillschweigend wieder los. */
+    ...(weiter && bisher.pausedSecondsLeft !== undefined
+      ? { pausedSecondsLeft: bisher.pausedSecondsLeft }
+      : {}),
     ...(warteliste.length ? { upcoming: warteliste } : {}),
     ...(eingabe?.upcomingShown !== undefined
       ? { upcomingShown: Math.max(0, Math.min(Math.round(eingabe.upcomingShown), REDNER_VORSCHAU_MAX)) }
@@ -734,7 +778,10 @@ function rednerFuer(eingabe?: SetModeInput['speaker']): ProjectionSpeaker | unde
  */
 export function nextSpeaker(buehne: number): ProjectionState {
   let state = buehneVon(buehne)
-  if (state.mode !== 'speaker' || !state.speaker) return state
+  /* Es zählt, ob jemand aufgerufen ist — nicht, welche Ansicht gerade an der
+     Wand steht. Im Kameramodus läuft dieselbe Uhr in der Bauchbinde, und
+     sie muss sich genauso anhalten lassen. */
+  if (!state.speaker) return state
   const [naechster, ...rest] = state.speaker.upcoming ?? []
   if (!naechster) return state
   const sekunden = state.speaker.totalSeconds
@@ -764,7 +811,10 @@ export function nextSpeaker(buehne: number): ProjectionState {
  */
 export function setSpeakerPaused(buehne: number, paused: boolean): ProjectionState {
   let state = buehneVon(buehne)
-  if (state.mode !== 'speaker' || !state.speaker) return state
+  /* Es zählt, ob jemand aufgerufen ist — nicht, welche Ansicht gerade an der
+     Wand steht. Im Kameramodus läuft dieselbe Uhr in der Bauchbinde, und
+     sie muss sich genauso anhalten lassen. */
+  if (!state.speaker) return state
   const redner = state.speaker
   if (paused === (redner.pausedSecondsLeft !== undefined)) return state
 
@@ -797,7 +847,10 @@ export function setSpeakerPaused(buehne: number, paused: boolean): ProjectionSta
  */
 export function addSpeakerSeconds(buehne: number, seconds: number): ProjectionState {
   let state = buehneVon(buehne)
-  if (state.mode !== 'speaker' || !state.speaker) return state
+  /* Es zählt, ob jemand aufgerufen ist — nicht, welche Ansicht gerade an der
+     Wand steht. Im Kameramodus läuft dieselbe Uhr in der Bauchbinde, und
+     sie muss sich genauso anhalten lassen. */
+  if (!state.speaker) return state
   if (!Number.isFinite(seconds) || seconds === 0) return state
   const redner = state.speaker
   const zusatz = Math.round(seconds)
