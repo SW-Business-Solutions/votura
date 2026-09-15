@@ -24,6 +24,7 @@
  */
 import { useEffect, useState, type JSX } from 'react'
 import { kurzerQuellenname, type KameraStand } from '@shared/kamera'
+import type { PtzKamera } from '@shared/ptz'
 import { KameraBild } from '../../projection/KameraBild'
 import { api, bridge } from '../../lib/api'
 import { useApp } from '../state'
@@ -34,6 +35,15 @@ export function KameraLibrary(): JSX.Element {
   const projection = app.projection
   const [stand, setStand] = useState<KameraStand>({ bereit: false, quellen: [] })
   const [vorschau, setVorschau] = useState(true)
+  /*
+   * Die eingerichteten Steuerungen.
+   *
+   * Gebraucht wird hier nur eine: die zu der Kamera, deren Bild gerade an der
+   * Wand steht. Ihre Positionen gehören **in die Bedienung** und nicht in die
+   * Einstellungen — „zeig mal den Saal" ist ein Griff während der
+   * Versammlung, kein Einrichten davor.
+   */
+  const [steuerungen, setSteuerungen] = useState<PtzKamera[]>([])
 
   const kamera = projection.mode === 'kamera' ? projection.camera : undefined
 
@@ -42,6 +52,7 @@ export function KameraLibrary(): JSX.Element {
        leer, bis sich zufällig etwas ändert. */
     void api('kamera.stand').then(setStand).catch(app.reportError)
     void api('kamera.suche', true).then(setStand).catch(app.reportError)
+    void api('ptz.liste').then(setSteuerungen).catch(() => undefined)
     const ab = bridge.onKameraStand(setStand)
     return () => {
       ab()
@@ -122,6 +133,56 @@ export function KameraLibrary(): JSX.Element {
                   {vorschau ? 'Vorschau aus' : 'Vorschau an'}
                 </button>
               </div>
+
+              {/*
+                Was im Bild stünde, steht auch hier.
+
+                Die Vorstellung überlebt einen Ansichtswechsel — richtig so,
+                eine Redezeit gehört zur Person und nicht zur Ansicht. Für das
+                Kamerabild heißt das aber: Die Bauchbinde kann den nennen, der
+                zuletzt gesprochen hat, während längst der Saal zu sehen ist.
+                Wer das hier liest, entdeckt es nicht erst an der Wand.
+              */}
+              {(kamera.bauchbinde || kamera.naechste) && (
+                <p className="hint">
+                  {projection.speaker
+                    ? `Im Bild steht: ${projection.speaker.name}`
+                    : 'Es ist niemand aufgerufen — im Bild steht nichts.'}
+                </p>
+              )}
+
+              {/*
+                Die Positionen der Kamera, die gerade läuft.
+
+                Erscheinen nur, wenn zu ihrem Bild eine Steuerung eingerichtet
+                ist — und dann genau hier, wo während der Versammlung
+                hingesehen wird.
+              */}
+              {(() => {
+                const steuerung = steuerungen.find(
+                  (eintrag) => eintrag.enabled && eintrag.quelle === kamera.quelle
+                )
+                if (!steuerung || steuerung.positionen.length === 0) return null
+                return (
+                  <div className="row mt-3" style={{ gap: 6, alignItems: 'center' }}>
+                    <span className="hint">Position:</span>
+                    {steuerung.positionen.map((position) => (
+                      <button
+                        key={position.nummer}
+                        title={`${steuerung.name} auf „${position.name}" fahren`}
+                        onClick={() =>
+                          void api('ptz.position', {
+                            id: steuerung.id,
+                            nummer: position.nummer
+                          }).catch(app.reportError)
+                        }
+                      >
+                        {position.name}
+                      </button>
+                    ))}
+                  </div>
+                )
+              })()}
 
               {vorschau && (
                 <div className="kamera-vorschau mt-3">

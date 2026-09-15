@@ -133,6 +133,37 @@ describe('Beamerzustand', () => {
   })
 })
 
+describe('Ein Bild aus dem Saal', () => {
+  it('zeigt eine neu gewählte Kamera zunächst ohne Beiwerk', () => {
+    /*
+     * Das war einmal umgekehrt: Bauchbinde und Rednerreihe kamen von selbst
+     * mit. Wer einen Blick in den Saal zeigen wollte, bekam damit den Namen
+     * der Person über dem Bild, die zuletzt gesprochen hat.
+     *
+     * Etwas einzublenden ist eine Entscheidung; ein Name, der von selbst
+     * erscheint, ist eine Überraschung.
+     */
+    const dienst = lies('src/main/services/projection.ts')
+    expect(dienst).toContain("bauchbinde: quelle === bisher?.quelle ? bisher.bauchbinde : false")
+    expect(dienst).toContain("naechste: quelle === bisher?.quelle ? bisher.naechste : false")
+  })
+
+  it('hält die Positionen dort bereit, wo während der Versammlung hingesehen wird', () => {
+    /* „Zeig mal den Saal" ist ein Griff während der Versammlung, kein
+       Einrichten davor — die Positionen gehören also in die Bedienung. */
+    const karte = lies('src/renderer/src/operator/components/KameraLibrary.tsx')
+    expect(karte).toContain("api('ptz.position'")
+    /* Und zwar nur die der Kamera, deren Bild gerade läuft. */
+    expect(karte).toContain('eintrag.quelle === kamera.quelle')
+  })
+
+  it('sagt in der Bedienung, wen die Bauchbinde nennen würde', () => {
+    const karte = lies('src/renderer/src/operator/components/KameraLibrary.tsx')
+    expect(karte).toContain('Im Bild steht')
+    expect(karte).toContain('Es ist niemand aufgerufen')
+  })
+})
+
 describe('Bau und Auslieferung', () => {
   it('lässt die NDI-Bindung in einem eigenen Prozess laufen', () => {
     /*

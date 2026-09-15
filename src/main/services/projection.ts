@@ -709,11 +709,20 @@ function kameraFuer(
   return {
     quelle,
     label: eingabe?.label?.trim() || undefined,
-    /* Eine neu gewählte Kamera bekommt die Bauchbinde, weil das der Anlass
-       ist, aus dem jemand eine Kamera auf die Wand legt. Die Spiegelung nicht:
-       Sie ist die Ausnahme für einen Rückblickschirm. */
-    bauchbinde: quelle === bisher?.quelle ? bisher.bauchbinde : true,
-    naechste: quelle === bisher?.quelle ? bisher.naechste : true,
+    /*
+     * Eine neu gewählte Kamera zeigt zunächst **nur ihr Bild**.
+     *
+     * Das war einmal umgekehrt: Bauchbinde und Rednerreihe kamen von selbst
+     * mit, weil eine Vorstellung der häufigste Anlass ist. Wer aber einen
+     * Blick in den Saal zeigen will, bekam damit den Namen der Person über
+     * dem Bild, die zuletzt gesprochen hat — und musste zwei Schalter
+     * umlegen, bevor das Bild sauber war.
+     *
+     * Etwas einzublenden ist eine Entscheidung; ein Name, der von selbst
+     * erscheint, ist eine Überraschung. Die Schalter stehen direkt daneben.
+     */
+    bauchbinde: quelle === bisher?.quelle ? bisher.bauchbinde : false,
+    naechste: quelle === bisher?.quelle ? bisher.naechste : false,
     spiegeln: quelle === bisher?.quelle ? bisher.spiegeln : false
   }
 }

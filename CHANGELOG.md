@@ -84,6 +84,24 @@ Und die Einstellungsseite zeigt jetzt oben, **was im Netz gefunden wurde**. Das 
 Auskunft: Eine Kamera, die ihr Bild sendet, verrät dabei ihre Adresse — genau die, die die
 Steuerung braucht. „Steuerung einrichten" legt den Eintrag fertig ausgefüllt an.
 
+### Ein Bild aus dem Saal
+
+Eine neu gewählte Kamera zeigt zunächst **nur ihr Bild**. Das war einmal umgekehrt: Bauchbinde und
+Rednerreihe kamen von selbst mit, weil eine Vorstellung der häufigste Anlass ist. Wer aber einen
+Blick in den Saal zeigen wollte, bekam damit den Namen der Person über das Bild, die zuletzt
+gesprochen hat — und musste zwei Schalter umlegen, bevor das Bild sauber war. Etwas einzublenden
+ist eine Entscheidung; ein Name, der von selbst erscheint, ist eine Überraschung.
+
+Und weil eine Vorstellung einen Ansichtswechsel überlebt, sagt die Bedienung jetzt, **wen die
+Bauchbinde nennen würde** — man entdeckt es nicht erst an der Wand.
+
+### Positionen während der Versammlung
+
+Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihrem Bild: „Pult",
+„Präsidium", „Saal" als Knöpfe. „Zeig mal den Saal" ist ein Griff während der Versammlung, kein
+Einrichten davor — dafür in die Einstellungen zu wechseln, wäre einer zu viel. Sie erscheinen nur,
+wenn zu dem laufenden Bild eine Steuerung eingerichtet ist.
+
 ### Die nächsten Redner über dem Kamerabild
 
 Dieselbe Reihe, die die Vorstellung an der Wand zeigt, lässt sich auch über das Kamerabild legen —
