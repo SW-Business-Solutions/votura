@@ -40,6 +40,42 @@ Quelltext hält fest, dass dort nichts Größeres hineingehört, ohne dass es je
 Für Untertitel heißt das: Es bleibt bei dem, was ein kleines Modell hergibt — verständlich, aber
 nicht wörtlich. Mehr als jeder Modellwechsel bringt ein **Mikrofon am Pult statt eines im Raum**.
 
+### Quotenprüfung bei Listenwahlen
+
+Viele Satzungen — bei Parteien fast alle — binden die Gültigkeit einer gewählten Liste an eine
+Quote: mindestens die Hälfte Frauen, abwechselnde Besetzung der Plätze, ein Platz für die
+Jugendorganisation. Wird sie verfehlt, ist die Wahl **anfechtbar** — und das fällt in aller Regel
+erst auf, wenn die Versammlung längst zu Ende ist.
+
+Votura kennt die Rangfolge und die Zahl der Plätze und rechnet die Quote deshalb nach,
+**bevor** das Ergebnis festgestellt wird. Eine Minute vor dem Verkünden ist die Frage noch lösbar;
+eine Woche danach nicht mehr.
+
+Eingerichtet wird sie beim Wahlgang unter **Quote**, zwei Arten stehen zur Wahl:
+
+- **Mindestanteil** — „mindestens die Hälfte der Plätze". Gerechnet wird **aufgerundet**: Bei fünf
+  Plätzen sind es drei, nicht zweieinhalb.
+- **Abwechselnd** (Reißverschluss) — ungerade Plätze für die Anspruchsgruppe. Verfehlte Plätze
+  werden **einzeln** genannt: „Platz 3 und Platz 5", nicht „irgendwo in der Liste".
+
+Drei Entscheidungen, die dahinterstehen:
+
+**Das Merkmal ist ein freies Feld, kein Geschlecht.** Quoten richten sich je nach Satzung nach
+Geschlecht, Gliederung, Alter oder Zugehörigkeit zu einer Arbeitsgemeinschaft. Eine feste Auswahl
+hätte die anderen Fälle ausgeschlossen — und eine Angabe erzwungen, die nicht jede Versammlung
+erheben will. Die Zuordnung eines Bewerbers ist freiwillig und erscheint nie auf dem Stimmzettel.
+
+**Ohne Angaben wird nicht geprüft, sondern gesagt, dass nicht geprüft werden kann.** Ein „Quote
+erfüllt" auf Grundlage fehlender Zuordnungen wäre die gefährlichste Auskunft, die dieses Programm
+geben könnte: Sie sähe aus wie eine Prüfung und wäre keine.
+
+**Votura hält nichts auf.** Was eine verfehlte Quote bedeutet — Wiederholung, Öffnung der Plätze,
+Nachwahl oder nichts, weil niemand aus der Anspruchsgruppe angetreten ist —, steht in der Satzung
+und gehört der Versammlungsleitung. Ein Programm, das die Feststellung verweigerte, hätte sich an
+ihre Stelle gesetzt. Es warnt rechtzeitig, und der Befund geht beim Bestätigen **in den Prüfpfad**:
+Eine Warnung, die weggeklickt wurde, ist hinterher nicht mehr auffindbar — und hinterher ist genau
+der Zeitpunkt, an dem jemand fragt.
+
 ### Untertitel im Saal
 
 Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge

@@ -191,6 +191,32 @@ Zettel steht — `JA`, `NEIN`, `ENTHALTUNG`, Kandidatennummern, Kumulieren, Abst
 Wahlgang einstellbar, weil es sich nach der geltenden Wahlordnung richtet und nicht nach der
 Software.
 
+## Quote bei Listenwahlen
+
+Viele Satzungen binden die Gültigkeit einer gewählten Liste an eine Quote. Wird sie verfehlt, ist
+die Wahl **anfechtbar** — und das fällt meist erst auf, wenn die Versammlung längst zu Ende ist.
+
+Votura rechnet sie deshalb nach, **bevor** das Ergebnis festgestellt wird. Eingerichtet wird sie
+beim Wahlgang unter **Quote**:
+
+| Art | Bedeutung |
+| --- | --- |
+| **Mindestanteil** | „Mindestens die Hälfte der Plätze". Gerechnet wird **aufgerundet** — bei fünf Plätzen drei, nicht zweieinhalb. |
+| **Abwechselnd** | Ungerade Plätze für die Anspruchsgruppe. Verfehlte Plätze werden einzeln genannt. |
+
+**Das Merkmal ist ein freier Text, kein Geschlecht.** Quoten richten sich je nach Satzung nach
+Geschlecht, Gliederung, Alter oder Zugehörigkeit. Eine feste Auswahl hätte die anderen Fälle
+ausgeschlossen — und eine Angabe erzwungen, die nicht jede Versammlung erheben will. Die Zuordnung
+eines Bewerbers steht bei den Bewerbern, ist freiwillig und erscheint **nie** auf dem Stimmzettel.
+
+Ist niemandem ein Merkmal zugeordnet, meldet Votura nicht „erfüllt", sondern **„nicht prüfbar"**.
+Ein grünes Häkchen auf Grundlage fehlender Angaben sähe aus wie eine Prüfung und wäre keine.
+
+**Aufgehalten wird nichts.** Was eine verfehlte Quote bedeutet — Wiederholung, Öffnung der Plätze,
+Nachwahl oder nichts —, steht in der Satzung und gehört der Versammlungsleitung. Votura warnt
+rechtzeitig und hält im Prüfpfad fest, dass gewarnt wurde: Wird trotzdem bestätigt, ist das eine
+Entscheidung der Versammlung, die sich belegen lässt.
+
 ## Ergebnis und Rangliste
 
 Bei mehreren Plätzen ist die **Reihenfolge** das Ergebnis: Wer ist Delegierter, wer Ersatz, in

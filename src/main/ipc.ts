@@ -209,6 +209,8 @@ import {
   getResult,
   reopenResult,
   saveResult
+,
+  quotenbefund
 } from './services/results'
 import { ACME_ECHT, ACME_UEBUNG, auftragAbschliessen, auftragBeginnen } from './acme'
 import { dhcpLaeuft, starteDhcp, stoppeDhcp, vergebeneAdressen } from './dhcp'
@@ -794,6 +796,7 @@ const api: Api = {
     projectDomainEvent('ResultConfirmed', input.roundId)
     return result
   },
+  'result.quote': async (roundId) => quotenbefund(roundId),
   'result.reopen': async (input) => reopenResult(input.roundId, input.reason),
   'result.emergencyReopen': async (input) => emergencyReopen(input.roundId, input.reason),
 

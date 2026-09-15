@@ -6,7 +6,12 @@
  * Bestätigung ist nur mit Begründung möglich und wird protokolliert.
  */
 import { randomUUID } from 'node:crypto'
-import { validateResult } from '@shared/result'
+import { rankCandidates, validateResult } from '@shared/result'
+import {
+  quotePruefen,
+  type Quotenbefund,
+  type Quotenbewerber
+} from '@shared/quote'
 import type { ResultInput } from '@shared/ipc'
 import type { ElectionResult, ElectionRound, ResultData, UUID } from '@shared/types'
 import { db } from '../db'
@@ -16,6 +21,7 @@ import { eligibleForRound } from './participants'
 import { mitUrneZusammengefuehrt } from './voting'
 import { requirePermission, requirePinIfConfigured, requireSession } from './auth'
 import { getRound } from './rounds'
+import { listCandidates } from './candidates'
 import { getConfig } from './settings'
 
 interface ResultRow {
@@ -277,6 +283,8 @@ export function confirmResult(roundId: UUID, pin?: string): ElectionResult {
     .run(now, session.user.id, session.user.displayName, roundId)
 
   const round = getRound(roundId)
+  /* Vor dem Eintrag rechnen — danach steht das Ergebnis fest. */
+  const quotenBeimBestaetigen = round.quote ? quotenbefund(roundId) : null
   appendAudit({
     action: 'result.confirmed',
     userId: session.user.id,
@@ -288,7 +296,25 @@ export function confirmResult(roundId: UUID, pin?: string): ElectionResult {
       finalDecision: result.finalDecision,
       ballotsCast: result.ballotsCast,
       validBallots: result.validBallots,
-      invalidBallots: result.invalidBallots
+      invalidBallots: result.invalidBallots,
+      /*
+       * Der Quotenbefund gehört in den Eintrag, nicht nur auf den Bildschirm.
+       *
+       * Eine Warnung, die weggeklickt wurde, ist hinterher nicht mehr
+       * auffindbar — und hinterher ist genau der Zeitpunkt, an dem jemand
+       * fragt, ob die Quote geprüft wurde. Steht hier „verfehlt" und das
+       * Ergebnis wurde trotzdem bestätigt, ist das eine Entscheidung der
+       * Versammlung, die man belegen kann.
+       */
+      ...(quotenBeimBestaetigen
+        ? {
+            quote: {
+              erfuellt: quotenBeimBestaetigen.erfuellt,
+              pruefbar: quotenBeimBestaetigen.pruefbar,
+              befund: quotenBeimBestaetigen.text
+            }
+          }
+        : {})
     }
   })
   return getResult(roundId) as ElectionResult
@@ -424,4 +450,65 @@ export function emergencyCorrection(roundId: UUID, input: ResultInput, reason: s
     reason
   })
   return getResult(roundId) as ElectionResult
+}
+
+/**
+ * Quotenbefund zu einem Wahlgang — oder nichts, wenn keine Regel gilt.
+ *
+ * ## Warum das hier steht und nicht in der Oberfläche
+ *
+ * Weil es beim **Bestätigen** mit in den Prüfpfad geht. Eine Warnung, die nur
+ * auf einem Bildschirm stand und dann weggeklickt wurde, ist hinterher nicht
+ * mehr auffindbar — und hinterher ist genau der Zeitpunkt, an dem jemand
+ * fragt, ob die Quote geprüft wurde.
+ *
+ * ## Warum nichts blockiert wird
+ *
+ * Was eine verfehlte Quote bedeutet, steht in der Satzung: Wiederholung,
+ * Öffnung der Plätze, Nachwahl — oder nichts, weil kein Bewerber der
+ * Anspruchsgruppe angetreten ist. Diese Antwort gehört der Versammlung.
+ *
+ * Votura sagt deshalb rechtzeitig **was** nicht stimmt und hält fest, dass es
+ * gesagt wurde. Ein Programm, das die Feststellung eines Ergebnisses
+ * verweigert, hätte sich an die Stelle der Versammlungsleitung gesetzt.
+ */
+export function quotenbefund(roundId: UUID): Quotenbefund | null {
+  const round = getRound(roundId)
+  if (!round.quote) return null
+
+  const result = getResult(roundId)
+  if (!result) {
+    return {
+      pruefbar: false,
+      erfuellt: true,
+      text: 'Noch kein Ergebnis erfasst — die Quote lässt sich nicht prüfen.',
+      erreicht: 0,
+      gefordert: 0,
+      verstoesse: [],
+      ohneZuordnung: []
+    }
+  }
+
+  const rangfolge = rankCandidates(result.resultData.candidates, round.seats, {
+    decidedOrder: result.rankOrder
+  })
+  /*
+   * Nur die gewählten Plätze, in der Reihenfolge der Liste.
+   *
+   * Die Nachrücker bleiben draußen: Eine Quote bindet die Liste, die gewählt
+   * ist — wer nachrückt, ist eine Frage für später und für einen anderen
+   * Beschluss.
+   */
+  const gruppen = new Map(
+    listCandidates(roundId).map((kandidat) => [kandidat.id, kandidat.quotengruppe])
+  )
+  const gewaehlte: Quotenbewerber[] = rangfolge
+    .filter((eintrag) => eintrag.withinSeats)
+    .map((eintrag) => ({
+      candidateId: eintrag.candidateId,
+      name: eintrag.name,
+      gruppe: gruppen.get(eintrag.candidateId)
+    }))
+
+  return quotePruefen(round.quote, gewaehlte)
 }

@@ -554,6 +554,30 @@ CREATE INDEX IF NOT EXISTS idx_signatur_offen ON signing_queue(round_id, answere
 ALTER TABLE voting_rights ADD COLUMN used_at TEXT;
 ALTER TABLE voting_rights ADD COLUMN voided_reason TEXT;
 `
+  },
+  {
+    /**
+     * Quotenprüfung bei Listenwahlen.
+     *
+     * **`candidates.quota_group` ist ein freier Text, kein Geschlecht.**
+     *
+     * Die häufigste Quote ist die nach Geschlecht, aber es gibt auch Quoten
+     * nach Gliederung, nach Alter, nach Zugehörigkeit zu einer
+     * Arbeitsgemeinschaft. Eine feste Spalte „Geschlecht" hätte diese Fälle
+     * ausgeschlossen — und nebenbei eine Angabe erzwungen, die nicht jede
+     * Versammlung erheben will. Leer bleiben darf sie immer; dann wird nicht
+     * geprüft, statt etwas Falsches zu behaupten.
+     *
+     * **`election_rounds.quota_json` hält die Regel** — Art, Merkmal,
+     * Anspruchsgruppe, Mindestanteil. Sie gehört zum Wahlgang und nicht zur
+     * Veranstaltung: Der Vorstand kann quotiert sein und die Kassenprüfung
+     * nicht.
+     */
+    version: 13,
+    sql: `
+ALTER TABLE candidates ADD COLUMN quota_group TEXT;
+ALTER TABLE rounds ADD COLUMN quota_json TEXT;
+`
   }
 ]
 

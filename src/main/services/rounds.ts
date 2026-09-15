@@ -9,6 +9,7 @@ import {
 } from '@shared/election'
 import { buildRoundCode, derivedRoundLabel, roundLabelFor } from '@shared/format'
 import type { RoundInput, RoundPatch } from '@shared/ipc'
+import type { Quotenregel } from '@shared/quote'
 import type {
   BallotPosition,
   BallotTemplateConfig,
@@ -51,6 +52,7 @@ interface RoundRow {
   approved_version: number | null
   template_json: string
   positions_json: string
+  quota_json: string | null
   order_mode: string
   order_seed: number | null
   candidates_locked_at: string | null
@@ -99,6 +101,7 @@ export function mapRound(row: RoundRow): ElectionRound {
     orderMode: row.order_mode as CandidateOrderMode,
     orderSeed: optionalNumber(row.order_seed),
     positions: fromJson<BallotPosition[]>(row.positions_json, []),
+    quote: fromJson<Quotenregel | undefined>(row.quota_json, undefined),
     candidatesLockedAt: optionalString(row.candidates_locked_at),
     rowVersion: Number(row.row_version),
     createdAt: row.created_at,
@@ -505,8 +508,8 @@ export function updateRound(input: RoundPatch & { id: UUID }): ElectionRound {
     .prepare(
       `UPDATE rounds SET title = ?, purpose = ?, procedure = ?, seats = ?, max_votes = ?,
                          seat_start = ?, seat_end = ?, template_json = ?, positions_json = ?,
-                         order_mode = ?, order_seed = ?, round_code = ?, round_label = ?,
-                         ballot_version = ?, row_version = row_version + 1
+                         quota_json = ?, order_mode = ?, order_seed = ?, round_code = ?,
+                         round_label = ?, ballot_version = ?, row_version = row_version + 1
        WHERE id = ? AND row_version = ?`
     )
     .run(
@@ -519,6 +522,12 @@ export function updateRound(input: RoundPatch & { id: UUID }): ElectionRound {
       input.seatEnd ?? before.seatEnd ?? null,
       JSON.stringify(template),
       JSON.stringify(positions ?? before.positions),
+      /* `null` hebt die Regel auf, `undefined` lässt sie stehen. */
+      input.quote === undefined
+        ? (before.quote ? JSON.stringify(before.quote) : null)
+        : input.quote === null
+          ? null
+          : JSON.stringify(input.quote),
       input.orderMode ?? before.orderMode,
       input.orderSeed ?? before.orderSeed ?? null,
       (input.roundCode ?? before.roundCode).toUpperCase(),

@@ -20,6 +20,7 @@ interface CandidateRow {
   withdrawn: number
   position_id: string | null
   note: string | null
+  quota_group: string | null
   created_at: string
 }
 
@@ -35,6 +36,7 @@ function mapCandidate(row: CandidateRow): Candidate {
     withdrawn: toBool(row.withdrawn),
     positionId: optionalString(row.position_id),
     note: optionalString(row.note),
+    quotengruppe: optionalString(row.quota_group),
     createdAt: row.created_at
   }
 }
@@ -97,8 +99,8 @@ export function addCandidates(roundId: UUID, inputs: CandidateInput[]): Candidat
       db()
         .prepare(
           `INSERT INTO candidates (id, round_id, first_name, last_name, display_name, ballot_number,
-                                   sort_order, withdrawn, position_id, note, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
+                                   sort_order, withdrawn, position_id, note, quota_group, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`
         )
         .run(
           id,
@@ -110,6 +112,7 @@ export function addCandidates(roundId: UUID, inputs: CandidateInput[]): Candidat
           order++,
           input.positionId ?? null,
           input.note?.trim() || null,
+          input.quotengruppe?.trim() || null,
           new Date().toISOString()
         )
       added.push(getCandidate(id))
@@ -140,7 +143,7 @@ export function updateCandidate(input: { id: UUID } & Partial<CandidateInput>): 
   db()
     .prepare(
       `UPDATE candidates SET first_name = ?, last_name = ?, display_name = ?, ballot_number = ?,
-                             position_id = ?, note = ?
+                             position_id = ?, note = ?, quota_group = ?
        WHERE id = ?`
     )
     .run(
@@ -150,6 +153,9 @@ export function updateCandidate(input: { id: UUID } & Partial<CandidateInput>): 
       input.ballotNumber === undefined ? (before.ballotNumber ?? null) : input.ballotNumber,
       input.positionId === undefined ? (before.positionId ?? null) : input.positionId,
       input.note === undefined ? (before.note ?? null) : input.note.trim() || null,
+      input.quotengruppe === undefined
+        ? (before.quotengruppe ?? null)
+        : input.quotengruppe.trim() || null,
       input.id
     )
 

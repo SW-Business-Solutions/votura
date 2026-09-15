@@ -17,9 +17,10 @@ import {
   type ElectionPurpose
 } from '@shared/types'
 import { profileFor, validateRoundSetup } from '@shared/election'
+import { quoteBeschreibung, type Quotenregel } from '@shared/quote'
 import { api } from '../../../lib/api'
 import { useApp } from '../../state'
-import { Card, Field, NumberInput } from '../../components/ui'
+import { Card, Checkbox, Field, NumberInput } from '../../components/ui'
 import type { TabProps } from '../RoundDetailPage'
 
 export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
@@ -32,6 +33,13 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
   const [seats, setSeats] = useState(round.seats)
   const [maxVotes, setMaxVotes] = useState<number | null>(round.maxVotes)
   const [roundLabel, setRoundLabel] = useState(round.roundLabel)
+  /*
+   * Die Quotenregel wird als Ganzes gehalten, nicht in drei Feldern.
+   *
+   * Sie ist entweder da oder nicht; drei einzelne Zustände ließen den
+   * Zwischenfall zu, dass eine Anspruchsgruppe ohne Art gesetzt ist.
+   */
+  const [quote, setQuote] = useState<Quotenregel | null>(round.quote ?? null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -41,6 +49,7 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
     setSeats(round.seats)
     setMaxVotes(round.maxVotes)
     setRoundLabel(round.roundLabel)
+    setQuote(round.quote ?? null)
   }, [round])
 
   const profile = profileFor(procedure)
@@ -69,6 +78,8 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
         procedure,
         seats,
         maxVotes,
+        /* `null` hebt die Regel auf — `undefined` ließe sie stehen. */
+        quote,
         roundLabel: nummerOffen ? roundLabel : undefined
       })
       app.notify(
@@ -188,6 +199,91 @@ export function SetupTab({ detail, reload }: TabProps): React.JSX.Element {
       </div>
 
       <div>
+
+        {/*
+          Die Quote steht in einer eigenen Karte.
+
+          Sie gehört nicht zu den Grunddaten: Ein Wahlgang funktioniert ohne
+          sie vollständig, und die meisten haben keine. Zwischen Sitzzahl und
+          Verfahren stünde sie wie eine Pflichtangabe da.
+        */}
+        <Card title="Quote">
+          <p className="hint">
+            Viele Satzungen binden die Gültigkeit einer gewählten Liste an eine Quote. Votura rechnet sie
+            nach, <strong>bevor</strong> das Ergebnis festgestellt wird — eine Minute vor dem Verkünden ist
+            die Frage noch lösbar, eine Woche danach nicht mehr.
+          </p>
+
+          <Checkbox
+            checked={quote !== null}
+            disabled={!inVorbereitung}
+            onChange={(an: boolean) =>
+              setQuote(
+                an
+                  ? { art: 'mindestanteil', merkmal: 'Geschlecht', anspruchsgruppe: 'Frauen', mindestanteil: 0.5 }
+                  : null
+              )
+            }
+            label="Dieser Wahlgang ist quotiert"
+          />
+
+          {quote && (
+            <>
+              <Field label="Art der Quote">
+                <select
+                  value={quote.art}
+                  disabled={!inVorbereitung}
+                  onChange={(e) => setQuote({ ...quote, art: e.target.value as Quotenregel['art'] })}
+                >
+                  <option value="mindestanteil">Mindestanteil der Plätze</option>
+                  <option value="reissverschluss">Abwechselnd (Reißverschluss)</option>
+                </select>
+              </Field>
+              <div className="row">
+                <div className="col">
+                  <Field label="Merkmal" hint="Nur zur Anzeige, etwa „Geschlecht“ oder „Gliederung“.">
+                    <input
+                      value={quote.merkmal}
+                      disabled={!inVorbereitung}
+                      onChange={(e) => setQuote({ ...quote, merkmal: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <div className="col">
+                  <Field label="Anspruchsgruppe" hint="Genau so, wie es bei den Bewerbern steht.">
+                    <input
+                      value={quote.anspruchsgruppe}
+                      disabled={!inVorbereitung}
+                      onChange={(e) => setQuote({ ...quote, anspruchsgruppe: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                {quote.art === 'mindestanteil' && (
+                  <div className="col-mittel">
+                    <Field label="Mindestanteil (%)">
+                      <NumberInput
+                        value={Math.round((quote.mindestanteil ?? 0.5) * 100)}
+                        min={1}
+                        max={100}
+                        disabled={!inVorbereitung}
+                        onChange={(prozent) => setQuote({ ...quote, mindestanteil: prozent / 100 })}
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+              <p className="hint">
+                {quoteBeschreibung(quote)}. Gerechnet wird <strong>aufgerundet</strong>: Bei fünf Plätzen
+                und der Hälfte sind es drei, nicht zweieinhalb.
+              </p>
+              <p className="hint">
+                Die Zuordnung eines Bewerbers ist freiwillig und steht bei den Bewerbern. Ohne jede
+                Zuordnung wird nicht geprüft — statt eine Sicherheit zu behaupten, die es nicht gibt.
+              </p>
+            </>
+          )}
+        </Card>
+
         <Card title="Auswirkung">
           {wechseltVerfahren ? (
             <div className="notice warn">

@@ -1,3 +1,5 @@
+import type { Quotenregel } from './quote'
+
 /**
  * Fachliche Typen des Wahlgang- und Stimmzettelsystems.
  *
@@ -506,6 +508,13 @@ export interface ElectionRound {
   orderMode: CandidateOrderMode
   orderSeed?: number
   positions: BallotPosition[]
+  /**
+   * Quotenregel dieses Wahlgangs — wenn die Satzung eine vorsieht.
+   *
+   * Am Wahlgang und nicht an der Veranstaltung: Der Vorstand kann quotiert
+   * sein und die Kassenprüfung nicht.
+   */
+  quote?: Quotenregel
   candidatesLockedAt?: IsoDateTime
   approvedVersion?: number
   rowVersion: number
@@ -534,6 +543,15 @@ export interface Candidate {
   positionId?: UUID
   /** Interne Notiz – erscheint niemals auf dem Stimmzettel. */
   note?: string
+  /**
+   * Zuordnung für die Quotenprüfung, etwa „Frauen".
+   *
+   * Ein **freier Text**, kein Geschlecht: Quoten richten sich je nach Satzung
+   * nach Geschlecht, Gliederung, Alter oder Zugehörigkeit. Freiwillig — ohne
+   * Zuordnung wird nicht geprüft, statt etwas Falsches zu behaupten. Auf dem
+   * Stimmzettel erscheint sie nie.
+   */
+  quotengruppe?: string
   createdAt: IsoDateTime
 }
 

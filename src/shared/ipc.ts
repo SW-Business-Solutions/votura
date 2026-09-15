@@ -20,6 +20,7 @@ import type { PtzFund, PtzKamera, PtzRichtung, PtzStellung } from './ptz'
 import type { Buehnenwahl } from './projection'
 import type { Geraetewahl, WahlLage, WahlStand, Wahlgeheimnis } from './wahl'
 import type { PresentationInfo, PrompterWindowState } from './presentation'
+import type { Quotenbefund, Quotenregel } from './quote'
 import type { SprachmodellInfo } from './sprachmodell'
 import type { ModellLadestand } from './sprachmodell-angebot'
 import type { Laufart, PrompterAnsicht, PrompterViewState, SpeechContent, SpeechInfo } from './speech'
@@ -202,6 +203,13 @@ export interface RoundPatch {
   seatStart?: number
   seatEnd?: number
   template?: BallotTemplateConfig
+  /**
+   * Quotenregel setzen oder aufheben.
+   *
+   * `null` hebt sie auf — `undefined` lässt sie, wie sie ist. Ohne diesen
+   * Unterschied ließe sie sich anlegen, aber nie wieder loswerden.
+   */
+  quote?: Quotenregel | null
   orderMode?: CandidateOrderMode
   orderSeed?: number
   roundCode?: string
@@ -222,6 +230,8 @@ export interface CandidateInput {
   ballotNumber?: number
   positionId?: UUID
   note?: string
+  /** Zuordnung für die Quotenprüfung — freiwillig, nie auf dem Stimmzettel. */
+  quotengruppe?: string
 }
 
 export interface PrintRequest {
@@ -601,6 +611,13 @@ export interface Api {
   'result.papier': (roundId: UUID) => Promise<ElectionResult | null>
   'result.save': (input: ResultInput) => Promise<ElectionResult>
   'result.confirm': (input: { roundId: UUID; pin?: string }) => Promise<ElectionResult>
+  /**
+   * Quotenbefund zum Wahlgang — oder `null`, wenn keine Regel gilt.
+   *
+   * Rein lesend und ohne Nebenwirkung: Die Bedienung fragt ihn ab, bevor
+   * jemand auf „Bestätigen" drückt. Festgehalten wird er erst dort.
+   */
+  'result.quote': (roundId: UUID) => Promise<Quotenbefund | null>
   'result.reopen': (input: { roundId: UUID; reason: string }) => Promise<ElectionResult>
   /** Notfallkorrektur: öffnet einen bereits abgeschlossenen Wahlgang (nur Administration). */
   'result.emergencyReopen': (input: { roundId: UUID; reason: string }) => Promise<ElectionRound>

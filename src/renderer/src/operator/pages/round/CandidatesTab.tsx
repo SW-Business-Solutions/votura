@@ -1,5 +1,6 @@
 /** Kandidaten erfassen, ordnen und die Liste schließen (§8, §9, §15, §41). */
 import { useMemo, useState } from 'react'
+import type { Quotenregel } from '@shared/quote'
 import {
   candidatesEditable,
   isImmutable,
@@ -319,6 +320,7 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
         <EditCandidateDialog
           candidate={editCandidate}
           positions={round.positions}
+          quotenregel={round.quote}
           onClose={() => setEditCandidate(null)}
           onSaved={async () => {
             setEditCandidate(null)
@@ -358,11 +360,14 @@ export function CandidatesTab({ detail, reload }: TabProps): React.JSX.Element {
 function EditCandidateDialog({
   candidate,
   positions,
+  quotenregel,
   onClose,
   onSaved
 }: {
   candidate: Candidate
   positions: { id: string; title: string }[]
+  /** Nur gesetzt, wenn dieser Wahlgang quotiert ist. */
+  quotenregel?: Quotenregel
   onClose: () => void
   onSaved: () => Promise<void>
 }): React.JSX.Element {
@@ -373,6 +378,7 @@ function EditCandidateDialog({
   const [ballotNumber, setBallotNumber] = useState(candidate.ballotNumber ?? 0)
   const [positionId, setPositionId] = useState(candidate.positionId ?? '')
   const [note, setNote] = useState(candidate.note ?? '')
+  const [quotengruppe, setQuotengruppe] = useState(candidate.quotengruppe ?? '')
 
   return (
     <Modal
@@ -392,7 +398,8 @@ function EditCandidateDialog({
                   lastName,
                   ballotNumber: ballotNumber || undefined,
                   positionId: positionId || undefined,
-                  note
+                  note,
+                  quotengruppe
                 })
                 await onSaved()
               } catch (error) {
@@ -440,6 +447,31 @@ function EditCandidateDialog({
       <Field label="Interne Notiz" hint="Erscheint niemals auf dem Stimmzettel oder dem Beamer.">
         <input value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>
+      {/*
+        Das Quotenmerkmal ist ein **freies Feld**, kein Geschlecht.
+
+        Quoten richten sich je nach Satzung nach Geschlecht, Gliederung,
+        Alter oder Zugehörigkeit zu einer Arbeitsgemeinschaft. Eine feste
+        Auswahl „männlich/weiblich/divers" hätte die anderen Fälle
+        ausgeschlossen — und eine Angabe erzwungen, die nicht jede
+        Versammlung erheben will.
+      */}
+      {quotenregel && (
+        <Field
+          label={`Quotenmerkmal: ${quotenregel.merkmal}`}
+          hint={`Freiwillig, erscheint nie auf dem Stimmzettel. Für die Quote zählt „${quotenregel.anspruchsgruppe}"; bleibt das Feld leer, zählt dieser Bewerber nicht mit.`}
+        >
+          <input
+            value={quotengruppe}
+            list="quotengruppen"
+            placeholder={quotenregel.anspruchsgruppe}
+            onChange={(e) => setQuotengruppe(e.target.value)}
+          />
+          <datalist id="quotengruppen">
+            <option value={quotenregel.anspruchsgruppe} />
+          </datalist>
+        </Field>
+      )}
     </Modal>
   )
 }

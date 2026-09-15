@@ -6,6 +6,7 @@
  */
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { checkResultPlausibility } from '@shared/accounting'
+import type { Quotenbefund } from '@shared/quote'
 import { profileFor } from '@shared/election'
 import { FINAL_DECISION_LABELS, type FinalDecision } from '@shared/projection'
 import {
@@ -74,6 +75,15 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
   const [showEmergency, setShowEmergency] = useState(false)
   const [showFollowUp, setShowFollowUp] = useState(false)
   const [bonLaeuft, setBonLaeuft] = useState(false)
+  /*
+   * Der Quotenbefund wird beim Hauptprozess erfragt, nicht hier gerechnet.
+   *
+   * Er hängt an der Rangfolge, an den zu besetzenden Plätzen und an der
+   * Zuordnung jedes Bewerbers — dieselbe Rechnung, die beim Bestätigen in
+   * den Prüfpfad geht. Zwei Rechnungen für dieselbe Aussage wären eine zu
+   * viel; die zweite weicht irgendwann ab, und niemand merkt welche.
+   */
+  const [quote, setQuote] = useState<Quotenbefund | null>(null)
 
   useEffect(() => {
     setRows(initialRows(detail.papierergebnis ?? detail.result, activeCandidates, kind))
@@ -90,6 +100,10 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
     setLotDecision((detail.papierergebnis ?? detail.result)?.lotDecision ?? '')
     setRankOrder((detail.papierergebnis ?? detail.result)?.rankOrder ?? [])
   }, [detail.result, detail.papierergebnis, detail.candidates, kind])
+
+  useEffect(() => {
+    void api('result.quote', round.id).then(setQuote).catch(app.reportError)
+  }, [round.id, detail.result, detail.papierergebnis, round.quote])
 
   /**
    * Der Beleg über den Losentscheid (Wahlformen §32).
@@ -742,6 +756,48 @@ export function ResultTab({ detail, reload }: TabProps): React.JSX.Element {
             <div className="notice warn mb-3">
               Diese Feststellung ist noch nicht gespeichert. Ohne Speichern wird beim Veröffentlichen der
               zuletzt gespeicherte Stand angezeigt.
+            </div>
+          )}
+
+          {/*
+            Der Quotenbefund steht **über** dem Bestätigen-Knopf.
+            Eine Minute vor dem Verkünden ist eine verfehlte Quote noch
+            lösbar; eine Woche danach nicht mehr. Deshalb hier und nicht in
+            einem Reiter, den man aufklappen müsste.
+          */}
+          {quote && (
+            <div
+              className={`notice mb-3 ${!quote.pruefbar ? 'warn' : quote.erfuellt ? 'ok' : 'error'}`}
+            >
+              <strong>
+                {!quote.pruefbar
+                  ? 'Quote nicht prüfbar'
+                  : quote.erfuellt
+                    ? 'Quote erfüllt'
+                    : 'Quote verfehlt'}
+              </strong>
+              <div>{quote.text}</div>
+              {quote.verstoesse.length > 0 && (
+                <ul className="mt-2">
+                  {quote.verstoesse.map((verstoss) => (
+                    <li key={verstoss.platz}>
+                      {verstoss.grund} — <em>{verstoss.name}</em>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {quote.ohneZuordnung.length > 0 && quote.pruefbar && (
+                <div className="hint mt-2">
+                  Ohne Zuordnung: {quote.ohneZuordnung.join(', ')} — diese zählen bei der Quote nicht
+                  mit.
+                </div>
+              )}
+              {!quote.erfuellt && quote.pruefbar && (
+                <div className="hint mt-2">
+                  Was daraus folgt, entscheidet die Satzung und die Versammlungsleitung — Votura hält
+                  die Feststellung nicht auf. Dass hier gewarnt wurde, steht danach im Prüfpfad.
+                </div>
+              )}
             </div>
           )}
 
