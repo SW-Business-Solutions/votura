@@ -192,9 +192,11 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
                */
               <div className="notice error">
                 <strong>Noch nicht für den produktiven Einsatz freigegeben.</strong> Die Kryptografie der
-                geheimen digitalen Wahl ist <strong>nicht extern geprüft</strong>, und eine Lastprobe mit
-                vielen Geräten steht aus. Für eine Wahl, an der etwas hängt, bleiben Papier oder die offene
-                Abstimmung der belastbare Weg. Nachzulesen in ADR-0006 und im Bedrohungsmodell.
+                geheimen digitalen Wahl ist <strong>nicht extern geprüft</strong>, und ein Durchlauf mit
+                echten Geräten in einem echten Saal steht aus. Die Software hält 500 Abläufe ohne Fehler
+                aus — das ist gemessen; das WLAN, die Telefone und die Entfernung zum Zugangspunkt sind es
+                nicht. Für eine Wahl, an der etwas hängt, bleiben Papier oder die offene Abstimmung der
+                belastbare Weg. Nachzulesen in ADR-0006 und im Bedrohungsmodell.
               </div>
             )}
             {geheimnis === 'secret' && (

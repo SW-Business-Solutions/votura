@@ -45,10 +45,17 @@ zuschaltbar; wer weiter nur Papier druckt, merkt davon nichts.
   einmal, und das Gerät wiederholt von selbst.
 
 > **Nicht für den produktiven Einsatz freigegeben.** Die Kryptografie der
-> geheimen digitalen Wahl ist **nicht extern geprüft**, und eine Lastprobe mit
-> vielen Geräten steht aus. Für eine Wahl, an der etwas hängt, bleiben Papier
-> und die offene Abstimmung der belastbare Weg. Das Programm sagt es an der
-> Stelle, an der entschieden wird.
+> geheimen digitalen Wahl ist **nicht extern geprüft**, und ein Durchlauf mit
+> echten Geräten in einem echten Saal steht aus. Für eine Wahl, an der etwas
+> hängt, bleiben Papier und die offene Abstimmung der belastbare Weg. Das
+> Programm sagt es an der Stelle, an der entschieden wird.
+
+**Was dagegen gemessen ist:** Die Software hält 500 Geräte aus.
+`npm run lastprobe` führt fünfhundert vollständige Abläufe über den echten
+Server — 8,0 Sekunden bei offener, 6,5 bei geheimer Wahl, fünfzig gleichzeitig
+unterwegs, **kein einziger Fehler**, 500 Stimmen bei 500 Berechtigungen. Die
+Zahl stand seit M1 als Behauptung in der Dokumentation; jetzt steht sie als
+Messwert da.
 
 ### Das Saalnetz
 

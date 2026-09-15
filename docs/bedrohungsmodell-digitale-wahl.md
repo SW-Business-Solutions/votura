@@ -207,6 +207,12 @@ Vor einem produktiven Einsatz zu klären — von Menschen, nicht von diesem Doku
 4. **Unabhängige Prüfung.** Vor dem ersten geheimen Wahlgang gehören Kryptografie und
    Implementierung von außen geprüft. Das Verfahren ist bekannt und nachrechenbar — dass es richtig
    umgesetzt ist, muss jemand anderes feststellen als der, der es gebaut hat.
+5. **Der Saal selbst.** Die Software hält 500 Geräte aus — gemessen, nicht behauptet
+   (`npm run lastprobe`: 500 Abläufe in 8 Sekunden bei offener, 6,5 bei geheimer Wahl, ohne einen
+   Fehler). Gemessen wurde aber die **Serverseite über die Schleife des eigenen Rechners**. Das
+   WLAN im Saal, fünfhundert fremde Telefone und die Entfernung zum Zugangspunkt kommen dort hinzu
+   und lassen sich an keinem Schreibtisch nachstellen. Ein Durchlauf auf echter Hardware bleibt
+   Pflicht.
 5. **Aufbewahrung.** Wie lange die gedruckte Urnenliste und die Bilanz aufzubewahren sind, richtet
    sich nach der jeweiligen Ordnung.
 
@@ -229,6 +235,7 @@ Die Maßnahmen dieses Dokuments sind gebaut. Was davon geprüft ist und wo:
 | Der Prüfschlüssel lässt sich nicht austauschen                | ebenda — er wird genau einmal angenommen                                                                                                                                                  |
 | In der Warteschlange steht nur Verblendetes                   | ebenda — die Spalten werden namentlich festgehalten                                                                                                                                       |
 | Papier und Urne ergeben zusammen das Ergebnis                 | ebenda — und mehrfaches Speichern verändert die Summe nicht                                                                                                                               |
+| 500 Geräte brechen nichts                                     | `tests/lastprobe.test.ts` — 500 Abläufe über den echten Server: keine verlorene Stimme, keine doppelte, keine Seriennummer zweimal                                                        |
 | Eine laufende Abstimmung wird nicht mitgezählt                | ebenda — eine Zwischensumme ist kein Ergebnis                                                                                                                                             |
 | Die Berechtigung gilt genau einmal                            | ebenda — auch mit erfundener zweiter Seriennummer                                                                                                                                         |
 | Dieselbe Stimme zweimal zählt einmal                          | ebenda — bei offener und geheimer Wahl, auch bei anderer Reihenfolge der Kreuze; andere Auswahl wird abgewiesen                                                                           |

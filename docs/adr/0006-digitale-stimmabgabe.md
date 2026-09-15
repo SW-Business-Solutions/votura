@@ -278,9 +278,39 @@ bleibt in der Urne leer — außer bei einer namentlichen Abstimmung, wo die Zuo
 |          | Inhalt                                                                                                                                                          | Warum in dieser Reihenfolge                                                                                                                                                                               |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M0** ✓ | Akkreditierung: Mitglieder, Anwesenheit, Kommen und Gehen, Beschlussfähigkeit, Voting Pass als gedruckter QR-Code, Karten und Bändchen, Ausgabe der Stimmzettel | Fundament. `eligible_voters` ist heute **eine getippte Zahl am Ereignis** — beim vierten Wahlgang sind andere Leute im Saal als beim ersten. Verbessert sofort die Papierwahl, ganz ohne digitale Stimme. |
-| **M1** ✓ | Offene und namentliche Abstimmungen digital                                                                                                                     | Kein Wahlgeheimnis, also ohne Blindsignaturen. Erprobt Netz, Pass, Oberfläche und Bilanz unter echten Bedingungen — 500 Geräte im WLAN sind ein Problem für sich.                                         |
+| **M1** ✓ | Offene und namentliche Abstimmungen digital                                                                                                                     | Kein Wahlgeheimnis, also ohne Blindsignaturen. Erprobt Netz, Pass, Oberfläche und Bilanz — die Software hält 500 Geräte aus (siehe Lastprobe); das WLAN im Saal bleibt ein Problem für sich.                                         |
 | **M2** ✓ | Geheime Wahl: Blindsignaturen, Kabinenrolle in Votura Saal, gedrucktes Urnenverzeichnis                                                                         | Erst jetzt, mit erprobter Infrastruktur, der Teil mit der höchsten Fallhöhe.                                                                                                                              |
 | **M3** ✓ | Hybride Wahlgänge, Berechtigungsseite auf eigenem Gerät (Vier-Augen-Prinzip)                                                                                    | Setzt M2 voraus.                                                                                                                                                                                          |
+
+## Was die Lastprobe zeigt
+
+Die Zahl „500 Geräte" stand lange als Behauptung in diesem Dokument. Sie ist jetzt gemessen
+(`npm run lastprobe`): fünfhundert vollständige Abläufe — Lage, Berechtigung, Stimme — über den
+echten Server, fünfzig davon gleichzeitig unterwegs.
+
+| | Offene Abstimmung | Geheime Wahl |
+| --- | --- | --- |
+| Gesamtdauer | 8,0 s | 6,5 s |
+| Median je Gerät | 799 ms | 654 ms |
+| p95 | 918 ms | 708 ms |
+| Fehler | 0 | 0 |
+
+Zwei Dinge daran sind bemerkenswert.
+
+**Die geheime Wahl ist nicht langsamer, sondern schneller.** Erwartet hätte man das Gegenteil: Dort
+rechnet der Server je Berechtigung eine RSA-Operation. Nur hat die offene Abstimmung mehr mit der
+Datenbank zu tun — sie prüft die Stimmberechtigung, verbraucht sie und hält das fest, während bei
+geheimer Wahl allein die Unterschrift zählt. Ein paar Schreibzugriffe kosten mehr als eine
+Potenzierung.
+
+**Die Zeit je Gerät ist Wartezeit, keine Rechenzeit.** Bei 63 Stimmen je Sekunde und fünfzig
+gleichzeitig Wartenden ergibt sich die knappe Sekunde rechnerisch aus der Schlange; die eigentliche
+Bearbeitung liegt bei etwa 16 Millisekunden. In einem Saal drückt ohnehin niemand auf Kommando —
+dort verteilt sich dasselbe über Minuten.
+
+**Was damit nicht gezeigt ist:** alles außerhalb der Software. Gemessen wurde über die Schleife des
+eigenen Rechners, nicht über ein WLAN mit fünfhundert fremden Telefonen. Der Durchlauf auf echter
+Hardware bleibt Pflicht, und die Lastprobe ersetzt ihn nicht.
 
 ## Verworfene Alternativen
 
