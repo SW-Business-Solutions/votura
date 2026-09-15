@@ -22,7 +22,7 @@ import {
 import { api } from '../../lib/api'
 import { navigate } from '../App'
 import { useApp } from '../state'
-import { Card, EmptyState, Field } from '../components/ui'
+import { Card, EmptyState, Field, Modal } from '../components/ui'
 
 export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.JSX.Element {
   const app = useApp()
@@ -47,6 +47,14 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
   const [geheimnis, setGeheimnis] = useState<Wahlgeheimnis>('open')
   const [geraete, setGeraete] = useState<Geraetewahl>('both')
   const [signer, setSigner] = useState<'hub' | 'committee'>('hub')
+  /*
+   * Das Urnenverzeichnis auf dem Bildschirm.
+   *
+   * Es war bisher nur zu drucken — und der Knopf dafür ist ohne eingerichteten
+   * Drucker gesperrt. Damit war die Nachzählung, das eigentliche Versprechen
+   * der digitalen Wahl, an einem Stück Hardware aufgehängt.
+   */
+  const [urne, setUrne] = useState<{ serial: string; text: string; weight: number }[] | null>(null)
 
   const laden = useCallback(async () => {
     if (!wahlgang) return
@@ -130,8 +138,8 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
             <div>
               <h1>Digitale Abstimmung</h1>
               <div className="subtitle">
-                Teilnehmer stimmen mit ihrem eigenen Gerät oder in einer Wahlkabine ab. Die Papierwahl
-                bleibt davon unberührt — je Wahlgang entscheidet die Wahlleitung.
+                Teilnehmer stimmen mit ihrem eigenen Gerät oder in einer Wahlkabine ab. Die Papierwahl bleibt
+                davon unberührt — je Wahlgang entscheidet die Wahlleitung.
               </div>
             </div>
           </div>
@@ -193,10 +201,10 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
               <div className="notice error">
                 <strong>Noch nicht für den produktiven Einsatz freigegeben.</strong> Die Kryptografie der
                 geheimen digitalen Wahl ist <strong>nicht extern geprüft</strong>, und ein Durchlauf mit
-                echten Geräten in einem echten Saal steht aus. Die Software hält 500 Abläufe ohne Fehler
-                aus — das ist gemessen; das WLAN, die Telefone und die Entfernung zum Zugangspunkt sind es
-                nicht. Für eine Wahl, an der etwas hängt, bleiben Papier oder die offene Abstimmung der
-                belastbare Weg. Nachzulesen in ADR-0006 und im Bedrohungsmodell.
+                echten Geräten in einem echten Saal steht aus. Die Software hält 500 Abläufe ohne Fehler aus —
+                das ist gemessen; das WLAN, die Telefone und die Entfernung zum Zugangspunkt sind es nicht.
+                Für eine Wahl, an der etwas hängt, bleiben Papier oder die offene Abstimmung der belastbare
+                Weg. Nachzulesen in ADR-0006 und im Bedrohungsmodell.
               </div>
             )}
             {geheimnis === 'secret' && (
@@ -347,7 +355,15 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
                   </div>
                   <div className="row mt-2">
                     <button
+                      onClick={() =>
+                        void api('voting.urne', wahlgang.id).then(setUrne).catch(app.reportError)
+                      }
+                    >
+                      Urnenverzeichnis ansehen
+                    </button>
+                    <button
                       disabled={!drucker}
+                      title={drucker ? undefined : 'Dafür muss ein Drucker eingerichtet sein.'}
                       onClick={() =>
                         void tue(() => api('voting.drucken', { roundId: wahlgang.id, printerId: drucker! }))
                       }
@@ -363,6 +379,41 @@ export function DigitaleWahlPage({ roundId }: { roundId?: string } = {}): React.
             </>
           )}
         </>
+      )}
+
+      {urne && (
+        <Modal title="Urnenverzeichnis" wide onClose={() => setUrne(null)}>
+          <p className="hint">
+            Je Zeile ein Zettel: seine Seriennummer und die Stimme im Klartext. Mehr steht nicht darin und
+            darf nicht darin stehen — das Verzeichnis ist genauso nachzählbar wie ein Stapel Papier und
+            genauso wenig einer Person zuzuordnen. Wer seine Seriennummer notiert hat, findet hier seine
+            eigene Stimme wieder.
+          </p>
+          {urne.length === 0 ? (
+            <EmptyState text="Die Urne ist leer." />
+          ) : (
+            <table className="mt-2">
+              <thead>
+                <tr>
+                  <th>Nr.</th>
+                  <th>Seriennummer</th>
+                  <th>Stimme</th>
+                  <th className="num">Gewicht</th>
+                </tr>
+              </thead>
+              <tbody>
+                {urne.map((zettel, nummer) => (
+                  <tr key={zettel.serial}>
+                    <td className="num">{nummer + 1}</td>
+                    <td className="mono">{zettel.serial}</td>
+                    <td>{zettel.text}</td>
+                    <td className="num">{zettel.weight}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Modal>
       )}
     </>
   )
