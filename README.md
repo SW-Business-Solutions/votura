@@ -225,6 +225,13 @@ anderes.
 Im Archiv der Veranstaltung liegt das Antragsbuch als `antraege.json` bei, samt fertigem
 Beschlusstext je Hauptantrag.
 
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/33-antraege.png" alt="Das Antragsbuch"><br><sub><b>Das Antragsbuch</b> — Hauptantrag, Änderungsanträge mit Stand und Übernahme, und darunter die Reihenfolge, in der abgestimmt wird.</sub></td>
+<td width="50%"><img src="docs/screenshots/34-beamer-synopse.png" alt="Synopse auf dem Beamer"><br><sub><b>Synopse an der Wand</b> — links, was gilt; rechts, was beantragt ist. Gleich breit, damit keine Spalte wichtiger aussieht.</sub></td>
+</tr>
+</table>
+
 ## Wahlverfahren
 
 Wahlzweck (`purpose`) und Wahlverfahren (`procedure`) sind strikt getrennt: Aus „Delegiertenwahl"
@@ -305,6 +312,11 @@ Ein grünes Häkchen auf Grundlage fehlender Angaben sähe aus wie eine Prüfung
 Nachwahl oder nichts —, steht in der Satzung und gehört der Versammlungsleitung. Votura warnt
 rechtzeitig und hält im Prüfpfad fest, dass gewarnt wurde: Wird trotzdem bestätigt, ist das eine
 Entscheidung der Versammlung, die sich belegen lässt.
+
+<img src="docs/screenshots/35-quotenpruefung.png" alt="Quotenprüfung vor der Feststellung">
+
+<sub>Der Befund steht dort, wo er gebraucht wird: <b>über</b> dem Knopf, mit dem das Ergebnis
+festgestellt wird. Eine Minute vor dem Verkünden ist die Frage noch lösbar.</sub>
 
 ## Ergebnis und Rangliste
 

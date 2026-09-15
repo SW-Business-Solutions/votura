@@ -3,7 +3,156 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
-## Unveröffentlicht
+## 1.6.0 — Der Saal und das Verfahren
+
+Diese Fassung hat zwei Hälften.
+
+Die eine ist **der Saal**: Votura zeigt Kamerabilder und weiß dabei als Einziges, **wer** da vorne
+steht — daraus wird eine Bauchbinde, die stimmt, ohne dass jemand sie tippt. Es steuert die Kameras,
+und es blendet **Untertitel** ein, damit niemand die Debatte am Gehör verpasst.
+
+Die andere ist **das Verfahren**: Ein **Antragsbuch** mit Änderungsanträgen, Übernahme,
+Abstimmungsreihenfolge und Synopse — und aus jedem Antrag wird mit einem Klick eine Abstimmung,
+wenn das Handzeichen nicht eindeutig auszuzählen ist. Dazu die **Quotenprüfung**, die eine
+anfechtbare Liste meldet, **bevor** das Ergebnis feststeht, statt eine Woche danach.
+
+Und eine Berichtigung, die längst fällig war: Die Redezeit startet jetzt, wenn sie starten soll —
+und nicht schon, wenn der Name auf dem Beamer erscheint.
+
+### Kameras im Saal
+
+Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die
+verbleibende Redezeit**. Empfangen wird über **NDI**, das Verfahren, mit dem Produktionskameras im
+Netz senden: Wer solche Kameras hat, steckt sie ein, und Votura findet sie.
+
+Die Bauchbinde ist der eigentliche Grund für die Sache. Einen Bildmischer hat mancher Saal; was
+keiner hat, ist das Wissen, **wer** da vorne steht und wie lange er noch hat. Genau das weiß
+Votura ohnehin — aus demselben Aufruf, der auch die Uhr auf dem Beamer stellt. Getippt wird
+nichts.
+
+Drei Entscheidungen, die man dem Bild nicht ansieht:
+
+- **Jedes Gerät empfängt selbst.** Im Zustand steht nur der Name der Quelle, nie ein Bild. Der
+  Beamerrechner baut seine Verbindung zur Kamera auf, ein Pi hinter dem zweiten Beamer seine
+  eigene. Einmal empfangen und weiterverteilen hieße, jedes Bild neu zu kodieren — auf dem
+  Rechner, der die Wahl führt.
+- **Eigener Prozess.** Die NDI-Bibliothek ist fremder, nativer Code. Stürzt sie ab, fällt das Bild
+  aus und sonst nichts.
+- **Erst auf Verlangen.** Ohne einen Blick in die Kameraliste startet nichts — eine Versammlung
+  ohne Kameras merkt von alledem nichts.
+
+Dazu: Steht das Bild einer Kamera an der Wand, schaltet Votura ihr **rotes Licht**. Wer gefilmt
+wird, sieht es.
+
+Und eine Grenze, die nicht verhandelbar ist: **Kameras gehören ans Kabel.** Ein voller NDI-Strom
+belegt über hundert Megabit je Sekunde; über dasselbe WLAN laufen Handzettel und digitale
+Abstimmung. Geräte im Funknetz bekommen deshalb den Nebenstrom, den jede NDI-Quelle zusätzlich
+sendet.
+
+Votura zeichnet **nichts** auf. Das Bild endet mit der Rede.
+
+NDI® ist eine eingetragene Marke der Vizrt NDI AB.
+
+### Ein Bild aus dem Saal
+
+Eine neu gewählte Kamera zeigt zunächst **nur ihr Bild**. Das war einmal umgekehrt: Bauchbinde und
+Rednerreihe kamen von selbst mit, weil eine Vorstellung der häufigste Anlass ist. Wer aber einen
+Blick in den Saal zeigen wollte, bekam damit den Namen der Person über das Bild, die zuletzt
+gesprochen hat — und musste zwei Schalter umlegen, bevor das Bild sauber war. Etwas einzublenden
+ist eine Entscheidung; ein Name, der von selbst erscheint, ist eine Überraschung.
+
+Und weil eine Vorstellung einen Ansichtswechsel überlebt, sagt die Bedienung jetzt, **wen die
+Bauchbinde nennen würde** — man entdeckt es nicht erst an der Wand.
+
+### Die nächsten Redner über dem Kamerabild
+
+Dieselbe Reihe, die die Vorstellung an der Wand zeigt, lässt sich auch über das Kamerabild legen —
+unten rechts, gegenüber der Bauchbinde, einer je Zeile. Auf einer Versammlung mit zwölf Bewerbern
+ist das die Auskunft, nach der im Saal am häufigsten gefragt wird: Wer kommt nach mir?
+
+Getrennt von der Bauchbinde schaltbar, denn der Name dessen, der spricht, gehört fast immer ins
+Bild; die Reihe dahinter nicht immer — bei einem Grußwort gibt es keine.
+
+### Kameras steuern
+
+Eine PTZ-Kamera fährt auf Wunsch von selbst auf ihre Position, sobald ein Redner aufgerufen wird —
+zum Pult. Bei zwölf Bewerbern hintereinander führt damit niemand mehr zwischendurch eine Kamera
+nach.
+
+Gebaut als **eine Stelle für alle Hersteller**: Fast alle Netzwerkkameras sprechen VISCA, und der
+Inhalt eines Befehls ist überall derselbe. Verschieden sind Verpackung, Weg, Port und ein paar
+Eigenheiten je Modell — und die stehen in einer **Tabelle**, nicht im Programm. Eine neue Kamera
+aufzunehmen heißt im Regelfall, eine Zeile zu ergänzen.
+
+Welche Spielart eine Kamera spricht, muss niemand raten: Der Port verrät sie nicht, und Handbücher
+schweigen oft dazu. Votura klopft die Adresse mit einer Frage ab, die nichts verstellt, und nimmt
+die Form, die antwortet.
+
+Zum **Einrichten** einer Position gibt es ein Steuerkreuz: Kamera hinstellen, wo sie stehen soll,
+dann „Hier ablegen". Das ist kein Bedienpult für den Saal — wer live schwenken will, hat ein Pult
+mit einem Knüppel, und das kann es besser als jede Maus. Drücken und halten bewegt, Loslassen hält
+an, und nach fünf Sekunden hält sie ohnehin: Eine Kamera, die weiterdreht, weil ein Halt ausblieb,
+ist im Saal ein Ärgernis.
+
+**Auch für Kameras ohne eigenen Positionsspeicher.** Der Regelfall ist, dass die Kamera sich ihre
+Positionen selbst merkt — das geht schneller und überlebt einen Wechsel des Rechners. Kann sie das
+nicht, führt Votura die Positionen: Es fragt die Kamera nach ihrer Stellung, legt die Zahlen in die
+Datenbank und schickt sie ihr später zurück. Umzuschalten mit **Positionen liegen: in Votura**.
+
+Antwortet die Kamera dabei nicht oder unverständlich, gibt es einen Fehler statt einer geratenen
+Zahl. Eine erfundene Stellung führte die Kamera später zuverlässig an den falschen Ort — mitten in
+der Versammlung.
+
+Und die Einstellungsseite zeigt jetzt oben, **was im Netz gefunden wurde**. Das ist nicht nur
+Auskunft: Eine Kamera, die ihr Bild sendet, verrät dabei ihre Adresse — genau die, die die
+Steuerung braucht. „Steuerung einrichten" legt den Eintrag fertig ausgefüllt an.
+
+### Positionen während der Versammlung
+
+Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihrem Bild: „Pult",
+„Präsidium", „Saal" als Knöpfe. „Zeig mal den Saal" ist ein Griff während der Versammlung, kein
+Einrichten davor — dafür in die Einstellungen zu wechseln, wäre einer zu viel. Sie erscheinen nur,
+wenn zu dem laufenden Bild eine Steuerung eingerichtet ist.
+
+### Untertitel im Saal
+
+Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge
+Untertitel sucht.
+
+**Zuerst für die, die schlecht hören.** Eine Mitgliederversammlung ist der Ort, an dem über Ämter
+und Anträge entschieden wird; wer den Wortbeitrag nicht versteht, kann nicht mitentscheiden. Das
+ist kein Komfort, sondern die Bedingung dafür, dass Teilhabe nicht am Gehör scheitert. Und dann
+für alle anderen: In einem halligen Saal mit einer mäßigen Anlage liest jeder mit.
+
+Erkannt wird mit **demselben Sprachmodell**, mit dem der Prompter schon bisher dem Redner nach
+Gehör folgt — dieselbe Aufnahme, dieselbe Rechnung, nur ein anderes Ergebnis. Neue Technik kommt
+dafür kaum hinzu; der heikle Teil, der beides trägt, steht seither an **einer** Stelle statt an
+zwei.
+
+Was dabei zu wissen ist:
+
+- **Aufgezeichnet wird nichts.** Der Ton geht in die Erkennung und ist danach weg. Der Text steht
+  an der Wand, solange er dort steht — er wird nicht abgelegt, nicht protokolliert, nicht
+  exportiert. Ein Wortprotokoll wäre etwas anderes, und etwas, das eine Versammlung ausdrücklich
+  beschließen müsste.
+- **Je Bühne schaltbar.** Die Saalwand liest mit, der Rückblickschirm am Pult nicht — der Redner
+  braucht nicht zu lesen, was er gerade selbst sagt.
+- **In jeder Ansicht.** Untertitel hängen an keinem Modus: Gesprochen wird vor der Tagesordnung
+  genauso wie vor einem Kamerabild. Über dem Kamerabild rücken sie nach oben, damit sie Bauchbinde
+  und Rednerreihe nicht überdecken.
+- **Der Zwischenstand ist blasser.** Die Erkennung meldet erst, was sie zu hören glaubt, und
+  berichtigt sich danach. Beides gleich auszuzeichnen hieße, eine Sicherheit zu behaupten, die noch
+  nicht da ist.
+- **Nach einem Neustart aus.** Wie der Modus: Ein Mikrofon, das sich nach einem Absturz von selbst
+  wieder einschaltet, wäre eine Entscheidung, die der Rechner nicht zu treffen hat.
+- **Bleibt nicht stehen.** Wird das Fenster am Hauptrechner geschlossen oder neu geladen, räumt
+  eine Wache im Hauptprozess die Wand. Ein leeres Band sagt „nichts verstanden"; ein
+  stehengebliebenes behauptet etwas Falsches.
+
+**Ehrlich zur Güte:** Der Prompter braucht nur ein paar halbwegs erkannte Wörter, um sich in einem
+Text wiederzufinden, der schon dasteht. Untertitel haben diesen Text nicht — sie zeigen jeden
+Irrtum der Erkennung. Das kleine mitgelieferte Modell reicht für den Prompter; für Untertitel lohnt
+ein größeres, und genau dafür lässt sich in den Einstellungen eines hinterlegen.
 
 ### Sprachmodelle nachladen
 
@@ -161,150 +310,6 @@ und gehört der Versammlungsleitung. Ein Programm, das die Feststellung verweige
 ihre Stelle gesetzt. Es warnt rechtzeitig, und der Befund geht beim Bestätigen **in den Prüfpfad**:
 Eine Warnung, die weggeklickt wurde, ist hinterher nicht mehr auffindbar — und hinterher ist genau
 der Zeitpunkt, an dem jemand fragt.
-
-### Untertitel im Saal
-
-Was gesprochen wird, steht mitlesbar an der Wand — zwei Zeilen, unten, dort, wo das Auge
-Untertitel sucht.
-
-**Zuerst für die, die schlecht hören.** Eine Mitgliederversammlung ist der Ort, an dem über Ämter
-und Anträge entschieden wird; wer den Wortbeitrag nicht versteht, kann nicht mitentscheiden. Das
-ist kein Komfort, sondern die Bedingung dafür, dass Teilhabe nicht am Gehör scheitert. Und dann
-für alle anderen: In einem halligen Saal mit einer mäßigen Anlage liest jeder mit.
-
-Erkannt wird mit **demselben Sprachmodell**, mit dem der Prompter schon bisher dem Redner nach
-Gehör folgt — dieselbe Aufnahme, dieselbe Rechnung, nur ein anderes Ergebnis. Neue Technik kommt
-dafür kaum hinzu; der heikle Teil, der beides trägt, steht seither an **einer** Stelle statt an
-zwei.
-
-Was dabei zu wissen ist:
-
-- **Aufgezeichnet wird nichts.** Der Ton geht in die Erkennung und ist danach weg. Der Text steht
-  an der Wand, solange er dort steht — er wird nicht abgelegt, nicht protokolliert, nicht
-  exportiert. Ein Wortprotokoll wäre etwas anderes, und etwas, das eine Versammlung ausdrücklich
-  beschließen müsste.
-- **Je Bühne schaltbar.** Die Saalwand liest mit, der Rückblickschirm am Pult nicht — der Redner
-  braucht nicht zu lesen, was er gerade selbst sagt.
-- **In jeder Ansicht.** Untertitel hängen an keinem Modus: Gesprochen wird vor der Tagesordnung
-  genauso wie vor einem Kamerabild. Über dem Kamerabild rücken sie nach oben, damit sie Bauchbinde
-  und Rednerreihe nicht überdecken.
-- **Der Zwischenstand ist blasser.** Die Erkennung meldet erst, was sie zu hören glaubt, und
-  berichtigt sich danach. Beides gleich auszuzeichnen hieße, eine Sicherheit zu behaupten, die noch
-  nicht da ist.
-- **Nach einem Neustart aus.** Wie der Modus: Ein Mikrofon, das sich nach einem Absturz von selbst
-  wieder einschaltet, wäre eine Entscheidung, die der Rechner nicht zu treffen hat.
-- **Bleibt nicht stehen.** Wird das Fenster am Hauptrechner geschlossen oder neu geladen, räumt
-  eine Wache im Hauptprozess die Wand. Ein leeres Band sagt „nichts verstanden"; ein
-  stehengebliebenes behauptet etwas Falsches.
-
-**Ehrlich zur Güte:** Der Prompter braucht nur ein paar halbwegs erkannte Wörter, um sich in einem
-Text wiederzufinden, der schon dasteht. Untertitel haben diesen Text nicht — sie zeigen jeden
-Irrtum der Erkennung. Das kleine mitgelieferte Modell reicht für den Prompter; für Untertitel lohnt
-ein größeres, und genau dafür lässt sich in den Einstellungen eines hinterlegen.
-
-## 1.6.0 — Das Bild aus dem Saal
-
-Diese Fassung bringt eine Fähigkeit, die Votura bisher nicht hatte und die kein Bildmischer
-mitbringt: Sie zeigt **Kamerabilder** — und weiß dabei als Einzige im Saal, **wer** da vorne steht.
-Aus dem Bild wird dadurch eine Bauchbinde, die stimmt, ohne dass jemand sie tippt.
-
-Dazu kommt eine Berichtigung, die längst fällig war: Die Redezeit startet jetzt, wenn sie starten
-soll — und nicht schon, wenn der Name auf dem Beamer erscheint.
-
-### Kameras im Saal
-
-Eine Kamera vor dem Pult, ihr Bild an der Wand — und darunter **Name, Bewerbung und die
-verbleibende Redezeit**. Empfangen wird über **NDI**, das Verfahren, mit dem Produktionskameras im
-Netz senden: Wer solche Kameras hat, steckt sie ein, und Votura findet sie.
-
-Die Bauchbinde ist der eigentliche Grund für die Sache. Einen Bildmischer hat mancher Saal; was
-keiner hat, ist das Wissen, **wer** da vorne steht und wie lange er noch hat. Genau das weiß
-Votura ohnehin — aus demselben Aufruf, der auch die Uhr auf dem Beamer stellt. Getippt wird
-nichts.
-
-Drei Entscheidungen, die man dem Bild nicht ansieht:
-
-- **Jedes Gerät empfängt selbst.** Im Zustand steht nur der Name der Quelle, nie ein Bild. Der
-  Beamerrechner baut seine Verbindung zur Kamera auf, ein Pi hinter dem zweiten Beamer seine
-  eigene. Einmal empfangen und weiterverteilen hieße, jedes Bild neu zu kodieren — auf dem
-  Rechner, der die Wahl führt.
-- **Eigener Prozess.** Die NDI-Bibliothek ist fremder, nativer Code. Stürzt sie ab, fällt das Bild
-  aus und sonst nichts.
-- **Erst auf Verlangen.** Ohne einen Blick in die Kameraliste startet nichts — eine Versammlung
-  ohne Kameras merkt von alledem nichts.
-
-Dazu: Steht das Bild einer Kamera an der Wand, schaltet Votura ihr **rotes Licht**. Wer gefilmt
-wird, sieht es.
-
-Und eine Grenze, die nicht verhandelbar ist: **Kameras gehören ans Kabel.** Ein voller NDI-Strom
-belegt über hundert Megabit je Sekunde; über dasselbe WLAN laufen Handzettel und digitale
-Abstimmung. Geräte im Funknetz bekommen deshalb den Nebenstrom, den jede NDI-Quelle zusätzlich
-sendet.
-
-Votura zeichnet **nichts** auf. Das Bild endet mit der Rede.
-
-NDI® ist eine eingetragene Marke der Vizrt NDI AB.
-
-### Ein Bild aus dem Saal
-
-Eine neu gewählte Kamera zeigt zunächst **nur ihr Bild**. Das war einmal umgekehrt: Bauchbinde und
-Rednerreihe kamen von selbst mit, weil eine Vorstellung der häufigste Anlass ist. Wer aber einen
-Blick in den Saal zeigen wollte, bekam damit den Namen der Person über das Bild, die zuletzt
-gesprochen hat — und musste zwei Schalter umlegen, bevor das Bild sauber war. Etwas einzublenden
-ist eine Entscheidung; ein Name, der von selbst erscheint, ist eine Überraschung.
-
-Und weil eine Vorstellung einen Ansichtswechsel überlebt, sagt die Bedienung jetzt, **wen die
-Bauchbinde nennen würde** — man entdeckt es nicht erst an der Wand.
-
-### Die nächsten Redner über dem Kamerabild
-
-Dieselbe Reihe, die die Vorstellung an der Wand zeigt, lässt sich auch über das Kamerabild legen —
-unten rechts, gegenüber der Bauchbinde, einer je Zeile. Auf einer Versammlung mit zwölf Bewerbern
-ist das die Auskunft, nach der im Saal am häufigsten gefragt wird: Wer kommt nach mir?
-
-Getrennt von der Bauchbinde schaltbar, denn der Name dessen, der spricht, gehört fast immer ins
-Bild; die Reihe dahinter nicht immer — bei einem Grußwort gibt es keine.
-
-### Kameras steuern
-
-Eine PTZ-Kamera fährt auf Wunsch von selbst auf ihre Position, sobald ein Redner aufgerufen wird —
-zum Pult. Bei zwölf Bewerbern hintereinander führt damit niemand mehr zwischendurch eine Kamera
-nach.
-
-Gebaut als **eine Stelle für alle Hersteller**: Fast alle Netzwerkkameras sprechen VISCA, und der
-Inhalt eines Befehls ist überall derselbe. Verschieden sind Verpackung, Weg, Port und ein paar
-Eigenheiten je Modell — und die stehen in einer **Tabelle**, nicht im Programm. Eine neue Kamera
-aufzunehmen heißt im Regelfall, eine Zeile zu ergänzen.
-
-Welche Spielart eine Kamera spricht, muss niemand raten: Der Port verrät sie nicht, und Handbücher
-schweigen oft dazu. Votura klopft die Adresse mit einer Frage ab, die nichts verstellt, und nimmt
-die Form, die antwortet.
-
-Zum **Einrichten** einer Position gibt es ein Steuerkreuz: Kamera hinstellen, wo sie stehen soll,
-dann „Hier ablegen". Das ist kein Bedienpult für den Saal — wer live schwenken will, hat ein Pult
-mit einem Knüppel, und das kann es besser als jede Maus. Drücken und halten bewegt, Loslassen hält
-an, und nach fünf Sekunden hält sie ohnehin: Eine Kamera, die weiterdreht, weil ein Halt ausblieb,
-ist im Saal ein Ärgernis.
-
-**Auch für Kameras ohne eigenen Positionsspeicher.** Der Regelfall ist, dass die Kamera sich ihre
-Positionen selbst merkt — das geht schneller und überlebt einen Wechsel des Rechners. Kann sie das
-nicht, führt Votura die Positionen: Es fragt die Kamera nach ihrer Stellung, legt die Zahlen in die
-Datenbank und schickt sie ihr später zurück. Umzuschalten mit **Positionen liegen: in Votura**.
-
-Antwortet die Kamera dabei nicht oder unverständlich, gibt es einen Fehler statt einer geratenen
-Zahl. Eine erfundene Stellung führte die Kamera später zuverlässig an den falschen Ort — mitten in
-der Versammlung.
-
-Und die Einstellungsseite zeigt jetzt oben, **was im Netz gefunden wurde**. Das ist nicht nur
-Auskunft: Eine Kamera, die ihr Bild sendet, verrät dabei ihre Adresse — genau die, die die
-Steuerung braucht. „Steuerung einrichten" legt den Eintrag fertig ausgefüllt an.
-
-### Positionen während der Versammlung
-
-Die Positionen einer Kamera stehen jetzt auch in der Bedienung, direkt unter ihrem Bild: „Pult",
-„Präsidium", „Saal" als Knöpfe. „Zeig mal den Saal" ist ein Griff während der Versammlung, kein
-Einrichten davor — dafür in die Einstellungen zu wechseln, wäre einer zu viel. Sie erscheinen nur,
-wenn zu dem laufenden Bild eine Steuerung eingerichtet ist.
 
 ### Die Redezeit startet, wenn sie starten soll
 

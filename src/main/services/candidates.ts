@@ -297,3 +297,43 @@ export function assignBallotNumbers(roundId: UUID): Candidate[] {
   })
   return listCandidates(roundId)
 }
+
+/**
+ * Das Quotenmerkmal setzen — auch bei geschlossener Kandidatenliste.
+ *
+ * ## Warum das keine Lücke in der Sperre ist
+ *
+ * Die Sperre schützt den **Stimmzettel**: Wer nach dem Druck einen Namen
+ * ändert, ändert das Papier, das im Saal liegt — deshalb entsteht beim
+ * Entsperren eine neue Wahlzettelversion.
+ *
+ * Das Quotenmerkmal steht **nie** auf dem Stimmzettel. Es ändert nichts am
+ * Papier, nichts an der Reihenfolge, nichts am Ergebnis; es entscheidet
+ * allein, was die Quotenprüfung rechnet.
+ *
+ * Und es wird oft erst spät gebraucht: Die Kandidatenliste schließt vor der
+ * Wahl, die Quote wird beim Ergebnis geprüft. Wer dazwischen ein fehlendes
+ * Merkmal nachtragen will, müsste sonst den Wahlgang entsperren — und damit
+ * die gedruckten Stimmzettel entwerten. Für eine Angabe, die auf keinem von
+ * ihnen steht.
+ *
+ * Im Prüfpfad steht es trotzdem: Eine Quote, die nachträglich erfüllt wird,
+ * weil jemand ein Merkmal geändert hat, muss nachvollziehbar sein.
+ */
+export function setCandidateQuotengruppe(input: { id: UUID; quotengruppe?: string }): Candidate {
+  const session = requirePermission('candidate.manage')
+  const vorher = getCandidate(input.id)
+  const neu = input.quotengruppe?.trim() || null
+
+  db().prepare(`UPDATE candidates SET quota_group = ? WHERE id = ?`).run(neu, input.id)
+
+  appendAudit({
+    action: 'candidate.quota_group',
+    userId: session.user.id,
+    userName: session.user.displayName,
+    electionRoundId: vorher.electionRoundId,
+    previousValue: { name: vorher.displayName, quotengruppe: vorher.quotengruppe ?? null },
+    newValue: { name: vorher.displayName, quotengruppe: neu }
+  })
+  return getCandidate(input.id)
+}

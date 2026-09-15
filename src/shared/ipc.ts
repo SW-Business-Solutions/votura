@@ -571,6 +571,14 @@ export interface Api {
   'candidate.add': (input: { roundId: UUID; candidates: CandidateInput[] }) => Promise<Candidate[]>
   'candidate.update': (input: { id: UUID } & Partial<CandidateInput>) => Promise<Candidate>
   'candidate.withdraw': (input: { id: UUID; reason: string }) => Promise<Candidate>
+  /**
+   * Das Quotenmerkmal setzen — auch bei geschlossener Kandidatenliste.
+   *
+   * Es steht nie auf dem Stimmzettel, ändert also nichts am Papier. Es erst
+   * nach dem Entsperren zuzulassen hieße, gedruckte Stimmzettel für eine
+   * Angabe zu entwerten, die auf keinem von ihnen steht.
+   */
+  'candidate.setQuotengruppe': (input: { id: UUID; quotengruppe?: string }) => Promise<Candidate>
   'candidate.reorder': (input: { roundId: UUID; orderedIds: UUID[] }) => Promise<Candidate[]>
   /**
    * Alle Bewerber der Veranstaltung, über die Wahlgänge hinweg.

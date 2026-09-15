@@ -88,6 +88,8 @@ import {
   reorderCandidates,
   updateCandidate,
   withdrawCandidate
+,
+  setCandidateQuotengruppe
 } from './services/candidates'
 import {
   activateEvent,
@@ -774,6 +776,7 @@ const api: Api = {
   'candidate.add': async (input) => addCandidates(input.roundId, input.candidates),
   'candidate.update': async (input) => updateCandidate(input),
   'candidate.withdraw': async (input) => withdrawCandidate(input.id, input.reason),
+  'candidate.setQuotengruppe': async (input) => setCandidateQuotengruppe(input),
   'candidate.reorder': async (input) => reorderCandidates(input.roundId, input.orderedIds),
   'candidate.listForEvent': async (eventId) => listEventCandidates(eventId),
   'candidate.applyOrderMode': async (input) => applyOrderMode(input.roundId, input.mode, input.seed),

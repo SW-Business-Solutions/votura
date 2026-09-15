@@ -977,6 +977,147 @@ try {
     console.log('  Hinweis: Prompterfenster nicht gefunden – 24-teleprompter übersprungen.')
   }
 
+
+  /*
+   * **Das Antragsbuch.**
+   *
+   * Ein Hauptantrag mit zwei Änderungsanträgen, von denen einer übernommen
+   * ist — daran lässt sich alles zeigen, worum es geht: die
+   * Abstimmungsreihenfolge, die Übernahme und der Stand als Abzeichen.
+   */
+  console.log('Anträge …')
+  const antragBericht = await sitzung.auswerten(`(async () => {
+    const ruf = (m, ...a) => window.votura.invoke(m, ...a)
+    const ev = (await ruf('event.list'))[0]
+    const haupt = await ruf('motion.create', {
+      eventId: ev.id, art: 'haupt', nummer: 'A 14', titel: 'Beitragsordnung 2027',
+      antragsteller: 'Kreisverband Nord',
+      text: 'Der Verband möge beschließen: Der Regelbeitrag beträgt ab dem 1. Januar 2027 fünf Euro monatlich. Der ermäßigte Beitrag beträgt zwei Euro fünfzig.',
+      bisher: 'Der Regelbeitrag beträgt drei Euro monatlich. Der ermäßigte Beitrag beträgt einen Euro fünfzig.'
+    })
+    await ruf('motion.setStatus', { id: haupt.id, status: 'zugelassen' })
+    await ruf('motion.create', {
+      eventId: ev.id, art: 'aenderung', nummer: 'Ä 1', titel: 'Vier statt fünf Euro',
+      text: 'Der Regelbeitrag beträgt vier Euro monatlich.', antragsteller: 'Ortsverein Süd',
+      bezugId: haupt.id
+    })
+    const zwei = await ruf('motion.create', {
+      eventId: ev.id, art: 'aenderung', nummer: 'Ä 2', titel: 'Ermäßigung erweitern',
+      text: 'Ermäßigt sind auch Mitglieder im Freiwilligendienst.', antragsteller: 'Ortsverein West',
+      bezugId: haupt.id
+    })
+    await ruf('motion.adopt', zwei.id)
+    return JSON.stringify({ haupt: haupt.id })
+  })()`)
+  const antragId = JSON.parse(antragBericht).haupt
+
+  await sitzung.auswerten("window.location.hash = '#/antraege'")
+  await warte(2000)
+  /* Dasselbe hier: Ohne Abstimmungsreihenfolge zeigt das Bild nur eine
+     Karte mit Text — und nicht, worum es geht. */
+  const antragSichtbar = await sitzung.auswerten(
+    "(() => { const n = Array.from(document.querySelectorAll('.notice')).find((x) => (x.textContent || '').includes('Abstimmungsreihenfolge')); return n ? n.textContent.trim().slice(0, 60) : '' })()"
+  )
+  if (!antragSichtbar) throw new Error('Auf der Antragsseite steht keine Abstimmungsreihenfolge — Aufnahme abgebrochen.')
+  await sitzung.aufnehmen('33-antraege')
+
+  /*
+   * **Die Synopse an der Wand.**
+   *
+   * Links, was gilt; rechts, was beantragt ist. Aufgenommen wird die
+   * Beameransicht, nicht die Vorschau — dieselbe Fläche, die der Saal sieht.
+   */
+  await sitzung.auswerten(
+    `window.votura.invoke('projection.setMode', { mode: 'antrag', antrag: { id: '${antragId}', synopse: true } }, 1)`
+  )
+  await warte(1500)
+  const beamerAntrag = (await ziele()).find((z) => z.url.includes('audience'))
+  if (beamerAntrag) {
+    const wand = await Sitzung.verbinde(beamerAntrag.webSocketDebuggerUrl)
+    await wand.sende('Page.enable')
+    await wand.sende('Emulation.setDeviceMetricsOverride', {
+      width: 1600, height: 900, deviceScaleFactor: 1, mobile: false
+    })
+    await warte(1500)
+    const spalten = await wand.auswerten(
+      "document.querySelectorAll('.projection-synopse-spalte').length"
+    )
+    if (spalten !== 2) throw new Error(`Die Synopse zeigt ${spalten} Spalten statt zwei — Aufnahme abgebrochen.`)
+    await wand.aufnehmen('34-beamer-synopse')
+    wand.schliessen()
+  } else {
+    console.log('  Hinweis: Beamerfenster nicht gefunden – 34-beamer-synopse übersprungen.')
+  }
+
+  /*
+   * **Die Quotenprüfung.**
+   *
+   * Sie zeigt sich dort, wo sie zählt: über dem Knopf, mit dem das Ergebnis
+   * festgestellt wird. Dafür bekommt ein Wahlgang eine Regel und seine
+   * Bewerber ein Merkmal — und zwar so, dass die Quote **verfehlt** ist. Ein
+   * grüner Haken zeigt nicht, wozu die Prüfung da ist.
+   */
+  console.log('Quotenprüfung …')
+  const quoteBericht = await sitzung.auswerten(`(async () => {
+    const ruf = (m, ...a) => window.votura.invoke(m, ...a)
+    const ev = (await ruf('event.list'))[0]
+    const runden = await ruf('round.list', ev.id)
+    /*
+     * Ein Wahlgang mit **Ergebnis** — sonst meldet die Prüfung „nicht
+     * prüfbar", und das Bild zeigt nicht, wozu sie da ist.
+     */
+    let runde = null
+    for (const kandidat of runden) {
+      /* Eine Quote bindet eine **Liste** — ein Einzelplatz hat keine. */
+      if (kandidat.seats < 2) continue
+      if (!(await ruf('result.get', kandidat.id))) continue
+      runde = kandidat
+      break
+    }
+    if (!runde) return JSON.stringify({ fehler: 'kein Listenwahlgang mit Ergebnis' })
+    await ruf('round.update', {
+      id: runde.id, rowVersion: runde.rowVersion,
+      quote: { art: 'mindestanteil', merkmal: 'Geschlecht', anspruchsgruppe: 'Frauen', mindestanteil: 0.5 }
+    })
+    const liste = (await ruf('round.detail', runde.id)).candidates
+    /* Nur wenige als „Frauen" führen — die Quote soll verfehlt sein. */
+    for (let i = 0; i < liste.length; i++) {
+      await ruf('candidate.setQuotengruppe', {
+        id: liste[i].id,
+        quotengruppe: i % 4 === 0 ? 'Frauen' : 'Männer'
+      })
+    }
+    return JSON.stringify({ runde: runde.id })
+  })()`)
+  const quoteRunde = JSON.parse(quoteBericht).runde
+  if (quoteRunde) {
+    await sitzung.auswerten(`window.location.hash = '#/round/${quoteRunde}'`)
+    await warte(1800)
+    await reiterOeffnen(sitzung, 'Ergebnis')
+    await warte(2000)
+    /*
+     * Erst nachsehen, dann fotografieren.
+     *
+     * Ein Bild, auf dem die Quotenwarnung fehlt, sieht aus wie ein Bild der
+     * Ergebnisseite — und niemand merkt, dass es die Funktion nicht zeigt,
+     * für die es gemacht wurde. `scrollIntoView` schweigt, wenn es nichts
+     * findet; deshalb wird hier ausdrücklich gefragt.
+     */
+    const quoteSichtbar = await sitzung.auswerten(
+      "(() => { const n = Array.from(document.querySelectorAll('.notice')).find((x) => (x.textContent || '').includes('Quote')); if (!n) return ''; n.scrollIntoView({ block: 'center' }); return n.textContent.trim().slice(0, 80) })()"
+    )
+    /* „Nicht prüfbar" zählt nicht: Das Bild soll die Prüfung zeigen, nicht
+       ihr Ausbleiben. */
+    if (!quoteSichtbar || quoteSichtbar.includes('nicht prüfbar')) {
+      throw new Error(`Die Ergebnisseite zeigt keinen brauchbaren Quotenbefund („${quoteSichtbar}") — Aufnahme abgebrochen.`)
+    }
+    console.log('  Quotenbefund: ' + quoteSichtbar)
+    await warte(1200)
+    await sitzung.aufnehmen('35-quotenpruefung')
+  } else {
+    console.log('  Hinweis: kein passender Wahlgang – 35-quotenpruefung übersprungen.')
+  }
+
   sitzung.schliessen()
   console.log('Fertig.')
 } finally {
