@@ -362,6 +362,35 @@ describe('Eine Stelle für alle Hersteller', () => {
     expect(einstellungen).toContain('kein bekanntes Kameraprofil hinterlegt')
   })
 
+  it('behält die abgelegte Stellung beim Speichern', () => {
+    /*
+     * **Der Fehler, der zweimal log.** Jede Position wurde beim Speichern aus
+     * Nummer und Namen neu zusammengesetzt — und dabei fiel die Stellung
+     * heraus, die für Kameras ohne eigenen Positionsspeicher in Votura liegt.
+     * „Hier ablegen" meldete „gespeichert", „Anfahren" sagte danach, es sei
+     * keine Stellung hinterlegt.
+     *
+     * Die Form ist die Ursache: Wer ein Objekt feldweise neu aufbaut,
+     * verliert lautlos jedes Feld, das später dazukommt.
+     */
+    const einstellungen = lies('src/main/services/settings.ts')
+    expect(einstellungen).toContain('koordinaten: position.koordinaten')
+    expect(einstellungen).toContain('gueltigeStellung')
+  })
+
+  it('bricht die Heimfahrt nicht mit einem Halt ab', () => {
+    /*
+     * Am Steuerkreuz hängt der Halt am Loslassen — bei den Pfeilen richtig,
+     * beim Haus falsch: Die Kamera fährt los, der Halt kommt einen
+     * Sekundenbruchteil später, und sie steht auf halbem Weg. Gemessen an
+     * einer Tail Air: aus der Ruhelage 1972 brachte ein kurzer Tipp sie bis
+     * 1893, dann nichts mehr.
+     */
+    const seite = lies('src/renderer/src/operator/pages/KameraEinstellungen.tsx')
+    expect(seite).toContain("onMouseUp={() => zeichen !== '⌂' && halten(kamera)}")
+    expect(seite).toContain("onMouseLeave={() => zeichen !== '⌂' && halten(kamera)}")
+  })
+
   it('lässt die Kameras dem Aufruf folgen, auch wenn das Pult es nicht tut', () => {
     /*
      * Beide hängen am selben Ereignis und sind doch zweierlei. Stünde der

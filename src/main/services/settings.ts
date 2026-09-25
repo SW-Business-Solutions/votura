@@ -10,7 +10,7 @@ import {
   type SystemSettings
 } from '@shared/config'
 import { normalizeProjectionTheme, type ProjectionTheme } from '@shared/projection'
-import { ptzProfil, type PtzKamera } from '@shared/ptz'
+import { ptzProfil, type PtzKamera, type PtzStellung } from '@shared/ptz'
 import type { AppConfig, PrinterConfig } from '@shared/types'
 import { db } from '../db'
 import { fromJson } from '../db/driver'
@@ -101,6 +101,22 @@ export function getPtzKameras(): PtzKamera[] {
   return read<PtzKamera[]>('ptzKameras', [])
 }
 
+/**
+ * Taugt diese Stellung zum Ablegen?
+ *
+ * Drei Zahlen, und alle drei müssen welche sein. Eine erfundene Stellung
+ * führt die Kamera später zuverlässig an den falschen Ort — lieber keine
+ * als eine falsche.
+ */
+function gueltigeStellung(stellung: PtzStellung | undefined): stellung is PtzStellung {
+  return (
+    !!stellung &&
+    Number.isFinite(stellung.pan) &&
+    Number.isFinite(stellung.tilt) &&
+    Number.isFinite(stellung.zoom)
+  )
+}
+
 export function savePtzKameras(kameras: PtzKamera[]): PtzKamera[] {
   /*
    * Geprüft wird beim Speichern, nicht beim Benutzen.
@@ -123,7 +139,26 @@ export function savePtzKameras(kameras: PtzKamera[]): PtzKamera[] {
           .filter((position) => position.name.trim().length > 0)
           .map((position) => ({
             nummer: Math.max(0, Math.min(254, Math.round(position.nummer))),
-            name: position.name.trim()
+            name: position.name.trim(),
+            /*
+             * **Die abgelegte Stellung muß mit.**
+             *
+             * Hier wurde jede Position aus Nummer und Namen neu
+             * zusammengesetzt — und dabei fiel die Stellung heraus, die für
+             * Kameras ohne eigenen Positionsspeicher in Votura liegt. Das
+             * Ergebnis war eine Lüge in zwei Schritten: „Hier ablegen"
+             * meldete „gespeichert", und „Anfahren" sagte danach, es sei
+             * keine Stellung hinterlegt.
+             *
+             * Der Fehler steckt in der Form, nicht im Tippen: Wer ein Objekt
+             * feldweise neu aufbaut, verliert lautlos jedes Feld, das später
+             * dazukommt. Deshalb steht hier jetzt eine Prüfung und kein
+             * Weglassen — eine Stellung, deren Zahlen nicht stimmen, wird
+             * verworfen, eine gültige bleibt.
+             */
+            ...(gueltigeStellung(position.koordinaten)
+              ? { koordinaten: position.koordinaten }
+              : {})
           }))
       }
     })

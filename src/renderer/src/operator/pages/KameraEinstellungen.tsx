@@ -536,13 +536,29 @@ export function KameraEinstellungen(): JSX.Element {
                     <button
                       key={zeichen}
                       title={zeichen === '⌂' ? 'Auf die Ausgangsstellung fahren' : 'Halten zum Schwenken'}
+                      /*
+                       * Das ⌂ ist ein Klick, die Pfeile sind ein Griff.
+                       *
+                       * Ein Pfeil fährt, solange er gedrückt ist, und braucht
+                       * beim Loslassen den Halt. Die Heimfahrt braucht ihn
+                       * nicht — sie **bricht daran ab**: Die Kamera fährt los,
+                       * einen Sekundenbruchteil später kommt der Halt, und sie
+                       * steht irgendwo auf halbem Weg. Gemessen: aus der
+                       * Ruhelage 1972 brachte ein kurzer Tipp die Kamera bis
+                       * 1893, dann nichts mehr. Wer den Knopf fünf Sekunden
+                       * festhielt, kam an.
+                       *
+                       * Genau daran lässt sich die Sorte Fehler erkennen, die
+                       * niemand meldet: Es sah nach einer trägen Kamera aus,
+                       * nicht nach einem Fehler in der Bedienung.
+                       */
                       onMouseDown={() =>
                         zeichen === '⌂'
                           ? void api('ptz.heim', kamera.id).catch(app.reportError)
                           : bewegen(kamera, x, y)
                       }
-                      onMouseUp={() => halten(kamera)}
-                      onMouseLeave={() => halten(kamera)}
+                      onMouseUp={() => zeichen !== '⌂' && halten(kamera)}
+                      onMouseLeave={() => zeichen !== '⌂' && halten(kamera)}
                     >
                       {zeichen}
                     </button>
