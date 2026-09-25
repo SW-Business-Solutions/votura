@@ -5,6 +5,24 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
 ## 1.6.2 — Die Kamera, die nicht wollte
 
+### Die Schwenkgeschwindigkeit lässt sich einstellen
+
+Je Kamera, unter **Einstellungen → Kameras**, als Anteil dessen, was das Modell kann. Sie gilt
+fürs Steuerkreuz und fürs Anfahren einer Stellung, die in Votura liegt.
+
+**Warum als Anteil und nicht als Zahl:** Was „Geschwindigkeit 12" bedeutet, ist von Modell zu
+Modell verschieden — die Obergrenzen stehen längst im Profil. „Halbe Kraft" führt an jeder Kamera
+zu einem ähnlichen Ergebnis, eine nackte Zahl nicht.
+
+**Und warum das überhaupt eine Frage ist:** Im Saal hängt das Bild an der Wand. Ein Ruck, der auf
+einem Kontrollschirm flott aussieht, ist auf drei Metern Leinwand ein Schlag; langsam wirkt dort
+ruhig. Beim Einrichten will man es umgekehrt eilig haben. Bisher stand beides fest im Quelltext —
+beim Anfahren sogar mit dem Vermerk, ein Schwenk vor Publikum dürfe nicht hetzen. Das stimmt, ist
+aber keine Entscheidung, die der Quelltext zu treffen hat.
+
+Führt die Kamera ihre Positionen **selbst**, fährt sie weiterhin mit ihrem eigenen Tempo an; dort
+hat Votura nichts zu sagen.
+
 ### Behoben
 
 - **Die OBSBOT Tail Air ließ sich nicht steuern.** Das Bild stand an der Wand, die Knöpfe standen
@@ -26,6 +44,18 @@ eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
   nichts verstellt, und **kann** die Spielart erkennen. Jetzt tut es das gleich beim Einrichten,
   mit einem Klick, und schreibt hin, was geantwortet hat. Eine Voreinstellung, die rät, gibt es an
   dieser Stelle nicht mehr.
+
+- **„Hier ablegen" legte nichts ab**, wenn die Positionen in Votura liegen — der Weg für Kameras
+  ohne eigenen Positionsspeicher. Gemeldet wurde „gespeichert", und „Anfahren" sagte danach, es sei
+  keine Stellung hinterlegt. Beim Speichern wurde jede Position aus Nummer und Namen neu
+  zusammengesetzt, und dabei fiel die Stellung heraus. Wer ein Objekt feldweise neu aufbaut,
+  verliert lautlos jedes Feld, das später dazukommt.
+
+- **Das Haus im Steuerkreuz brach die Heimfahrt selbst ab.** Am Loslassen hängt der Halt — bei den
+  Pfeilen richtig, beim Haus falsch: Die Kamera fährt los, einen Sekundenbruchteil später kommt
+  der Halt, und sie steht auf halbem Weg. Wer den Knopf fünf Sekunden festhielt, kam an; daran war
+  zu erkennen, woran es lag. Es sah nach einer trägen Kamera aus und war ein Fehler in der
+  Bedienung.
 
 ## 1.6.1 — Näher am Mikrofon
 

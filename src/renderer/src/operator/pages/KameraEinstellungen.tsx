@@ -25,7 +25,10 @@ import { useEffect, useRef, useState, type JSX } from 'react'
 import {
   PTZ_POSITIONEN_VORSCHLAG,
   PTZ_PROFILE,
+  PTZ_TEMPO_MAX,
+  PTZ_TEMPO_MIN,
   ptzProfil,
+  ptzTempo,
   type PtzKamera,
   type PtzPosition
 } from '@shared/ptz'
@@ -201,7 +204,14 @@ export function KameraEinstellungen(): JSX.Element {
    * am Stück, der eine Position einrichtet.
    */
   const bewegen = (kamera: PtzKamera, x: -1 | 0 | 1, y: -1 | 0 | 1): void => {
-    void api('ptz.schwenken', { id: kamera.id, x, y }).catch(app.reportError)
+    /*
+     * Das Tempo kommt aus dem Formular, nicht aus der gespeicherten Kamera:
+     * Wer den Regler bewegt und dann schwenkt, will die neue Einstellung
+     * spüren — und nicht erst nach dem Speichern.
+     */
+    void api('ptz.schwenken', { id: kamera.id, x, y, tempo: ptzTempo(kamera) }).catch(
+      app.reportError
+    )
     window.clearTimeout(notbremse.current)
     notbremse.current = window.setTimeout(() => halten(kamera), 5000)
   }
@@ -453,6 +463,26 @@ export function KameraEinstellungen(): JSX.Element {
                   <option value="kamera">in der Kamera (Regelfall)</option>
                   <option value="votura">in Votura — für Kameras ohne eigenen Speicher</option>
                 </select>
+              </Field>
+
+              {/*
+                Wie schnell geschwenkt wird.
+                Sichtbar als Prozentsatz, gespeichert als Anteil: Was
+                „Geschwindigkeit 12" heißt, ist von Modell zu Modell
+                verschieden — „halbe Kraft" ist es nicht.
+              */}
+              <Field
+                label={`Schwenkgeschwindigkeit — ${Math.round(ptzTempo(kamera) * 100)} %`}
+                hint="Gilt fürs Steuerkreuz und für Positionen, die in Votura liegen. Führt die Kamera ihre Positionen selbst, fährt sie mit ihrem eigenen Tempo."
+              >
+                <input
+                  type="range"
+                  min={PTZ_TEMPO_MIN * 100}
+                  max={PTZ_TEMPO_MAX * 100}
+                  step={5}
+                  value={Math.round(ptzTempo(kamera) * 100)}
+                  onChange={(e) => aendern(kamera.id, { tempo: Number(e.target.value) / 100 })}
+                />
               </Field>
 
               <Field label="Beim Aufruf eines Redners">

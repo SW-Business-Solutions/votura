@@ -15,11 +15,15 @@ import { join } from 'node:path'
 import {
   PTZ_ERKENNUNG,
   PTZ_PROFILE,
+  PTZ_TEMPO_MAX,
+  PTZ_TEMPO_MIN,
+  PTZ_TEMPO_VORGABE,
   istViscaAntwort,
   pantiltAusAntwort,
   ptzAntwort,
   ptzPaket,
   ptzProfil,
+  ptzTempo,
   rahmeFolgeZuruecksetzen,
   rahmeGekapselt,
   viscaAutofokus,
@@ -376,6 +380,34 @@ describe('Eine Stelle für alle Hersteller', () => {
     const einstellungen = lies('src/main/services/settings.ts')
     expect(einstellungen).toContain('koordinaten: position.koordinaten')
     expect(einstellungen).toContain('gueltigeStellung')
+  })
+
+  it('rechnet die Schwenkgeschwindigkeit als Anteil, nicht als Zahl', () => {
+    /*
+     * Was „Geschwindigkeit 12" bedeutet, ist von Modell zu Modell
+     * verschieden — die Obergrenzen stehen im Profil. Eingestellt wird
+     * deshalb ein Anteil davon, und derselbe Regler führt an jeder Kamera zu
+     * einem ähnlichen Ergebnis.
+     */
+    expect(ptzTempo({})).toBe(PTZ_TEMPO_VORGABE)
+    expect(ptzTempo({ tempo: 0.75 })).toBe(0.75)
+    /* Auch aus einer von Hand bearbeiteten Datei darf keine Null kommen:
+       Eine Kamera mit Geschwindigkeit 0 fährt nie an. */
+    expect(ptzTempo({ tempo: 0 })).toBe(PTZ_TEMPO_MIN)
+    expect(ptzTempo({ tempo: 5 })).toBe(PTZ_TEMPO_MAX)
+    expect(ptzTempo({ tempo: Number.NaN })).toBe(PTZ_TEMPO_VORGABE)
+  })
+
+  it('fährt eine Position in Votura mit dem eingestellten Tempo an', () => {
+    /*
+     * Hier stand eine feste Zahl mit der Begründung, ein Schwenk vor
+     * Publikum dürfe nicht hetzen. Das stimmt — nur ist es keine
+     * Entscheidung, die der Dienst zu treffen hat: Wie ruhig es aussehen
+     * muss, hängt an der Leinwand und am Anlass.
+     */
+    const dienst = lies('src/main/services/ptz.ts')
+    expect(dienst).toContain('const anteil = ptzTempo(kamera)')
+    expect(dienst).not.toContain('tempoMax.schwenk * 0.6')
   })
 
   it('bricht die Heimfahrt nicht mit einem Halt ab', () => {

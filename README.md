@@ -719,6 +719,14 @@ Bei einer Kamera, die von Hand eingetragen wurde, macht **„Bauart erkennen"** 
 stehen soll, dann „Hier ablegen". Während der Versammlung stehen die Positionen dort, wo hingesehen
 wird — als Knöpfe unter dem Kamerabild in der Bedienung.
 
+**Wie schnell geschwenkt wird, ist einstellbar** — je Kamera, als Anteil dessen, was das Modell
+kann. Was „Geschwindigkeit 12" heißt, ist von Modell zu Modell verschieden; „halbe Kraft" führt
+überall zu einem ähnlichen Ergebnis. Der Unterschied ist größer, als er klingt: Im Saal hängt das
+Bild an der Wand, und ein Ruck, der auf einem Kontrollschirm flott aussieht, ist auf drei Metern
+Leinwand ein Schlag. Beim Einrichten will man es umgekehrt eilig haben. Die Einstellung gilt fürs
+Steuerkreuz und fürs Anfahren einer Stellung, die in Votura liegt; führt die Kamera ihre Positionen
+selbst, fährt sie mit ihrem eigenen Tempo.
+
 **Auch für Kameras ohne eigenen Positionsspeicher.** Der Regelfall ist, dass die Kamera sich ihre
 Positionen selbst merkt; das geht schneller und überlebt einen Wechsel des Rechners. Kann sie das
 nicht, führt Votura sie: Es fragt die Kamera nach ihrer Stellung, legt die Zahlen ab und schickt sie

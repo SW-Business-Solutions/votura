@@ -242,6 +242,25 @@ export function ptzProfil(kennung: string): PtzProfil | undefined {
  * steuern darf — und fährt sie auf die richtige Position, wenn jemand
  * aufgerufen wird.
  */
+/**
+ * Wie schnell geschwenkt wird, wenn niemand etwas anderes sagt.
+ *
+ * Die Hälfte dessen, was das Modell kann: schnell genug, um beim Einrichten
+ * nicht zu warten, langsam genug, dass ein Bild an der Wand nicht ruckt.
+ */
+export const PTZ_TEMPO_VORGABE = 0.5
+
+/** Die Grenzen des Reglers — ganz stehen bleiben ist keine Geschwindigkeit. */
+export const PTZ_TEMPO_MIN = 0.1
+export const PTZ_TEMPO_MAX = 1
+
+/** Das Tempo einer Kamera, auf den erlaubten Bereich gebracht. */
+export function ptzTempo(kamera: { tempo?: number }): number {
+  const wert = kamera.tempo ?? PTZ_TEMPO_VORGABE
+  if (!Number.isFinite(wert)) return PTZ_TEMPO_VORGABE
+  return Math.min(PTZ_TEMPO_MAX, Math.max(PTZ_TEMPO_MIN, wert))
+}
+
 export interface PtzKamera {
   id: string
   name: string
@@ -263,6 +282,28 @@ export interface PtzKamera {
    * Fehlt die Angabe, gilt `kamera`.
    */
   ablage?: 'kamera' | 'votura'
+  /**
+   * Wie schnell geschwenkt wird — als Anteil dessen, was das Modell kann.
+   *
+   * **Warum ein Anteil und keine Zahl.** Was „Geschwindigkeit 12" bedeutet,
+   * ist von Modell zu Modell verschieden; die Obergrenzen stehen deshalb im
+   * Profil. Hier steht, wie viel davon genutzt wird — dieselbe Einstellung
+   * führt an jeder Kamera zu einem ähnlichen Ergebnis.
+   *
+   * **Wofür es gilt.** Für das Steuerkreuz beim Einrichten und für das
+   * Anfahren einer Stellung, die in Votura liegt. Eine Position, die die
+   * **Kamera** selbst führt, fährt sie mit ihrem eigenen Tempo an — dort
+   * hat Votura nichts zu sagen, und das ist richtig so.
+   *
+   * **Warum nicht einfach schnell.** Im Saal hängt das Bild an der Wand. Ein
+   * Ruck, der auf einem Kontrollschirm flott aussieht, ist auf drei Metern
+   * Leinwand ein Schlag; langsam wirkt dort ruhig und gekonnt. Beim
+   * Einrichten will man es dagegen eilig haben. Deshalb ist es einstellbar
+   * und nicht festgelegt.
+   *
+   * Fehlt die Angabe, gilt `PTZ_TEMPO_VORGABE`.
+   */
+  tempo?: number
   /** Benannte Positionen — „Pult", „Präsidium", „Saal". */
   positionen: PtzPosition[]
   /**

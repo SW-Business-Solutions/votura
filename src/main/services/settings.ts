@@ -10,7 +10,7 @@ import {
   type SystemSettings
 } from '@shared/config'
 import { normalizeProjectionTheme, type ProjectionTheme } from '@shared/projection'
-import { ptzProfil, type PtzKamera, type PtzStellung } from '@shared/ptz'
+import { ptzProfil, ptzTempo, type PtzKamera, type PtzStellung } from '@shared/ptz'
 import type { AppConfig, PrinterConfig } from '@shared/types'
 import { db } from '../db'
 import { fromJson } from '../db/driver'
@@ -135,6 +135,10 @@ export function savePtzKameras(kameras: PtzKamera[]): PtzKamera[] {
         ...kamera,
         name: kamera.name.trim() || kamera.host.trim(),
         host: kamera.host.trim(),
+        /* Das Tempo kommt aus einem Regler und könnte aus einer von Hand
+           bearbeiteten Datei kommen. Auf den erlaubten Bereich gebracht,
+           bevor es in die Datenbank geht — eine Null hieße: fährt nie an. */
+        tempo: ptzTempo(kamera),
         positionen: kamera.positionen
           .filter((position) => position.name.trim().length > 0)
           .map((position) => ({

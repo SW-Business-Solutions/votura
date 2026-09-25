@@ -39,6 +39,7 @@ import {
   ptzAntwort,
   ptzPaket,
   ptzProfil,
+  ptzTempo,
   rahmeFolgeZuruecksetzen,
   viscaAutofokus,
   viscaFrageZoom,
@@ -201,13 +202,21 @@ export async function ptzPositionAbrufen(id: string, nummer: number): Promise<vo
         `Zu „${position?.name ?? nummer}" ist keine Stellung hinterlegt. Die Kamera dorthin stellen und „Hier ablegen" drücken.`
       )
     }
-    /* Gemächlich: Ein Schwenk vor dem Publikum darf nicht hetzen. */
+    /*
+     * So schnell, wie für diese Kamera eingestellt ist.
+     *
+     * Hier stand eine feste Zahl mit dem Vermerk, ein Schwenk vor Publikum
+     * dürfe nicht hetzen. Das stimmt — nur ist es keine Entscheidung, die
+     * hier zu treffen ist: Wie ruhig es aussehen muss, hängt an der
+     * Leinwand, am Saal und daran, ob gerade eingerichtet oder getagt wird.
+     */
+    const anteil = ptzTempo(kamera)
     await anDieKamera(
       id,
       viscaPositionAbsolut(
         position.koordinaten,
-        Math.round(profil.tempoMax.schwenk * 0.6),
-        Math.round(profil.tempoMax.neigen * 0.6),
+        Math.round(profil.tempoMax.schwenk * anteil),
+        Math.round(profil.tempoMax.neigen * anteil),
         profil.geraet
       )
     )
@@ -270,16 +279,24 @@ export async function ptzPositionSpeichern(id: string, nummer: number): Promise<
  * kein Versehen der Festlegung, sondern ihr Sinn: Ein Steuerpult schickt
  * genau dasselbe, solange der Knüppel liegt.
  */
-export async function ptzSchwenken(id: string, x: PtzRichtung, y: PtzRichtung, tempo = 0.5): Promise<void> {
+export async function ptzSchwenken(
+  id: string,
+  x: PtzRichtung,
+  y: PtzRichtung,
+  tempo?: number
+): Promise<void> {
   requirePermission('round.manage')
-  const { profil } = kameraVon(id)
+  const { kamera, profil } = kameraVon(id)
   if (!profil.kann.schwenken) throw new Error(`„${profil.name}" lässt sich nicht schwenken.`)
   /*
    * Das Tempo kommt als Anteil zwischen 0 und 1 herein und wird auf die
    * Grenzen dieses Modells gerechnet. Die Bedienung muss so nicht wissen,
    * dass VISCA bis 0x18 zählt und dieses Modell nur bis 0x14.
+   *
+   * Ohne Angabe gilt, was an der Kamera eingestellt ist — ein Aufrufer, der
+   * nichts zum Tempo sagt, will das eingestellte und nicht ein geratenes.
    */
-  const anteil = Math.min(1, Math.max(0.05, tempo))
+  const anteil = ptzTempo(tempo === undefined ? kamera : { tempo })
   await anDieKamera(
     id,
     viscaSchwenken(
