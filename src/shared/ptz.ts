@@ -185,7 +185,31 @@ export const PTZ_PROFILE: PtzProfil[] = [
     hersteller: 'OBSBOT',
     modelle: ['Tail Air', 'Tail 2'],
     transport: 'udp',
-    rahmung: 'roh',
+    /*
+     * **Gekapselt, nicht roh** — an einer Tail Air nachgemessen.
+     *
+     * Hier stand `roh`, und das war falsch. Die Folge war die
+     * unangenehmste Sorte Fehler: Das Bild stand an der Wand, die
+     * Bedienung zeigte ihre Knöpfe, und nichts davon bewegte die Kamera.
+     * Kein Fehler, keine Meldung — die Pakete gingen ins Leere, weil das
+     * Gerät sie ohne Umschlag gar nicht erst ansieht.
+     *
+     * Gemessen am 25. September 2026 gegen eine Tail Air im Netz, auf
+     * demselben Port 52381:
+     *
+     * - roh, ohne Kopf: Schwenk, Stopp, Zoomfrage — keine Antwort, keine
+     *   Bewegung.
+     * - gekapselt, mit Sonys 8-Byte-Kopf: jeder Befehl quittiert mit
+     *   `90 40 FF` (angenommen) und `90 50 FF` (ausgeführt); die
+     *   Zoomfrage beantwortet.
+     *
+     * Die Erkennung unter „Steuerung einrichten" hätte das von selbst
+     * gefunden — sie probiert beide Spielarten. Wer aber den Eintrag mit
+     * dem Namen seiner Kamera wählt, verlässt sich darauf, dass er stimmt.
+     * Genau deshalb wäre es hier besser, gar keinen Markeneintrag zu
+     * haben als einen falschen.
+     */
+    rahmung: 'gekapselt',
     port: 52381,
     geraet: 1,
     /*
@@ -197,6 +221,7 @@ export const PTZ_PROFILE: PtzProfil[] = [
     presets: { erste: 0, letzte: 254 },
     kann: { ...ALLES, presetsSpeichern: true },
     eigenheiten: [
+      'Spricht VISCA nur **gekapselt** — ohne Sonys Umschlag antwortet sie nicht und bewegt sich nicht.',
       'Nimmt die Schwenkgeschwindigkeit auch fürs Neigen — eine getrennte Angabe wird verworfen.',
       'Meldet einen Schwenk als erledigt, bevor sie sich bewegt hat.',
       'Ein- und Ausschalten über VISCA ignoriert sie.',

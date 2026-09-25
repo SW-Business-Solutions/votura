@@ -3,6 +3,30 @@
 Was sich von Fassung zu Fassung geändert hat — in der Sprache derer, die damit
 eine Versammlung durchführen, nicht in der Sprache des Quelltextes.
 
+## 1.6.2 — Die Kamera, die nicht wollte
+
+### Behoben
+
+- **Die OBSBOT Tail Air ließ sich nicht steuern.** Das Bild stand an der Wand, die Knöpfe standen
+  in der Bedienung, und beim Drücken passierte nichts — ohne Fehlermeldung, ohne Hinweis. Der
+  Grund lag in einer Zeile: Votura hatte für dieses Modell **rohes** VISCA hinterlegt, die Kamera
+  versteht aber nur die **gekapselte** Form, Sonys Umschlag mit Länge und Laufnummer. Ein Paket
+  ohne Umschlag verwirft sie wortlos.
+
+  Am Gerät nachgemessen statt aus einem Datenblatt abgeschrieben: roh keine Antwort auf Schwenk,
+  Stopp und Zoomfrage; gekapselt ein „angenommen" und ein „ausgeführt" auf jeden Befehl. Die
+  Zeile ist berichtigt, und ein Test hält sie fest.
+
+- **Das Einrichten klopft die Bauart jetzt selbst ab.** „Steuerung einrichten" neben einer
+  gefundenen Bildquelle legte die Kamera bisher mit der häufigsten Spielart an; gefragt wurde erst,
+  wenn jemand zusätzlich auf „Bauart erkennen" drückte. Das ging meistens gut — und wenn nicht,
+  war das Ergebnis dasselbe Schweigen wie oben.
+
+  Das war schon immer falsch herum gedacht: Votura klopft die Adresse mit einer Frage ab, die
+  nichts verstellt, und **kann** die Spielart erkennen. Jetzt tut es das gleich beim Einrichten,
+  mit einem Klick, und schreibt hin, was geantwortet hat. Eine Voreinstellung, die rät, gibt es an
+  dieser Stelle nicht mehr.
+
 ## 1.6.1 — Näher am Mikrofon
 
 Drei Nachträge zu dem, was 1.6.0 in den Saal gebracht hat — keiner davon groß, alle drei an

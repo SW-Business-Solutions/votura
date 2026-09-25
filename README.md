@@ -695,14 +695,25 @@ eines Befehls ist dabei überall gleich — „fahre auf Position 3" heißt imme
 | Weg | UDP oder TCP |
 | Port | 52381, 5678 — und der Port verrät die Rahmung **nicht** |
 | Grenzen | wie schnell geschwenkt werden darf, wie viele Positionen es gibt |
-| Eigenheiten | die OBSBOT Tail Air nimmt die Schwenkgeschwindigkeit auch fürs Neigen |
+| Eigenheiten | die OBSBOT Tail Air nimmt die Schwenkgeschwindigkeit auch fürs Neigen — und spricht VISCA nur im Umschlag |
 
 Eine neue Kamera aufzunehmen heißt deshalb im Regelfall: **eine Zeile ergänzen** — kein neuer Code,
 keine Verzweigung in der Bedienung. Und weil die drei allgemeinen Einträge keine Marken sind,
 sondern die Spielarten von VISCA, läuft auch eine Kamera, die in der Tabelle gar nicht steht.
 
 Welche Spielart gilt, muss niemand raten: Votura klopft die Adresse mit einer Frage ab, die nichts
-verstellt, und nimmt die Form, die antwortet. Einzurichten unter **Einstellungen → Kameras**.
+verstellt, und nimmt die Form, die antwortet. Einzurichten unter **Einstellungen → Kameras** — ein
+Klick auf „Steuerung einrichten" neben der gefundenen Bildquelle genügt, das Abklopfen geschieht
+dabei.
+
+Das ist der Grund, warum das Abklopfen **nicht** optional ist: Eine geratene Spielart fällt nicht
+auf. Die Kamera verwirft ein Paket, das sie nicht versteht, wortlos — es gibt keine Fehlermeldung,
+kein Zeitlimit, nichts. An der Wand steht das Bild, in der Bedienung stehen die Knöpfe, und beim
+Drücken passiert nichts. Wer dann sucht, sucht beim Netz und bei der Kamera, nie bei einer
+Voreinstellung, von der er nichts weiß. Genau das ist einmal passiert, und seitdem fragt das
+Einrichten selbst.
+
+Bei einer Kamera, die von Hand eingetragen wurde, macht **„Bauart erkennen"** dasselbe.
 
 **Positionen einrichten** geht mit einem Steuerkreuz in den Einstellungen: Kamera hinstellen, wo sie
 stehen soll, dann „Hier ablegen". Während der Versammlung stehen die Positionen dort, wo hingesehen
@@ -714,9 +725,12 @@ nicht, führt Votura sie: Es fragt die Kamera nach ihrer Stellung, legt die Zahl
 ihr später zurück. Antwortet sie dabei nicht oder unverständlich, gibt es einen Fehler statt einer
 geratenen Zahl — eine erfundene Stellung führte die Kamera später zuverlässig an den falschen Ort.
 
-Die Befehle sind **gerechnete Bytes** und als solche geprüft — 41 Tests, ohne dass eine Kamera im
+Die Befehle sind **gerechnete Bytes** und als solche geprüft — 42 Tests, ohne dass eine Kamera im
 Raum steht. Was sich ohne Gerät nicht prüfen lässt, steht ehrlich aus: Ob ein bestimmtes Modell so
-antwortet, wie sein Handbuch behauptet, zeigt erst das Modell.
+antwortet, wie sein Handbuch behauptet, zeigt erst das Modell. Bei der **OBSBOT Tail Air** hat es
+das gezeigt, und das Handbuch hatte unrecht: Sie antwortet nur im Umschlag. Die Zeile in der
+Tabelle stammt jetzt aus einer Messung am Gerät — roh keine Antwort auf irgendetwas, gekapselt ein
+`90 40 FF` und `90 50 FF` auf jeden Befehl.
 
 ## Untertitel im Saal
 

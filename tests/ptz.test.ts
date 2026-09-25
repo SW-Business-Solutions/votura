@@ -297,6 +297,23 @@ describe('Die Tabelle der Kameras', () => {
     expect(obsbot?.eigenheiten?.join(' ')).toContain('Neigen')
   })
 
+  it('schickt der OBSBOT Tail Air gekapseltes VISCA', () => {
+    /*
+     * **Am Gerät nachgemessen, nicht aus einem Datenblatt.** Hier stand
+     * `roh`, und das ergab den unangenehmsten aller Fehler: Das Bild stand
+     * an der Wand, die Knöpfe waren da, und die Kamera rührte sich nicht —
+     * ohne Meldung, weil ein Paket ohne Umschlag einfach verworfen wird.
+     *
+     * Der Test hält die Messung fest: roh keine Antwort, gekapselt `90 40
+     * FF` und `90 50 FF` auf jeden Befehl.
+     */
+    const obsbot = ptzProfil('obsbot-tail')
+    expect(obsbot?.rahmung).toBe('gekapselt')
+    expect(obsbot?.transport).toBe('udp')
+    expect(obsbot?.port).toBe(52381)
+    expect(obsbot?.eigenheiten?.join(' ')).toContain('gekapselt')
+  })
+
   it('klopft eine unbekannte Kamera in allen drei Formen ab', () => {
     /* Der Port verrät die Spielart nicht — PTZOptics spricht rohes VISCA auf
        demselben Port, auf dem Sony gekapseltes spricht. */

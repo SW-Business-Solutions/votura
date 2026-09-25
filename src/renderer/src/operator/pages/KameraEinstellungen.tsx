@@ -126,13 +126,57 @@ export function KameraEinstellungen(): JSX.Element {
     }
   }
 
-  const erkennen = async (kamera: PtzKamera): Promise<void> => {
+  /**
+   * Eine gefundene Bildquelle als steuerbare Kamera übernehmen.
+   *
+   * **Und dabei gleich abklopfen, welche Bauart antwortet.** Der Kopf dieser
+   * Datei sagt, warum es hier keine Auswahl gibt: Der Port verrät die
+   * Spielart nicht, und eine Wahlleitung soll sie nicht raten müssen. Nur
+   * legte das Einrichten die Kamera bisher mit der häufigsten Spielart an und
+   * fragte erst, wenn jemand zusätzlich auf „Bauart erkennen" drückte.
+   *
+   * Das ging lange gut, weil die häufigste Spielart meistens stimmt. Traf sie
+   * nicht zu, war das Ergebnis das denkbar stummste: Das Bild stand an der
+   * Wand, die Knöpfe waren da, und die Kamera rührte sich nicht — eine OBSBOT
+   * Tail Air etwa verwirft Pakete ohne Umschlag wortlos. Wer daraufhin sucht,
+   * sucht beim Netz, beim Port, bei der Kamera. Nicht bei einer Voreinstellung,
+   * von der er nichts weiß.
+   *
+   * Jetzt wird beim Einrichten gefragt, und zwar mit einer Frage, die nichts
+   * verstellt. Antwortet niemand, steht das dort, wo eingerichtet wurde.
+   */
+  const uebernehmen = async (quelle: { name: string; adresse?: string }): Promise<void> => {
+    const kamera = neueKamera(quelle)
+    await sichern([...kameras, kamera])
+    if (kamera.host.trim()) await erkennen(kamera, { speichern: true })
+  }
+
+  const erkennen = async (
+    kamera: PtzKamera,
+    optionen: { speichern?: boolean } = {}
+  ): Promise<void> => {
     setPruefung((alt) => ({ ...alt, [kamera.id]: 'Wird gesucht …' }))
     try {
       const fund = await api('ptz.erkennen', { host: kamera.host, port: kamera.port })
       if (fund.erreichbar && fund.profil) {
-        aendern(kamera.id, { profil: fund.profil, port: fund.port })
         const gefunden = ptzProfil(fund.profil)
+        if (optionen.speichern) {
+          /*
+           * Beim Einrichten wird der Fund gleich mitgespeichert. Ein
+           * Hinweis „noch speichern" ist dort eine Aufgabe, die niemand
+           * bestellt hat — und die Kamera bliebe bis dahin stumm.
+           */
+          const liste = kameras
+            .filter((k) => k.id !== kamera.id)
+            .concat({ ...kamera, profil: fund.profil, port: fund.port })
+          await sichern(liste)
+          setPruefung((alt) => ({
+            ...alt,
+            [kamera.id]: `Antwortet — ${gefunden?.name ?? fund.profil} auf Port ${fund.port}.`
+          }))
+          return
+        }
+        aendern(kamera.id, { profil: fund.profil, port: fund.port })
         setPruefung((alt) => ({
           ...alt,
           [kamera.id]: `Antwortet — ${gefunden?.name ?? fund.profil} auf Port ${fund.port}. Noch speichern.`
@@ -249,15 +293,17 @@ export function KameraEinstellungen(): JSX.Element {
                       ) : (
                         <button
                           /*
-                           * Wird gleich gespeichert.
+                           * Wird gleich gespeichert — und gleich abgeklopft.
                            *
-                           * Alles Nötige ist bekannt — Name, Adresse, Bild. Ein
+                           * Alles Nötige ist bekannt: Name, Adresse, Bild. Ein
                            * Eintrag, der erst nach einem zweiten Klick
-                           * existiert, ist eine Falle: Bewegen und Ablegen
+                           * existiert, ist eine Falle — bewegen und Ablegen
                            * sprechen das Gerät an und brauchen die
-                           * gespeicherte Kamera.
+                           * gespeicherte Kamera. Dasselbe gilt für die
+                           * Bauart: Eine geratene ist eine, die schweigend
+                           * danebenliegen kann.
                            */
-                          onClick={() => void sichern([...kameras, neueKamera(quelle)])}
+                          onClick={() => void uebernehmen(quelle)}
                         >
                           Steuerung einrichten
                         </button>
