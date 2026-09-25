@@ -406,8 +406,31 @@ describe('Eine Stelle für alle Hersteller', () => {
      * muss, hängt an der Leinwand und am Anlass.
      */
     const dienst = lies('src/main/services/ptz.ts')
-    expect(dienst).toContain('const anteil = ptzTempo(kamera)')
+    expect(dienst).toContain('profil.tempoMax.schwenk * anteil')
     expect(dienst).not.toContain('tempoMax.schwenk * 0.6')
+  })
+
+  it('schickt das eingestellte Tempo auch beim Anfahren mit', () => {
+    /*
+     * Sonst gälte dort der gespeicherte Wert, während das Steuerkreuz schon
+     * dem Regler folgt — zwei Knöpfe, ein Regler, zwei Antworten. Das sucht
+     * man lange.
+     */
+    const seite = lies('src/renderer/src/operator/pages/KameraEinstellungen.tsx')
+    expect(seite).toContain('tempo: ptzTempo(kamera)')
+    const dienst = lies('src/main/services/ptz.ts')
+    expect(dienst).toContain('ptzTempo(tempo === undefined ? kamera : { tempo })')
+  })
+
+  it('sagt beim Regler, wo er nicht gilt', () => {
+    /*
+     * Liegen die Positionen in der Kamera, fährt sie sie mit ihrem eigenen
+     * Tempo an — gemessen an einer Tail Air: der VISCA-Befehl dafür wird
+     * bestätigt und ignoriert, dreimal dieselbe Strecke in 8,1 Sekunden. Ein
+     * Regler, der schweigend nichts tut, ist schlimmer als keiner.
+     */
+    const seite = lies('src/renderer/src/operator/pages/KameraEinstellungen.tsx')
+    expect(seite).toContain('Beim Anfahren nicht')
   })
 
   it('bricht die Heimfahrt nicht mit einem Halt ab', () => {

@@ -723,9 +723,22 @@ wird — als Knöpfe unter dem Kamerabild in der Bedienung.
 kann. Was „Geschwindigkeit 12" heißt, ist von Modell zu Modell verschieden; „halbe Kraft" führt
 überall zu einem ähnlichen Ergebnis. Der Unterschied ist größer, als er klingt: Im Saal hängt das
 Bild an der Wand, und ein Ruck, der auf einem Kontrollschirm flott aussieht, ist auf drei Metern
-Leinwand ein Schlag. Beim Einrichten will man es umgekehrt eilig haben. Die Einstellung gilt fürs
-Steuerkreuz und fürs Anfahren einer Stellung, die in Votura liegt; führt die Kamera ihre Positionen
-selbst, fährt sie mit ihrem eigenen Tempo.
+Leinwand ein Schlag. Beim Einrichten will man es umgekehrt eilig haben.
+
+**Beim Anfahren gilt sie nur, wenn Votura selbst fährt.** Das ist keine Nachlässigkeit, sondern
+eine Grenze des Verfahrens: Liegen die Positionen in der Kamera, bekommt sie „fahre auf Platz 3"
+und entscheidet selbst, wie schnell. VISCA kennt dafür zwar einen Befehl — nur hält er nicht, was
+er verspricht. An einer OBSBOT Tail Air gemessen:
+
+| Positionen liegen | 10 % | 50 % | 100 % |
+| --- | --- | --- | --- |
+| in der Kamera | 8,1 s | 8,1 s | 8,1 s |
+| in Votura | 38,4 s | 12,0 s | 8,1 s |
+
+Dieselbe Strecke, dreimal derselbe Wert in der oberen Zeile: Die Kamera quittiert den Befehl mit
+„angenommen" und „ausgeführt" und ignoriert ihn. (Sie quittiert auch ausgedachte Befehle — die
+Antwort taugt bei diesem Modell nicht als Nachweis.) Wer das Tempo bestimmen will, lässt die
+Positionen **in Votura** liegen; die Bedienung sagt am Regler, was gerade gilt.
 
 **Auch für Kameras ohne eigenen Positionsspeicher.** Der Regelfall ist, dass die Kamera sich ihre
 Positionen selbst merkt; das geht schneller und überlebt einen Wechsel des Rechners. Kann sie das

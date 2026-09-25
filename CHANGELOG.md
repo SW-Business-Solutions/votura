@@ -20,8 +20,12 @@ ruhig. Beim Einrichten will man es umgekehrt eilig haben. Bisher stand beides fe
 beim Anfahren sogar mit dem Vermerk, ein Schwenk vor Publikum dürfe nicht hetzen. Das stimmt, ist
 aber keine Entscheidung, die der Quelltext zu treffen hat.
 
-Führt die Kamera ihre Positionen **selbst**, fährt sie weiterhin mit ihrem eigenen Tempo an; dort
-hat Votura nichts zu sagen.
+**Beim Anfahren gilt sie nur, wenn Votura selbst fährt.** Liegen die Positionen in der Kamera,
+bekommt sie „fahre auf Platz 3" und entscheidet selbst, wie schnell. VISCA kennt dafür einen
+Befehl, und an einer OBSBOT Tail Air hält er nicht, was er verspricht: dreimal dieselbe Strecke in
+8,1 Sekunden, ob langsamste oder schnellste Angabe. Derselbe Weg mit Positionen in Votura: 38,4
+Sekunden bei 10 %, 12,0 bei 50 %, 8,1 bei 100 %. Der Regler sagt jetzt selbst, was gerade gilt —
+ein Regler, der schweigend nichts tut, ist schlimmer als keiner.
 
 ### Behoben
 

@@ -257,7 +257,19 @@ export function KameraEinstellungen(): JSX.Element {
 
   const anfahren = async (kamera: PtzKamera, position: PtzPosition): Promise<void> => {
     try {
-      await api('ptz.position', { id: kamera.id, nummer: position.nummer })
+      /*
+       * Das Tempo aus dem Formular mitschicken, wie beim Steuerkreuz.
+       *
+       * Sonst gälte hier der **gespeicherte** Wert: Der Regler würde sich
+       * bewegen, das Steuerkreuz würde folgen, und das Anfahren bliebe beim
+       * alten Tempo, bis jemand speichert. Zwei Knöpfe, ein Regler, zwei
+       * Antworten — das sucht man lange.
+       */
+      await api('ptz.position', {
+        id: kamera.id,
+        nummer: position.nummer,
+        tempo: ptzTempo(kamera)
+      })
     } catch (fehler) {
       app.reportError(fehler)
     }
@@ -473,7 +485,11 @@ export function KameraEinstellungen(): JSX.Element {
               */}
               <Field
                 label={`Schwenkgeschwindigkeit — ${Math.round(ptzTempo(kamera) * 100)} %`}
-                hint="Gilt fürs Steuerkreuz und für Positionen, die in Votura liegen. Führt die Kamera ihre Positionen selbst, fährt sie mit ihrem eigenen Tempo."
+                hint={
+                  kamera.ablage === 'votura'
+                    ? 'Gilt fürs Steuerkreuz und fürs Anfahren — hier fährt Votura die Kamera selbst.'
+                    : 'Gilt fürs Steuerkreuz. Beim Anfahren nicht: Die Positionen liegen in der Kamera, und sie fährt sie mit ihrem eigenen Tempo an. Soll das Tempo auch dort gelten, oben auf „in Votura" umstellen.'
+                }
               >
                 <input
                   type="range"

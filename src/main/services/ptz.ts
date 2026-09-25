@@ -191,7 +191,11 @@ async function anDieKamera(id: string, nutzlast: Uint8Array): Promise<void> {
  * Hat sie keinen, stehen die Zahlen in Voturas Datenbank, und sie bekommt sie
  * geschickt.
  */
-export async function ptzPositionAbrufen(id: string, nummer: number): Promise<void> {
+export async function ptzPositionAbrufen(
+  id: string,
+  nummer: number,
+  tempo?: number
+): Promise<void> {
   requirePermission('round.manage')
   const { kamera, profil } = kameraVon(id)
   const position = kamera.positionen.find((eintrag) => eintrag.nummer === nummer)
@@ -210,7 +214,7 @@ export async function ptzPositionAbrufen(id: string, nummer: number): Promise<vo
      * hier zu treffen ist: Wie ruhig es aussehen muss, hängt an der
      * Leinwand, am Saal und daran, ob gerade eingerichtet oder getagt wird.
      */
-    const anteil = ptzTempo(kamera)
+    const anteil = ptzTempo(tempo === undefined ? kamera : { tempo })
     await anDieKamera(
       id,
       viscaPositionAbsolut(
@@ -224,6 +228,23 @@ export async function ptzPositionAbrufen(id: string, nummer: number): Promise<vo
     return
   }
 
+  /*
+   * Die Kamera führt ihre Positionen selbst — also fährt sie auch mit
+   * ihrem eigenen Tempo an.
+   *
+   * VISCA kennt dafür einen Befehl, und er hält nicht, was er verspricht:
+   * An einer OBSBOT Tail Air wurde `81 01 06 20 vv` mit „angenommen" und
+   * „ausgeführt" quittiert und dann ignoriert — dieselbe Strecke brauchte
+   * bei langsamster und schnellster Angabe dreimal 8,1 Sekunden. Diese
+   * Kamera bestätigt übrigens auch ausgedachte Befehle, die Antwort taugt
+   * also nicht als Nachweis.
+   *
+   * Einen Befehl zu schicken, von dem nur feststeht, dass er bei dem einen
+   * Gerät, das hier stand, nichts tut, wäre eine Beruhigung für den
+   * Quelltext und keine für den Saal. Wer das Tempo bestimmen will, lässt
+   * die Positionen in Votura liegen — dort fährt Votura selbst, und dort
+   * wirkt es: dieselbe Strecke in 38,4 statt 8,1 Sekunden.
+   */
   await anDieKamera(id, viscaPresetAbrufen(nummer, profil.geraet))
 }
 

@@ -943,7 +943,7 @@ const api: Api = {
     return savePtzKameras(kameras)
   },
   'ptz.erkennen': async (eingabe) => ptzErkennen(eingabe.host, eingabe.port),
-  'ptz.position': async (eingabe) => ptzPositionAbrufen(eingabe.id, eingabe.nummer),
+  'ptz.position': async (eingabe) => ptzPositionAbrufen(eingabe.id, eingabe.nummer, eingabe.tempo),
   'ptz.positionSpeichern': async (eingabe) => ptzPositionSpeichern(eingabe.id, eingabe.nummer),
   'ptz.stellungLesen': async (id) => ptzStellungLesen(id),
   'ptz.schwenken': async (eingabe) => ptzSchwenken(eingabe.id, eingabe.x, eingabe.y, eingabe.tempo),

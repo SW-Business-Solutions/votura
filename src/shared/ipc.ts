@@ -857,7 +857,7 @@ export interface Api {
    */
   'ptz.erkennen': (eingabe: { host: string; port?: number }) => Promise<PtzFund>
   /** Eine gespeicherte Position anfahren. */
-  'ptz.position': (eingabe: { id: string; nummer: number }) => Promise<void>
+  'ptz.position': (eingabe: { id: string; nummer: number; tempo?: number }) => Promise<void>
   /** Die aktuelle Stellung als Position ablegen — im Speicher der Kamera. */
   'ptz.positionSpeichern': (eingabe: { id: string; nummer: number }) => Promise<void>
   /**
