@@ -26,3 +26,6 @@ resources/sprachmodell/
 # Entsteht beim Bauen aus NUTZUNGSBEDINGUNGEN.md — zwei gepflegte Fassungen
 # desselben Textes wären zwei Fassungen zu viel.
 build/nutzungsbedingungen.txt
+
+# Notiz des Symbolwerkzeugs — Electron meldet unter Windows nicht auf die Konsole
+build/symbol-lauf.txt
